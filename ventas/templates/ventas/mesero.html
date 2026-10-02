@@ -1,0 +1,752 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Terminal de Meseros (Salón & Mesas)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/mesero.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Mesero con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Módulo Mesero • Toma de Pedidos en Salón</span>
+                    </div>
+                </a>
+
+                <!-- Selector de Local y Datos del Mesero Activo -->
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    
+                    <!-- Selector de Local Activo -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-dark dropdown-toggle rounded-pill fw-bold bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-shop text-warning me-1"></i> {{ local_actual.nombre }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li class="dropdown-header small fw-bold">Seleccionar Punto de Venta:</li>
+                            {% for l in locales %}
+                            <li>
+                                <a class="dropdown-item {% if l.id == local_actual.id %}active bg-danger{% endif %}" href="?local_id={{ l.id }}&mesero_id={{ mesero_activo.id|default:'' }}">
+                                    {{ l.nombre }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Datos del Mesero en Turno -->
+                    <div class="d-none d-md-flex flex-column text-end">
+                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                            <i class="bi bi-person-check-fill text-success me-1"></i> Mesero: <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</strong>
+                        </span>
+                        <small class="text-muted">{{ mesero_activo.rut|default:"En Turno Activo" }}</small>
+                    </div>
+
+                    <span class="mesero-badge">
+                        MESERO
+                    </span>
+
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Módulo de Meseros -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Mensajes del Sistema -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'error' %}danger border-2 border-danger shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+                    <div>
+                        <strong>Notificación:</strong> {{ message }}
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Barra Superior: Resumen Operativo y Estado de Impresoras -->
+        <div class="mesero-top-bar d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <span class="badge bg-success px-3 py-1 mb-1 fw-bold text-white">
+                    <i class="bi bi-tablet-fill me-1"></i> MÓDULO RÁPIDO PARA MESEROS
+                </span>
+                <h3 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                    SALÓN DE MESAS Y PEDIDOS • {{ local_actual.nombre }}
+                </h3>
+                <p class="text-muted mb-0 small">
+                    Asigna una mesa, selecciona comensales y envía el pedido. <strong>El sistema imprimirá automáticamente en Cocina solo lo de cocina, y en Barra solo lo de barra.</strong>
+                </p>
+            </div>
+
+            <!-- KPIs de Mesas del Salón -->
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <span class="badge bg-success rounded-circle p-1"> </span>
+                    <strong class="small text-dark">{{ mesas_libres }} Libres</strong>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <span class="badge bg-danger rounded-circle p-1"> </span>
+                    <strong class="small text-dark">{{ mesas_ocupadas }} Ocupadas</strong>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <i class="bi bi-printer-fill text-primary"></i>
+                    <strong class="small text-muted">Cocina & Barra: Online</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 1: SELECTOR Y MAPA VISUAL DE MESAS -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                    <i class="bi bi-grid-3x3-gap-fill text-warning me-2"></i>1. Selecciona o Asigna una Mesa
+                </h5>
+                <small class="text-muted">Haz clic en una mesa para tomar el pedido de inmediato</small>
+            </div>
+
+            <div class="row g-3">
+                {% for m in mesas %}
+                <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+                    <div class="mesa-card {% if m.estado == 'HABILITADA' %}mesa-libre{% elif m.estado == 'OCUPADA' %}mesa-ocupada{% else %}mesa-reservada{% endif %} {% if forloop.first %}mesa-seleccionada{% endif %}"
+                         id="cardMesa_{{ m.id }}"
+                         onclick="seleccionarMesa({{ m.id }}, '{{ m.identificador }}', {{ m.capacidad }}, '{{ m.estado }}')">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="mesa-title">{{ m.identificador }}</span>
+                            <span class="mesa-capacidad" title="Capacidad comensales">
+                                <i class="bi bi-people-fill"></i> {{ m.capacidad }}
+                            </span>
+                        </div>
+
+                        <div>
+                            {% if m.estado == 'HABILITADA' %}
+                            <span class="badge bg-success text-white w-100 py-2 fw-bold">
+                                <i class="bi bi-check-circle-fill me-1"></i>Libre
+                            </span>
+                            {% elif m.estado == 'OCUPADA' %}
+                            <span class="badge bg-danger text-white w-100 py-2 fw-bold">
+                                <i class="bi bi-person-fill me-1"></i>Ocupada
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark w-100 py-2 fw-bold">
+                                <i class="bi bi-clock-fill me-1"></i>Reservada
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-4 bg-white rounded-4 border">
+                    <p class="text-muted mb-0">No hay mesas configuradas para este punto de venta.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: TOMA DE PEDIDO RÁPIDO & COMANDA LATERAL -->
+        <div class="row g-4">
+            
+            <!-- Columna Izquierda: Catálogo Táctil Rápido -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 2px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Control del Pedido Activo -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-danger px-3 py-2 fs-6 fw-bold rounded-pill" id="mesaActivaBadge">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Mesa 1
+                            </span>
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold">
+                                Estado: <span id="mesaActivaEstado" class="text-success">Libre / Habilitada</span>
+                            </span>
+                        </div>
+
+                        <!-- Selector Rápido de Comensales -->
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="fw-bold text-muted">Comensales:</small>
+                            <button type="button" class="btn-comensal active" onclick="setComensales(1, this)">1</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(2, this)">2</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(3, this)">3</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(4, this)">4</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(5, this)">5</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(6, this)">6+</button>
+                        </div>
+                    </div>
+
+                    <!-- Pestañas de Categoría con Indicador de Destino de Impresión -->
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold filter-cat-btn active" onclick="filtrarCategoria('todos', this)">
+                            <i class="bi bi-grid-fill me-1"></i> Todo el Menú
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cocinar', this)">
+                            <i class="bi bi-fire me-1"></i> Comida por Cocinar <span class="badge bg-danger ms-1">Cocina</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('preparada', this)">
+                            <i class="bi bi-basket2-fill me-1"></i> Comida Preparada <span class="badge bg-warning text-dark ms-1">Salón</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('envasada', this)">
+                            <i class="bi bi-cup-straw me-1"></i> Bebidas Envasadas <span class="badge bg-primary ms-1">Barra</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cafeteria', this)">
+                            <i class="bi bi-cup-hot-fill me-1"></i> Cafetería & Jugos <span class="badge bg-info text-dark ms-1">Barra</span>
+                        </button>
+                    </div>
+
+                    <!-- Buscador Rápido de Producto -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" placeholder="Buscar plato, hamburguesa, bebida, café..." onkeyup="filtrarTextoPlatos()">
+                        </div>
+                    </div>
+
+                    <!-- Grilla de Productos -->
+                    <div class="row g-3" id="grillaProductos">
+                        {% for p in catalogo_productos %}
+                        <div class="col-md-6 item-plato" data-cat="{{ p.categoria }}" data-nombre="{{ p.nombre|lower }}">
+                            <div class="product-mesero-card">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        {% if p.destino == 'COCINA' %}
+                                        <span class="badge-dest-cocina">
+                                            <i class="bi bi-fire"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% elif p.destino == 'BARRA' %}
+                                        <span class="badge-dest-barra">
+                                            <i class="bi bi-cup-straw"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge-dest-salon">
+                                            <i class="bi bi-bag-check-fill"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% endif %}
+                                        <span class="product-mesero-price">${{ p.precio|stringformat:",d" }}</span>
+                                    </div>
+                                    <h6 class="product-mesero-title">{{ p.nombre }}</h6>
+                                    <p class="text-muted small mb-3">{{ p.descripcion }}</p>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.75rem;" onclick="abrirNotaModal({{ p.id }}, '{{ p.nombre }}')">
+                                        <i class="bi bi-chat-text me-1 text-danger"></i> Nota
+                                    </button>
+
+                                    <!-- Controles sumar / restar -->
+                                    <div class="d-flex align-items-center gap-1">
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre }}', {{ p.precio }}, '{{ p.destino }}', -1)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                        <span class="qty-display" id="qty_{{ p.id }}">0</span>
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre }}', {{ p.precio }}, '{{ p.destino }}', 1)">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Panel Lateral de Comanda en Curso -->
+            <div class="col-lg-4">
+                <div class="comanda-mesero-panel">
+                    
+                    <div class="comanda-header">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 class="fw-bold mb-0" style="font-family: 'Oswald', sans-serif; color: var(--safari-cafe-deep);">
+                                    <i class="bi bi-receipt text-danger me-2"></i>Comanda en Vivo
+                                </h4>
+                                <small class="text-muted">
+                                    Mesa: <strong id="comandaMesaNombre" class="text-dark">Mesa 1</strong> • 
+                                    <span id="comandaComensales">1 Persona</span>
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="vaciarComanda()" title="Vaciar Comanda">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Ítems Agregados -->
+                    <div class="mb-3" style="max-height: 320px; overflow-y: auto;" id="listaComandaItems">
+                        <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
+                            <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning"></i>
+                            Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
+                        </div>
+                    </div>
+
+                    <!-- Desglose Inteligente por Zonas de Impresión -->
+                    <div class="p-3 rounded-3 mb-3" style="background-color: var(--safari-cafe-light); border: 1.5px dashed var(--safari-cafe-medium);">
+                        <div class="small fw-bold text-muted mb-2">
+                            <i class="bi bi-diagram-2-fill text-warning me-1"></i> Desglose de Impresión por Zona:
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span><i class="bi bi-fire text-danger me-1"></i> Para Comandera Cocina:</span>
+                            <strong id="contadorCocina">0 ítems</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span><i class="bi bi-cup-straw text-primary me-1"></i> Para Comandera Barra:</span>
+                            <strong id="contadorBarra">0 ítems</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center small">
+                            <span><i class="bi bi-bag-check text-warning me-1"></i> Para Salón / Entrega:</span>
+                            <strong id="contadorSalon">0 ítems</strong>
+                        </div>
+                    </div>
+
+                    <!-- Total de la Mesa -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 pt-2 border-top">
+                        <span class="fs-5 fw-bold text-dark">Total Comanda:</span>
+                        <h2 class="fw-bold text-danger mb-0" id="totalComandaTexto" style="font-family: 'Oswald', sans-serif;">
+                            $0
+                        </h2>
+                    </div>
+
+                    <!-- Botón Despachar Comanda y Generar Tickets Separados -->
+                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="abrirModalTickets()" disabled>
+                        <i class="bi bi-printer-fill me-2 fs-4"></i> Enviar a Cocina y Barra
+                    </button>
+
+                    <small class="text-muted text-center d-block mt-2" style="font-size: 0.72rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i> Imprime simultáneamente el ticket de cocina y el ticket de barra sin intervención manual.
+                    </small>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- MODAL DE NOTA ESPECIAL PARA PLATO / BEBIDA -->
+    <div class="modal fade" id="modalNota" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-dark text-white p-3">
+                    <h6 class="modal-title fw-bold" id="modalNotaTitulo">Instrucción Especial</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="notaProductoId">
+                    <label class="form-label small fw-bold text-muted">Escribe o selecciona instrucción:</label>
+                    <input type="text" id="notaTextoInput" class="form-control mb-2" placeholder="Ej: sin cebolla, término medio...">
+                    
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin cebolla')">Sin cebolla</span>
+                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Término medio')">Término medio</span>
+                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin hielo')">Sin hielo</span>
+                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin sal')">Sin sal</span>
+                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Hielo aparte')">Hielo aparte</span>
+                    </div>
+                </div>
+                <div class="modal-footer p-2 bg-light">
+                    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3" onclick="guardarNota()">Guardar Nota</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SIMULADOR DE IMPRESIÓN INTELIGENTE DE TICKETS POR ZONA -->
+    <div class="modal fade" id="modalTickets" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-printer-fill text-warning me-2"></i>DESPACHO Y EMISIÓN DE TICKETS POR ZONA
+                        </h5>
+                        <small class="text-white-50">Comandas separadas listas para impresión en comanderas térmicas de 80mm</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" style="background-color: #f3f4f6;">
+                    
+                    <div class="alert alert-success border-2 border-success rounded-3 mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill fs-3 text-success"></i>
+                            <div>
+                                <strong>¡Comanda Enviada con Éxito a Producción!</strong>
+                                <div class="small">Se han generado 2 tickets independientes acorde al destino operativo de cada ítem:</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        
+                        <!-- TICKET 1: COCINA CALIENTE -->
+                        <div class="col-md-6">
+                            <div class="thermal-ticket-card">
+                                <div class="thermal-ticket-header">
+                                    <span class="badge bg-danger text-white px-2 py-1 mb-1">COMANDERA COCINA</span>
+                                    <h5 class="thermal-ticket-title text-danger">🔥 TICKET DE COCINA</h5>
+                                    <div><strong>PARQUE SAFARI CHILE</strong></div>
+                                    <small>{{ local_actual.nombre }}</small>
+                                </div>
+
+                                <div class="small mb-2">
+                                    <div><strong>COMANDA:</strong> <span id="tikCocinaCodigo">#COM-COC-0085</span></div>
+                                    <div><strong>MESA:</strong> <span id="tikCocinaMesa">Mesa 1</span></div>
+                                    <div><strong>MESERO:</strong> {{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</div>
+                                    <div><strong>FECHA/HORA:</strong> <span id="tikCocinaHora">--:--</span></div>
+                                </div>
+
+                                <div class="border-top border-bottom border-dark py-2 mb-2">
+                                    <div class="fw-bold small mb-1">PLATOS A COCINAR:</div>
+                                    <div id="tikCocinaItems">
+                                        <!-- Solo ítems de cocina -->
+                                    </div>
+                                </div>
+
+                                <div class="thermal-ticket-footer">
+                                    *** ENTRADA A PLANCHA / COCINA ***
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TICKET 2: BARRA / CAFETERÍA -->
+                        <div class="col-md-6">
+                            <div class="thermal-ticket-card">
+                                <div class="thermal-ticket-header">
+                                    <span class="badge bg-primary text-white px-2 py-1 mb-1">COMANDERA BARRA</span>
+                                    <h5 class="thermal-ticket-title text-primary">🍹 TICKET DE BARRA</h5>
+                                    <div><strong>PARQUE SAFARI CHILE</strong></div>
+                                    <small>{{ local_actual.nombre }}</small>
+                                </div>
+
+                                <div class="small mb-2">
+                                    <div><strong>COMANDA:</strong> <span id="tikBarraCodigo">#COM-BAR-0085</span></div>
+                                    <div><strong>MESA:</strong> <span id="tikBarraMesa">Mesa 1</span></div>
+                                    <div><strong>MESERO:</strong> {{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</div>
+                                    <div><strong>FECHA/HORA:</strong> <span id="tikBarraHora">--:--</span></div>
+                                </div>
+
+                                <div class="border-top border-bottom border-dark py-2 mb-2">
+                                    <div class="fw-bold small mb-1">BEBIDAS Y CAFETERÍA:</div>
+                                    <div id="tikBarraItems">
+                                        <!-- Solo bebidas / cafetería -->
+                                    </div>
+                                </div>
+
+                                <div class="thermal-ticket-footer">
+                                    *** DESPACHO INMEDIATO BARRA ***
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light p-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="confirmarYAtenderOtra()">
+                        <i class="bi bi-arrow-right-circle me-1"></i> Atender Siguiente Mesa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Terminal Meseros <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script Interactivo del Terminal de Meseros -->
+    <script>
+        // Estado del Mesero
+        let mesaSeleccionada = {
+            id: 1,
+            identificador: 'Mesa 1',
+            capacidad: 4,
+            estado: 'HABILITADA'
+        };
+        let comensales = 1;
+        let carrito = {}; // id -> { id, nombre, precio, destino, cantidad, nota }
+        let notasProductos = {}; // id -> string
+
+        // Seleccionar Mesa en el Mapa
+        function seleccionarMesa(id, identificador, capacidad, estado) {
+            mesaSeleccionada = { id, identificador, capacidad, estado };
+
+            // Marcar visualmente la tarjeta seleccionada
+            document.querySelectorAll('.mesa-card').forEach(c => c.classList.remove('mesa-seleccionada'));
+            const card = document.getElementById(`cardMesa_${id}`);
+            if (card) card.classList.add('mesa-seleccionada');
+
+            // Actualizar textos en la interfaz
+            document.getElementById('mesaActivaBadge').innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i> ${identificador}`;
+            const estadoSpan = document.getElementById('mesaActivaEstado');
+            if (estado === 'HABILITADA') {
+                estadoSpan.innerText = 'Libre / Habilitada';
+                estadoSpan.className = 'text-success';
+            } else if (estado === 'OCUPADA') {
+                estadoSpan.innerText = 'Ocupada por Comensales';
+                estadoSpan.className = 'text-danger';
+            } else {
+                estadoSpan.innerText = 'Reservada';
+                estadoSpan.className = 'text-warning';
+            }
+
+            document.getElementById('comandaMesaNombre').innerText = identificador;
+        }
+
+        // Seleccionar Comensales
+        function setComensales(num, btn) {
+            comensales = num;
+            document.querySelectorAll('.btn-comensal').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('comandaComensales').innerText = `${num} ${num === 1 ? 'Persona' : 'Personas'}`;
+        }
+
+        // Modificar Cantidad (+ / -)
+        function modificarCantidad(id, nombre, precio, destino, delta) {
+            if (!carrito[id]) {
+                carrito[id] = { id, nombre, precio, destino, cantidad: 0, nota: notasProductos[id] || '' };
+            }
+
+            carrito[id].cantidad += delta;
+            if (carrito[id].cantidad <= 0) {
+                delete carrito[id];
+                document.getElementById(`qty_${id}`).innerText = '0';
+            } else {
+                document.getElementById(`qty_${id}`).innerText = carrito[id].cantidad;
+            }
+
+            renderizarComanda();
+        }
+
+        // Renderizar Lista de Comanda
+        function renderizarComanda() {
+            const container = document.getElementById('listaComandaItems');
+            const items = Object.values(carrito);
+            const btnDespachar = document.getElementById('btnDespacharComanda');
+
+            let total = 0;
+            let countCocina = 0;
+            let countBarra = 0;
+            let countSalon = 0;
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
+                        <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning"></i>
+                        Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
+                    </div>`;
+                btnDespachar.disabled = true;
+            } else {
+                let html = '';
+                items.forEach(item => {
+                    const subtotal = item.precio * item.cantidad;
+                    total += subtotal;
+
+                    if (item.destino === 'COCINA') countCocina += item.cantidad;
+                    else if (item.destino === 'BARRA') countBarra += item.cantidad;
+                    else countSalon += item.cantidad;
+
+                    html += `
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border bg-white">
+                            <div>
+                                <div class="fw-bold small text-dark">${item.cantidad}x ${item.nombre}</div>
+                                ${item.nota ? `<small class="text-danger d-block fst-italic"><i class="bi bi-chat-left-dots me-1"></i>${item.nota}</small>` : ''}
+                                <small class="text-muted">$${item.precio.toLocaleString('es-CL')} c/u</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold text-danger">$${subtotal.toLocaleString('es-CL')}</span>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="modificarCantidad(${item.id}, '${item.nombre}', ${item.precio}, '${item.destino}', -${item.cantidad})" title="Eliminar ítem">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                });
+                container.innerHTML = html;
+                btnDespachar.disabled = false;
+            }
+
+            // Actualizar contadores por zona de impresión
+            document.getElementById('contadorCocina').innerText = `${countCocina} ítems`;
+            document.getElementById('contadorBarra').innerText = `${countBarra} ítems`;
+            document.getElementById('contadorSalon').innerText = `${countSalon} ítems`;
+
+            // Actualizar Total
+            document.getElementById('totalComandaTexto').innerText = `$${total.toLocaleString('es-CL')}`;
+        }
+
+        // Vaciar Comanda
+        function vaciarComanda() {
+            carrito = {};
+            document.querySelectorAll('.qty-display').forEach(d => d.innerText = '0');
+            renderizarComanda();
+        }
+
+        // Modal de Notas
+        function abrirNotaModal(id, nombre) {
+            document.getElementById('notaProductoId').value = id;
+            document.getElementById('modalNotaTitulo').innerText = `Nota para: ${nombre}`;
+            document.getElementById('notaTextoInput').value = notasProductos[id] || '';
+            const modal = new bootstrap.Modal(document.getElementById('modalNota'));
+            modal.show();
+        }
+
+        function agregarNotaRapida(texto) {
+            const input = document.getElementById('notaTextoInput');
+            input.value = input.value ? `${input.value}, ${texto}` : texto;
+        }
+
+        function guardarNota() {
+            const id = document.getElementById('notaProductoId').value;
+            const nota = document.getElementById('notaTextoInput').value.trim();
+            notasProductos[id] = nota;
+            if (carrito[id]) {
+                carrito[id].nota = nota;
+            }
+            renderizarComanda();
+            bootstrap.Modal.getInstance(document.getElementById('modalNota')).hide();
+        }
+
+        // Abrir Modal de Impresión Inteligente
+        function abrirModalTickets() {
+            const items = Object.values(carrito);
+            const itemsCocina = items.filter(i => i.destino === 'COCINA');
+            const itemsBarra = items.filter(i => i.destino === 'BARRA');
+
+            const horaActual = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            const numeroComanda = Math.floor(1000 + Math.random() * 9000);
+
+            // Poblar Ticket Cocina
+            document.getElementById('tikCocinaCodigo').innerText = `#COM-COC-${numeroComanda}`;
+            document.getElementById('tikCocinaMesa').innerText = `${mesaSeleccionada.identificador} (${comensales} p)`;
+            document.getElementById('tikCocinaHora').innerText = `${horaActual} hrs`;
+
+            const containerCocina = document.getElementById('tikCocinaItems');
+            if (itemsCocina.length > 0) {
+                let htmlC = '';
+                itemsCocina.forEach(it => {
+                    htmlC += `
+                        <div class="thermal-ticket-item">
+                            <span><strong>${it.cantidad}x</strong> ${it.nombre}</span>
+                        </div>
+                        ${it.nota ? `<div class="thermal-ticket-note">* NOTA: ${it.nota}</div>` : ''}
+                    `;
+                });
+                containerCocina.innerHTML = htmlC;
+            } else {
+                containerCocina.innerHTML = '<div class="text-muted small italic">-- Sin ítems de cocina --</div>';
+            }
+
+            // Poblar Ticket Barra
+            document.getElementById('tikBarraCodigo').innerText = `#COM-BAR-${numeroComanda}`;
+            document.getElementById('tikBarraMesa').innerText = `${mesaSeleccionada.identificador} (${comensales} p)`;
+            document.getElementById('tikBarraHora').innerText = `${horaActual} hrs`;
+
+            const containerBarra = document.getElementById('tikBarraItems');
+            if (itemsBarra.length > 0) {
+                let htmlB = '';
+                itemsBarra.forEach(it => {
+                    htmlB += `
+                        <div class="thermal-ticket-item">
+                            <span><strong>${it.cantidad}x</strong> ${it.nombre}</span>
+                        </div>
+                        ${it.nota ? `<div class="thermal-ticket-note">* NOTA: ${it.nota}</div>` : ''}
+                    `;
+                });
+                containerBarra.innerHTML = htmlB;
+            } else {
+                containerBarra.innerHTML = '<div class="text-muted small italic">-- Sin ítems de barra --</div>';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalTickets'));
+            modal.show();
+        }
+
+        function confirmarYAtenderOtra() {
+            bootstrap.Modal.getInstance(document.getElementById('modalTickets')).hide();
+            // Marcar visualmente la mesa como ocupada
+            const card = document.getElementById(`cardMesa_${mesaSeleccionada.id}`);
+            if (card) {
+                card.className = 'mesa-card mesa-ocupada';
+                card.querySelector('.badge').className = 'badge bg-danger text-white w-100 py-2 fw-bold';
+                card.querySelector('.badge').innerHTML = '<i class="bi bi-person-fill me-1"></i>Ocupada';
+            }
+            vaciarComanda();
+        }
+
+        // Filtro por Categoría
+        function filtrarCategoria(cat, btn) {
+            document.querySelectorAll('.filter-cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.querySelectorAll('.item-plato').forEach(card => {
+                const itemCat = card.getAttribute('data-cat');
+                if (cat === 'todos' || itemCat === cat) {
+                    card.classList.remove('d-none');
+                } else {
+                    card.classList.add('d-none');
+                }
+            });
+        }
+
+        // Filtro por Texto
+        function filtrarTextoPlatos() {
+            const query = document.getElementById('buscadorPlatos').value.toLowerCase().trim();
+            document.querySelectorAll('.item-plato').forEach(card => {
+                const nombre = card.getAttribute('data-nombre') || '';
+                if (!query || nombre.includes(query)) {
+                    card.classList.remove('d-none');
+                } else {
+                    card.classList.add('d-none');
+                }
+            });
+        }
+    </script>
+    <!-- Script de Protección contra Doble Envío -->
+    <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+</body>
+</html>

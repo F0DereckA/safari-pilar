@@ -1,0 +1,341 @@
+/* ==========================================================================
+   Vendedor / Punto de Venta Alimentos Styles - Safari Pilar
+   ========================================================================== */
+
+/* Tarjetas de Producto */
+.product-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-pastel);
+    border-radius: 14px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.product-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 6px 16px rgba(92, 66, 48, 0.12);
+}
+
+/* Badges de Categoría */
+.badge-cat {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 9px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.cat-preparada { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.cat-cocinar { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.cat-envasada { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.cat-cafeteria { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+
+.product-price {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--safari-red);
+}
+
+/* Controles de Cantidad (+ / -) */
+.qty-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--safari-cafe-light);
+    border: 1px solid var(--safari-cafe-medium);
+    border-radius: 25px;
+    padding: 4px 8px;
+}
+
+.btn-qty {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.15rem;
+    transition: all 0.15s ease;
+}
+
+.btn-qty-minus {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.btn-qty-minus:hover {
+    background-color: #d1d5db;
+}
+
+.btn-qty-plus {
+    background: linear-gradient(180deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%);
+    color: var(--safari-cafe-deep);
+}
+
+.btn-qty-plus:hover {
+    background: linear-gradient(180deg, #ffc857 0%, #e0981b 100%);
+    color: #000;
+}
+
+.qty-count {
+    font-weight: 800;
+    font-size: 1.1rem;
+    min-width: 30px;
+    text-align: center;
+}
+
+/* Panel lateral de Resumen y Total */
+.order-summary-panel {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(92, 66, 48, 0.1);
+    position: sticky;
+    top: 20px;
+}
+
+.order-summary-header {
+    background: linear-gradient(135deg, var(--safari-cafe-dark) 0%, var(--safari-cafe-deep) 100%);
+    color: #ffffff;
+    padding: 16px 20px;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom: 3px solid var(--safari-yellow);
+}
+
+.total-box {
+    background-color: var(--safari-cafe-pastel);
+    border: 2px dashed var(--safari-cafe-medium);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.total-number {
+    font-size: 2.3rem;
+    font-weight: 900;
+    color: var(--safari-red);
+    font-family: 'Oswald', sans-serif;
+    margin: 0;
+}
+
+/* Botones / Píldoras de filtrado */
+.filter-pill {
+    cursor: pointer;
+    border: 1px solid var(--safari-cafe-medium);
+    background-color: #ffffff;
+    color: var(--safari-cafe-dark);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.filter-pill.active, .filter-pill:hover {
+    background-color: var(--safari-red);
+    color: #ffffff;
+    border-color: var(--safari-red);
+}
+
+.order-item-row {
+    border-bottom: 1px solid var(--safari-cafe-pastel);
+    padding: 10px 0;
+}
+
+.order-item-row:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   Pantalla Intermedia de Vendedor: Tickets en Desarrollo
+   ========================================================================== */
+
+/* Botón Destacado Crear Nuevo Ticket */
+.btn-crear-ticket {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #a61c1c 100%);
+    color: #ffffff !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 10px 24px;
+    border-radius: 30px;
+    border: 2px solid var(--safari-yellow);
+    box-shadow: 0 4px 14px rgba(198, 40, 40, 0.35);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-crear-ticket:hover {
+    background: linear-gradient(135deg, #a61c1c 0%, #851212 100%);
+    border-color: #ffffff;
+    box-shadow: 0 6px 18px rgba(198, 40, 40, 0.5);
+    transform: translateY(-2px);
+    color: #ffffff !important;
+}
+
+/* Tarjetas KPI de Estado (Resumen Superior) */
+.kpi-stat-card {
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 3px 10px rgba(92, 66, 48, 0.05);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.kpi-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(92, 66, 48, 0.1);
+}
+
+.kpi-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.kpi-number {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+}
+
+.kpi-label {
+    font-size: 0.78rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+}
+
+/* Tarjetas de Ticket / Comanda en Desarrollo */
+.ticket-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-pastel);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ticket-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 8px 22px rgba(92, 66, 48, 0.14);
+    transform: translateY(-3px);
+}
+
+.ticket-card-header {
+    padding: 12px 16px;
+    background-color: #fdfaf5;
+    border-bottom: 1.5px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ticket-id {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--safari-cafe-deep);
+}
+
+.ticket-card-body {
+    padding: 16px;
+    flex-grow: 1;
+}
+
+.ticket-item-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dashed #f0ede6;
+    font-size: 0.9rem;
+}
+
+.ticket-item-line:last-child {
+    border-bottom: none;
+}
+
+.ticket-card-footer {
+    padding: 12px 16px;
+    background-color: #faf7f0;
+    border-top: 1.5px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.ticket-total {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--safari-red);
+}
+
+/* Badges de Estado del Ticket */
+.badge-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.status-cocina {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status-barra {
+    background-color: #f3e8ff;
+    color: #6b21a8;
+    border: 1px solid #e9d5ff;
+}
+
+.status-listo {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.status-entregado {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+

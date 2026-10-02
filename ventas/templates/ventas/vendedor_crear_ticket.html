@@ -1,0 +1,947 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Punto de Venta Alimentos y Bebidas</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares con Cache-Buster -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.1">
+    <link rel="stylesheet" href="{% static 'css/vendedor.css' %}?v=3.1">
+</head>
+<body>
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header del Vendedor con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Restaurante & Cafetería • Punto de Venta</span>
+                    </div>
+                </a>
+
+                <!-- Datos del Turno y Botón de Salida -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-none d-md-flex flex-column text-end">
+                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                            <i class="bi bi-person-badge text-warning me-1"></i> Cajero: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                        </span>
+                        <small class="text-muted">{{ punto_venta.nombre|default:"Restaurante Central Safari" }}</small>
+                    </div>
+                    {% if caja_activa %}
+                    <span class="badge bg-success px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-cash-coin me-1"></i> {{ caja_activa.nombre }}
+                    </span>
+                    {% endif %}
+                    <a href="{% url 'vendedor' %}" class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold bg-white">
+                        <i class="bi bi-arrow-left me-1 text-danger"></i> Monitor Tickets
+                    </a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Salir
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Crear Pedido de Alimentos -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+        
+        <!-- Barra de Título y Comanda -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <a href="{% url 'vendedor' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold shadow-sm" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
+                    <i class="bi bi-arrow-left me-1 text-danger"></i> Volver a Tickets en Desarrollo
+                </a>
+                <div>
+                    <h2 class="fw-bold mb-0" style="color: var(--safari-cafe-deep);">
+                        <i class="bi bi-cup-hot-fill text-danger me-2"></i>Crear Pedido de Comida & Bebidas
+                    </h2>
+                    <p class="text-muted mb-0 small">
+                        Atención de comensales: Comida preparada, cocina caliente, bebidas envasadas y cafetería.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <span class="badge rounded-pill px-3 py-2" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
+                    <i class="bi bi-receipt me-1"></i> Nueva Comanda: <strong id="comandaBadge">#COM-0085</strong>
+                </span>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            
+            <!-- Columna Izquierda: Filtrador y Catálogo de Productos -->
+            <div class="col-lg-8">
+                
+                <!-- Barra de Filtrado -->
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 1px solid var(--safari-cafe-medium) !important;">
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-12">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="filtroTexto" class="form-control border-start-0" placeholder="Buscar alimento o bebida (ej. jamón queso, hamburguesa, coca cola, café, jugo)..." onkeyup="filtrarProductos()">
+                                <button class="btn btn-outline-secondary" type="button" onclick="limpiarFiltroTexto()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pestañas de Categorías Requeridas -->
+                    <div class="d-flex flex-wrap gap-2 pt-1">
+                        <span class="filter-pill active" onclick="filtrarCategoria('todos', this)">
+                            <i class="bi bi-grid-fill me-1"></i> Todos
+                        </span>
+                        <span class="filter-pill" onclick="filtrarCategoria('preparada', this)">
+                            <i class="bi bi-basket2-fill me-1"></i> Comida Preparada (Hecha)
+                        </span>
+                        <span class="filter-pill" onclick="filtrarCategoria('cocinar', this)">
+                            <i class="bi bi-fire me-1"></i> Comida por Cocinar
+                        </span>
+                        <span class="filter-pill" onclick="filtrarCategoria('envasada', this)">
+                            <i class="bi bi-cup-straw me-1"></i> Barra: Bebidas Envasadas
+                        </span>
+                        <span class="filter-pill" onclick="filtrarCategoria('cafeteria', this)">
+                            <i class="bi bi-cup-hot-fill me-1"></i> Barra: Cafetería y Jugos
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Grid de Productos -->
+                <div class="row g-3" id="contenedorProductos">
+
+                    <!-- ==============================================
+                         CATEGORÍA 1: COMIDA PREPARADA (YA HECHO)
+                         ============================================== -->
+
+                    <!-- 1. Pan Jamón Queso (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="preparada" data-nombre="sandwich pan jamon y queso preparado vitrina listo" data-id="1" data-precio="3500">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-preparada">Comida Preparada</span>
+                                    <i class="bi bi-bag-check-fill text-warning fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Pan Jamón y Queso</h5>
+                                <p class="text-muted small mb-2">Sandwich en pan fresco con jamón pierna y queso fundido (Listo para entrega).</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$3.500</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(1, -1)">-</button>
+                                    <span class="qty-count" id="qty-1">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(1, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Empanada de Pino -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="preparada" data-nombre="empanada de pino horneada tradicional preparada lista" data-id="2" data-precio="3000">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-preparada">Comida Preparada</span>
+                                    <i class="bi bi-bag-check-fill text-warning fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Empanada de Pino</h5>
+                                <p class="text-muted small mb-2">Empanada horneada de carne picada y cebolla (Mantenedor caliente).</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$3.000</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(2, -1)">-</button>
+                                    <span class="qty-count" id="qty-2">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(2, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Empanada de Queso -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="preparada" data-nombre="empanada de queso frita horneada preparada lista" data-id="3" data-precio="2800">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-preparada">Comida Preparada</span>
+                                    <i class="bi bi-bag-check-fill text-warning fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Empanada de Queso</h5>
+                                <p class="text-muted small mb-2">Empanada hojaldrada rellena con abundante queso derretido.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.800</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(3, -1)">-</button>
+                                    <span class="qty-count" id="qty-3">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(3, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Medialuna Rellena -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="preparada" data-nombre="medialuna rellena dulce de leche manjar preparada" data-id="4" data-precio="1800">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-preparada">Comida Preparada</span>
+                                    <i class="bi bi-bag-check-fill text-warning fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Medialuna Rellena</h5>
+                                <p class="text-muted small mb-2">Medialuna horneada con relleno de manjar o crema pastelera.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$1.800</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(4, -1)">-</button>
+                                    <span class="qty-count" id="qty-4">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(4, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Muffin de Arándanos -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="preparada" data-nombre="muffin de arandanos queque pastel reposteria preparada" data-id="5" data-precio="2200">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-preparada">Comida Preparada</span>
+                                    <i class="bi bi-bag-check-fill text-warning fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Muffin de Arándanos</h5>
+                                <p class="text-muted small mb-2">Bizcocho artesanal esponjoso con arándanos frescos en vitrina.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.200</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(5, -1)">-</button>
+                                    <span class="qty-count" id="qty-5">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(5, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==============================================
+                         CATEGORÍA 2: COMIDA POR COCINAR (COCINA / ALMUERZOS)
+                         ============================================== -->
+
+                    <!-- 6. Hamburguesa Safari Clásica -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cocinar" data-nombre="hamburguesa safari clasica con papas por cocinar caliente cocina" data-id="6" data-precio="7500">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
+                                    <i class="bi bi-fire text-danger fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Hamburguesa Safari Clásica</h5>
+                                <p class="text-muted small mb-2">Carne 150g, lechuga, tomate y queso cheddar, acompañada de papas fritas.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$7.500</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(6, -1)">-</button>
+                                    <span class="qty-count" id="qty-6">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(6, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7. Hamburguesa Doble Queso Tocino -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cocinar" data-nombre="hamburguesa doble queso y tocino bacon por cocinar cocina caliente" data-id="7" data-precio="8900">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
+                                    <i class="bi bi-fire text-danger fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Hamburguesa Doble Tocino</h5>
+                                <p class="text-muted small mb-2">Doble carne, doble queso cheddar fundido y tocino crujiente.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$8.900</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(7, -1)">-</button>
+                                    <span class="qty-count" id="qty-7">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(7, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Almuerzo Safari del Día -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cocinar" data-nombre="almuerzo safari del dia plato caliente por cocinar fondo" data-id="8" data-precio="9500">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
+                                    <i class="bi bi-fire text-danger fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Almuerzo Safari del Día</h5>
+                                <p class="text-muted small mb-2">Plato de fondo caliente (vacuno o pollo) con arroz/puré y ensalada.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$9.500</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(8, -1)">-</button>
+                                    <span class="qty-count" id="qty-8">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(8, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 9. Churrasco Italiano -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cocinar" data-nombre="churrasco italiano palta tomate mayo por cocinar caliente cocina" data-id="9" data-precio="7900">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
+                                    <i class="bi bi-fire text-danger fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Churrasco Italiano</h5>
+                                <p class="text-muted small mb-2">Finas láminas de vacuno a la plancha, palta hass molida, tomate y mayo.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$7.900</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(9, -1)">-</button>
+                                    <span class="qty-count" id="qty-9">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(9, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 10. Papas Fritas Grandes -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cocinar" data-nombre="papas fritas grandes porción cocina caliente freidora" data-id="10" data-precio="4000">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
+                                    <i class="bi bi-fire text-danger fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Papas Fritas Grandes</h5>
+                                <p class="text-muted small mb-2">Porción familiar de papas fritas doradas y crujientes al momento.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$4.000</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(10, -1)">-</button>
+                                    <span class="qty-count" id="qty-10">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(10, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==============================================
+                         CATEGORÍA 3.1: BARRA - BEBIDAS ENVASADAS (YA PREPARADAS)
+                         ============================================== -->
+
+                    <!-- 11. Coca-Cola (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="envasada" data-nombre="bebida cocacola coca-cola lata botella envasada fria" data-id="11" data-precio="2000">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-envasada">Bebida Envasada</span>
+                                    <i class="bi bi-cup-straw text-primary fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Coca-Cola 350ml / 500ml</h5>
+                                <p class="text-muted small mb-2">Gaseosa fría tradicional o zero en envase original listo.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.000</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(11, -1)">-</button>
+                                    <span class="qty-count" id="qty-11">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(11, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 12. Agua Mineral (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="envasada" data-nombre="agua mineral botella con sin gas envasada fria" data-id="12" data-precio="1500">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-envasada">Bebida Envasada</span>
+                                    <i class="bi bi-cup-straw text-primary fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Agua Mineral 500ml</h5>
+                                <p class="text-muted small mb-2">Agua purificada de manantial (con gas o sin gas en botella).</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$1.500</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(12, -1)">-</button>
+                                    <span class="qty-count" id="qty-12">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(12, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 13. Jugo en Caja (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="envasada" data-nombre="jugo en caja kapu watts fruta envasada listo nino" data-id="13" data-precio="1200">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-envasada">Bebida Envasada</span>
+                                    <i class="bi bi-cup-straw text-primary fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Jugo en Caja 200ml</h5>
+                                <p class="text-muted small mb-2">Jugo individual sabor naranja, durazno o manzana con bombilla.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$1.200</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(13, -1)">-</button>
+                                    <span class="qty-count" id="qty-13">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(13, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 14. Sprite / Fanta -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="envasada" data-nombre="bebida sprite fanta gaseosa lata envasada fria" data-id="14" data-precio="2000">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-envasada">Bebida Envasada</span>
+                                    <i class="bi bi-cup-straw text-primary fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Sprite / Fanta 350ml</h5>
+                                <p class="text-muted small mb-2">Gaseosa sabor limón o naranja en lata fría.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.000</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(14, -1)">-</button>
+                                    <span class="qty-count" id="qty-14">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(14, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==============================================
+                         CATEGORÍA 3.2: BARRA - PREPARADA (CAFETERÍA Y JUGOS)
+                         ============================================== -->
+
+                    <!-- 15. Jugo Natural (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cafeteria" data-nombre="jugo natural naranja frutilla frambuesa fruta fresca barra preparacion" data-id="15" data-precio="3500">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cafeteria">Barra: Preparado</span>
+                                    <i class="bi bi-cup-hot-fill text-purple fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Jugo Natural de Fruta</h5>
+                                <p class="text-muted small mb-2">Exprimido / licuado al momento: Naranja, Frutilla, Frambuesa o Piña (400cc).</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$3.500</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(15, -1)">-</button>
+                                    <span class="qty-count" id="qty-15">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(15, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 16. Café de Grano / Cortado (Ejemplo solicitado) -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cafeteria" data-nombre="cafe espresso cortado con leche americano cafeteria barra preparacion" data-id="16" data-precio="2400">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cafeteria">Barra: Preparado</span>
+                                    <i class="bi bi-cup-hot-fill text-purple fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Café de Grano / Cortado</h5>
+                                <p class="text-muted small mb-2">Café espresso italiano preparado en máquina barista (Solo, Cortado o Americano).</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.400</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(16, -1)">-</button>
+                                    <span class="qty-count" id="qty-16">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(16, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 17. Café Cappuccino / Mocca -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cafeteria" data-nombre="cafe cappuccino mocca latte leche espumada cafeteria barra" data-id="17" data-precio="2800">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cafeteria">Barra: Preparado</span>
+                                    <i class="bi bi-cup-hot-fill text-purple fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Café Cappuccino</h5>
+                                <p class="text-muted small mb-2">Espresso con crema de leche texturizada al vapor y toque de canela.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$2.800</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(17, -1)">-</button>
+                                    <span class="qty-count" id="qty-17">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(17, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 18. Limonada Menta y Jengibre -->
+                    <div class="col-md-6 col-xl-4 item-producto" data-categoria="cafeteria" data-nombre="limonada menta jengibre jugo natural barra preparado fresco" data-id="18" data-precio="3200">
+                        <div class="product-card">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge-cat cat-cafeteria">Barra: Preparado</span>
+                                    <i class="bi bi-cup-hot-fill text-purple fs-5"></i>
+                                </div>
+                                <h5 class="fw-bold mb-1 text-dark">Limonada Menta Jengibre</h5>
+                                <p class="text-muted small mb-2">Limonada fresca macerada con menta del huerto y jengibre helado.</p>
+                            </div>
+                            <div>
+                                <div class="product-price mb-2">$3.200</div>
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(18, -1)">-</button>
+                                    <span class="qty-count" id="qty-18">0</span>
+                                    <button class="btn-qty btn-qty-plus" onclick="cambiarCantidad(18, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Mensaje cuando no hay resultados de búsqueda -->
+                <div id="sinResultados" class="text-center py-5 d-none">
+                    <i class="bi bi-search fs-1 text-muted"></i>
+                    <p class="mt-2 text-muted fw-bold">No se encontraron alimentos o bebidas con ese filtro.</p>
+                </div>
+
+            </div>
+
+            <!-- Columna Derecha: Panel de Resumen de Pedido y Total Actual -->
+            <div class="col-lg-4">
+                <div class="order-summary-panel">
+                    
+                    <div class="order-summary-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0 fw-bold">
+                            <i class="bi bi-receipt me-2"></i>Comanda de Pedido
+                        </h4>
+                        <span class="badge bg-warning text-dark" id="itemCountBadge">0 ítems</span>
+                    </div>
+
+                    <div class="p-3">
+                        
+                        <!-- Lista de productos agregados al pedido -->
+                        <div id="listaItemsPedido" class="mb-3" style="max-height: 290px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4" id="emptyCartMessage">
+                                <i class="bi bi-cart-x fs-1 text-secondary opacity-50"></i>
+                                <p class="mt-2 mb-0 small">El pedido está vacío.</p>
+                                <span class="text-muted" style="font-size: 0.75rem;">Agrega alimentos o bebidas usando los botones (+).</span>
+                            </div>
+                        </div>
+
+                        <hr class="my-3" style="border-color: var(--safari-cafe-medium);">
+
+                        <!-- Desglose -->
+                        <div class="d-flex justify-content-between text-muted small mb-1">
+                            <span>Subtotal Alimentos:</span>
+                            <span id="subtotalDisplay">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mb-3">
+                            <span>Mesa / Para Llevar:</span>
+                            <span class="text-success fw-semibold">Entrega en Mostrador</span>
+                        </div>
+
+                        <!-- Caja de Total Actual -->
+                        <div class="total-box mb-3">
+                            <span class="text-uppercase fw-bold small text-muted" style="letter-spacing: 1px;">TOTAL ACTUAL</span>
+                            <h2 class="total-number" id="totalActualDisplay">$0</h2>
+                            <small class="text-muted">Pesos Chilenos (CLP)</small>
+                        </div>
+
+                        <!-- Botones de Acción (Prototipo No Funcional) -->
+                        <div class="d-grid gap-2">
+                            <button class="btn py-2 fw-bold text-dark" style="background: linear-gradient(180deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%); border: 1px solid var(--safari-yellow-dark);" onclick="simularCobro()">
+                                <i class="bi bi-cash-coin me-2"></i>Cobrar y Enviar a Cocina/Barra
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="limpiarPedido()">
+                                <i class="bi bi-trash3 me-1"></i>Limpiar Pedido
+                            </button>
+                        </div>
+
+                        <div class="alert alert-light border text-center mt-3 py-2 px-1 mb-0" style="font-size: 0.75rem; color: var(--safari-cafe-dark);">
+                            <i class="bi bi-info-circle me-1 text-warning"></i>
+                            <strong>Prototipo Visual:</strong> Menú exclusivo de alimentos y bebidas para empleados del parque.
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal de Simulación de Cobro y Comanda -->
+    <div class="modal fade" id="modalCobro" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: #fbf7ee; border: 2px solid var(--safari-cafe-medium); border-radius: 16px;">
+                <div class="modal-header text-white" style="background-color: var(--safari-red); border-bottom: 2px solid var(--safari-yellow);">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-check2-circle me-2 text-warning"></i>Comanda Emitida con Éxito
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo" style="height: 60px; margin-bottom: 12px;">
+                    <h4 class="fw-bold text-dark">¡Ticket Generado y Enviado!</h4>
+                    <p class="text-muted small" id="modalDestinoTexto">
+                        Los ítems de comida por cocinar han sido derivados a <strong>Cocina</strong> y las bebidas preparadas a <strong>Barra</strong>.
+                    </p>
+                    <div class="p-3 rounded-3 my-3" style="background-color: var(--safari-cafe-pastel); border: 1.5px dashed var(--safari-cafe-medium);">
+                        <div class="small text-muted">Total Cobrado:</div>
+                        <div class="fs-2 fw-bold text-danger" id="modalTotalCobrado">$0</div>
+                        <div class="small fw-bold text-dark mt-1">
+                            Ticket Comanda: <span id="modalTicketId" class="text-danger">#COM-0085</span> • Caja Alimentos 01
+                        </div>
+                    </div>
+                    <small class="text-muted fst-italic">
+                        * Pedido registrado en la cola de Tickets en Desarrollo.
+                    </small>
+                </div>
+                <div class="modal-footer justify-content-center gap-2">
+                    <a href="{% url 'vendedor' %}" class="btn btn-warning fw-bold px-4 rounded-pill shadow-sm">
+                        <i class="bi bi-collection-play-fill me-1"></i> Ver en Tickets en Desarrollo
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary px-3 rounded-pill" data-bs-dismiss="modal" onclick="limpiarPedido()">
+                        <i class="bi bi-plus-lg me-1"></i> Crear Otro Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 CDN + Configuración Safari con Botones Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'js/safari_alerts.js' %}"></script>
+
+    <!-- Lógica Interactiva del Prototipo (Vanilla JS) -->
+    <script>
+        // Catálogo de comida y bebidas
+        const productos = {
+            // Comida Preparada (Ya hecha)
+            1: { nombre: "Pan Jamón y Queso", precio: 3500, cat: "preparada" },
+            2: { nombre: "Empanada de Pino", precio: 3000, cat: "preparada" },
+            3: { nombre: "Empanada de Queso", precio: 2800, cat: "preparada" },
+            4: { nombre: "Medialuna Rellena", precio: 1800, cat: "preparada" },
+            5: { nombre: "Muffin de Arándanos", precio: 2200, cat: "preparada" },
+            // Comida por Cocinar (Cocina Caliente / Minuta)
+            6: { nombre: "Hamburguesa Safari Clásica", precio: 7500, cat: "cocinar" },
+            7: { nombre: "Hamburguesa Doble Tocino", precio: 8900, cat: "cocinar" },
+            8: { nombre: "Almuerzo Safari del Día", precio: 9500, cat: "cocinar" },
+            9: { nombre: "Churrasco Italiano", precio: 7900, cat: "cocinar" },
+            10: { nombre: "Papas Fritas Grandes", precio: 4000, cat: "cocinar" },
+            // Barra: Bebidas Envasadas (Ya hechas)
+            11: { nombre: "Coca-Cola 350ml/500ml", precio: 2000, cat: "envasada" },
+            12: { nombre: "Agua Mineral 500ml", precio: 1500, cat: "envasada" },
+            13: { nombre: "Jugo en Caja 200ml", precio: 1200, cat: "envasada" },
+            14: { nombre: "Sprite / Fanta 350ml", precio: 2000, cat: "envasada" },
+            // Barra: Cafetería y Bebidas Preparadas
+            15: { nombre: "Jugo Natural de Fruta", precio: 3500, cat: "cafeteria" },
+            16: { nombre: "Café de Grano / Cortado", precio: 2400, cat: "cafeteria" },
+            17: { nombre: "Café Cappuccino", precio: 2800, cat: "cafeteria" },
+            18: { nombre: "Limonada Menta Jengibre", precio: 3200, cat: "cafeteria" }
+        };
+
+        // Estado del carrito/pedido
+        const cantidades = {};
+        for (let i = 1; i <= 18; i++) cantidades[i] = 0;
+
+        let categoriaActual = 'todos';
+
+        // Modificar cantidad con botones (+) y (-)
+        function cambiarCantidad(id, delta) {
+            cantidades[id] = Math.max(0, cantidades[id] + delta);
+            const qtyElement = document.getElementById('qty-' + id);
+            if (qtyElement) {
+                qtyElement.innerText = cantidades[id];
+            }
+            actualizarResumen();
+        }
+
+        // Formato moneda CLP
+        function formatearMoneda(valor) {
+            return '$' + valor.toLocaleString('es-CL');
+        }
+
+        // Actualizar panel lateral en vivo
+        function actualizarResumen() {
+            let total = 0;
+            let totalItems = 0;
+            const lista = document.getElementById('listaItemsPedido');
+            lista.innerHTML = '';
+
+            let tieneItems = false;
+
+            for (const [id, qty] of Object.entries(cantidades)) {
+                if (qty > 0) {
+                    tieneItems = true;
+                    totalItems += qty;
+                    const prod = productos[id];
+                    const subtotal = prod.precio * qty;
+                    total += subtotal;
+
+                    const row = document.createElement('div');
+                    row.className = 'order-item-row d-flex justify-content-between align-items-center';
+                    row.innerHTML = `
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">${prod.nombre}</div>
+                            <small class="text-muted">${qty} x ${formatearMoneda(prod.precio)}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold text-danger">${formatearMoneda(subtotal)}</span>
+                            <div>
+                                <button class="btn btn-sm btn-link text-muted p-0 ms-2" onclick="cambiarCantidad(${id}, -1)" title="Restar">
+                                    <i class="bi bi-dash-circle"></i>
+                                </button>
+                                <button class="btn btn-sm btn-link text-warning p-0 ms-1" onclick="cambiarCantidad(${id}, 1)" title="Sumar">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    lista.appendChild(row);
+                }
+            }
+
+            if (!tieneItems) {
+                lista.innerHTML = `
+                    <div class="text-center text-muted py-4" id="emptyCartMessage">
+                        <i class="bi bi-cart-x fs-1 text-secondary opacity-50"></i>
+                        <p class="mt-2 mb-0 small">El pedido está vacío.</p>
+                        <span class="text-muted" style="font-size: 0.75rem;">Agrega alimentos o bebidas usando los botones (+).</span>
+                    </div>
+                `;
+            }
+
+            document.getElementById('subtotalDisplay').innerText = formatearMoneda(total);
+            document.getElementById('totalActualDisplay').innerText = formatearMoneda(total);
+            document.getElementById('itemCountBadge').innerText = totalItems + (totalItems === 1 ? ' ítem' : ' ítems');
+        }
+
+        // Limpiar el pedido
+        function limpiarPedido() {
+            for (const id in cantidades) {
+                cantidades[id] = 0;
+                const qtyElement = document.getElementById('qty-' + id);
+                if (qtyElement) qtyElement.innerText = '0';
+            }
+            actualizarResumen();
+        }
+
+        const STORAGE_KEY = 'safari_tickets_desarrollo';
+
+        // Simular cobro y guardar en Tickets en Desarrollo
+        function simularCobro() {
+            let total = 0;
+            const itemsComprados = [];
+            let tieneCocina = false;
+            let tieneBarra = false;
+            let tienePreparada = false;
+
+            for (const [id, qty] of Object.entries(cantidades)) {
+                if (qty > 0) {
+                    const prod = productos[id];
+                    itemsComprados.push({
+                        nombre: prod.nombre,
+                        cant: qty,
+                        cat: prod.cat,
+                        precio: prod.precio
+                    });
+                    total += prod.precio * qty;
+                    if (prod.cat === 'cocinar') tieneCocina = true;
+                    else if (prod.cat === 'cafeteria') tieneBarra = true;
+                    else tienePreparada = true;
+                }
+            }
+
+            if (total === 0) {
+                swalWarningBootstrap.fire({
+                    title: "Pedido vacío",
+                    text: "Agrega al menos un alimento o bebida antes de procesar el pedido.",
+                    icon: "warning",
+                    confirmButtonText: "Entendido"
+                });
+                return;
+            }
+
+            // Determinar destino y estado inicial de la comanda
+            let estadoInicial = 'listo';
+            let destino = 'Vitrina / Mostrador';
+            if (tieneCocina && tieneBarra) {
+                estadoInicial = 'cocina';
+                destino = 'Cocina Caliente & Barra';
+            } else if (tieneCocina) {
+                estadoInicial = 'cocina';
+                destino = 'Cocina Caliente';
+            } else if (tieneBarra) {
+                estadoInicial = 'barra';
+                destino = 'Barra Cafetería';
+            }
+
+            // Obtener lista actual de tickets desde LocalStorage
+            let tickets = [];
+            const guardados = localStorage.getItem(STORAGE_KEY);
+            if (guardados) {
+                try { tickets = JSON.parse(guardados); } catch (e) { tickets = []; }
+            }
+
+            const nuevoNumero = 80 + tickets.length + 1;
+            const ticketId = 'COM-00' + nuevoNumero;
+            const ahora = new Date();
+            const horaStr = ahora.getHours().toString().padStart(2, '0') + ':' + ahora.getMinutes().toString().padStart(2, '0');
+
+            const nuevoTicket = {
+                id: ticketId,
+                hora: horaStr,
+                minutosAtras: 0,
+                tipoEntrega: 'Entrega Mostrador',
+                items: itemsComprados,
+                total: total,
+                estado: estadoInicial,
+                destino: destino,
+                observacion: 'Pedido emitido desde Caja Alimentos #1'
+            };
+
+            // Guardar al inicio de la cola
+            tickets.unshift(nuevoTicket);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+
+            // Actualizar modal
+            document.getElementById('modalTicketId').innerText = '#' + ticketId;
+            document.getElementById('modalTotalCobrado').innerText = formatearMoneda(total);
+            document.getElementById('modalDestinoTexto').innerHTML = `
+                El pedido <strong>#${ticketId}</strong> fue derivado a <strong>${destino}</strong> con estado <strong>${estadoInicial.toUpperCase()}</strong>.
+            `;
+
+            // Actualizar badge superior para el próximo ticket
+            const comandaBadge = document.getElementById('comandaBadge');
+            if (comandaBadge) {
+                comandaBadge.innerText = '#COM-00' + (nuevoNumero + 1);
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalCobro'));
+            modal.show();
+        }
+
+        // Filtrado por categoría
+        function filtrarCategoria(cat, element) {
+            categoriaActual = cat;
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            if (element) element.classList.add('active');
+            aplicarFiltros();
+        }
+
+        // Filtrado por texto
+        function filtrarProductos() {
+            aplicarFiltros();
+        }
+
+        function limpiarFiltroTexto() {
+            document.getElementById('filtroTexto').value = '';
+            aplicarFiltros();
+        }
+
+        function aplicarFiltros() {
+            const texto = document.getElementById('filtroTexto').value.toLowerCase().trim();
+            const items = document.querySelectorAll('.item-producto');
+            let visibles = 0;
+
+            items.forEach(item => {
+                const cat = item.getAttribute('data-categoria');
+                const nombre = item.getAttribute('data-nombre').toLowerCase();
+
+                const coincideCategoria = (categoriaActual === 'todos' || cat === categoriaActual);
+                const coincideTexto = (texto === '' || nombre.includes(texto));
+
+                if (coincideCategoria && coincideTexto) {
+                    item.classList.remove('d-none');
+                    visibles++;
+                } else {
+                    item.classList.add('d-none');
+                }
+            });
+
+            const sinResultados = document.getElementById('sinResultados');
+            if (visibles === 0) {
+                sinResultados.classList.remove('d-none');
+            } else {
+                sinResultados.classList.add('d-none');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let tickets = [];
+            const guardados = localStorage.getItem(STORAGE_KEY);
+            if (guardados) {
+                try { tickets = JSON.parse(guardados); } catch (e) { tickets = []; }
+            }
+            const nuevoNumero = 80 + tickets.length + 1;
+            const comandaBadge = document.getElementById('comandaBadge');
+            if (comandaBadge) {
+                comandaBadge.innerText = '#COM-00' + nuevoNumero;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+/* ==========================================================================
+   Base & Common Styles - Safari Pilar (Venta_safari)
+   Paleta: Rojo, Amarillo, Colores Pasteles de Café
+   ========================================================================== */
+
+:root {
+    --safari-red: #a71d1d;
+    --safari-red-dark: #821414;
+    --safari-yellow: #f3b233;
+    --safari-yellow-dark: #d99616;
+    --safari-cafe-light: #f7f3eb;
+    --safari-cafe-pastel: #ede4d3;
+    --safari-cafe-medium: #cbbba6;
+    --safari-cafe-dark: #5c4230;
+    --safari-cafe-deep: #3b281d;
+}
+
+body {
+    background-color: var(--safari-cafe-light);
+    color: var(--safari-cafe-deep);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, .brand-title {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+}
+
+/* Cenefa tribal superior e inferior estilo Safari */
+.tribal-divider {
+    height: 12px;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        var(--safari-yellow) 0,
+        var(--safari-yellow) 6px,
+        transparent 6px,
+        transparent 12px,
+        var(--safari-red) 12px,
+        var(--safari-red) 18px,
+        transparent 18px,
+        transparent 24px
+    );
+    border-bottom: 2px solid var(--safari-yellow-dark);
+}
+
+.tribal-bottom-divider {
+    height: 10px;
+    background-image: repeating-linear-gradient(
+        45deg,
+        var(--safari-red) 0,
+        var(--safari-red) 6px,
+        transparent 6px,
+        transparent 12px,
+        var(--safari-yellow) 12px,
+        var(--safari-yellow) 18px,
+        transparent 18px,
+        transparent 24px
+    );
+    opacity: 0.85;
+}
+
+/* Barra de navegación superior */
+.safari-header {
+    background-color: #fbf7ee;
+    border-bottom: 3px solid var(--safari-cafe-medium);
+    box-shadow: 0 4px 10px rgba(60, 40, 25, 0.06);
+}
+
+.logo-link {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform 0.2s ease;
+}
+
+.logo-link:hover {
+    transform: scale(1.02);
+}
+
+.logo-img {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.18));
+}
+
+.brand-text-main {
+    font-size: 1.45rem;
+    color: var(--safari-red);
+    line-height: 1.1;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.brand-text-sub {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--safari-cafe-dark);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+/* Botón Iniciar Sesión */
+.btn-login {
+    background: linear-gradient(180deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%);
+    color: var(--safari-cafe-deep);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 1px solid var(--safari-yellow-dark);
+    padding: 8px 22px;
+    border-radius: 30px;
+    box-shadow: 0 3px 8px rgba(217, 150, 22, 0.35);
+    transition: all 0.25s ease;
+}
+
+.btn-login:hover {
+    background: linear-gradient(180deg, #ffc44d 0%, #e6a220 100%);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(217, 150, 22, 0.45);
+}
+
+/* Pie de página común */
+footer {
+    margin-top: auto;
+    background-color: var(--safari-cafe-pastel);
+    border-top: 2px solid var(--safari-cafe-medium);
+    color: var(--safari-cafe-dark);
+    font-size: 0.9rem;
+}
+
+/* Botones de navegación en barra superior con aura luminosa permanente */
+.btn-safari-header {
+    background-color: #ffffff !important;
+    border: 1.5px solid var(--safari-red) !important;
+    color: var(--safari-red) !important;
+    box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.25s ease-in-out !important;
+    text-decoration: none !important;
+}
+
+.btn-safari-header:hover,
+.btn-safari-header:focus {
+    background-color: #fff4f2 !important;
+    border-color: var(--safari-red-dark) !important;
+    color: var(--safari-red-dark) !important;
+    box-shadow: 0 0 16px rgba(167, 29, 29, 0.48), 0 4px 12px rgba(167, 29, 29, 0.22) !important;
+    transform: translateY(-1.5px) !important;
+}
+
+.btn-safari-header i {
+    transition: transform 0.2s ease;
+}
+
+.btn-safari-header:hover i,
+.btn-safari-header:focus i {
+    transform: scale(1.15);
+}
+

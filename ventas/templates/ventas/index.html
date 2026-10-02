@@ -1,0 +1,354 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safari Pilar - Sistema Venta_safari</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+</head>
+<body>
+
+    <!-- Patrón geométrico superior tribal estilo Safari -->
+    <div class="tribal-divider"></div>
+
+    <!-- Encabezado / Barra Principal -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between">
+                
+                <!-- Logo como botón para volver al inicio -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 58px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Safari Pilar • Portal de Trabajadores</span>
+                    </div>
+                </a>
+
+                <!-- Sección derecha: Estado y Botón Iniciar Sesión -->
+                <div class="d-flex align-items-center gap-3">
+                    {% if request.user.is_authenticated %}
+                    <span class="badge rounded-pill px-3 py-2 bg-white text-dark border">
+                        <i class="bi bi-person-check-fill text-success me-1"></i> {{ request.user.get_full_name|default:request.user.username }}
+                        <span class="badge bg-danger ms-1">{{ request.user.perfil.get_rol_display|default:"Colaborador" }}</span>
+                    </span>
+                    {% if request.user.perfil.rol == 'ADMINISTRADOR' or request.user.is_staff or request.user.is_superuser %}
+                        <a href="{% url 'administrador' %}" class="btn btn-sm btn-danger rounded-pill fw-bold px-3">Ir al Panel</a>
+                    {% elif request.user.perfil.rol == 'CAJERO' %}
+                        <a href="{% url 'vendedor' %}" class="btn btn-sm btn-warning text-dark rounded-pill fw-bold px-3">Ir a Caja</a>
+                    {% elif request.user.perfil.rol == 'MESERO' %}
+                        <a href="{% url 'mesero' %}" class="btn btn-sm btn-success rounded-pill fw-bold px-3">Ir a Mesero</a>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3">
+                        <i class="bi bi-box-arrow-right me-1"></i> Salir
+                    </a>
+                    {% else %}
+                    <span class="badge rounded-pill d-none d-md-inline-block px-3 py-2" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-deep); border: 1px solid var(--safari-cafe-medium);">
+                        <i class="bi bi-person-workspace me-1 text-danger"></i> Acceso Interno
+                    </span>
+                    <button type="button" class="btn btn-login" data-bs-toggle="modal" data-bs-target="#loginModal">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
+                    </button>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container my-5 flex-grow-1">
+
+        <!-- Mensajes del Sistema (Django Messages) -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger border-2 border-danger shadow-sm{% elif message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'info' %}info border-2 border-info shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle-fill fs-5"></i>
+                    <div>{{ message }}</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Banner de Bienvenida -->
+        <div class="worker-hero mb-5">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <span class="worker-badge-pill mb-3">
+                        <i class="bi bi-cone-striped"></i> SISTEMA OPERATIVO INTERNO
+                    </span>
+                    <h2 class="display-6 fw-bold mt-2" style="color: var(--safari-cafe-deep);">
+                        Bienvenido al Sistema de Ventas Safari
+                    </h2>
+                    <p class="lead mb-4" style="color: var(--safari-cafe-dark);">
+                        Plataforma exclusiva para el equipo de colaboradores de Safari Pilar. Gestiona la emisión de entradas, control de accesos y administración de turnos.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if request.user.is_authenticated %}
+                            {% if request.user.perfil.rol == 'ADMINISTRADOR' or request.user.is_staff or request.user.is_superuser %}
+                                <a href="{% url 'administrador' %}" class="btn btn-login px-4">
+                                    <i class="bi bi-speedometer2 me-2"></i> Ir a mi Panel de Administración
+                                </a>
+                            {% elif request.user.perfil.rol == 'CAJERO' %}
+                                <a href="{% url 'vendedor' %}" class="btn btn-login px-4">
+                                    <i class="bi bi-cash-stack me-2"></i> Ir a mi Caja y Ventas
+                                </a>
+                            {% elif request.user.perfil.rol == 'MESERO' %}
+                                <a href="{% url 'mesero' %}" class="btn btn-login px-4">
+                                    <i class="bi bi-cup-hot-fill me-2"></i> Ir a mi Módulo de Mesero
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <button class="btn btn-login px-4" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                <i class="bi bi-key-fill me-2"></i> Ingresar a mi turno
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center mt-4 mt-lg-0">
+                    <div class="p-4 rounded-4" style="background-color: rgba(255,255,255,0.7); border: 1px dashed var(--safari-cafe-medium);">
+                        <i class="bi bi-clock-history fs-1 text-warning"></i>
+                        <h5 class="mt-2 fw-bold text-dark">Turno Operativo</h5>
+                        {% if request.user.is_authenticated %}
+                            <p class="text-success fw-bold small mb-1">
+                                Sesión iniciada: {{ request.user.get_full_name|default:request.user.username }}
+                            </p>
+                            <span class="badge bg-success">Perfil: {{ request.user.perfil.get_rol_display|default:"Colaborador" }}</span>
+                        {% else %}
+                            <p class="text-muted small mb-1">Inicia sesión para habilitar funciones de venta o reportes.</p>
+                            <span class="badge bg-secondary">Sin Sesión Activa</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulos de Acceso -->
+        <div class="row g-4">
+            <!-- Tarjeta Administrador -->
+            <div class="col-lg-4 col-md-6">
+                <div class="role-preview-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="role-preview-icon role-icon-admin">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <span class="badge" style="background-color: var(--safari-red); color: white;">Perfil Administrativo</span>
+                    </div>
+                    <h4 class="fw-bold text-danger">Administrador</h4>
+                    <p class="text-muted small">
+                        Supervisión de locales gastronómicos, control de recaudación, gestión y reasignación de dotación y dashboard analítico.
+                    </p>
+                    {% if request.user.is_authenticated and request.user.perfil.rol == 'ADMINISTRADOR' or request.user.is_staff or request.user.is_superuser %}
+                        <a href="{% url 'administrador' %}" class="btn btn-outline-danger w-100 mt-2 rounded-pill fw-bold">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Acceder como Administrador
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-outline-danger w-100 mt-2 rounded-pill fw-bold" onclick="prefillLogin('rgomez', 'admin')">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión como Administrador
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tarjeta Vendedor -->
+            <div class="col-lg-4 col-md-6">
+                <div class="role-preview-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="role-preview-icon role-icon-vendedor">
+                            <i class="bi bi-person-badge-fill"></i>
+                        </div>
+                        <span class="badge" style="background-color: var(--safari-yellow-dark); color: #000;">Perfil Ventas</span>
+                    </div>
+                    <h4 class="fw-bold" style="color: var(--safari-yellow-dark);">Vendedor (Cajero)</h4>
+                    <p class="text-muted small">
+                        Monitor de comandas en desarrollo, apertura de caja, venta rápida mostrador y cobro de alimentos y bebidas.
+                    </p>
+                    {% if request.user.is_authenticated and request.user.perfil.rol == 'CAJERO' %}
+                        <a href="{% url 'vendedor' %}" class="btn btn-outline-warning text-dark fw-bold w-100 mt-2 rounded-pill">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Acceder como Vendedor
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-outline-warning text-dark fw-bold w-100 mt-2 rounded-pill" onclick="prefillLogin('cvalenzuela', 'vendedor')">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión como Vendedor
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tarjeta Mesero -->
+            <div class="col-lg-4 col-md-12">
+                <div class="role-preview-card" style="border-color: #86efac;">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="role-preview-icon role-icon-mesero">
+                            <i class="bi bi-cup-hot-fill"></i>
+                        </div>
+                        <span class="badge bg-success text-white">Perfil Salón & Mesas</span>
+                    </div>
+                    <h4 class="fw-bold text-success">Mesero</h4>
+                    <p class="text-muted small">
+                        Asignación ágil de mesas, toma dinámica de pedidos por comensales y emisión de comandas impresas separadas por zona (Cocina y Barra).
+                    </p>
+                    {% if request.user.is_authenticated and request.user.perfil.rol == 'MESERO' %}
+                        <a href="{% url 'mesero' %}" class="btn btn-outline-success w-100 mt-2 rounded-pill fw-bold">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Acceder como Mesero
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-outline-success w-100 mt-2 rounded-pill fw-bold" onclick="prefillLogin('dsilva', 'mesero')">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión como Mesero
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Pantalla Flotante (Modal de Inicio de Sesión Oficial RF01) -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-safari">
+                <div class="modal-header modal-header-safari">
+                    <h5 class="modal-title fw-bold" id="loginModalLabel">
+                        <i class="bi bi-person-check-fill me-2"></i> Iniciar Sesión Oficial - Safari Pilar
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <p class="text-center fw-semibold text-muted mb-3">
+                            Selecciona un perfil rápido de demostración o ingresa tus credenciales oficiales:
+                        </p>
+
+                        <!-- Botones rápidos de pre-llenado de rol -->
+                        <div class="d-flex flex-column gap-2 mb-3">
+                            <div class="modal-role-btn" id="optionAdmin" onclick="prefillLogin('rgomez', 'admin')">
+                                <div class="role-preview-icon role-icon-admin mb-0">
+                                    <i class="bi bi-shield-lock-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold text-danger">Administrador (rgomez)</h6>
+                                        <span class="badge bg-danger-subtle text-danger small">Supervisión</span>
+                                    </div>
+                                    <small class="text-muted">Control de locales, dotación y auditoría de jornada</small>
+                                </div>
+                            </div>
+
+                            <div class="modal-role-btn" id="optionVendedor" onclick="prefillLogin('cvalenzuela', 'vendedor')">
+                                <div class="role-preview-icon role-icon-vendedor mb-0">
+                                    <i class="bi bi-person-badge-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold" style="color: var(--safari-yellow-dark);">Cajero (cvalenzuela)</h6>
+                                        <span class="badge bg-warning-subtle text-dark small">Restaurante #1</span>
+                                    </div>
+                                    <small class="text-muted">Apertura de jornada (RF02), caja (RF03) y cobro</small>
+                                </div>
+                            </div>
+
+                            <div class="modal-role-btn" id="optionMesero" onclick="prefillLogin('dsilva', 'mesero')">
+                                <div class="role-preview-icon role-icon-mesero mb-0">
+                                    <i class="bi bi-cup-hot-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold text-success">Mesero (dsilva)</h6>
+                                        <span class="badge bg-success-subtle text-success small">Salón & Mesas</span>
+                                    </div>
+                                    <small class="text-muted">Asignación ágil de mesas y comandas Cocina/Barra</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campos de Login -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-person-fill text-danger me-1"></i> Usuario
+                            </label>
+                            <input type="text" name="username" id="loginUsername" class="form-control" required placeholder="Ej: cvalenzuela, rgomez, csoto, dsilva">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-key-fill text-danger me-1"></i> Contraseña
+                            </label>
+                            <input type="password" name="password" id="loginPassword" class="form-control" required placeholder="Ingresa tu contraseña">
+                        </div>
+
+                        <!-- Tarjeta de Ayuda con Credenciales de Prueba -->
+                        <div class="p-2 rounded-3 mb-2 bg-light border small text-muted">
+                            <i class="bi bi-info-circle-fill text-warning me-1"></i>
+                            <strong>Credenciales de prueba:</strong> Contraseña general: <code>safari123</code> para todos los colaboradores (<code>rgomez</code>, <code>cvalenzuela</code>, <code>csoto</code>, <code>mgonzalez</code>, <code>dsilva</code>, <code>mmorales</code>, <code>admin_safari</code>).
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="background-color: var(--safari-cafe-pastel); border-top: 1px solid var(--safari-cafe-medium);">
+                        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-login rounded-pill px-4 fw-bold">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión Oficial
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patrón geométrico inferior -->
+    <div class="tribal-bottom-divider"></div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center">
+        <div class="container">
+            <p class="mb-0">
+                <strong>Safari Pilar</strong> • Sistema de Gestión <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        function prefillLogin(username, role) {
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = 'safari123';
+
+            const optAdmin = document.getElementById('optionAdmin');
+            const optVendedor = document.getElementById('optionVendedor');
+            const optMesero = document.getElementById('optionMesero');
+
+            optAdmin.classList.remove('active');
+            optVendedor.classList.remove('active');
+            optMesero.classList.remove('active');
+
+            if (role === 'admin') optAdmin.classList.add('active');
+            else if (role === 'vendedor') optVendedor.classList.add('active');
+            else if (role === 'mesero') optMesero.classList.add('active');
+
+            // Asegurar que el modal esté visible si se llamó desde las tarjetas exteriores
+            const modalEl = document.getElementById('loginModal');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
+        }
+    </script>
+    <!-- Script de Protección contra Doble Envío -->
+    <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+</body>
+</html>

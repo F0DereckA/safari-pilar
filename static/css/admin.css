@@ -1,0 +1,548 @@
+/* ==========================================================================
+   Panel de Administración y Supervisión - Safari Pilar
+   Estilos específicos para Administrador, Detalle de Locales y Dashboard
+   ========================================================================== */
+
+/* Header Administrativo */
+.admin-badge {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #851212 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--safari-yellow);
+}
+
+/* Tarjetas KPI Superiores */
+.admin-kpi-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    transition: all 0.25s ease;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.admin-kpi-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 8px 24px rgba(92, 66, 48, 0.12);
+}
+
+.admin-kpi-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.admin-kpi-val {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.admin-kpi-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+}
+
+/* Botón Destacado hacia Dashboard Analítico */
+.btn-dashboard-analitico {
+    background: linear-gradient(135deg, var(--safari-cafe-deep) 0%, var(--safari-cafe-dark) 100%);
+    color: #ffffff !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 12px 24px;
+    border-radius: 30px;
+    border: 2px solid var(--safari-yellow);
+    box-shadow: 0 4px 16px rgba(45, 33, 24, 0.35);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-dashboard-analitico:hover {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #851212 100%);
+    border-color: #ffffff;
+    box-shadow: 0 6px 20px rgba(198, 40, 40, 0.45);
+    transform: translateY(-2px);
+    color: #ffffff !important;
+}
+
+/* Tarjetas de los 3 Locales Gastronómicos */
+.local-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 5px 18px rgba(92, 66, 48, 0.08);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.local-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 10px 28px rgba(92, 66, 48, 0.16);
+    transform: translateY(-4px);
+}
+
+.local-card-header {
+    padding: 16px 20px;
+    border-bottom: 2px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.local-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--safari-cafe-deep);
+}
+
+.local-card-body {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+.local-metric-box {
+    background-color: var(--safari-cafe-light);
+    border: 1px solid var(--safari-cafe-pastel);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+}
+
+.local-metric-num {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.local-metric-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: 0.4px;
+}
+
+/* Personal activo en local */
+.staff-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #ffffff;
+    border: 1px solid var(--safari-cafe-medium);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--safari-cafe-dark);
+}
+
+.staff-avatar-mini {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--safari-yellow);
+    color: var(--safari-cafe-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.local-card-footer {
+    padding: 14px 20px;
+    background-color: #fdfaf5;
+    border-top: 2px solid var(--safari-cafe-pastel);
+}
+
+.btn-ver-jornada {
+    background: linear-gradient(135deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%);
+    color: var(--safari-cafe-deep) !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    border: 1.5px solid var(--safari-yellow-dark);
+    border-radius: 25px;
+    padding: 8px 16px;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.btn-ver-jornada:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #000000 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* ==========================================================================
+   Página de Detalle de Local Específico
+   ========================================================================== */
+
+.local-detail-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #fdfaf5 100%);
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(92, 66, 48, 0.08);
+}
+
+.detail-table-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+}
+
+.detail-table-header {
+    background: linear-gradient(135deg, var(--safari-cafe-dark) 0%, var(--safari-cafe-deep) 100%);
+    color: #ffffff;
+    padding: 14px 20px;
+    border-bottom: 3px solid var(--safari-yellow);
+}
+
+.detail-table {
+    margin: 0;
+}
+
+.detail-table th {
+    background-color: var(--safari-cafe-pastel);
+    color: var(--safari-cafe-dark);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1.5px solid var(--safari-cafe-medium);
+    padding: 12px 16px;
+}
+
+.detail-table td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f0ede6;
+}
+
+.badge-staff-activo {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.badge-staff-colacion {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+/* ==========================================================================
+   Página Dashboard Analítico (Gráfico Mixto Barras + Línea / 15 Meses)
+   ========================================================================== */
+
+.timeframe-selector {
+    background-color: var(--safari-cafe-pastel);
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-radius: 30px;
+    padding: 4px;
+    display: inline-flex;
+    gap: 4px;
+}
+
+.btn-timeframe {
+    border: none;
+    background: transparent;
+    color: var(--safari-cafe-dark);
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 8px 18px;
+    border-radius: 24px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-timeframe.active {
+    background-color: var(--safari-red);
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(198, 40, 40, 0.35);
+}
+
+.btn-timeframe:hover:not(.active) {
+    background-color: rgba(92, 66, 48, 0.1);
+}
+
+.chart-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 6px 22px rgba(92, 66, 48, 0.08);
+}
+
+.comparison-card {
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(92, 66, 48, 0.05);
+    height: 100%;
+}
+
+.comparison-val {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.badge-growth-up {
+    background-color: #dcfce7;
+    color: #15803d;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.badge-growth-down {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* ==========================================================================
+   Gestión de Trabajadores y Alertas de Traslado (Módulo Administrador)
+   ========================================================================== */
+
+/* Barra de Filtros y Búsqueda Dinámica */
+.worker-filter-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    margin-bottom: 24px;
+}
+
+.search-input-group {
+    position: relative;
+}
+
+.search-input-group i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.search-input-field {
+    padding-left: 44px !important;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 30px !important;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.search-input-field:focus {
+    border-color: var(--safari-red);
+    box-shadow: 0 0 0 4px rgba(167, 29, 29, 0.15);
+}
+
+.filter-select {
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--safari-cafe-deep);
+}
+
+.filter-select:focus {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 0 0 3px rgba(243, 178, 51, 0.25);
+}
+
+/* Indicador de 1 Puesto Único de Trabajo */
+.badge-single-workplace {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-single-workplace.sin-local {
+    background-color: #fef3c7;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+/* Banners y Tarjetas de Alerta de Traslado */
+.alert-traslado-banner {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 2px solid #f59e0b;
+    border-left: 8px solid #d97706;
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 16px rgba(217, 119, 6, 0.12);
+    margin-bottom: 24px;
+}
+
+.alert-traslado-banner-incoming {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 2px solid #3b82f6;
+    border-left: 8px solid #2563eb;
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+    margin-bottom: 24px;
+}
+
+.alert-traslado-card {
+    background-color: #ffffff;
+    border: 1.5px solid #fed7aa;
+    border-left: 5px solid #f97316;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+.alert-traslado-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+}
+
+.alerta-origen-chip {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.alerta-destino-chip {
+    background-color: #dcfce7;
+    color: #166534;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+/* Modales Safari */
+.modal-safari-header {
+    background: linear-gradient(135deg, var(--safari-cafe-deep) 0%, var(--safari-cafe-dark) 100%);
+    color: #ffffff;
+    border-bottom: 3px solid var(--safari-yellow);
+    padding: 18px 24px;
+}
+
+.modal-safari-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-safari-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.35rem;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+/* Botones de Acción de Trabajadores */
+.btn-action-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+}
+
+.btn-action-icon:hover {
+    transform: scale(1.1);
+}
+
+.btn-trasladar-chip {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff !important;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-trasladar-chip:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(217, 119, 6, 0.35);
+}
+

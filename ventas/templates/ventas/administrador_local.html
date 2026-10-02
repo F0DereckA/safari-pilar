@@ -1,0 +1,398 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Jornada de {{ local.nombre }}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares con Cache-Buster -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.1">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.1">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Administrador con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Detalle de Local • Auditoría de Jornada</span>
+                    </div>
+                </a>
+
+                <!-- Navegación y Salida -->
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'administrador' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
+                        <i class="bi bi-arrow-left me-1 text-danger"></i> Volver a Locales
+                    </a>
+                    <a href="{% url 'administrador_trabajadores' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
+                        <i class="bi bi-people-fill text-danger me-1"></i> Trabajadores
+                    </a>
+                    <a href="{% url 'administrador_dashboard' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
+                        <i class="bi bi-bar-chart-line-fill text-warning me-1"></i> Dashboard
+                    </a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Salir
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Auditoría del Local -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Selector Rápido entre los 3 Locales -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted fw-bold small text-uppercase">Cambiar de Local:</span>
+                {% for l in locales %}
+                <a href="{% url 'administrador_local' l.id %}" class="btn btn-sm rounded-pill fw-bold px-3 {% if l.id == local.id %}btn-danger{% else %}btn-outline-secondary bg-white{% endif %}">
+                    <i class="bi {{ l.icono }} me-1"></i> Local #{{ l.id }}: {{ l.nombre }}
+                </a>
+                {% endfor %}
+            </div>
+            <div>
+                <span class="badge bg-success px-3 py-2 fw-bold">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ local.estado }} • {{ local.turno }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Hero Card del Local -->
+        <div class="local-detail-hero mb-4">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="p-3 rounded-4 shadow-sm" style="background-color: {{ local.color }}20; color: {{ local.color }};">
+                            <i class="bi {{ local.icono }} fs-1"></i>
+                        </div>
+                        <div>
+                            <span class="badge px-3 py-1 mb-1 fw-bold" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
+                                AUDITORÍA OPERATIVA EN VIVO • LOCAL #{{ local.id }}
+                            </span>
+                            <h2 class="fw-bold mb-1" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                                {{ local.nombre }}
+                            </h2>
+                            <p class="text-muted mb-0 small">
+                                {{ local.tipo }} — {{ local.descripcion }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <span class="text-muted small d-block">VENTAS ACTUALES DE LA JORNADA</span>
+                    <h1 class="fw-bold text-danger mb-0" style="font-family: 'Oswald', sans-serif; font-size: 2.8rem;">
+                        ${{ local.total_ventas|stringformat:",d" }}
+                    </h1>
+                    <small class="text-success fw-bold">
+                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Jornada activa con {{ local.tickets_emitidos }} comandas emitidas
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Traslado que involucran a este punto de venta -->
+        {% if alertas_local %}
+        <div class="mb-4">
+            {% for a in alertas_local %}
+                {% if a.punto_venta_origen.id == local.id %}
+                <div class="alert-traslado-banner mb-2">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+                            <div>
+                                <span class="badge bg-warning text-dark px-2 py-1 fw-bold me-1">ALERTA DE TRASLADO SALIENTE</span>
+                                <strong>El colaborador {{ a.empleado.get_full_name|default:a.empleado.username }} se ha movido a {{ a.punto_venta_destino.nombre }}.</strong>
+                                <small class="text-muted d-block">Motivo informado: <em>"{{ a.motivo }}"</em></small>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-dark border px-3 py-2 font-monospace">
+                            <i class="bi bi-clock me-1 text-danger"></i>{{ a.fecha_hora|date:"H:i" }} hrs
+                        </span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert-traslado-banner-incoming mb-2">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-bell-fill fs-4 text-primary"></i>
+                            <div>
+                                <span class="badge bg-primary text-white px-2 py-1 fw-bold me-1">ALERTA DE REASIGNACIÓN ENTRANTE</span>
+                                <strong>El colaborador {{ a.empleado.get_full_name|default:a.empleado.username }} ha sido trasladado a este local desde {% if a.punto_venta_origen %}{{ a.punto_venta_origen.nombre }}{% else %}Sin Asignar{% endif %}.</strong>
+                                <small class="text-muted d-block">Motivo informado: <em>"{{ a.motivo }}"</em></small>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-dark border px-3 py-2 font-monospace">
+                            <i class="bi bi-clock me-1 text-primary"></i>{{ a.fecha_hora|date:"H:i" }} hrs
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Grilla de Métricas de Caja y Ventas del Local -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon" style="background-color: #fee2e2; color: #b91c1c;">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Tickets del Turno</div>
+                        <div class="admin-kpi-val text-dark">{{ local.tickets_emitidos }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Comandas de comida y bebidas</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon" style="background-color: #fef3c7; color: #b45309;">
+                        <i class="bi bi-coin"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Ticket Promedio</div>
+                        <div class="admin-kpi-val text-warning">${{ local.ticket_promedio|stringformat:",d" }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Consumo promedio por comensal</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon" style="background-color: #e0f2fe; color: #0369a1;">
+                        <i class="bi bi-safe2"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Apertura de Caja</div>
+                        <div class="admin-kpi-val text-primary">${{ local.caja_apertura|stringformat:",d" }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Fondo inicial para vuelto</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon" style="background-color: #dcfce7; color: #15803d;">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Efectivo en Caja Actual</div>
+                        <div class="admin-kpi-val text-success">${{ local.saldo_actual|stringformat:",d" }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Apertura + ${{ local.caja_efectivo|stringformat:",d" }} efectivo</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            
+            <!-- Columna Izquierda: Personal Actualmente Logueado y Trabajando -->
+            <div class="col-lg-7">
+                <div class="detail-table-card h-100">
+                    <div class="detail-table-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-bold">
+                                <i class="bi bi-people-fill text-warning me-2"></i>Personal que se Logueó en este Local
+                            </h5>
+                            <small class="text-white-50">Colaboradores activos prestando servicio en este punto</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning text-dark fw-bold">
+                                {{ local.personal|length }} Trabajadores
+                            </span>
+                            <a href="{% url 'administrador_trabajadores' %}" class="btn btn-sm btn-light rounded-pill fw-bold text-dark px-3">
+                                <i class="bi bi-arrow-left-right text-danger me-1"></i> Reasignar
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table detail-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th>RUT</th>
+                                    <th>Cargo</th>
+                                    <th>Caja / Área</th>
+                                    <th>Login</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in local.personal %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="staff-avatar-mini" style="width: 32px; height: 32px; font-size: 0.9rem;">
+                                                {{ p.nombre|slice:":1" }}
+                                            </div>
+                                            <strong class="text-dark">{{ p.nombre }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="text-muted font-monospace small">{{ p.rut }}</td>
+                                    <td><span class="badge bg-light text-dark border">{{ p.cargo }}</span></td>
+                                    <td class="text-muted small"><i class="bi bi-pc-display me-1"></i>{{ p.caja }}</td>
+                                    <td class="text-muted fw-bold small">{{ p.hora_login }} hrs</td>
+                                    <td>
+                                        {% if p.estado == 'Activo' %}
+                                        <span class="badge-staff-activo">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Activo
+                                        </span>
+                                        {% else %}
+                                        <span class="badge-staff-colacion">
+                                            <i class="bi bi-pause-circle-fill me-1"></i>En Colación
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Desglose por Categoría y Métodos de Pago -->
+            <div class="col-lg-5">
+                <!-- Tarjeta Desglose por Categoría -->
+                <div class="detail-table-card mb-4">
+                    <div class="detail-table-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-pie-chart-fill text-warning me-2"></i>Ventas por Categoría Gastronómica
+                        </h5>
+                        <small class="text-white-50">Distribución de ingresos en las 4 categorías</small>
+                    </div>
+                    <div class="p-3">
+                        {% for cat in local.ventas_categoria %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small text-dark">{{ cat.nombre }}</span>
+                                <span class="small fw-bold" style="color: {{ cat.color }};">
+                                    ${{ cat.monto|stringformat:",d" }} ({{ cat.porcentaje }}%)
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 10px; border-radius: 8px; background-color: var(--safari-cafe-pastel);">
+                                <div class="progress-bar" role="progressbar" style="width: {{ cat.porcentaje }}%; background-color: {{ cat.color }}; border-radius: 8px;" aria-valuenow="{{ cat.porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Tarjeta Métodos de Pago -->
+                <div class="detail-table-card">
+                    <div class="detail-table-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-credit-card-2-front-fill text-warning me-2"></i>Ventas por Método de Pago
+                        </h5>
+                        <small class="text-white-50">Recaudación por medio de pago</small>
+                    </div>
+                    <div class="p-3">
+                        <div class="row g-2">
+                            {% for m in local.metodos_pago %}
+                            <div class="col-4 text-center">
+                                <div class="p-2 rounded-3" style="background-color: var(--safari-cafe-light); border: 1px solid var(--safari-cafe-pastel);">
+                                    <i class="bi {{ m.icono }} fs-4 text-danger mb-1 d-block"></i>
+                                    <div class="small fw-bold text-dark">{{ m.metodo }}</div>
+                                    <div class="fw-bold text-danger" style="font-size: 0.95rem;">${{ m.monto|stringformat:",d" }}</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">{{ m.porcentaje }}%</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- SECCIÓN: ÚLTIMAS COMANDAS / TICKETS EMITIDOS EN ESTE LOCAL -->
+        <div class="detail-table-card mb-4">
+            <div class="detail-table-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-clock-history text-warning me-2"></i>Últimas Comandas Emitidas en {{ local.nombre }}
+                    </h5>
+                    <small class="text-white-50">Auditoría de tickets registrados por los cajeros de este punto</small>
+                </div>
+                <span class="badge bg-light text-dark fw-bold">
+                    {{ local.tickets_recientes|length }} Comandas Recientes
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table detail-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nº Comanda</th>
+                            <th>Hora</th>
+                            <th>Mesa / Modalidad</th>
+                            <th>Cajero Responsable</th>
+                            <th>Monto Total</th>
+                            <th>Estado Actual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in local.tickets_recientes %}
+                        <tr>
+                            <td><strong class="text-danger">#{{ t.id }}</strong></td>
+                            <td class="text-muted small"><i class="bi bi-clock me-1"></i>{{ t.hora }} hrs</td>
+                            <td><span class="badge bg-light text-dark border">{{ t.cliente }}</span></td>
+                            <td class="text-dark small"><i class="bi bi-person me-1"></i>{{ t.cajero }}</td>
+                            <td><strong class="text-dark" style="font-family: 'Oswald', sans-serif; font-size: 1.1rem;">${{ t.total|stringformat:",d" }}</strong></td>
+                            <td>
+                                {% if t.estado == 'En Cocina' %}
+                                <span class="badge bg-danger text-white"><i class="bi bi-fire me-1"></i>{{ t.estado }}</span>
+                                {% elif t.estado == 'En Barra' %}
+                                <span class="badge" style="background-color: #6b21a8; color: white;"><i class="bi bi-cup-hot me-1"></i>{{ t.estado }}</span>
+                                {% elif t.estado == 'Listo' %}
+                                <span class="badge bg-success text-white"><i class="bi bi-check2-circle me-1"></i>{{ t.estado }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary text-white"><i class="bi bi-check2-all me-1"></i>{{ t.estado }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Módulo Administrativo <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,750 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Tickets en Desarrollo (Vendedor)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/vendedor.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header del Vendedor con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Restaurante & Cafetería • Panel de Vendedor</span>
+                    </div>
+                </a>
+
+                <!-- Datos del Turno y Botón de Salida -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-none d-md-flex flex-column text-end">
+                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                            <i class="bi bi-person-badge text-warning me-1"></i> Cajero: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                        </span>
+                        <small class="text-muted">{{ punto_venta.nombre|default:"Restaurante Central Safari" }}</small>
+                    </div>
+
+                    {% if caja_activa %}
+                    <span class="badge bg-success px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-cash-coin me-1"></i> {{ caja_activa.nombre }} • Fondo: ${{ caja_activa.monto_apertura|floatformat:0 }}
+                    </span>
+                    {% elif jornada_activa %}
+                    <span class="badge bg-warning text-dark px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-clock-history me-1"></i> Jornada #{{ jornada_activa.id }} (Sin Caja)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger text-white px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-slash-circle me-1"></i> Jornada Sin Abrir
+                    </span>
+                    {% endif %}
+
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Pantalla Intermedia - Tickets en Desarrollo -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Mensajes del Sistema (Django Messages) -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger border-2 border-danger shadow-sm{% elif message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'info' %}info border-2 border-info shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle-fill fs-5"></i>
+                    <div>{{ message }}</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ESTADO OPERATIVO DE JORNADA (RF02) Y CAJA (RF03) -->
+        {% if not jornada_activa %}
+        <!-- Caso 1: Sin Jornada Abierta (RF02) -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="border-left: 6px solid #dc2626 !important; background-color: #fff;">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-danger text-white px-3 py-2 fw-bold rounded-pill mb-2">
+                            <i class="bi bi-sunrise-fill me-1"></i> REQUERIMIENTO OPERATIVO (RF02)
+                        </span>
+                        <h3 class="fw-bold text-dark mb-2">Apertura Diaria de Jornada Requerida</h3>
+                        <p class="text-muted mb-0">
+                            No existe una jornada operativa abierta para hoy en el parque. Como cajero(a), debes realizar la apertura oficial para habilitar el ciclo operativo del día y abrir tu caja individual.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                        <button type="button" class="btn btn-danger fw-bold rounded-pill px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirJornada">
+                            <i class="bi bi-sunrise-fill me-2"></i> Realizar Apertura de Jornada
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% elif not caja_activa %}
+        <!-- Caso 2: Jornada Abierta, pero Cajero sin Caja Individual (RF03) -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="border-left: 6px solid #f59e0b !important; background-color: #fff;">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-warning text-dark px-3 py-2 fw-bold rounded-pill mb-2">
+                            <i class="bi bi-cash-stack me-1"></i> REQUERIMIENTO OPERATIVO (RF03)
+                        </span>
+                        <h3 class="fw-bold text-dark mb-2">Apertura de Caja Individual Requerida</h3>
+                        <p class="text-muted mb-0">
+                            La <strong>Jornada #{{ jornada_activa.id }}</strong> se encuentra activa (abierta por {{ jornada_activa.usuario_apertura.get_full_name|default:jornada_activa.usuario_apertura.username }}). Para comenzar tu turno de cobro y emisión de tickets, debes ingresar tu fondo de sencillo y abrir tu caja individual.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                        <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirCaja">
+                            <i class="bi bi-cash-coin me-2"></i> Abrir Mi Caja Individual
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Caso 3: Jornada y Caja Abiertas y Operativas -->
+        <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-2 rounded-circle bg-white text-success shadow-sm">
+                    <i class="bi bi-check-circle-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">Turno Operativo Habilitado • Jornada #{{ jornada_activa.id }}</div>
+                    <small class="text-muted">Caja: <strong>{{ caja_activa.nombre }}</strong> en {{ caja_activa.punto_venta.nombre }} | Fondo inicial de sencillo: <strong>${{ caja_activa.monto_apertura|floatformat:0 }}</strong></small>
+                </div>
+            </div>
+            <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-bold">
+                <i class="bi bi-shield-check me-1"></i> Caja Abierta y Activa
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- Barra Superior de Acciones y Botón de Crear Ticket -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-4 shadow-sm" style="background-color: #ffffff; border: 2px solid var(--safari-cafe-medium);">
+            <div>
+                <span class="badge px-3 py-1 mb-2 fw-bold" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
+                    <i class="bi bi-clock-history me-1 text-danger"></i> Monitor de Comandas Activas
+                </span>
+                <h2 class="fw-bold mb-1" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
+                    TICKETS ACTUALES EN DESARROLLO
+                </h2>
+                <p class="text-muted mb-0 small">
+                    Controla el avance de pedidos en Cocina, Barra y entrega inmediata para comensales del parque.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Botón Principal: Crear un Ticket (Condicional a caja activa) -->
+                {% if caja_activa %}
+                <a href="{% url 'crear_ticket' %}" class="btn-crear-ticket">
+                    <i class="bi bi-plus-circle-fill me-2 fs-5"></i> Crear Nuevo Ticket
+                </a>
+                {% else %}
+                <button type="button" class="btn-crear-ticket" style="opacity: 0.85;" data-bs-toggle="modal" data-bs-target="{% if not jornada_activa %}#modalAbrirJornada{% else %}#modalAbrirCaja{% endif %}">
+                    <i class="bi bi-lock-fill me-2 fs-5"></i> Crear Nuevo Ticket (Requiere Caja)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Indicadores KPI de Estado -->
+        <div class="row g-3 mb-4">
+            <!-- Total en Curso -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #fef3c7; color: #b45309;">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Desarrollo</div>
+                        <div class="kpi-number text-dark" id="kpiTotal">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- En Cocina -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #fee2e2; color: #b91c1c;">
+                        <i class="bi bi-fire"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Cocina</div>
+                        <div class="kpi-number text-danger" id="kpiCocina">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- En Barra -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #f3e8ff; color: #7e22ce;">
+                        <i class="bi bi-cup-hot-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Barra</div>
+                        <div class="kpi-number" style="color: #7e22ce;" id="kpiBarra">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listos para Entrega -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #dcfce7; color: #15803d;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Listos Entrega</div>
+                        <div class="kpi-number text-success" id="kpiListos">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de Búsqueda y Pestañas de Filtro -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" placeholder="Buscar por #Ticket, producto (ej. hamburguesa, café, jugo)..." onkeyup="filtrarTickets()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="limpiarFiltroTicket()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <span class="filter-pill active" onclick="filtrarEstado('activos', this)">
+                            <i class="bi bi-collection-play-fill me-1"></i> Todos en Curso
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('cocina', this)">
+                            <i class="bi bi-fire me-1"></i> Cocina
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('barra', this)">
+                            <i class="bi bi-cup-hot me-1"></i> Barra
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('listo', this)">
+                            <i class="bi bi-bag-check me-1"></i> Listos
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('entregado', this)">
+                            <i class="bi bi-check2-all me-1"></i> Entregados
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill ms-2" onclick="reiniciarTicketsEjemplo()" title="Restaurar comandas de prueba">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset Demo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de Tarjetas de Tickets -->
+        <div class="row g-4" id="contenedorTickets">
+            <!-- Las tarjetas de tickets se renderizan dinámicamente con JavaScript -->
+        </div>
+
+        <!-- Mensaje cuando no hay tickets en el filtro -->
+        <div id="sinTickets" class="text-center py-5 d-none">
+            <div class="card border-0 shadow-sm p-5 rounded-4 mx-auto" style="max-width: 500px; background-color: #ffffff; border: 1.5px dashed var(--safari-cafe-medium) !important;">
+                <i class="bi bi-clipboard2-check fs-1 text-muted mb-2"></i>
+                <h5 class="fw-bold text-dark">No hay tickets en este estado</h5>
+                <p class="text-muted small mb-3">No se registran comandas pendientes con el filtro actual o la búsqueda ingresada.</p>
+                <div>
+                    <a href="{% url 'crear_ticket' %}" class="btn btn-warning fw-bold px-4 rounded-pill">
+                        <i class="bi bi-plus-lg me-1"></i> Crear Nuevo Ticket Ahora
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL 1: APERTURA DE JORNADA Y CAJA INICIAL (RF02 & RF03) -->
+    <div class="modal fade" id="modalAbrirJornada" tabindex="-1" aria-labelledby="modalAbrirJornadaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #c62828 0%, #8e0000 100%);">
+                    <h5 class="modal-title fw-bold" id="modalAbrirJornadaLabel">
+                        <i class="bi bi-sunrise-fill text-warning me-2"></i> Apertura Diaria de Jornada (RF02)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'abrir_jornada' %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info border-0 rounded-3 small mb-3">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Como primer cajero del día, tu acción abrirá el ciclo oficial de jornada del parque y dejará operativa tu caja individual.
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Cajero Responsable</label>
+                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                            </div>
+                        </div>
+
+                        {% if not punto_venta %}
+                        <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la jornada y la caja.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-stack text-success me-1"></i> Fondo Inicial de Sencillo (Caja Individual) <span class="text-muted fw-normal small">(Opcional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text fw-bold">$</span>
+                                <input type="number" name="monto_apertura" value="0" min="0" step="1000" class="form-control fw-bold fs-5 text-dark" placeholder="0 (opcional)">
+                                <span class="input-group-text text-muted">CLP</span>
+                            </div>
+                            <small class="text-muted">Monto físico inicial en efectivo en gaveta para dar vuelto (opcional, default $0).</small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Observaciones de Apertura</label>
+                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold" {% if not punto_venta %}disabled title="Requiere asignación de puesto de trabajo"{% endif %}>
+                            <i class="bi bi-check-circle-fill me-1"></i> Confirmar y Abrir Jornada
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: APERTURA DE CAJA INDIVIDUAL (RF03) -->
+    <div class="modal fade" id="modalAbrirCaja" tabindex="-1" aria-labelledby="modalAbrirCajaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header text-dark" style="background: linear-gradient(135deg, #facc15 0%, #eab308 100%);">
+                    <h5 class="modal-title fw-bold" id="modalAbrirCajaLabel">
+                        <i class="bi bi-cash-stack text-danger me-2"></i> Apertura de Caja Individual (RF03)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'abrir_caja' %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            La <strong>Jornada #{{ jornada_activa.id }}</strong> ya está activa. Ingresa tu fondo de apertura para comenzar tu turno con tu propia caja individual.
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Cajero</label>
+                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                            </div>
+                        </div>
+
+                        {% if not punto_venta %}
+                        <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la caja.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-coin text-success me-1"></i> Fondo Inicial de Sencillo (Gaveta) <span class="text-muted fw-normal small">(Opcional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text fw-bold">$</span>
+                                <input type="number" name="monto_apertura" value="0" min="0" step="1000" class="form-control fw-bold fs-5 text-dark" placeholder="0 (opcional)">
+                                <span class="input-group-text text-muted">CLP</span>
+                            </div>
+                            <small class="text-muted">Fondo en efectivo asignado para dar vuelto en esta estación (opcional, default $0).</small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Observaciones</label>
+                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-bold" {% if not punto_venta %}disabled title="Requiere asignación de puesto de trabajo"{% endif %}>
+                            <i class="bi bi-check-circle-fill me-1"></i> Habilitar Mi Caja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 CDN + Configuración Safari con Botones Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'js/safari_alerts.js' %}"></script>
+    <!-- Script de Protección contra Doble Envío -->
+    <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+
+    <!-- Lógica de Control de Tickets en Desarrollo (Vanilla JS con LocalStorage) -->
+    <script>
+        // Clave en LocalStorage
+        const STORAGE_KEY = 'safari_tickets_desarrollo';
+
+        // Comandas de demostración iniciales acordes a las 4 categorías gastronómicas
+        const ticketsDemo = [
+            {
+                id: "COM-0081",
+                hora: "14:10",
+                minutosAtras: 12,
+                tipoEntrega: "Para Servir (Mesa 4)",
+                items: [
+                    { nombre: "Hamburguesa Safari Clásica", cant: 2, cat: "cocinar", precio: 7500 },
+                    { nombre: "Papas Fritas Grandes", cant: 1, cat: "cocinar", precio: 4000 },
+                    { nombre: "Coca-Cola 350ml", cant: 2, cat: "envasada", precio: 2000 }
+                ],
+                total: 23000,
+                estado: "cocina", // "cocina", "barra", "listo", "entregado"
+                destino: "Cocina Caliente",
+                observacion: "Sin mayonesa en una de las hamburguesas"
+            },
+            {
+                id: "COM-0082",
+                hora: "14:15",
+                minutosAtras: 7,
+                tipoEntrega: "Para Llevar",
+                items: [
+                    { nombre: "Café Cappuccino", cant: 1, cat: "cafeteria", precio: 2800 },
+                    { nombre: "Jugo Natural de Fruta", cant: 1, cat: "cafeteria", precio: 3500 },
+                    { nombre: "Pan Jamón y Queso", cant: 2, cat: "preparada", precio: 3500 }
+                ],
+                total: 13300,
+                estado: "barra",
+                destino: "Barra Cafetería",
+                observacion: "Jugo de Naranja natural"
+            },
+            {
+                id: "COM-0083",
+                hora: "14:18",
+                minutosAtras: 4,
+                tipoEntrega: "Mostrador",
+                items: [
+                    { nombre: "Empanada de Pino", cant: 2, cat: "preparada", precio: 3000 },
+                    { nombre: "Agua Mineral 500ml", cant: 1, cat: "envasada", precio: 1500 }
+                ],
+                total: 7500,
+                estado: "listo",
+                destino: "Vitrina / Mostrador",
+                observacion: "Listo para retiro inmediato"
+            },
+            {
+                id: "COM-0084",
+                hora: "14:21",
+                minutosAtras: 1,
+                tipoEntrega: "Para Servir (Mesa 8)",
+                items: [
+                    { nombre: "Almuerzo Safari del Día", cant: 2, cat: "cocinar", precio: 9500 },
+                    { nombre: "Limonada Menta Jengibre", cant: 2, cat: "cafeteria", precio: 3200 }
+                ],
+                total: 25400,
+                estado: "cocina",
+                destino: "Cocina y Barra",
+                observacion: "Almuerzo con arroz y ensalada mixta"
+            }
+        ];
+
+        let estadoFiltroActual = 'activos'; // 'activos', 'cocina', 'barra', 'listo', 'entregado'
+
+        // Obtener tickets desde LocalStorage o inicializar
+        function obtenerTickets() {
+            const guardados = localStorage.getItem(STORAGE_KEY);
+            if (!guardados) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(ticketsDemo));
+                return [...ticketsDemo];
+            }
+            try {
+                return JSON.parse(guardados);
+            } catch (e) {
+                return [...ticketsDemo];
+            }
+        }
+
+        // Guardar tickets en LocalStorage
+        function guardarTickets(tickets) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+        }
+
+        // Formato moneda CLP
+        function formatearMoneda(valor) {
+            return '$' + valor.toLocaleString('es-CL');
+        }
+
+        // Renderizar tarjetas de tickets
+        function renderizarTickets() {
+            const tickets = obtenerTickets();
+            const contenedor = document.getElementById('contenedorTickets');
+            const textoBusqueda = document.getElementById('filtroTicketTexto').value.toLowerCase().trim();
+
+            contenedor.innerHTML = '';
+
+            // Contadores KPI
+            let totalEnCurso = 0;
+            let totalCocina = 0;
+            let totalBarra = 0;
+            let totalListos = 0;
+
+            tickets.forEach(t => {
+                if (t.estado === 'cocina') { totalCocina++; totalEnCurso++; }
+                if (t.estado === 'barra') { totalBarra++; totalEnCurso++; }
+                if (t.estado === 'listo') { totalListos++; totalEnCurso++; }
+            });
+
+            document.getElementById('kpiTotal').innerText = totalEnCurso;
+            document.getElementById('kpiCocina').innerText = totalCocina;
+            document.getElementById('kpiBarra').innerText = totalBarra;
+            document.getElementById('kpiListos').innerText = totalListos;
+
+            let visibles = 0;
+
+            tickets.forEach(ticket => {
+                // Filtro por Estado
+                let cumpleEstado = false;
+                if (estadoFiltroActual === 'activos') {
+                    cumpleEstado = (ticket.estado === 'cocina' || ticket.estado === 'barra' || ticket.estado === 'listo');
+                } else {
+                    cumpleEstado = (ticket.estado === estadoFiltroActual);
+                }
+
+                // Filtro por Texto
+                let cumpleTexto = false;
+                if (textoBusqueda === '') {
+                    cumpleTexto = true;
+                } else {
+                    const idMatch = ticket.id.toLowerCase().includes(textoBusqueda);
+                    const itemMatch = ticket.items.some(i => i.nombre.toLowerCase().includes(textoBusqueda));
+                    const obsMatch = ticket.observacion ? ticket.observacion.toLowerCase().includes(textoBusqueda) : false;
+                    cumpleTexto = idMatch || itemMatch || obsMatch;
+                }
+
+                if (cumpleEstado && cumpleTexto) {
+                    visibles++;
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 col-xl-4';
+
+                    // Configurar badge según estado
+                    let statusBadgeHtml = '';
+                    let actionBtnHtml = '';
+
+                    if (ticket.estado === 'cocina') {
+                        statusBadgeHtml = `<span class="badge-status status-cocina"><i class="bi bi-fire"></i> En Cocina</span>`;
+                        actionBtnHtml = `
+                            <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="cambiarEstadoTicket('${ticket.id}', 'listo')">
+                                <i class="bi bi-check2-circle me-1"></i> Marcar Listo
+                            </button>
+                        `;
+                    } else if (ticket.estado === 'barra') {
+                        statusBadgeHtml = `<span class="badge-status status-barra"><i class="bi bi-cup-hot-fill"></i> En Barra</span>`;
+                        actionBtnHtml = `
+                            <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="cambiarEstadoTicket('${ticket.id}', 'listo')">
+                                <i class="bi bi-check2-circle me-1"></i> Marcar Listo
+                            </button>
+                        `;
+                    } else if (ticket.estado === 'listo') {
+                        statusBadgeHtml = `<span class="badge-status status-listo"><i class="bi bi-bag-check-fill"></i> Listo para Entrega</span>`;
+                        actionBtnHtml = `
+                            <button class="btn btn-sm btn-success rounded-pill fw-bold" onclick="cambiarEstadoTicket('${ticket.id}', 'entregado')">
+                                <i class="bi bi-check-all me-1"></i> Entregar a Comensal
+                            </button>
+                        `;
+                    } else if (ticket.estado === 'entregado') {
+                        statusBadgeHtml = `<span class="badge-status status-entregado"><i class="bi bi-check-all"></i> Entregado</span>`;
+                        actionBtnHtml = `
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="cambiarEstadoTicket('${ticket.id}', 'cocina')">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reabrir
+                            </button>
+                        `;
+                    }
+
+                    // Renderizar lista de ítems
+                    let itemsHtml = '';
+                    ticket.items.forEach(it => {
+                        let catBadge = '';
+                        if (it.cat === 'preparada') catBadge = '<span class="badge cat-preparada" style="font-size:0.65rem;">Preparada</span>';
+                        else if (it.cat === 'cocinar') catBadge = '<span class="badge cat-cocinar" style="font-size:0.65rem;">Cocinar</span>';
+                        else if (it.cat === 'envasada') catBadge = '<span class="badge cat-envasada" style="font-size:0.65rem;">Envasada</span>';
+                        else if (it.cat === 'cafeteria') catBadge = '<span class="badge cat-cafeteria" style="font-size:0.65rem;">Barra</span>';
+
+                        itemsHtml += `
+                            <div class="ticket-item-line">
+                                <div>
+                                    <strong>${it.cant}x</strong> ${it.nombre} ${catBadge}
+                                </div>
+                                <span class="text-muted small">${formatearMoneda(it.precio * it.cant)}</span>
+                            </div>
+                        `;
+                    });
+
+                    col.innerHTML = `
+                        <div class="ticket-card">
+                            <div class="ticket-card-header">
+                                <div>
+                                    <div class="ticket-id">
+                                        <i class="bi bi-receipt text-warning me-1"></i>#${ticket.id}
+                                    </div>
+                                    <small class="text-muted">${ticket.hora} • ${ticket.tipoEntrega}</small>
+                                </div>
+                                <div>
+                                    ${statusBadgeHtml}
+                                </div>
+                            </div>
+                            
+                            <div class="ticket-card-body">
+                                <div class="mb-3">
+                                    ${itemsHtml}
+                                </div>
+                                ${ticket.observacion ? `
+                                    <div class="p-2 rounded-2 mb-2" style="background-color: #fffbeb; border: 1px solid #fef3c7; font-size: 0.8rem; color: #92400e;">
+                                        <i class="bi bi-info-circle-fill me-1"></i><strong>Nota:</strong> ${ticket.observacion}
+                                    </div>
+                                ` : ''}
+                                <div class="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
+                                    <span>Destino: <strong>${ticket.destino}</strong></span>
+                                    <span>Caja Alimentos #1</span>
+                                </div>
+                            </div>
+
+                            <div class="ticket-card-footer">
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">TOTAL COMANDADO</small>
+                                    <span class="ticket-total">${formatearMoneda(ticket.total)}</span>
+                                </div>
+                                <div>
+                                    ${actionBtnHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    contenedor.appendChild(col);
+                }
+            });
+
+            const sinTickets = document.getElementById('sinTickets');
+            if (visibles === 0) {
+                sinTickets.classList.remove('d-none');
+            } else {
+                sinTickets.classList.add('d-none');
+            }
+        }
+
+        // Cambiar estado de un ticket (Avanzar flujo)
+        function cambiarEstadoTicket(ticketId, nuevoEstado) {
+            const tickets = obtenerTickets();
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (ticket) {
+                ticket.estado = nuevoEstado;
+                guardarTickets(tickets);
+                renderizarTickets();
+            }
+        }
+
+        // Filtrar por pestaña de estado
+        function filtrarEstado(estado, elemento) {
+            estadoFiltroActual = estado;
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            if (elemento) elemento.classList.add('active');
+            renderizarTickets();
+        }
+
+        // Filtrar por búsqueda de texto
+        function filtrarTickets() {
+            renderizarTickets();
+        }
+
+        function limpiarFiltroTicket() {
+            document.getElementById('filtroTicketTexto').value = '';
+            renderizarTickets();
+        }
+
+        // Restaurar comandas de demostración iniciales
+        function reiniciarTicketsEjemplo() {
+            swalWarningBootstrap.fire({
+                title: "¿Restaurar comandas demo?",
+                text: "Se restablecerán las comandas de prueba al estado inicial.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-arrow-clockwise me-1"></i> Sí, restaurar',
+                cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancelar',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(ticketsDemo));
+                    renderizarTickets();
+                    swalToast.fire({
+                        icon: "success",
+                        title: "Comandas de prueba restauradas."
+                    });
+                }
+            });
+        }
+
+        // Inicializar al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarTickets();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Dashboard Analítico de Ventas (15 Meses)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares con Cache-Buster -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.1">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.1">
+
+    <!-- Chart.js 4.4 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Administrador con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Dashboard Analítico • Reportes y Comparativas</span>
+                    </div>
+                </a>
+
+                <!-- Navegación y Salida -->
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{% url 'administrador' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
+                        <i class="bi bi-arrow-left me-1 text-danger"></i> Volver a Locales
+                    </a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Salir
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Dashboard Analítico -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Banner de Encabezado -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-4 shadow-sm" style="background-color: #ffffff; border: 2px solid var(--safari-cafe-medium);">
+            <div>
+                <span class="badge px-3 py-1 mb-2 fw-bold" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
+                    <i class="bi bi-bar-chart-line-fill text-warning me-1"></i> Inteligencia de Negocios Gastronómica
+                </span>
+                <h2 class="fw-bold mb-1" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                    DASHBOARD DE VENTAS Y COMPARATIVAS DE GANANCIA
+                </h2>
+                <p class="text-muted mb-0 small">
+                    Almacenamiento histórico de hasta 15 meses. Visualización interactiva por Hora, Día o Mes con diagrama mixto de barras y líneas.
+                </p>
+            </div>
+            
+            <!-- Selector de Temporalidad (Hora / Día / Mes) -->
+            <div>
+                <div class="timeframe-selector">
+                    <button class="btn-timeframe" id="btnHora" onclick="cambiarTemporalidad('hora')">
+                        <i class="bi bi-clock me-1"></i> Por Hora
+                    </button>
+                    <button class="btn-timeframe" id="btnDia" onclick="cambiarTemporalidad('dia')">
+                        <i class="bi bi-calendar-date me-1"></i> Por Día
+                    </button>
+                    <button class="btn-timeframe active" id="btnMes" onclick="cambiarTemporalidad('mes')">
+                        <i class="bi bi-calendar-range me-1"></i> Por Mes (15 Meses)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjetas de Comparativa de Ganancias (Requisito clave: Comparativa de Ganancia Meses Anteriores, Día y Año) -->
+        <div class="row g-3 mb-4">
+            
+            <!-- Comparativa Ganancia vs Mes Anterior -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="comparison-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ganancia vs Mes Anterior</span>
+                        <span class="badge-growth-up">
+                            <i class="bi bi-arrow-up-right"></i> +38.4%
+                        </span>
+                    </div>
+                    <div class="comparison-val text-success" id="cardCompMes">$23.800.000</div>
+                    <div class="text-muted small mt-1">
+                        Septiembre 2026 vs Agosto 2026 ($17.200.000)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparativa Ganancia vs Mismo Día Semana Anterior -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="comparison-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ganancia vs Día Anterior</span>
+                        <span class="badge-growth-up">
+                            <i class="bi bi-arrow-up-right"></i> +8.5%
+                        </span>
+                    </div>
+                    <div class="comparison-val text-dark" id="cardCompDia">$885.600</div>
+                    <div class="text-muted small mt-1">
+                        Ganancia de hoy martes vs martes semana previa
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparativa Ganancia Interanual (Año Anterior) -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="comparison-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Comparativa Interanual (Año)</span>
+                        <span class="badge-growth-up">
+                            <i class="bi bi-arrow-up-right"></i> +19.6%
+                        </span>
+                    </div>
+                    <div class="comparison-val text-danger" id="cardCompAno">+ $3.900.000</div>
+                    <div class="text-muted small mt-1">
+                        Ganancia Sep 2026 ($23.8M) vs Sep 2025 ($19.9M)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Margen de Ganancia Promedio -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="comparison-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Margen de Ganancia</span>
+                        <span class="badge bg-warning text-dark fw-bold">48.1%</span>
+                    </div>
+                    <div class="comparison-val text-primary" id="cardMargen">48.1% Neto</div>
+                    <div class="text-muted small mt-1">
+                        Ventas: $49.500.000 • Ganancia: $23.800.000
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GRÁFICO MIXTO: DIAGRAMA DE BARRAS CON LÍNEA -->
+        <div class="chart-card mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <div>
+                    <h4 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                        <i class="bi bi-bar-chart-fill text-danger me-2"></i>
+                        <span id="chartTitulo">EVOLUCIÓN MENSUAL HISTÓRICA: VENTAS TOTALES Y COMPARATIVA DE GANANCIAS (15 MESES)</span>
+                    </h4>
+                    <small class="text-muted" id="chartSubtitulo">
+                        Barras: Ventas Totales ($ CLP) • Línea: Ganancia Neta Registrada ($ CLP)
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge" style="background-color: rgba(198, 40, 40, 0.15); color: var(--safari-red); border: 1px solid var(--safari-red);">
+                        ■ Barras: Ventas Brutas
+                    </span>
+                    <span class="badge" style="background-color: rgba(245, 158, 11, 0.15); color: #b45309; border: 1px solid #f59e0b;">
+                        ● Línea: Ganancia Real
+                    </span>
+                </div>
+            </div>
+
+            <!-- Canvas del Gráfico -->
+            <div style="position: relative; height: 380px; width: 100%;">
+                <canvas id="mixedChart"></canvas>
+            </div>
+        </div>
+
+        <!-- TABLA HISTÓRICA DETALLADA DE LOS 15 MESES ALMACENADOS -->
+        <div class="detail-table-card mb-4" id="seccionTablaMeses">
+            <div class="detail-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-clock-history text-warning me-2"></i>Historial Almacenado de 15 Meses (Julio 2025 - Septiembre 2026)
+                    </h5>
+                    <small class="text-white-50">Comparativa mensual de ganancia neta, volumen de ventas y variación porcentual</small>
+                </div>
+                <span class="badge bg-warning text-dark fw-bold">
+                    15 Meses Almacenados
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table detail-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Mes / Año</th>
+                            <th>Ventas Totales ($ CLP)</th>
+                            <th>Ganancia Neta ($ CLP)</th>
+                            <th>Margen Neto</th>
+                            <th>Comparativa vs Mes Anterior</th>
+                            <th>Tendencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in historico_15_meses %}
+                        <tr>
+                            <td><strong class="text-dark">{{ h.mes }}</strong></td>
+                            <td class="fw-bold" style="font-family: 'Oswald', sans-serif;">${{ h.ventas|stringformat:",d" }}</td>
+                            <td>
+                                <strong class="text-success" style="font-family: 'Oswald', sans-serif; font-size: 1.05rem;">
+                                    ${{ h.ganancia|stringformat:",d" }}
+                                </strong>
+                            </td>
+                            <td><span class="badge bg-light text-dark border">{{ h.margen }}%</span></td>
+                            <td>
+                                {% if h.crecimiento > 0 %}
+                                <span class="badge-growth-up">
+                                    <i class="bi bi-arrow-up-right"></i> +{{ h.crecimiento }}%
+                                </span>
+                                {% else %}
+                                <span class="badge-growth-down">
+                                    <i class="bi bi-arrow-down-right"></i> {{ h.crecimiento }}%
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if h.crecimiento > 15 %}
+                                <span class="badge bg-success text-white">Temporada Alta</span>
+                                {% elif h.crecimiento >= 0 %}
+                                <span class="badge bg-primary text-white">Crecimiento Estable</span>
+                                {% else %}
+                                <span class="badge bg-secondary text-white">Temporada Media/Baja</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Módulo Administrativo <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica del Diagrama Mixto (Barras + Línea) en Chart.js -->
+    <script>
+        // Datos para los 15 Meses Almacenados
+        const data15Meses = {
+            labels: [
+                "Jul 2025", "Ago 2025", "Sep 2025", "Oct 2025", "Nov 2025", "Dic 2025",
+                "Ene 2026", "Feb 2026", "Mar 2026", "Abr 2026", "May 2026", "Jun 2026",
+                "Jul 2026", "Ago 2026", "Sep 2026"
+            ],
+            ventas: [
+                28.5, 31.2, 42.8, 34.1, 36.5, 48.9,
+                58.4, 62.1, 39.8, 33.4, 30.5, 27.9,
+                33.8, 36.9, 49.5
+            ], // en Millones CLP
+            ganancias: [
+                12.8, 14.1, 19.9, 15.4, 16.7, 23.2,
+                28.6, 30.8, 18.1, 14.9, 13.6, 12.2,
+                15.6, 17.2, 23.8
+            ], // en Millones CLP
+            unidad: "Millones CLP"
+        };
+
+        // Datos Por Día (Mes actual: Septiembre 2026)
+        const dataPorDia = {
+            labels: Array.from({length: 29}, (_, i) => `Día ${i + 1}`),
+            ventas: [
+                1.4, 1.5, 1.8, 2.3, 2.7, 1.2, 1.3, 1.5, 1.7, 2.1, 2.6, 2.9, 1.4, 1.5, 1.6,
+                2.2, 3.1, 3.4, 1.5, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 1.5, 1.7, 1.8, 1.84
+            ],
+            ganancias: [
+                0.67, 0.72, 0.86, 1.10, 1.30, 0.58, 0.62, 0.72, 0.82, 1.01, 1.25, 1.39, 0.67, 0.72, 0.77,
+                1.05, 1.49, 1.63, 0.72, 0.77, 0.86, 0.96, 1.15, 1.34, 1.54, 0.72, 0.82, 0.86, 0.88
+            ],
+            unidad: "Millones CLP"
+        };
+
+        // Datos Por Hora (Jornada de hoy: 09:00 a 19:00 hrs)
+        const dataPorHora = {
+            labels: [
+                "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
+                "15:00", "16:00", "17:00", "18:00", "19:00"
+            ],
+            ventas: [
+                65, 110, 180, 290, 385, 340,
+                210, 140, 115, 75, 45
+            ], // en Miles CLP
+            ganancias: [
+                31, 53, 86, 139, 185, 163,
+                101, 67, 55, 36, 22
+            ], // en Miles CLP
+            unidad: "Miles CLP"
+        };
+
+        let currentChart = null;
+
+        function formatearMoneda(val, unidad) {
+            if (unidad === "Millones CLP") {
+                return '$' + val.toFixed(1) + 'M';
+            } else {
+                return '$' + val.toLocaleString('es-CL') + 'K';
+            }
+        }
+
+        function renderizarChart(tipo) {
+            const ctx = document.getElementById('mixedChart').getContext('2d');
+            let dataSelected, labelVentas, labelGanancias, tituloText, subtituloText;
+
+            if (tipo === 'hora') {
+                dataSelected = dataPorHora;
+                labelVentas = 'Ventas por Hora (Miles CLP)';
+                labelGanancias = 'Ganancia por Hora (Miles CLP)';
+                tituloText = 'DISTRIBUCIÓN HORARIA DE HOY: VENTAS Y GANANCIAS EN VIVO';
+                subtituloText = 'Curva de flujo por hora entre 09:00 y 19:00 hrs • Hora punta registrada: 13:00 a 14:00 hrs';
+                document.getElementById('cardCompMes').innerText = '$385.000';
+                document.getElementById('cardCompDia').innerText = '$885.600';
+                document.getElementById('cardCompAno').innerText = '13:00 - 15:00';
+                document.getElementById('cardMargen').innerText = '48.0%';
+            } else if (tipo === 'dia') {
+                dataSelected = dataPorDia;
+                labelVentas = 'Ventas Diarias (Millones CLP)';
+                labelGanancias = 'Ganancia Diaria (Millones CLP)';
+                tituloText = 'EVOLUCIÓN DIARIA DEL MES (SEPTIEMBRE 2026): VENTAS Y GANANCIA';
+                subtituloText = 'Registro diario de ingresos y utilidades de la jornada • Fines de semana y feriados destacados';
+                document.getElementById('cardCompMes').innerText = '$23.800.000';
+                document.getElementById('cardCompDia').innerText = '+8.5% Hoy';
+                document.getElementById('cardCompAno').innerText = '$1.845.000';
+                document.getElementById('cardMargen').innerText = '48.1%';
+            } else {
+                dataSelected = data15Meses;
+                labelVentas = 'Ventas Totales (Millones CLP)';
+                labelGanancias = 'Ganancia Neta (Millones CLP)';
+                tituloText = 'EVOLUCIÓN MENSUAL HISTÓRICA: VENTAS TOTALES Y COMPARATIVA DE GANANCIAS (15 MESES)';
+                subtituloText = 'Historial completo desde Julio 2025 hasta Septiembre 2026 • Comparativa interanual y estacional';
+                document.getElementById('cardCompMes').innerText = '$23.800.000';
+                document.getElementById('cardCompDia').innerText = '$885.600';
+                document.getElementById('cardCompAno').innerText = '+ $3.900.000';
+                document.getElementById('cardMargen').innerText = '48.1%';
+            }
+
+            document.getElementById('chartTitulo').innerText = tituloText;
+            document.getElementById('chartSubtitulo').innerText = subtituloText;
+
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            currentChart = new Chart(ctx, {
+                data: {
+                    labels: dataSelected.labels,
+                    datasets: [
+                        // BARRAS: Ventas
+                        {
+                            type: 'bar',
+                            label: labelVentas,
+                            data: dataSelected.ventas,
+                            backgroundColor: 'rgba(198, 40, 40, 0.75)',
+                            hoverBackgroundColor: 'rgba(198, 40, 40, 0.95)',
+                            borderColor: '#c62828',
+                            borderWidth: 1.5,
+                            borderRadius: 6,
+                            barPercentage: 0.65,
+                            order: 2
+                        },
+                        // LÍNEA: Ganancias (Requisito clave: diagrama de barras con línea de ganancia)
+                        {
+                            type: 'line',
+                            label: labelGanancias,
+                            data: dataSelected.ganancias,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                            pointBackgroundColor: '#b45309',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            tension: 0.35,
+                            borderWidth: 3,
+                            fill: false,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    family: "'Nunito', sans-serif",
+                                    size: 13,
+                                    weight: 'bold'
+                                },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(45, 33, 24, 0.92)',
+                            titleFont: { family: "'Oswald', sans-serif", size: 14 },
+                            bodyFont: { family: "'Nunito', sans-serif", size: 13 },
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed.y;
+                                    return `${context.dataset.label}: ${formatearMoneda(val, dataSelected.unidad)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Nunito', sans-serif",
+                                    size: 11,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f0ede6'
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Nunito', sans-serif",
+                                    size: 11
+                                },
+                                callback: function(value) {
+                                    return formatearMoneda(value, dataSelected.unidad);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Alternar temporalidad
+        function cambiarTemporalidad(tipo) {
+            document.querySelectorAll('.btn-timeframe').forEach(b => b.classList.remove('active'));
+            if (tipo === 'hora') {
+                document.getElementById('btnHora').classList.add('active');
+                document.getElementById('seccionTablaMeses').classList.add('d-none');
+            } else if (tipo === 'dia') {
+                document.getElementById('btnDia').classList.add('active');
+                document.getElementById('seccionTablaMeses').classList.add('d-none');
+            } else {
+                document.getElementById('btnMes').classList.add('active');
+                document.getElementById('seccionTablaMeses').classList.remove('d-none');
+            }
+            renderizarChart(tipo);
+        }
+
+        // Inicializar gráfico al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarChart('mes');
+        });
+    </script>
+</body>
+</html>
