@@ -10,7 +10,7 @@
 - resultado esperado: Corregir únicamente las inconsistencias operativas detectadas en la auditoría RF04 sin construir todavía el CRUD de Puntos de Venta ni modificar catálogo, ventas o dashboard.
 ## 3. estado actual
 - estado: Sesión finalizada/detenida a petición del usuario. Todas las tareas solicitadas completadas con éxito. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Servidor de desarrollo detenido limpiamente.
-- último avance UX (Panel Administrador): Despeje visual de `/administrador/` eliminando el banner redundante "Supervisión de Locales y Personal" (cuyos accesos ya existen en el header) y conversión del Centro de Alertas en un ícono notificador de campana en la barra superior con badge de conteo en vivo y menú desplegable para consultar las reasignaciones.
+- último avance: Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor apagado limpiamente.
 - último avance técnico (Auditoría RF04):
   - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
   - Levantamiento completo de dependencias en base de datos vs. mock hardcodeado (`get_locales_data()`).
