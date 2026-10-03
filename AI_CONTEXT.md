@@ -111,10 +111,10 @@
   - archivo modificado: `c:/Users/pc/Desktop/safari Pilar/importar/`, `requirements.txt`, `README.md`, `.gitignore`, `safari_pilar_completo.zip`
   - motivo: Solicitud del usuario de generar una versión completa y lista para ser importada y ejecutada por otra persona/amigo en la carpeta `importar`.
   - resultado: Se empaquetó el proyecto excluyendo cachés (`__pycache__`, `.pyc`), se añadieron `requirements.txt`, `.gitignore` y una guía detallada `README.md` con credenciales de prueba y pasos de instalación. La carpeta contiene tanto el proyecto listo para abrir y correr como un comprimido `safari_pilar_completo.zip` para envío directo.
-- cambio: Inicialización de Repositorio Git y Preparación para Portafolio en GitHub
+- cambio: Publicación de Repositorio Oficial en GitHub
   - archivo modificado: `.git/`, `.gitignore`, `README.md`
-  - motivo: Preparar el proyecto para ser publicado en la cuenta de GitHub del usuario (`F0DereckA`) como proyecto de portafolio profesional.
-  - resultado: Se inicializó el repositorio local con rama `main`, se configuró `.gitignore` para omitir `importar/`, `*.zip`, `.venv` y cachés, y se generó el primer commit limpio (`feat: Sistema de Gestión Gastronómica Venta Safari - Release inicial para portafolio`) listo para enlazar a `origin`.
+  - motivo: Publicar el proyecto en la cuenta de GitHub del usuario (`F0DereckA`) como proyecto de portafolio profesional.
+  - resultado: Se vinculó el remoto `origin` a `https://github.com/F0DereckA/safari-pilar.git` y se ejecutó `git push -u origin main` exitosamente. Repositorio público, limpio y en sincronía.
 
 ## 6. errores actuales y observaciones pendientes
 - rendimiento crítico anterior: **RESUELTO**.
