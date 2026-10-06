@@ -10,16 +10,15 @@ from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, C
 
 
 def get_locales_data():
-    """Retorna los datos operativos de los 3 locales gastronómicos de Parque Safari"""
-    return {
+    """Retorna los datos operativos de todos los locales gastronómicos registrados en la BD de Parque Safari"""
+    # Métricas y simulaciones base de la jornada para los locales demo iniciales
+    mock_metricas = {
         1: {
-            "id": 1,
             "nombre": "Restaurante Central Safari",
             "tipo": "Restaurante & Buffet Caliente",
             "descripcion": "Comida por cocinar, platos de fondo caliente, minutas, hamburguesas y autoservicio para familias.",
             "icono": "bi-building-fill",
             "color": "#c62828",
-            "estado": "En Servicio",
             "turno": "Turno Continuo (09:00 - 19:30)",
             "total_ventas": 940000,
             "tickets_emitidos": 72,
@@ -28,40 +27,6 @@ def get_locales_data():
             "caja_efectivo": 320000,
             "caja_tarjeta": 620000,
             "saldo_actual": 420000,
-            "personal": [
-                {
-                    "nombre": "Carlos Valenzuela M.",
-                    "rut": "15.421.890-3",
-                    "cargo": "Cajero Principal",
-                    "hora_login": "08:45",
-                    "caja": "Caja Restaurante #1",
-                    "estado": "Activo"
-                },
-                {
-                    "nombre": "Marcela Morales P.",
-                    "rut": "17.654.120-K",
-                    "cargo": "Jefa de Cocina",
-                    "hora_login": "08:30",
-                    "caja": "Cocina Caliente",
-                    "estado": "Activo"
-                },
-                {
-                    "nombre": "Esteban Paredes G.",
-                    "rut": "18.320.911-5",
-                    "cargo": "Cocinero Plancha",
-                    "hora_login": "08:30",
-                    "caja": "Cocina Caliente",
-                    "estado": "Activo"
-                },
-                {
-                    "nombre": "Daniela Silva C.",
-                    "rut": "19.789.442-1",
-                    "cargo": "Asistente / Garzón",
-                    "hora_login": "09:00",
-                    "caja": "Salón Central",
-                    "estado": "En Colación"
-                }
-            ],
             "ventas_categoria": [
                 {"nombre": "Comida por Cocinar", "monto": 560000, "porcentaje": 60, "color": "#ef4444"},
                 {"nombre": "Comida Preparada", "monto": 180000, "porcentaje": 19, "color": "#f59e0b"},
@@ -81,13 +46,11 @@ def get_locales_data():
             ]
         },
         2: {
-            "id": 2,
             "nombre": "Cafetería & Pastelería La Selva",
             "tipo": "Cafetería Barista & Repostería",
             "descripcion": "Café de grano italiano de barista, sándwiches frescos de vitrina, jugos naturales exprimidos y pastelería.",
             "icono": "bi-cup-hot-fill",
             "color": "#6b21a8",
-            "estado": "En Servicio",
             "turno": "Turno Mañana/Tarde (09:30 - 19:00)",
             "total_ventas": 520000,
             "tickets_emitidos": 45,
@@ -96,24 +59,6 @@ def get_locales_data():
             "caja_efectivo": 190000,
             "caja_tarjeta": 330000,
             "saldo_actual": 270000,
-            "personal": [
-                {
-                    "nombre": "Camila Soto Rojas",
-                    "rut": "16.890.312-4",
-                    "cargo": "Barista / Cajera",
-                    "hora_login": "09:15",
-                    "caja": "Caja Cafetería #1",
-                    "estado": "Activo"
-                },
-                {
-                    "nombre": "Rodrigo Fuentes A.",
-                    "rut": "20.145.789-2",
-                    "cargo": "Asistente Barra & Vitrina",
-                    "hora_login": "09:15",
-                    "caja": "Barra Cafetería",
-                    "estado": "Activo"
-                }
-            ],
             "ventas_categoria": [
                 {"nombre": "Cafetería y Jugos", "monto": 260000, "porcentaje": 50, "color": "#9333ea"},
                 {"nombre": "Comida Preparada", "monto": 160000, "porcentaje": 31, "color": "#f59e0b"},
@@ -132,13 +77,11 @@ def get_locales_data():
             ]
         },
         3: {
-            "id": 3,
             "nombre": "Barra Rápida & Kiosco Oasis",
             "tipo": "Punto Snack & Bebidas Frías",
             "descripcion": "Bebidas frías, jugos en caja, empanadas de mantenedor, helados y snacks al paso en zonas de recorrido.",
             "icono": "bi-shop-window",
             "color": "#0284c7",
-            "estado": "En Servicio",
             "turno": "Turno Tarde (10:00 - 18:30)",
             "total_ventas": 385000,
             "tickets_emitidos": 38,
@@ -147,24 +90,6 @@ def get_locales_data():
             "caja_efectivo": 165000,
             "caja_tarjeta": 220000,
             "saldo_actual": 225000,
-            "personal": [
-                {
-                    "nombre": "Matías González P.",
-                    "rut": "18.910.455-8",
-                    "cargo": "Cajero / Despacho",
-                    "hora_login": "09:45",
-                    "caja": "Caja Kiosco #1",
-                    "estado": "Activo"
-                },
-                {
-                    "nombre": "Valentina Araya T.",
-                    "rut": "19.345.678-0",
-                    "cargo": "Atención Vitrina & Mantenedor",
-                    "hora_login": "09:45",
-                    "caja": "Punto Oasis",
-                    "estado": "Activo"
-                }
-            ],
             "ventas_categoria": [
                 {"nombre": "Bebidas Envasadas", "monto": 195000, "porcentaje": 51, "color": "#0284c7"},
                 {"nombre": "Comida Preparada", "monto": 150000, "porcentaje": 39, "color": "#f59e0b"},
@@ -183,6 +108,44 @@ def get_locales_data():
             ]
         }
     }
+
+    # Cargar todos los puntos de venta reales registrados en la BD
+    locales_bd = PuntoVenta.objects.all().order_by('id')
+    locales = {}
+
+    for pv in locales_bd:
+        demo = mock_metricas.get(pv.id, {})
+        locales[pv.id] = {
+            "id": pv.id,
+            "nombre": pv.nombre,
+            "tipo": pv.tipo or demo.get("tipo", "Punto de Venta"),
+            "descripcion": pv.descripcion or demo.get("descripcion", "Punto gastronómico operativo de Parque Safari."),
+            "icono": getattr(pv, 'icono', None) or demo.get("icono", "bi-shop"),
+            "color": getattr(pv, 'color', None) or demo.get("color", "#c62828"),
+            "estado": "En Servicio" if pv.activo else "Inactivo",
+            "turno": demo.get("turno", "Turno General (09:00 - 19:00)"),
+            "total_ventas": demo.get("total_ventas", 0),
+            "tickets_emitidos": demo.get("tickets_emitidos", 0),
+            "ticket_promedio": demo.get("ticket_promedio", 0),
+            "caja_apertura": demo.get("caja_apertura", 0),
+            "caja_efectivo": demo.get("caja_efectivo", 0),
+            "caja_tarjeta": demo.get("caja_tarjeta", 0),
+            "saldo_actual": demo.get("saldo_actual", 0),
+            "personal": [],
+            "ventas_categoria": demo.get("ventas_categoria", []),
+            "metodos_pago": demo.get("metodos_pago", []),
+            "tickets_recientes": demo.get("tickets_recientes", [])
+        }
+
+    # Si por algún motivo aún no hay locales en BD (p.ej. antes del seeding), cargar los mock por defecto
+    if not locales and mock_metricas:
+        for mid, mdata in mock_metricas.items():
+            locales[mid] = {
+                "id": mid,
+                **mdata,
+                "estado": "En Servicio",
+                "personal": []
+            }
 
     # Sincronizar dotación de personal real desde la BD respetando el límite de 1 puesto de trabajo
     for loc_id, loc in locales.items():
@@ -515,6 +478,32 @@ def administrador(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
                 pendientes = AlertaTraslado.objects.filter(leida=False).count()
                 return JsonResponse({'status': 'ok', 'pendientes': pendientes})
+            return redirect('administrador')
+
+        elif accion == 'crear_local':
+            nombre = request.POST.get('nombre', '').strip()
+            tipo = request.POST.get('tipo', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            icono = request.POST.get('icono', '').strip() or 'bi-shop'
+            color = request.POST.get('color', '').strip() or '#c62828'
+
+            if not nombre:
+                messages.error(request, "Debes ingresar un nombre para el nuevo local gastronómico.")
+                return redirect('administrador')
+
+            if PuntoVenta.objects.filter(nombre__iexact=nombre).exists():
+                messages.error(request, f"Ya existe un local gastronómico registrado con el nombre '{nombre}'.")
+                return redirect('administrador')
+
+            nuevo_local = PuntoVenta.objects.create(
+                nombre=nombre,
+                tipo=tipo or "Punto de Venta",
+                descripcion=descripcion or f"Local gastronómico operativo '{nombre}' en Parque Safari.",
+                icono=icono,
+                color=color,
+                activo=True
+            )
+            messages.success(request, f"¡Local gastronómico '{nuevo_local.nombre}' creado exitosamente! Ya se encuentra disponible para asignación de colaboradores y auditoría.")
             return redirect('administrador')
 
     locales = get_locales_data()

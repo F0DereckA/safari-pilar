@@ -330,6 +330,18 @@
                                         {% endif %}
                                     </td>
                                 </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="bi bi-people text-muted fs-3 d-block mb-1"></i>
+                                        No hay colaboradores asignados actualmente a este local.
+                                        <div class="mt-2">
+                                            <a href="{% url 'administrador_trabajadores' %}" class="btn btn-sm btn-outline-danger rounded-pill">
+                                                <i class="bi bi-person-plus-fill me-1"></i> Asignar Personal
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -345,7 +357,7 @@
                         <h5 class="mb-0 fw-bold">
                             <i class="bi bi-pie-chart-fill text-warning me-2"></i>Ventas por Categoría Gastronómica
                         </h5>
-                        <small class="text-white-50">Distribución de ingresos en las 4 categorías</small>
+                        <small class="text-white-50">Distribución de ingresos en las categorías</small>
                     </div>
                     <div class="p-3">
                         {% for cat in local.ventas_categoria %}
@@ -359,6 +371,11 @@
                             <div class="progress" style="height: 10px; border-radius: 8px; background-color: var(--safari-cafe-pastel);">
                                 <div class="progress-bar" role="progressbar" style="width: {{ cat.porcentaje }}%; background-color: {{ cat.color }}; border-radius: 8px;" aria-valuenow="{{ cat.porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-3 text-muted small">
+                            <i class="bi bi-pie-chart text-muted fs-4 d-block mb-1"></i>
+                            Sin ventas registradas en esta jornada.
                         </div>
                         {% endfor %}
                     </div>
@@ -382,6 +399,10 @@
                                     <div class="fw-bold text-danger" style="font-size: 0.95rem;">${{ m.monto|stringformat:",d" }}</div>
                                     <small class="text-muted" style="font-size: 0.7rem;">{{ m.porcentaje }}%</small>
                                 </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12 text-center py-3 text-muted small">
+                                Sin transacciones registradas hoy.
                             </div>
                             {% endfor %}
                         </div>
@@ -435,6 +456,13 @@
                                 {% else %}
                                 <span class="badge bg-secondary text-white"><i class="bi bi-check2-all me-1"></i>{{ t.estado }}</span>
                                 {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted small">
+                                <i class="bi bi-inbox text-muted fs-3 d-block mb-1"></i>
+                                No hay comandas emitidas en este local aún en la jornada.
                             </td>
                         </tr>
                         {% endfor %}

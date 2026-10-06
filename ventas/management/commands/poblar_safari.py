@@ -23,19 +23,25 @@ class Command(BaseCommand):
                 "id": 1,
                 "nombre": "Restaurante Central Safari",
                 "tipo": "Restaurante & Buffet Caliente",
-                "descripcion": "Comida por cocinar, platos de fondo caliente, minutas, hamburguesas y autoservicio para familias."
+                "descripcion": "Comida por cocinar, platos de fondo caliente, minutas, hamburguesas y autoservicio para familias.",
+                "icono": "bi-building-fill",
+                "color": "#c62828"
             },
             {
                 "id": 2,
                 "nombre": "Cafetería & Pastelería La Selva",
                 "tipo": "Cafetería Barista & Repostería",
-                "descripcion": "Café de grano italiano de barista, sándwiches frescos de vitrina, jugos naturales exprimidos y pastelería."
+                "descripcion": "Café de grano italiano de barista, sándwiches frescos de vitrina, jugos naturales exprimidos y pastelería.",
+                "icono": "bi-cup-hot-fill",
+                "color": "#6b21a8"
             },
             {
                 "id": 3,
                 "nombre": "Barra Rápida & Kiosco Oasis",
                 "tipo": "Punto Snack & Bebidas Frías",
-                "descripcion": "Bebidas frías, jugos en caja, empanadas de mantenedor, helados y snacks al paso en zonas de recorrido."
+                "descripcion": "Bebidas frías, jugos en caja, empanadas de mantenedor, helados y snacks al paso en zonas de recorrido.",
+                "icono": "bi-shop-window",
+                "color": "#0284c7"
             }
         ]
 
@@ -47,9 +53,22 @@ class Command(BaseCommand):
                     "nombre": ldef["nombre"],
                     "tipo": ldef["tipo"],
                     "descripcion": ldef["descripcion"],
+                    "icono": ldef["icono"],
+                    "color": ldef["color"],
                     "activo": True
                 }
             )
+            if not creado:
+                # Actualizar icono y color si estaban por defecto
+                actualizado = False
+                if not pv.icono or pv.icono == 'bi-shop':
+                    pv.icono = ldef["icono"]
+                    actualizado = True
+                if not pv.color or pv.color == '#c62828' and ldef["id"] != 1:
+                    pv.color = ldef["color"]
+                    actualizado = True
+                if actualizado:
+                    pv.save()
             puntos[ldef["id"]] = pv
             if creado:
                 self.stdout.write(self.style.SUCCESS(f"  [+] Local creado: {pv.nombre} (ID {pv.id})"))

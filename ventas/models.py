@@ -69,6 +69,8 @@ class PuntoVenta(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     tipo = models.CharField(max_length=50, blank=True, null=True, help_text="Ej: Restaurante, Cafetería, Kiosco")
     descripcion = models.TextField(blank=True, null=True)
+    icono = models.CharField(max_length=50, default='bi-shop', blank=True, help_text="Ícono Bootstrap")
+    color = models.CharField(max_length=20, default='#c62828', blank=True, help_text="Color distintivo hex")
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
 

@@ -325,4 +325,49 @@ class SafariFase2A1Tests(TestCase):
         # La contraseña anterior 'safari123' sigue siendo 100% válida
         self.assertTrue(self.cajero_user.check_password('safari123'))
 
+    # 16. Administrador puede crear un nuevo local gastronómico y asignarle trabajadores
+    def test_crear_nuevo_local_administrador_y_asignar_trabajador(self):
+        self.client.force_login(self.admin_user)
+        # 1. Crear nuevo local vía POST en panel de administrador
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'crear_local',
+            'nombre': 'Heladería Selva Safari',
+            'tipo': 'Heladería & Smoothies',
+            'descripcion': 'Helados artesanales y batidos de fruta fresca.',
+            'icono': 'bi-snow',
+            'color': '#059669'
+        }, follow=True)
+
+        self.assertContains(resp, "Heladería Selva Safari")
+        self.assertContains(resp, "creado exitosamente")
+
+        # Verificar existencia en BD
+        nuevo_local = PuntoVenta.objects.get(nombre='Heladería Selva Safari')
+        self.assertEqual(nuevo_local.tipo, 'Heladería & Smoothies')
+        self.assertEqual(nuevo_local.icono, 'bi-snow')
+        self.assertEqual(nuevo_local.color, '#059669')
+
+        # 2. Asignar un trabajador al nuevo local creado
+        resp_asig = self.client.post(reverse('administrador_trabajadores'), {
+            'accion': 'crear',
+            'nombre': 'Andrea',
+            'apellido': 'Pavez',
+            'username': 'apavez',
+            'rut': '19.876.543-2',
+            'rol': 'CAJERO',
+            'telefono': '+56987654321',
+            'local_id': nuevo_local.id,
+            'password': 'password123'
+        }, follow=True)
+
+        self.assertContains(resp_asig, "registrado con éxito")
+        trabajador_nuevo = PerfilEmpleado.objects.get(usuario__username='apavez')
+        self.assertEqual(trabajador_nuevo.punto_venta_actual, nuevo_local)
+
+        # 3. Verificar que el nuevo local se puede auditar en /administrador/local/<id>/
+        resp_local = self.client.get(reverse('administrador_local', kwargs={'local_id': nuevo_local.id}))
+        self.assertEqual(resp_local.status_code, 200)
+        self.assertContains(resp_local, "Heladería Selva Safari")
+        self.assertContains(resp_local, "Andrea Pavez")
+
 

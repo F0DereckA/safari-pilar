@@ -9,9 +9,15 @@
 - tarea actual: **RF04.1 — Aislamiento operativo por Punto de Venta para Mesero y corrección de fallbacks arbitrarios**.
 - resultado esperado: Corregir únicamente las inconsistencias operativas detectadas en la auditoría RF04 sin construir todavía el CRUD de Puntos de Venta ni modificar catálogo, ventas o dashboard.
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Centro de alertas en detalle de local unificado en campana de notificaciones interactiva y banners invasivos del cuerpo removidos.
-- último avance: Unificación del Centro de Alertas en Detalle de Local (`/administrador/local/<local_id>/`): Se eliminaron los banners invasivos del cuerpo de la página que ocupaban espacio excesivo y no se podían descartar. Se implementó en la cabecera la campana de notificaciones idéntica a la del panel de administración central, con badge contador dinámico, dropdown desplegable con detalle de traslados salientes/entrantes, y descarte/marcado como leído asíncrono vía AJAX sin recargar la página.
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 16 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (16/16 OK). Creación dinámica de nuevos locales gastronómicos habilitada para el Administrador, integrada con asignación de personal y auditoría de jornada.
+- último avance: **Creación Dinámica de Locales Gastronómicos por el Administrador**:
+  - Se agregaron los campos `icono` y `color` al modelo `PuntoVenta` (migración `0004_puntoventa_color_puntoventa_icono.py`).
+  - Se implementó en el panel general (`/administrador/`) el botón destacado y modal interactivo `#modalCrearLocal` para que el Administrador registre nuevos locales con nombre, tipo, descripción, ícono temático y color de marca.
+  - Se refactorizó `get_locales_data()` en `ventas/views.py` para consultar dinámicamente todos los registros de `PuntoVenta` en la base de datos, manteniendo las métricas demo iniciales de los locales 1, 2 y 3 y habilitando métricas limpias para locales creados por el usuario.
+  - Al crear un local, este se refleja de forma instantánea en: (1) Las tarjetas de estado operativo de `/administrador/`, (2) El selector y auditoría detallada de `/administrador/local/<id>/`, (3) Los selectores de asignación y traslado de dotación en `/administrador/trabajadores/`.
+  - Se incorporó la prueba automatizada #16 en `ventas/tests.py`, verificando la creación del local vía POST, persistencia en BD, asignación de colaboradores y navegación a su vista de auditoría.
 - avances previos:
+  - Unificación del Centro de Alertas en Detalle de Local (`/administrador/local/<local_id>/`): Se eliminaron los banners invasivos del cuerpo de la página y se implementó la campana de notificaciones interactiva con conteo dinámico y descarte asíncrono vía AJAX sin recargar la página.
   - Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor ejecutándose en background.
 - último avance técnico (Auditoría RF04):
   - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
