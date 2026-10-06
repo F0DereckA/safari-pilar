@@ -1148,13 +1148,25 @@ def mesero(request):
                     observaciones=it.get('nota', '')
                 )
 
-            Ticket.objects.create(
-                pedido=nuevo_pedido,
-                codigo=f"COM-{nueva_venta.id:04d}",
-                tipo_destino='COCINA',
-                estado='EN_PROCESO',
-                contenido_impresion=f"Comanda #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-            )
+            tiene_cocina = any(it.get('destino') == 'COCINA' for it in items_lista)
+            tiene_barra = any(it.get('destino') == 'BARRA' for it in items_lista)
+
+            if tiene_cocina or not tiene_barra:
+                Ticket.objects.create(
+                    pedido=nuevo_pedido,
+                    codigo=f"COM-COC-{nueva_venta.id:04d}",
+                    tipo_destino='COCINA',
+                    estado='EN_PROCESO',
+                    contenido_impresion=f"Comanda Cocina #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+                )
+            if tiene_barra:
+                Ticket.objects.create(
+                    pedido=nuevo_pedido,
+                    codigo=f"COM-BAR-{nueva_venta.id:04d}",
+                    tipo_destino='BARRA',
+                    estado='EN_PROCESO',
+                    contenido_impresion=f"Comanda Barra #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+                )
 
             messages.success(request, f"¡Comanda #{nueva_venta.id:04d} despachada con éxito a Cocina y Barra! Mesa {mesa_obj.identificador if mesa_obj else ''} marcada en atención.")
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")

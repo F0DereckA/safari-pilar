@@ -147,7 +147,12 @@
                                 <p class="text-muted small mb-2">Sandwich en pan fresco con jamón pierna y queso fundido (Listo para entrega).</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$3.500</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$3.500</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_1" onclick="abrirNotaCajeroModal(1, 'Pan Jamón y Queso')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_1">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(1, -1)">-</button>
                                     <span class="qty-count" id="qty-1">0</span>
@@ -169,7 +174,12 @@
                                 <p class="text-muted small mb-2">Empanada horneada de carne picada y cebolla (Mantenedor caliente).</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$3.000</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$3.000</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_2" onclick="abrirNotaCajeroModal(2, 'Empanada de Pino')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_2">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(2, -1)">-</button>
                                     <span class="qty-count" id="qty-2">0</span>
@@ -191,7 +201,12 @@
                                 <p class="text-muted small mb-2">Empanada hojaldrada rellena con abundante queso derretido.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$2.800</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$2.800</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_3" onclick="abrirNotaCajeroModal(3, 'Empanada de Queso')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_3">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(3, -1)">-</button>
                                     <span class="qty-count" id="qty-3">0</span>
@@ -213,7 +228,12 @@
                                 <p class="text-muted small mb-2">Medialuna horneada con relleno de manjar o crema pastelera.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$1.800</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$1.800</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_4" onclick="abrirNotaCajeroModal(4, 'Medialuna Rellena')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_4">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(4, -1)">-</button>
                                     <span class="qty-count" id="qty-4">0</span>
@@ -235,7 +255,12 @@
                                 <p class="text-muted small mb-2">Bizcocho artesanal esponjoso con arándanos frescos en vitrina.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$2.200</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$2.200</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_5" onclick="abrirNotaCajeroModal(5, 'Muffin de Arándanos')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_5">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(5, -1)">-</button>
                                     <span class="qty-count" id="qty-5">0</span>
@@ -262,7 +287,12 @@
                                 <p class="text-muted small mb-2">Carne 150g, lechuga, tomate y queso cheddar, acompañada de papas fritas.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$7.500</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$7.500</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_6" onclick="abrirNotaCajeroModal(6, 'Hamburguesa Safari Clásica')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_6">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(6, -1)">-</button>
                                     <span class="qty-count" id="qty-6">0</span>
@@ -284,7 +314,12 @@
                                 <p class="text-muted small mb-2">Doble carne, doble queso cheddar fundido y tocino crujiente.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$8.900</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$8.900</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_7" onclick="abrirNotaCajeroModal(7, 'Hamburguesa Doble Tocino')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_7">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(7, -1)">-</button>
                                     <span class="qty-count" id="qty-7">0</span>
@@ -306,7 +341,12 @@
                                 <p class="text-muted small mb-2">Plato de fondo caliente (vacuno o pollo) con arroz/puré y ensalada.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$9.500</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$9.500</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_8" onclick="abrirNotaCajeroModal(8, 'Almuerzo Safari del Día')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_8">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(8, -1)">-</button>
                                     <span class="qty-count" id="qty-8">0</span>
@@ -328,7 +368,12 @@
                                 <p class="text-muted small mb-2">Finas láminas de vacuno a la plancha, palta hass molida, tomate y mayo.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$7.900</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$7.900</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_9" onclick="abrirNotaCajeroModal(9, 'Churrasco Italiano')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_9">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(9, -1)">-</button>
                                     <span class="qty-count" id="qty-9">0</span>
@@ -350,7 +395,12 @@
                                 <p class="text-muted small mb-2">Porción familiar de papas fritas doradas y crujientes al momento.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$4.000</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$4.000</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_10" onclick="abrirNotaCajeroModal(10, 'Papas Fritas Grandes')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_10">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(10, -1)">-</button>
                                     <span class="qty-count" id="qty-10">0</span>
@@ -470,7 +520,12 @@
                                 <p class="text-muted small mb-2">Exprimido / licuado al momento: Naranja, Frutilla, Frambuesa o Piña (400cc).</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$3.500</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$3.500</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_15" onclick="abrirNotaCajeroModal(15, 'Jugo Natural de Fruta')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_15">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(15, -1)">-</button>
                                     <span class="qty-count" id="qty-15">0</span>
@@ -492,7 +547,12 @@
                                 <p class="text-muted small mb-2">Café espresso italiano preparado en máquina barista (Solo, Cortado o Americano).</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$2.400</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$2.400</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_16" onclick="abrirNotaCajeroModal(16, 'Café de Grano / Cortado')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_16">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(16, -1)">-</button>
                                     <span class="qty-count" id="qty-16">0</span>
@@ -514,7 +574,12 @@
                                 <p class="text-muted small mb-2">Espresso con crema de leche texturizada al vapor y toque de canela.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$2.800</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$2.800</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_17" onclick="abrirNotaCajeroModal(17, 'Café Cappuccino')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_17">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(17, -1)">-</button>
                                     <span class="qty-count" id="qty-17">0</span>
@@ -536,7 +601,12 @@
                                 <p class="text-muted small mb-2">Limonada fresca macerada con menta del huerto y jengibre helado.</p>
                             </div>
                             <div>
-                                <div class="product-price mb-2">$3.200</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="product-price mb-0">$3.200</div>
+                                    <button type="button" class="btn-nota-cajero" id="btnNotaCajero_18" onclick="abrirNotaCajeroModal(18, 'Limonada Menta Jengibre')">
+                                        <i class="bi bi-chat-left-text-fill text-danger me-1"></i> <span id="btnNotaCajeroText_18">Nota</span>
+                                    </button>
+                                </div>
                                 <div class="qty-controls">
                                     <button class="btn-qty btn-qty-minus" onclick="cambiarCantidad(18, -1)">-</button>
                                     <span class="qty-count" id="qty-18">0</span>
@@ -619,6 +689,44 @@
         </div>
 
     </main>
+
+    <!-- Modal de Nota Especial Libre para Cajero -->
+    <div class="modal fade" id="modalNotaCajero" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white p-3">
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="modalNotaCajeroTitulo">
+                            <i class="bi bi-pencil-square text-warning me-2"></i>Nota de Preparación
+                        </h6>
+                        <small class="text-white-50" style="font-size: 0.78rem;">Instrucción libre para la comanda de Cocina o Barra</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="notaCajeroProductoId">
+                    <label class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
+                    <textarea id="notaCajeroTextoInput" class="form-control mb-2" rows="3" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, sin sal, etc..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
+                    <small class="text-muted d-block">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> Escribe libremente lo solicitado por el cliente. Se imprimirá en el ticket debajo del producto.
+                    </small>
+                </div>
+                <div class="modal-footer p-2 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNotaCajero" onclick="quitarNotaCajero()">
+                        <i class="bi bi-trash me-1"></i> Quitar Nota
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" onclick="guardarNotaCajero()">
+                            <i class="bi bi-check2-circle me-1"></i> Guardar Nota
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Simulación de Cobro y Comanda -->
     <div class="modal fade" id="modalCobro" tabindex="-1" aria-hidden="true">
@@ -703,11 +811,83 @@
             18: { nombre: "Limonada Menta Jengibre", precio: 3200, cat: "cafeteria" }
         };
 
-        // Estado del carrito/pedido
+        // Estado del carrito/pedido y notas
         const cantidades = {};
         for (let i = 1; i <= 18; i++) cantidades[i] = 0;
+        let notasProductosCajero = {};
 
         let categoriaActual = 'todos';
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        // Modales de Notas para Cajero
+        function abrirNotaCajeroModal(id, nombre) {
+            document.getElementById('notaCajeroProductoId').value = id;
+            document.getElementById('modalNotaCajeroTitulo').innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i>Nota para: ${nombre}`;
+            const notaActual = notasProductosCajero[id] || '';
+            document.getElementById('notaCajeroTextoInput').value = notaActual;
+
+            const btnQuitar = document.getElementById('btnQuitarNotaCajero');
+            if (btnQuitar) {
+                btnQuitar.style.display = notaActual ? 'inline-block' : 'none';
+            }
+
+            const modalEl = document.getElementById('modalNotaCajero');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+
+            setTimeout(() => {
+                const input = document.getElementById('notaCajeroTextoInput');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 350);
+        }
+
+        function quitarNotaCajero() {
+            const id = document.getElementById('notaCajeroProductoId').value;
+            document.getElementById('notaCajeroTextoInput').value = '';
+            guardarNotaCajero();
+        }
+
+        function guardarNotaCajero() {
+            const id = document.getElementById('notaCajeroProductoId').value;
+            const nota = document.getElementById('notaCajeroTextoInput').value.trim();
+            notasProductosCajero[id] = nota;
+
+            if (nota && cantidades[id] === 0) {
+                cambiarCantidad(id, 1);
+            }
+
+            actualizarBotonNotaCajero(id, nota);
+            actualizarResumen();
+
+            const modalEl = document.getElementById('modalNotaCajero');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        function actualizarBotonNotaCajero(id, nota) {
+            const btn = document.getElementById(`btnNotaCajero_${id}`);
+            const textSpan = document.getElementById(`btnNotaCajeroText_${id}`);
+            if (btn && textSpan) {
+                if (nota) {
+                    btn.classList.add('tiene-nota');
+                    const preview = nota.length > 14 ? nota.substring(0, 12) + '...' : nota;
+                    textSpan.innerHTML = `<i class="bi bi-check2 me-1"></i>${escapeHtml(preview)}`;
+                    btn.title = `Nota activa: ${nota}`;
+                } else {
+                    btn.classList.remove('tiene-nota');
+                    textSpan.innerText = 'Nota';
+                    btn.title = 'Agregar nota o instrucción especial';
+                }
+            }
+        }
 
         // Modificar cantidad con botones (+) y (-)
         function cambiarCantidad(id, delta) {
@@ -741,21 +921,27 @@
                     const subtotal = prod.precio * qty;
                     total += subtotal;
 
+                    const notaProd = notasProductosCajero[id] || '';
                     const row = document.createElement('div');
                     row.className = 'order-item-row d-flex justify-content-between align-items-center';
                     row.innerHTML = `
-                        <div>
+                        <div style="max-width: 68%;">
                             <div class="fw-bold text-dark" style="font-size: 0.9rem;">${prod.nombre}</div>
+                            ${notaProd ? `
+                                <div class="order-item-nota">
+                                    <strong class="text-danger">👉 NOTA:</strong> ${escapeHtml(notaProd)}
+                                </div>
+                            ` : ''}
                             <small class="text-muted">${qty} x ${formatearMoneda(prod.precio)}</small>
                         </div>
                         <div class="text-end">
-                            <span class="fw-bold text-danger">${formatearMoneda(subtotal)}</span>
+                            <span class="fw-bold text-danger d-block">${formatearMoneda(subtotal)}</span>
                             <div>
                                 <button class="btn btn-sm btn-link text-muted p-0 ms-2" onclick="cambiarCantidad(${id}, -1)" title="Restar">
-                                    <i class="bi bi-dash-circle"></i>
+                                    <i class="bi bi-dash-circle fs-5"></i>
                                 </button>
                                 <button class="btn btn-sm btn-link text-warning p-0 ms-1" onclick="cambiarCantidad(${id}, 1)" title="Sumar">
-                                    <i class="bi bi-plus-circle"></i>
+                                    <i class="bi bi-plus-circle fs-5"></i>
                                 </button>
                             </div>
                         </div>
@@ -786,6 +972,12 @@
                 const qtyElement = document.getElementById('qty-' + id);
                 if (qtyElement) qtyElement.innerText = '0';
             }
+            notasProductosCajero = {};
+            document.querySelectorAll('.btn-nota-cajero').forEach(b => {
+                b.classList.remove('tiene-nota');
+                const span = b.querySelector('span');
+                if (span) span.innerText = 'Nota';
+            });
             actualizarResumen();
         }
 
@@ -806,7 +998,8 @@
                         nombre: prod.nombre,
                         cant: qty,
                         cat: prod.cat,
-                        precio: prod.precio
+                        precio: prod.precio,
+                        nota: notasProductosCajero[id] || ''
                     });
                     total += prod.precio * qty;
                     if (prod.cat === 'cocinar') tieneCocina = true;
@@ -931,6 +1124,16 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const inputNota = document.getElementById('notaCajeroTextoInput');
+            if (inputNota) {
+                inputNota.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        guardarNotaCajero();
+                    }
+                });
+            }
+
             let tickets = [];
             const guardados = localStorage.getItem(STORAGE_KEY);
             if (guardados) {

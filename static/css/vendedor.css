@@ -339,3 +339,63 @@
     border: 1px solid #e5e7eb;
 }
 
+/* ==========================================================================
+   Botón de Nota Libre y Despliegue de Instrucciones para Cajero
+   ========================================================================== */
+.btn-nota-cajero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-medium);
+    color: var(--safari-cafe-deep);
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    min-height: 36px;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-nota-cajero:hover {
+    background-color: #fff1f2;
+    border-color: var(--safari-red);
+    color: var(--safari-red);
+    transform: translateY(-1px);
+}
+
+.btn-nota-cajero.tiene-nota {
+    background-color: #fef2f2 !important;
+    border-color: #dc3545 !important;
+    color: #b91c1c !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25) !important;
+    font-weight: 800;
+}
+
+/* Nota en el panel lateral de comanda */
+.order-item-nota {
+    background-color: #fff5f5;
+    border-left: 3px solid #dc3545;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: #991b1b;
+}
+
+/* Nota en la tarjeta del ticket en desarrollo */
+.ticket-item-nota {
+    background-color: #fff5f5;
+    border-left: 3px solid #dc3545;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-top: 3px;
+    font-size: 0.82rem;
+    color: #991b1b;
+}
+
+

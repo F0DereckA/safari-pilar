@@ -138,7 +138,7 @@
                 <small class="text-muted">Haz clic en una mesa para tomar el pedido de inmediato</small>
             </div>
 
-            <div class="row g-3">
+            <div class="row g-3 mesas-scroll-container" id="contenedorMesas">
                 {% for m in mesas %}
                 <div class="col-6 col-sm-4 col-md-3 col-xl-2">
                     <div class="mesa-card {% if m.estado == 'HABILITADA' %}mesa-libre{% elif m.estado == 'OCUPADA' %}mesa-ocupada{% else %}mesa-reservada{% endif %} {% if forloop.first %}mesa-seleccionada{% endif %}"
@@ -208,7 +208,7 @@
                     </div>
 
                     <!-- Pestañas de Categoría con Indicador de Destino de Impresión -->
-                    <div class="d-flex flex-wrap gap-2 mb-3">
+                    <div class="d-flex flex-wrap gap-2 mb-3 filter-cat-scroll">
                         <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold filter-cat-btn active" onclick="filtrarCategoria('todos', this)">
                             <i class="bi bi-grid-fill me-1"></i> Todo el Menú
                         </button>
@@ -261,17 +261,18 @@
                                 </div>
 
                                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.75rem;" onclick="abrirNotaModal({{ p.id }}, '{{ p.nombre }}')">
-                                        <i class="bi bi-chat-text me-1 text-danger"></i> Nota
+                                    <button type="button" class="btn-nota-plato" id="btnNota_{{ p.id }}" onclick="abrirNotaModal({{ p.id }}, '{{ p.nombre|escapejs }}')">
+                                        <i class="bi bi-chat-left-text-fill text-danger"></i>
+                                        <span id="btnNotaText_{{ p.id }}">Nota</span>
                                     </button>
 
                                     <!-- Controles sumar / restar -->
                                     <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre }}', {{ p.precio }}, '{{ p.destino }}', -1)">
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', -1)">
                                             <i class="bi bi-dash"></i>
                                         </button>
                                         <span class="qty-display" id="qty_{{ p.id }}">0</span>
-                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre }}', {{ p.precio }}, '{{ p.destino }}', 1)">
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', 1)">
                                             <i class="bi bi-plus"></i>
                                         </button>
                                     </div>
@@ -285,8 +286,8 @@
             </div>
 
             <!-- Columna Derecha: Panel Lateral de Comanda en Curso -->
-            <div class="col-lg-4">
-                <div class="comanda-mesero-panel">
+            <div class="col-lg-4" id="columnaComanda">
+                <div class="comanda-mesero-panel" id="panelComanda">
                     
                     <div class="comanda-header">
                         <div class="d-flex justify-content-between align-items-start">
@@ -356,29 +357,50 @@
 
     </main>
 
-    <!-- MODAL DE NOTA ESPECIAL PARA PLATO / BEBIDA -->
+    <!-- BARRA FLOTANTE INFERIOR PARA MÓVILES (Smartphone Friendly) -->
+    <div class="mobile-comanda-bar d-lg-none" id="mobileComandaBar">
+        <div class="total-comanda-pill">
+            <span class="total-comanda-label" id="mobileComandaMesa">Mesa 1 • 0 ítems</span>
+            <span class="total-comanda-monto" id="mobileComandaTotal">$0</span>
+        </div>
+        <button type="button" class="btn-ver-comanda-flotante" onclick="scrollHaciaComanda()">
+            <i class="bi bi-receipt-cutoff"></i> Ver Comanda
+        </button>
+    </div>
+
+    <!-- MODAL DE NOTA ESPECIAL LIBRE (SIN FILTROS RÍGIDOS) -->
     <div class="modal fade" id="modalNota" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header bg-dark text-white p-3">
-                    <h6 class="modal-title fw-bold" id="modalNotaTitulo">Instrucción Especial</h6>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="modalNotaTitulo">
+                            <i class="bi bi-pencil-square text-warning me-2"></i>Nota de Preparación
+                        </h6>
+                        <small class="text-white-50" style="font-size: 0.78rem;">Instrucción libre para Cocina o Barra</small>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="notaProductoId">
-                    <label class="form-label small fw-bold text-muted">Escribe o selecciona instrucción:</label>
-                    <input type="text" id="notaTextoInput" class="form-control mb-2" placeholder="Ej: sin cebolla, término medio...">
-                    
-                    <div class="d-flex flex-wrap gap-1">
-                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin cebolla')">Sin cebolla</span>
-                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Término medio')">Término medio</span>
-                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin hielo')">Sin hielo</span>
-                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Sin sal')">Sin sal</span>
-                        <span class="badge bg-light text-dark border pointer" onclick="agregarNotaRapida('Hielo aparte')">Hielo aparte</span>
-                    </div>
+                    <label class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
+                    <textarea id="notaTextoInput" class="form-control mb-2" rows="3" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, poco hielo..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
+                    <small class="text-muted d-block">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> Escribe libremente lo que el cliente solicita. Aparecerá destacado en el ticket debajo del producto.
+                    </small>
                 </div>
-                <div class="modal-footer p-2 bg-light">
-                    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3" onclick="guardarNota()">Guardar Nota</button>
+                <div class="modal-footer p-2 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNota" onclick="quitarNota()">
+                        <i class="bi bi-trash me-1"></i> Quitar Nota
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" onclick="guardarNota()">
+                            <i class="bi bi-check2-circle me-1"></i> Guardar Nota
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -546,6 +568,13 @@
             document.getElementById('comandaComensales').innerText = `${num} ${num === 1 ? 'Persona' : 'Personas'}`;
         }
 
+        // Helper para sanitizar texto
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
         // Modificar Cantidad (+ / -)
         function modificarCantidad(id, nombre, precio, destino, delta) {
             if (!carrito[id]) {
@@ -570,6 +599,7 @@
             const btnDespachar = document.getElementById('btnDespacharComanda');
 
             let total = 0;
+            let totalItems = 0;
             let countCocina = 0;
             let countBarra = 0;
             let countSalon = 0;
@@ -586,22 +616,27 @@
                 items.forEach(item => {
                     const subtotal = item.precio * item.cantidad;
                     total += subtotal;
+                    totalItems += item.cantidad;
 
                     if (item.destino === 'COCINA') countCocina += item.cantidad;
                     else if (item.destino === 'BARRA') countBarra += item.cantidad;
                     else countSalon += item.cantidad;
 
                     html += `
-                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border bg-white">
-                            <div>
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border bg-white shadow-sm">
+                            <div style="max-width: 68%;">
                                 <div class="fw-bold small text-dark">${item.cantidad}x ${item.nombre}</div>
-                                ${item.nota ? `<small class="text-danger d-block fst-italic"><i class="bi bi-chat-left-dots me-1"></i>${item.nota}</small>` : ''}
+                                ${item.nota ? `
+                                    <div class="comanda-item-nota">
+                                        <strong class="text-danger">👉 NOTA:</strong> ${escapeHtml(item.nota)}
+                                    </div>
+                                ` : ''}
                                 <small class="text-muted">$${item.precio.toLocaleString('es-CL')} c/u</small>
                             </div>
                             <div class="text-end">
-                                <span class="fw-bold text-danger">$${subtotal.toLocaleString('es-CL')}</span>
-                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="modificarCantidad(${item.id}, '${item.nombre}', ${item.precio}, '${item.destino}', -${item.cantidad})" title="Eliminar ítem">
-                                    <i class="bi bi-x-circle"></i>
+                                <span class="fw-bold text-danger d-block">$${subtotal.toLocaleString('es-CL')}</span>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="modificarCantidad(${item.id}, '${escapeHtml(item.nombre)}', ${item.precio}, '${item.destino}', -${item.cantidad})" title="Eliminar ítem">
+                                    <i class="bi bi-x-circle fs-5"></i>
                                 </button>
                             </div>
                         </div>`;
@@ -615,40 +650,113 @@
             document.getElementById('contadorBarra').innerText = `${countBarra} ítems`;
             document.getElementById('contadorSalon').innerText = `${countSalon} ítems`;
 
-            // Actualizar Total
+            // Actualizar Total Desktop
             document.getElementById('totalComandaTexto').innerText = `$${total.toLocaleString('es-CL')}`;
+
+            // Actualizar Barra Flotante de Celular
+            const mobileMesa = document.getElementById('mobileComandaMesa');
+            const mobileTotal = document.getElementById('mobileComandaTotal');
+            if (mobileMesa && mobileTotal) {
+                mobileMesa.innerText = `${mesaSeleccionada.identificador} • ${totalItems} ${totalItems === 1 ? 'ítem' : 'ítems'}`;
+                mobileTotal.innerText = `$${total.toLocaleString('es-CL')}`;
+            }
+        }
+
+        // Desplazamiento fluido hacia la comanda en móvil
+        function scrollHaciaComanda() {
+            const panel = document.getElementById('panelComanda');
+            if (panel) {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // Vaciar Comanda
         function vaciarComanda() {
             carrito = {};
+            notasProductos = {};
             document.querySelectorAll('.qty-display').forEach(d => d.innerText = '0');
+            document.querySelectorAll('.btn-nota-plato').forEach(b => {
+                b.classList.remove('tiene-nota');
+                const span = b.querySelector('span');
+                if (span) span.innerText = 'Nota';
+            });
             renderizarComanda();
         }
 
-        // Modal de Notas
+        // Modal de Notas Libres
         function abrirNotaModal(id, nombre) {
             document.getElementById('notaProductoId').value = id;
-            document.getElementById('modalNotaTitulo').innerText = `Nota para: ${nombre}`;
-            document.getElementById('notaTextoInput').value = notasProductos[id] || '';
-            const modal = new bootstrap.Modal(document.getElementById('modalNota'));
+            document.getElementById('modalNotaTitulo').innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i>Nota para: ${nombre}`;
+            const notaActual = notasProductos[id] || (carrito[id] ? carrito[id].nota : '');
+            document.getElementById('notaTextoInput').value = notaActual;
+
+            const btnQuitar = document.getElementById('btnQuitarNota');
+            if (btnQuitar) {
+                btnQuitar.style.display = notaActual ? 'inline-block' : 'none';
+            }
+
+            const modalEl = document.getElementById('modalNota');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
             modal.show();
+
+            setTimeout(() => {
+                const input = document.getElementById('notaTextoInput');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 350);
         }
 
-        function agregarNotaRapida(texto) {
-            const input = document.getElementById('notaTextoInput');
-            input.value = input.value ? `${input.value}, ${texto}` : texto;
+        function quitarNota() {
+            const id = document.getElementById('notaProductoId').value;
+            document.getElementById('notaTextoInput').value = '';
+            guardarNota();
         }
 
         function guardarNota() {
             const id = document.getElementById('notaProductoId').value;
             const nota = document.getElementById('notaTextoInput').value.trim();
             notasProductos[id] = nota;
+
             if (carrito[id]) {
                 carrito[id].nota = nota;
+            } else if (nota) {
+                // Si el producto no estaba en el pedido, agregarlo con cantidad 1 automáticamente
+                const card = document.getElementById(`btnNota_${id}`)?.closest('.product-mesero-card');
+                if (card) {
+                    const btnMas = card.querySelector('.qty-control-btn[onclick*=", 1)"]');
+                    if (btnMas) {
+                        btnMas.click();
+                        if (carrito[id]) carrito[id].nota = nota;
+                    }
+                }
             }
+
+            // Actualizar estilo visual del botón
+            actualizarBotonNota(id, nota);
+
             renderizarComanda();
-            bootstrap.Modal.getInstance(document.getElementById('modalNota')).hide();
+            const modalEl = document.getElementById('modalNota');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        function actualizarBotonNota(id, nota) {
+            const btn = document.getElementById(`btnNota_${id}`);
+            const textSpan = document.getElementById(`btnNotaText_${id}`);
+            if (btn && textSpan) {
+                if (nota) {
+                    btn.classList.add('tiene-nota');
+                    const preview = nota.length > 14 ? nota.substring(0, 12) + '...' : nota;
+                    textSpan.innerHTML = `<i class="bi bi-check2 me-1"></i>${escapeHtml(preview)}`;
+                    btn.title = `Nota activa: ${nota}`;
+                } else {
+                    btn.classList.remove('tiene-nota');
+                    textSpan.innerText = 'Nota';
+                    btn.title = 'Agregar nota libre para cocina o barra';
+                }
+            }
         }
 
         // Abrir Modal de Impresión Inteligente
@@ -671,9 +779,13 @@
                 itemsCocina.forEach(it => {
                     htmlC += `
                         <div class="thermal-ticket-item">
-                            <span><strong>${it.cantidad}x</strong> ${it.nombre}</span>
+                            <span><strong>${it.cantidad}x</strong> ${escapeHtml(it.nombre)}</span>
                         </div>
-                        ${it.nota ? `<div class="thermal-ticket-note">* NOTA: ${it.nota}</div>` : ''}
+                        ${it.nota ? `
+                            <div class="thermal-ticket-note">
+                                👉 NOTA: ${escapeHtml(it.nota)}
+                            </div>
+                        ` : ''}
                     `;
                 });
                 containerCocina.innerHTML = htmlC;
@@ -692,9 +804,13 @@
                 itemsBarra.forEach(it => {
                     htmlB += `
                         <div class="thermal-ticket-item">
-                            <span><strong>${it.cantidad}x</strong> ${it.nombre}</span>
+                            <span><strong>${it.cantidad}x</strong> ${escapeHtml(it.nombre)}</span>
                         </div>
-                        ${it.nota ? `<div class="thermal-ticket-note">* NOTA: ${it.nota}</div>` : ''}
+                        ${it.nota ? `
+                            <div class="thermal-ticket-note">
+                                👉 NOTA: ${escapeHtml(it.nota)}
+                            </div>
+                        ` : ''}
                     `;
                 });
                 containerBarra.innerHTML = htmlB;
@@ -776,6 +892,19 @@
                 }
             });
         }
+
+        // Guardado rápido con tecla Enter en modal de notas
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputNota = document.getElementById('notaTextoInput');
+            if (inputNota) {
+                inputNota.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        guardarNota();
+                    }
+                });
+            }
+        });
     </script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/anti_doble_envio.js' %}"></script>
