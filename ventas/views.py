@@ -1196,7 +1196,12 @@ def mesero(request):
                 tiene_cocina = any(it.get('destino') == 'COCINA' for it in items_lista)
                 tiene_barra = any(it.get('destino') == 'BARRA' for it in items_lista)
 
-                if tiene_cocina or not tiene_barra:
+                # Fallback de seguridad si ningún ítem trae destino definido
+                if not tiene_cocina and not tiene_barra:
+                    tiene_cocina = True
+
+                zonas_despachadas = []
+                if tiene_cocina:
                     Ticket.objects.create(
                         pedido=nuevo_pedido,
                         codigo=f"COM-COC-{nuevo_pedido.id:04d}",
@@ -1204,6 +1209,7 @@ def mesero(request):
                         estado='EN_PROCESO',
                         contenido_impresion=f"Comanda Cocina (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                     )
+                    zonas_despachadas.append("Cocina")
                 if tiene_barra:
                     Ticket.objects.create(
                         pedido=nuevo_pedido,
@@ -1212,12 +1218,15 @@ def mesero(request):
                         estado='EN_PROCESO',
                         contenido_impresion=f"Comanda Barra (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                     )
+                    zonas_despachadas.append("Barra")
+
+                zonas_txt = " y ".join(zonas_despachadas)
 
             if es_ronda_adicional:
                 total_acumulado_txt = f"${int(venta.total):,}".replace(",", ".")
-                messages.success(request, f"¡Ronda #{num_ronda} agregada a la cuenta de {mesa_obj.identificador}! Tickets despachados con éxito a Cocina y Barra. Total acumulado: {total_acumulado_txt}")
+                messages.success(request, f"¡Ronda #{num_ronda} agregada a la cuenta de {mesa_obj.identificador}! Despachada con éxito a {zonas_txt}. Total acumulado: {total_acumulado_txt}")
             else:
-                messages.success(request, f"¡Cuenta abierta para {mesa_obj.identificador}! Comanda #{nuevo_pedido.id:04d} despachada con éxito a Cocina y Barra. Mesa marcada en atención.")
+                messages.success(request, f"¡Cuenta abierta para {mesa_obj.identificador}! Comanda #{nuevo_pedido.id:04d} despachada con éxito a {zonas_txt}. Mesa marcada en atención.")
 
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 

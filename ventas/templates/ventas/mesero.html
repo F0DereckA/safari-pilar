@@ -392,10 +392,17 @@
                         </h2>
                     </div>
 
-                    <!-- Botón Despachar Comanda y Generar Tickets Separados -->
-                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="abrirModalTickets()" disabled>
-                        <i class="bi bi-printer-fill me-2 fs-4"></i> Enviar a Cocina y Barra
+                    <!-- Botón Despachar Comanda Directo (Ágil para Hora Pico) -->
+                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="enviarComandaDirecta()" disabled>
+                        <i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a Cocina y Barra
                     </button>
+
+                    <!-- Acceso opcional a vista previa / reimpresión de tickets térmicos -->
+                    <div class="text-center mt-2" id="boxVerTicketsPreview" style="display: none;">
+                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none py-0" onclick="abrirModalTickets()">
+                            <i class="bi bi-receipt me-1"></i> Ver comanda térmica de 80mm
+                        </button>
+                    </div>
 
                     <!-- Botón Cerrar Cuenta y Cobrar Mesa (Lateral) -->
                     <button type="button" class="btn btn-success w-100 py-3 rounded-4 fw-bold mt-2 shadow-sm" id="btnCerrarCuentaLateral" style="display: none;" onclick="abrirModalCerrarCuenta()">
@@ -403,7 +410,7 @@
                     </button>
 
                     <small class="text-muted text-center d-block mt-2" style="font-size: 0.72rem;">
-                        <i class="bi bi-shield-check text-success me-1"></i> Imprime simultáneamente el ticket de cocina y el ticket de barra sin intervención manual.
+                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Despacho instantáneo a producción con alerta rápida para agilizar la atención en hora pico.
                     </small>
 
                 </div>
@@ -481,8 +488,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-check-circle-fill fs-3 text-success"></i>
                             <div>
-                                <strong>¡Comanda Enviada con Éxito a Producción!</strong>
-                                <div class="small">Se han generado 2 tickets independientes acorde al destino operativo de cada ítem:</div>
+                                <strong>¡Comanda de Producción Preparada!</strong>
+                                <div class="small" id="modalTicketsBannerMsg">Se emiten tickets únicamente para las zonas con pedidos reales:</div>
                             </div>
                         </div>
                     </div>
@@ -490,7 +497,7 @@
                     <div class="row g-4 justify-content-center">
                         
                         <!-- TICKET 1: COCINA (80mm Monocromático B&W Sin Emojis) -->
-                        <div class="col-md-6 d-flex justify-content-center">
+                        <div class="col-md-6 d-flex justify-content-center" id="colTicketCocina">
                             <div class="thermal-ticket-card" id="ticketTermicoCocina">
                                 <div class="thermal-ticket-header">
                                     <div class="thermal-header-company">SAFARI ADVENTURE</div>
@@ -542,7 +549,7 @@
                         </div>
 
                         <!-- TICKET 2: BARRA / CAFETERÍA (80mm Monocromático B&W Sin Emojis) -->
-                        <div class="col-md-6 d-flex justify-content-center">
+                        <div class="col-md-6 d-flex justify-content-center" id="colTicketBarra">
                             <div class="thermal-ticket-card" id="ticketTermicoBarra">
                                 <div class="thermal-ticket-header">
                                     <div class="thermal-header-company">SAFARI ADVENTURE</div>
@@ -605,8 +612,8 @@
                             <i class="bi bi-printer me-1"></i> Imprimir Comandas (80mm)
                         </button>
                     </div>
-                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="confirmarYAtenderOtra()">
-                        <i class="bi bi-arrow-right-circle me-1"></i> Atender Siguiente Mesa
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="enviarComandaDirecta()">
+                        <i class="bi bi-send-check-fill me-1"></i> Despachar Pedido a Preparar
                     </button>
                 </div>
             </div>
@@ -750,6 +757,10 @@
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- SweetAlert2 y Safari Alerts para Notificaciones Ágiles en Hora Pico -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'js/safari_alerts.js' %}"></script>
+
     <!-- Script Interactivo del Terminal de Meseros -->
     <script>
         // Cuentas Abiertas en el local (inyectadas desde Django view)
@@ -839,6 +850,7 @@
             let countBarra = 0;
             let countSalon = 0;
 
+            const boxVerTickets = document.getElementById('boxVerTicketsPreview');
             if (items.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
@@ -846,6 +858,7 @@
                         Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
                     </div>`;
                 btnDespachar.disabled = true;
+                if (boxVerTickets) boxVerTickets.style.display = 'none';
             } else {
                 let html = '';
                 items.forEach(item => {
@@ -878,6 +891,20 @@
                 });
                 container.innerHTML = html;
                 btnDespachar.disabled = false;
+                if (boxVerTickets) boxVerTickets.style.display = 'block';
+
+                const tieneCocina = items.some(it => it.destino === 'COCINA');
+                const tieneBarra = items.some(it => it.destino === 'BARRA');
+                let destinoLabel = 'Cocina y Barra';
+                if (tieneCocina && !tieneBarra) destinoLabel = 'Cocina';
+                else if (!tieneCocina && tieneBarra) destinoLabel = 'Barra';
+
+                const esCuentaAbierta = !!(cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)]);
+                if (esCuentaAbierta) {
+                    btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar Ronda a ${destinoLabel}`;
+                } else {
+                    btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a ${destinoLabel}`;
+                }
             }
 
             // Actualizar contadores por zona de impresión
@@ -997,6 +1024,16 @@
         // Abrir Modal de Impresión Inteligente
         function abrirModalTickets() {
             const items = Object.values(carrito);
+            if (items.length === 0) {
+                if (typeof swalToast !== 'undefined') {
+                    swalToast.fire({
+                        icon: 'warning',
+                        title: 'La comanda está vacía. Selecciona productos antes de ver los tickets.'
+                    });
+                }
+                return;
+            }
+
             const itemsCocina = items.filter(i => i.destino === 'COCINA');
             const itemsBarra = items.filter(i => i.destino === 'BARRA');
 
@@ -1005,15 +1042,19 @@
             const horaStr = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const numeroComanda = Math.floor(1000 + Math.random() * 9000);
 
-            // Poblar Ticket Cocina
-            document.getElementById('tikCocinaCodigo').innerText = `#COC-${numeroComanda}`;
-            document.getElementById('tikCocinaFecha').innerText = fechaStr;
-            document.getElementById('tikCocinaHora').innerText = horaStr;
-            document.getElementById('tikCocinaMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
+            const colCocina = document.getElementById('colTicketCocina');
+            const colBarra = document.getElementById('colTicketBarra');
+            const bannerMsg = document.getElementById('modalTicketsBannerMsg');
 
-            const containerCocina = document.getElementById('tikCocinaItems');
+            // Poblar y Gestionar Visibilidad Ticket Cocina (Cero Desperdicio de Papel)
             let totalItemsCocina = 0;
             if (itemsCocina.length > 0) {
+                if (colCocina) colCocina.style.display = 'flex';
+                document.getElementById('tikCocinaCodigo').innerText = `#COC-${numeroComanda}`;
+                document.getElementById('tikCocinaFecha').innerText = fechaStr;
+                document.getElementById('tikCocinaHora').innerText = horaStr;
+                document.getElementById('tikCocinaMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
+
                 let htmlC = '';
                 itemsCocina.forEach(it => {
                     totalItemsCocina += it.cantidad;
@@ -1029,21 +1070,22 @@
                         ` : ''}
                     `;
                 });
-                containerCocina.innerHTML = htmlC;
+                document.getElementById('tikCocinaItems').innerHTML = htmlC;
             } else {
-                containerCocina.innerHTML = '<div class="text-center text-muted small py-2">-- SIN ITEMS DE COCINA --</div>';
+                if (colCocina) colCocina.style.display = 'none';
+                document.getElementById('tikCocinaItems').innerHTML = '';
             }
             document.getElementById('tikCocinaTotalItems').innerText = totalItemsCocina;
 
-            // Poblar Ticket Barra
-            document.getElementById('tikBarraCodigo').innerText = `#BAR-${numeroComanda}`;
-            document.getElementById('tikBarraFecha').innerText = fechaStr;
-            document.getElementById('tikBarraHora').innerText = horaStr;
-            document.getElementById('tikBarraMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
-
-            const containerBarra = document.getElementById('tikBarraItems');
+            // Poblar y Gestionar Visibilidad Ticket Barra (Cero Desperdicio de Papel)
             let totalItemsBarra = 0;
             if (itemsBarra.length > 0) {
+                if (colBarra) colBarra.style.display = 'flex';
+                document.getElementById('tikBarraCodigo').innerText = `#BAR-${numeroComanda}`;
+                document.getElementById('tikBarraFecha').innerText = fechaStr;
+                document.getElementById('tikBarraHora').innerText = horaStr;
+                document.getElementById('tikBarraMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
+
                 let htmlB = '';
                 itemsBarra.forEach(it => {
                     totalItemsBarra += it.cantidad;
@@ -1059,19 +1101,77 @@
                         ` : ''}
                     `;
                 });
-                containerBarra.innerHTML = htmlB;
+                document.getElementById('tikBarraItems').innerHTML = htmlB;
             } else {
-                containerBarra.innerHTML = '<div class="text-center text-muted small py-2">-- SIN ITEMS DE BARRA --</div>';
+                if (colBarra) colBarra.style.display = 'none';
+                document.getElementById('tikBarraItems').innerHTML = '';
             }
             document.getElementById('tikBarraTotalItems').innerText = totalItemsBarra;
+
+            // Actualizar Mensaje Informativo en Encabezado del Modal
+            if (bannerMsg) {
+                if (itemsCocina.length > 0 && itemsBarra.length > 0) {
+                    bannerMsg.innerText = 'Se emitirán 2 tickets independientes (Cocina y Barra) según destino:';
+                } else if (itemsCocina.length > 0) {
+                    bannerMsg.innerText = 'Comanda destinada únicamente a Cocina Caliente (sin desperdicio de papel en Barra).';
+                } else {
+                    bannerMsg.innerText = 'Comanda destinada únicamente a Barra / Bebidas (sin desperdicio de papel en Cocina).';
+                }
+            }
 
             const modal = new bootstrap.Modal(document.getElementById('modalTickets'));
             modal.show();
         }
 
+        // Despacho Directo e Instantáneo con Alerta Rápida para Hora Pico
+        function enviarComandaDirecta() {
+            const items = Object.values(carrito);
+            if (items.length === 0) {
+                if (typeof swalToast !== 'undefined') {
+                    swalToast.fire({
+                        icon: 'warning',
+                        title: 'La comanda está vacía. Selecciona productos antes de enviar.'
+                    });
+                }
+                return;
+            }
+
+            // Ocultar modal de vista previa si estaba abierto
+            const modalTicketsEl = document.getElementById('modalTickets');
+            const modalTicketsInstance = bootstrap.Modal.getInstance(modalTicketsEl);
+            if (modalTicketsInstance) {
+                modalTicketsInstance.hide();
+            }
+
+            const tieneCocina = items.some(i => i.destino === 'COCINA');
+            const tieneBarra = items.some(i => i.destino === 'BARRA');
+            let destinoTexto = 'Cocina y Barra';
+            if (tieneCocina && !tieneBarra) destinoTexto = 'Cocina';
+            else if (!tieneCocina && tieneBarra) destinoTexto = 'Barra';
+
+            const btnDespachar = document.getElementById('btnDespacharComanda');
+            if (btnDespachar) {
+                btnDespachar.disabled = true;
+                btnDespachar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando a preparar...';
+            }
+
+            // Notificación rápida Toast para no detener el ritmo en salón
+            if (typeof swalToast !== 'undefined') {
+                swalToast.fire({
+                    icon: 'success',
+                    title: `¡Pedido enviado a preparar a ${destinoTexto}!`
+                });
+            }
+
+            // Disparar envío formal de comanda
+            ejecutarEnvioComandaForm();
+        }
+
         function confirmarYAtenderOtra() {
-            bootstrap.Modal.getInstance(document.getElementById('modalTickets')).hide();
-            
+            enviarComandaDirecta();
+        }
+
+        function ejecutarEnvioComandaForm() {
             // Enviar datos al backend para persistir la comanda y tickets
             const form = document.createElement('form');
             form.method = 'POST';
@@ -1169,7 +1269,7 @@
                 if (labelTotalComanda) labelTotalComanda.innerText = 'Nueva Ronda:';
 
                 if (btnDespachar) {
-                    btnDespachar.innerHTML = '<i class="bi bi-printer-fill me-2 fs-4"></i> Enviar Ronda Adicional a Cocina/Barra';
+                    btnDespachar.innerHTML = '<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar Ronda Adicional';
                 }
             } else {
                 if (banner) banner.style.display = 'none';
@@ -1177,7 +1277,7 @@
                 if (btnCerrarLateral) btnCerrarLateral.style.display = 'none';
                 if (labelTotalComanda) labelTotalComanda.innerText = 'Total Comanda:';
                 if (btnDespachar) {
-                    btnDespachar.innerHTML = '<i class="bi bi-printer-fill me-2 fs-4"></i> Enviar a Cocina y Barra';
+                    btnDespachar.innerHTML = '<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a Cocina y Barra';
                 }
             }
         }
@@ -1231,6 +1331,18 @@
 
         // Guardado rápido con tecla Enter en modal de notas
         document.addEventListener('DOMContentLoaded', () => {
+            // Disparar notificación flotante Toast en hora pico con mensajes del sistema
+            {% if messages %}
+                {% for message in messages %}
+                    if (typeof swalToast !== 'undefined') {
+                        swalToast.fire({
+                            icon: '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% else %}success{% endif %}',
+                            title: '{{ message|escapejs }}'
+                        });
+                    }
+                {% endfor %}
+            {% endif %}
+
             const inputNota = document.getElementById('notaTextoInput');
             if (inputNota) {
                 inputNota.addEventListener('keydown', (e) => {

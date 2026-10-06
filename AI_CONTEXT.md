@@ -6,31 +6,24 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Estandarización de Tickets Térmicos de Cocina y Barra a 80mm (8 cm) Monocromático Blanco y Negro sin Emojis según Pauta del Docente (100% OK)**.
-- resultado esperado: Los tickets de comanda para Cocina y Barra se ajustan con fidelidad absoluta a la boleta real de Parque Safari (`SAFARI ADVENTURE SAC`, `RUT: 76.041.631-2`) entregada por el docente: diseño 100% monocromático blanco y negro, ancho estricto de 80mm (8 cm), corte dentado (sawtooth), tipografía monoespaciada Courier, notas de preparación en texto plano `* NOTA: <INSTRUCCION>`, sin ningún tipo de emoji (evitando manchas o caracteres corruptos en hardware térmico ESC/POS) y soporte de impresión directa vía `@media print` con botón de impresión rápida.
+- tarea actual: **Despacho Ágil en Hora Pico y Cero Desperdicio de Papel Térmico en Comandas de Cocina/Barra (100% OK)**.
+- resultado esperado: En hora pico el mesero despacha pedidos a producción con 1 solo clic mediante alerta rápida (SweetAlert Toast) sin modales bloqueantes intermedios. Los tickets físicos térmicos se generan e imprimen única y exclusivamente para las áreas que contienen productos reales (si solo hay cocina, se emite únicamente ticket de cocina; si solo hay bebidas, únicamente ticket de barra), eliminando por completo la emisión de tickets vacíos y garantizando cero desperdicio de papel térmico en comanderas.
 
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **23 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (23/23 OK)**.
-- último avance: **Estandarización de Tickets Térmicos de Producción para Cocina y Barra (80mm B&W)**:
-  - **Membrete Legal Idéntico al Voucher del Docente**:
-    - Empresa: `SAFARI ADVENTURE` / `SAFARI ADVENTURE SAC`
-    - Identificación Tributaria: `RUT: 76.041.631-2`
-    - Dirección legal: `CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38, LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS`
-    - Lugar de expedición dinámico: `{{ local_actual.nombre|upper }}`
-  - **Erradicación Total de Emojis en Impresión Térmica**:
-    - Retiro de emojis (`🔥`, `🍹`, `👉`) en títulos, badges, líneas de ítems y notas de comandas.
-    - Notas formateadas de manera estándar para comandera física: `* NOTA: <TEXTO EN MAYÚSCULAS>` (ej. `* NOTA: SIN QUESO CHEDDAR`).
-    - Limpieza homogénea aplicada en `mesero.html`, `vendedor.html` y `vendedor_crear_ticket.html`.
-  - **Formato Físico 8 cm (80mm) y Tipografía Monocromo**:
-    - Dimensiones acotadas a `width: 80mm; max-width: 320px;` en pantalla y `80mm` en papel.
-    - Tipografía monoespaciada `Courier New, monospace`, tinta negra pura `#000000` sobre papel blanco térmico `#ffffff`.
-    - Separadores estandarizados tipo ESC/POS (`================================================` y `------------------------------------------------`).
-    - Simulación de corte dentado superior e inferior (*sawtooth pattern*).
-  - **Soporte de Impresión Directa ESC/POS (`@media print`)**:
-    - Regla de impresión configurada para aislar la comanda térmica a 80mm continuo por tickets sin márgenes ni encabezados de navegador.
-    - Botón "Imprimir Comandas (80mm)" integrado en el modal `#modalTickets`.
-  - **Validación Automatizada**: Las 23 pruebas de Django continúan pasando al 100% (`Ran 23 tests - OK`).
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **24 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (24/24 OK)**.
+- último avance: **Despacho Ágil en Hora Pico y Cero Desperdicio de Papel Térmico (Sin Tickets Vacíos)**:
+  - **Eliminación Total de Tickets Vacíos (Ahorro de Papel Térmico)**:
+    - En `ventas/views.py`: Al procesar `enviar_comanda`, el backend evalúa los destinos reales de los productos (`COCINA` vs. `BARRA`). Si una comanda solo contiene comida (ej. Cazuela de Ave), únicamente se crea el `Ticket` para Cocina. Si solo contiene bebidas, únicamente para Barra. Jamás se genera un ticket vacío con 0 ítems.
+    - Mensajes precisos del sistema: El mensaje de éxito y la notificación indican exactamente a qué estaciones se despachó (`Cocina`, `Barra` o `Cocina y Barra`).
+    - En el modal de tickets térmicos (`#modalTickets`): La columna sin productos se oculta automáticamente (`display: none`), y la regla `@media print` en `mesero.css` garantiza que las impresoras físicas ESC/POS de 80mm no expidan tiras en blanco.
+  - **Flujo Ágil para Hora Pico (Sin Modales Bloqueantes Obligatorios)**:
+    - El botón principal de comanda despacha de inmediato a producción (`enviarComandaDirecta()`), adaptando dinámicamente su texto (`Enviar a Cocina`, `Enviar a Barra` o `Enviar a Cocina y Barra` / `Enviar Ronda a...`).
+    - Se despliega una notificación rápida flotante (`swalToast` de SweetAlert2: *"¡Pedido enviado a preparar a Cocina!"*) y se envía el formulario al backend en milisegundos, permitiendo al mesero continuar tomando órdenes de otras mesas sin fricciones.
+    - La vista previa de los tickets térmicos de 80mm queda disponible de forma opcional bajo demanda mediante el enlace *"Ver comanda térmica de 80mm"*.
+  - **Suite Automatizada de 24 Pruebas Oficiales (`ventas/tests.py`)**:
+    - Se incorporó la prueba `test_cero_desperdicio_papel_comandas_sin_tickets_vacios`, certificando que al pedir solo cocina no se crea ticket de barra (y viceversa) y que los mensajes de despacho corresponden a las áreas efectivas. 24 de 24 tests aprobados (`Ran 24 tests in 60.148s - OK`).
 - avances previos:
+  - Estandarización de tickets térmicos de Cocina y Barra a 80mm B&W sin emojis según boleta oficial de Parque Safari.
   - Implementación completa de Mesa/Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero.
   - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
   - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.

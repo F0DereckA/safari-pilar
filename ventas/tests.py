@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta
+from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, Ticket
 
 
 class SafariFase2A1Tests(TestCase):
@@ -547,5 +547,47 @@ class SafariFase2A1Tests(TestCase):
         # Cajero no tiene selector de mesas ni cuentas abiertas en su terminal
         self.assertNotContains(resp_terminal, "Selecciona o Asigna una Mesa")
         self.assertNotContains(resp_terminal, "Cuenta Abierta")
+
+    # 24. Cero desperdicio de papel térmico: comanda solo genera tickets para destinos con productos reales
+    def test_cero_desperdicio_papel_comandas_sin_tickets_vacios(self):
+        self.client.force_login(self.mesero_user)
+        local = PuntoVenta.objects.first()
+        mesa = Mesa.objects.filter(punto_venta=local).first()
+        if not mesa:
+            mesa = Mesa.objects.create(identificador="Mesa 3", punto_venta=local, capacidad=4)
+
+        # Caso A: Pedido únicamente de Cocina (ej. Cazuela de Ave) -> NO debe generar ticket de Barra vacío
+        items_solo_cocina = [
+            {"nombre": "Cazuela de Ave Criolla", "cantidad": 1, "precio": 7500, "destino": "COCINA", "nota": "Sin cilantro"}
+        ]
+        resp_cocina = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_solo_cocina)
+        }, follow=True)
+        self.assertContains(resp_cocina, "despachada con éxito a Cocina")
+        self.assertNotContains(resp_cocina, "despachada con éxito a Cocina y Barra")
+
+        venta = Venta.objects.filter(mesa=mesa, punto_venta=local, estado='ABIERTA').first()
+        pedido_cocina = venta.pedidos.order_by('id').first()
+        # Verificar que se creó ticket de Cocina y NO de Barra
+        self.assertTrue(Ticket.objects.filter(pedido=pedido_cocina, tipo_destino='COCINA').exists())
+        self.assertFalse(Ticket.objects.filter(pedido=pedido_cocina, tipo_destino='BARRA').exists())
+
+        # Caso B: Ronda adicional únicamente de Barra (ej. Jugo Natural) -> NO debe generar ticket de Cocina vacío
+        items_solo_barra = [
+            {"nombre": "Jugo Natural Frambuesa 400ml", "cantidad": 1, "precio": 2500, "destino": "BARRA", "nota": "Bajo en azúcar"}
+        ]
+        resp_barra = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_solo_barra)
+        }, follow=True)
+        self.assertContains(resp_barra, "Despachada con éxito a Barra")
+
+        pedido_barra = venta.pedidos.order_by('id').last()
+        self.assertTrue(Ticket.objects.filter(pedido=pedido_barra, tipo_destino='BARRA').exists())
+        self.assertFalse(Ticket.objects.filter(pedido=pedido_barra, tipo_destino='COCINA').exists())
+
 
 
