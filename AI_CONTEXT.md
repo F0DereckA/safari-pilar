@@ -9,8 +9,10 @@
 - tarea actual: **RF04.1 — Aislamiento operativo por Punto de Venta para Mesero y corrección de fallbacks arbitrarios**.
 - resultado esperado: Corregir únicamente las inconsistencias operativas detectadas en la auditoría RF04 sin construir todavía el CRUD de Puntos de Venta ni modificar catálogo, ventas o dashboard.
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Carpeta temporal de la versión 29-Sep eliminada conforme a solicitud del usuario.
-- último avance: Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor apagado limpiamente.
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Centro de alertas en detalle de local unificado en campana de notificaciones interactiva y banners invasivos del cuerpo removidos.
+- último avance: Unificación del Centro de Alertas en Detalle de Local (`/administrador/local/<local_id>/`): Se eliminaron los banners invasivos del cuerpo de la página que ocupaban espacio excesivo y no se podían descartar. Se implementó en la cabecera la campana de notificaciones idéntica a la del panel de administración central, con badge contador dinámico, dropdown desplegable con detalle de traslados salientes/entrantes, y descarte/marcado como leído asíncrono vía AJAX sin recargar la página.
+- avances previos:
+  - Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor ejecutándose en background.
 - último avance técnico (Auditoría RF04):
   - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
   - Levantamiento completo de dependencias en base de datos vs. mock hardcodeado (`get_locales_data()`).

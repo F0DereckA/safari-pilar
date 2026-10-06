@@ -549,6 +549,26 @@ def administrador(request):
 @requiere_rol(['ADMINISTRADOR'])
 def administrador_local(request, local_id):
     """Página detallada de la jornada y personal de un local específico"""
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'marcar_leida_alerta':
+            alerta_id = request.POST.get('alerta_id')
+            if alerta_id == 'todas':
+                AlertaTraslado.objects.filter(
+                    models.Q(punto_venta_origen_id=local_id) | models.Q(punto_venta_destino_id=local_id),
+                    leida=False
+                ).update(leida=True)
+            elif alerta_id:
+                AlertaTraslado.objects.filter(id=alerta_id).update(leida=True)
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                pendientes = AlertaTraslado.objects.filter(
+                    models.Q(punto_venta_origen_id=local_id) | models.Q(punto_venta_destino_id=local_id),
+                    leida=False
+                ).count()
+                return JsonResponse({'status': 'ok', 'pendientes': pendientes})
+            return redirect('administrador_local', local_id=local_id)
+
     locales = get_locales_data()
     if local_id not in locales:
         raise Http404("El local gastronómico solicitado no existe.")
@@ -558,12 +578,17 @@ def administrador_local(request, local_id):
     # Alertas de traslado que involucran a este local (salientes o entrantes)
     alertas_local = AlertaTraslado.objects.filter(
         models.Q(punto_venta_origen_id=local_id) | models.Q(punto_venta_destino_id=local_id)
-    ).select_related('empleado', 'punto_venta_origen', 'punto_venta_destino').order_by('-fecha_hora')[:5]
+    ).select_related('empleado', 'punto_venta_origen', 'punto_venta_destino').order_by('-fecha_hora')[:10]
+    total_alertas_no_leidas = AlertaTraslado.objects.filter(
+        models.Q(punto_venta_origen_id=local_id) | models.Q(punto_venta_destino_id=local_id),
+        leida=False
+    ).count()
 
     context = {
         "local": local,
         "locales": locales.values(),
         "alertas_local": alertas_local,
+        "total_alertas_no_leidas": total_alertas_no_leidas,
     }
     return render(request, 'ventas/administrador_local.html', context)
 

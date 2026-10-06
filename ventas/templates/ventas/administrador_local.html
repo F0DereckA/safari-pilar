@@ -17,6 +17,26 @@
     <!-- Estilos Externos Modulares con Cache-Buster -->
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.1">
     <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.1">
+    <style>
+        .btn-safari-header {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .btn-safari-header:hover,
+        .btn-safari-header:focus {
+            background-color: #fff4f2 !important;
+            border-color: var(--safari-red-dark, #821414) !important;
+            color: var(--safari-red-dark, #821414) !important;
+            box-shadow: 0 0 16px rgba(167, 29, 29, 0.48), 0 4px 12px rgba(167, 29, 29, 0.22) !important;
+            transform: translateY(-1.5px) !important;
+        }
+        .btn-safari-header i {
+            transition: transform 0.2s ease;
+        }
+        .btn-safari-header:hover i,
+        .btn-safari-header:focus i {
+            transform: scale(1.15);
+        }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -39,6 +59,90 @@
 
                 <!-- Navegación y Salida -->
                 <div class="d-flex align-items-center gap-2">
+                    <!-- Centro de Alertas como Ícono Notificador -->
+                    <div class="dropdown">
+                        <button class="btn btn-light btn-sm position-relative rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" type="button" id="dropdownAlertas" data-bs-toggle="dropdown" aria-expanded="false" title="Centro de Alertas de Traslado" style="width: 38px; height: 38px; border: 1.5px solid var(--safari-cafe-medium); background-color: #ffffff;">
+                            <i class="bi bi-bell-fill text-warning fs-5"></i>
+                            {% if total_alertas_no_leidas > 0 %}
+                            <span id="badgeAlertasCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white" style="font-size: 0.65rem;">
+                                {{ total_alertas_no_leidas }}
+                                <span class="visually-hidden">Alertas no leídas</span>
+                            </span>
+                            {% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-3 mt-2" aria-labelledby="dropdownAlertas" style="min-width: 360px; max-width: 420px; z-index: 1050;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-bold text-dark fs-6">
+                                        <i class="bi bi-bell-fill text-warning me-1"></i> Alertas del Local
+                                    </span>
+                                    <span id="badgeAlertasEstado" class="badge {% if total_alertas_no_leidas > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %} rounded-pill px-2 py-1 small fw-bold">
+                                        {% if total_alertas_no_leidas > 0 %}{{ total_alertas_no_leidas }} en vivo{% else %}Al día{% endif %}
+                                    </span>
+                                </div>
+                                {% if total_alertas_no_leidas > 0 %}
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted p-0" id="btnMarcarTodasLeidas" style="font-size: 0.75rem;" title="Marcar todas como leídas">
+                                    <i class="bi bi-check2-all text-primary me-1"></i>Marcar leídas
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            {% if alertas_local %}
+                            <div class="d-flex flex-column gap-2" style="max-height: 280px; overflow-y: auto;">
+                                {% for a in alertas_local %}
+                                <div class="p-2 rounded-3 bg-light border {% if not a.leida %}border-warning shadow-xs{% else %}border-light-subtle text-muted{% endif %} small alerta-item" id="alerta-item-{{ a.id }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="d-flex align-items-center gap-1">
+                                            {% if not a.leida %}
+                                            <span class="badge bg-warning text-dark p-1 me-1 badge-alerta-nueva" style="font-size: 0.6rem;">NUEVA</span>
+                                            {% endif %}
+                                            <strong class="text-dark">
+                                                <i class="bi bi-person-fill text-danger me-1"></i>{{ a.empleado.get_full_name|default:a.empleado.username }}
+                                            </strong>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <small class="text-muted font-monospace"><i class="bi bi-clock me-1"></i>{{ a.fecha_hora|date:"H:i" }} hrs</small>
+                                            {% if not a.leida %}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary p-0 px-1 border-0 btn-descartar-alerta" data-alerta-id="{{ a.id }}" title="Marcar como leída">
+                                                <i class="bi bi-check-lg text-success fw-bold"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.8rem;">
+                                        {% if a.punto_venta_origen.id == local.id %}
+                                        <span class="badge bg-warning-subtle text-dark border">Saliente</span>
+                                        <i class="bi bi-arrow-right mx-1 text-danger fw-bold"></i>
+                                        <span class="badge bg-danger-subtle text-danger">{{ a.punto_venta_destino.nombre }}</span>
+                                        {% else %}
+                                        <span class="badge bg-primary-subtle text-primary border">Entrante</span>
+                                        <span class="badge bg-secondary-subtle text-dark ms-1">{% if a.punto_venta_origen %}{{ a.punto_venta_origen.nombre }}{% else %}Sin Asignar{% endif %}</span>
+                                        <i class="bi bi-arrow-right mx-1 text-primary fw-bold"></i>
+                                        <span class="badge bg-success-subtle text-success">{{ local.nombre }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if a.motivo %}
+                                    <div class="text-muted fst-italic mt-1" style="font-size: 0.75rem;">
+                                        "{{ a.motivo }}"
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="text-center pt-2 mt-2 border-top">
+                                <a href="{% url 'administrador_trabajadores' %}" class="btn btn-sm btn-outline-danger w-100 rounded-pill fw-bold">
+                                    <i class="bi bi-people-fill me-1"></i> Gestionar Dotación y Traslados
+                                </a>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-3 text-muted">
+                                <i class="bi bi-check-circle-fill text-success fs-3 d-block mb-1"></i>
+                                <span class="small">No hay alertas de traslado para este local.</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
                     <a href="{% url 'administrador' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
                         <i class="bi bi-arrow-left me-1 text-danger"></i> Volver a Locales
                     </a>
@@ -109,47 +213,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Alertas de Traslado que involucran a este punto de venta -->
-        {% if alertas_local %}
-        <div class="mb-4">
-            {% for a in alertas_local %}
-                {% if a.punto_venta_origen.id == local.id %}
-                <div class="alert-traslado-banner mb-2">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
-                            <div>
-                                <span class="badge bg-warning text-dark px-2 py-1 fw-bold me-1">ALERTA DE TRASLADO SALIENTE</span>
-                                <strong>El colaborador {{ a.empleado.get_full_name|default:a.empleado.username }} se ha movido a {{ a.punto_venta_destino.nombre }}.</strong>
-                                <small class="text-muted d-block">Motivo informado: <em>"{{ a.motivo }}"</em></small>
-                            </div>
-                        </div>
-                        <span class="badge bg-light text-dark border px-3 py-2 font-monospace">
-                            <i class="bi bi-clock me-1 text-danger"></i>{{ a.fecha_hora|date:"H:i" }} hrs
-                        </span>
-                    </div>
-                </div>
-                {% else %}
-                <div class="alert-traslado-banner-incoming mb-2">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-bell-fill fs-4 text-primary"></i>
-                            <div>
-                                <span class="badge bg-primary text-white px-2 py-1 fw-bold me-1">ALERTA DE REASIGNACIÓN ENTRANTE</span>
-                                <strong>El colaborador {{ a.empleado.get_full_name|default:a.empleado.username }} ha sido trasladado a este local desde {% if a.punto_venta_origen %}{{ a.punto_venta_origen.nombre }}{% else %}Sin Asignar{% endif %}.</strong>
-                                <small class="text-muted d-block">Motivo informado: <em>"{{ a.motivo }}"</em></small>
-                            </div>
-                        </div>
-                        <span class="badge bg-light text-dark border px-3 py-2 font-monospace">
-                            <i class="bi bi-clock me-1 text-primary"></i>{{ a.fecha_hora|date:"H:i" }} hrs
-                        </span>
-                    </div>
-                </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-        {% endif %}
 
         <!-- Grilla de Métricas de Caja y Ventas del Local -->
         <div class="row g-3 mb-4">
@@ -394,5 +457,120 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script para Gestión Dinámica del Centro de Alertas del Local -->
+    <form id="formCsrfAlertas" style="display:none;">{% csrf_token %}</form>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropdownAlertasBtn = document.getElementById('dropdownAlertas');
+        if (!dropdownAlertasBtn) return;
+
+        const csrfToken = document.querySelector('#formCsrfAlertas [name=csrfmiddlewaretoken]')?.value || '';
+
+        function marcarAlertasLeidas(alertaId = 'todas') {
+            const formData = new FormData();
+            formData.append('accion', 'marcar_leida_alerta');
+            formData.append('alerta_id', alertaId);
+
+            fetch('{% url "administrador_local" local.id %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    if (alertaId === 'todas') {
+                        // Ocultar suavemente el badge contador de la campana
+                        const badgeCount = document.getElementById('badgeAlertasCount');
+                        if (badgeCount) {
+                            badgeCount.style.transition = 'all 0.3s ease';
+                            badgeCount.style.opacity = '0';
+                            badgeCount.style.transform = 'scale(0.5)';
+                            setTimeout(() => { badgeCount.remove(); }, 300);
+                        }
+
+                        // Actualizar badge interior
+                        const badgeEstado = document.getElementById('badgeAlertasEstado');
+                        if (badgeEstado) {
+                            badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
+                            badgeEstado.textContent = 'Al día';
+                        }
+
+                        // Ocultar botón de marcar todas
+                        const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
+                        if (btnMarcar) btnMarcar.remove();
+
+                        // Quitar etiquetas NUEVA y botones individuales
+                        document.querySelectorAll('.badge-alerta-nueva').forEach(el => el.remove());
+                        document.querySelectorAll('.btn-descartar-alerta').forEach(el => el.remove());
+                        document.querySelectorAll('.alerta-item').forEach(el => {
+                            el.classList.remove('border-warning');
+                            el.classList.add('border-light-subtle', 'text-muted');
+                        });
+                    } else {
+                        // Si se descartó una individual
+                        const item = document.getElementById(`alerta-item-${alertaId}`);
+                        if (item) {
+                            item.querySelector('.badge-alerta-nueva')?.remove();
+                            item.querySelector('.btn-descartar-alerta')?.remove();
+                            item.classList.remove('border-warning');
+                            item.classList.add('border-light-subtle', 'text-muted');
+                        }
+                        const badgeCount = document.getElementById('badgeAlertasCount');
+                        if (badgeCount) {
+                            if (data.pendientes > 0) {
+                                badgeCount.textContent = data.pendientes;
+                            } else {
+                                badgeCount.remove();
+                                const badgeEstado = document.getElementById('badgeAlertasEstado');
+                                if (badgeEstado) {
+                                    badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
+                                    badgeEstado.textContent = 'Al día';
+                                }
+                                const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
+                                if (btnMarcar) btnMarcar.remove();
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Error al actualizar alertas del local:', err));
+        }
+
+        // 1. Al abrir el dropdown de alertas, marcarlas automáticamente como leídas
+        const dropdownElement = dropdownAlertasBtn.closest('.dropdown');
+        if (dropdownElement) {
+            dropdownElement.addEventListener('show.bs.dropdown', function () {
+                const badgeCount = document.getElementById('badgeAlertasCount');
+                if (badgeCount) {
+                    marcarAlertasLeidas('todas');
+                }
+            });
+        }
+
+        // 2. Botón explícito "Marcar leídas"
+        const btnMarcarTodas = document.getElementById('btnMarcarTodasLeidas');
+        if (btnMarcarTodas) {
+            btnMarcarTodas.addEventListener('click', function (e) {
+                e.stopPropagation();
+                marcarAlertasLeidas('todas');
+            });
+        }
+
+        // 3. Botones individuales para descartar/leer una alerta específica
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-descartar-alerta');
+            if (btn) {
+                e.stopPropagation();
+                const alertaId = btn.getAttribute('data-alerta-id');
+                marcarAlertasLeidas(alertaId);
+            }
+        });
+    });
+    </script>
 </body>
 </html>
