@@ -459,4 +459,93 @@ class SafariFase2A1Tests(TestCase):
         self.assertContains(resp_admin_local, "Mesero")
         self.assertContains(resp_admin_local, "$19.800")
 
+    # 21. Mesa con Cuenta Abierta acumula rondas incrementales en la misma Venta
+    def test_cuenta_abierta_rondas_incrementales_en_misma_mesa(self):
+        self.client.force_login(self.mesero_user)
+        local = PuntoVenta.objects.first()
+        mesa = Mesa.objects.filter(punto_venta=local).first()
+        if not mesa:
+            mesa = Mesa.objects.create(identificador="Mesa 2", punto_venta=local, capacidad=4)
+
+        # Ronda 1: Plato y bebida
+        ronda1_items = [
+            {"nombre": "Hamburguesa Safari con Papas", "cantidad": 1, "precio": 8900, "destino": "COCINA", "nota": "Sin cebolla"},
+            {"nombre": "Coca Cola Original 350ml", "cantidad": 1, "precio": 1800, "destino": "BARRA", "nota": "Con hielo"}
+        ]
+        resp1 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(ronda1_items)
+        }, follow=True)
+        self.assertContains(resp1, "despachada con éxito a Cocina y Barra")
+
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+
+        venta_abierta = Venta.objects.filter(mesa=mesa, punto_venta=local, estado='ABIERTA').first()
+        self.assertIsNotNone(venta_abierta)
+        self.assertEqual(int(venta_abierta.total), 10700)
+        self.assertEqual(venta_abierta.pedidos.count(), 1)
+        venta_id_inicial = venta_abierta.id
+
+        # Ronda 2: Café adicional para la misma mesa (debe reutilizar venta y sumar)
+        ronda2_items = [
+            {"nombre": "Café Espresso Grano Barista", "cantidad": 2, "precio": 2200, "destino": "BARRA", "nota": ""}
+        ]
+        resp2 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(ronda2_items)
+        }, follow=True)
+        self.assertContains(resp2, "Ronda #2 agregada a la cuenta")
+        self.assertContains(resp2, "$15.100")
+
+        venta_abierta.refresh_from_db()
+        self.assertEqual(venta_abierta.id, venta_id_inicial)  # Misma Venta acumulada
+        self.assertEqual(int(venta_abierta.total), 15100)      # 10700 + 4400
+        self.assertEqual(venta_abierta.pedidos.count(), 2)     # 2 rondas registradas
+
+    # 22. Cierre de Cuenta de Mesa: pasa Venta a PAGADA y libera Mesa a HABILITADA
+    def test_cierre_cuenta_mesa_libera_y_paga(self):
+        self.client.force_login(self.mesero_user)
+        local = PuntoVenta.objects.first()
+        mesa = Mesa.objects.filter(punto_venta=local).first()
+
+        # Abrir cuenta con pedido
+        items = [{"nombre": "Cazuela de Ave Criolla", "cantidad": 1, "precio": 7500, "destino": "COCINA"}]
+        self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+        venta = Venta.objects.filter(mesa=mesa, punto_venta=local, estado='ABIERTA').first()
+        self.assertIsNotNone(venta)
+
+        # Mesero cobra y cierra la cuenta de la mesa
+        resp_cierre = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'cerrar_cuenta_mesa',
+            'mesa_id': mesa.id,
+            'metodo_pago': 'DEBITO'
+        }, follow=True)
+        self.assertContains(resp_cierre, "pagada y cerrada exitosamente con DEBITO")
+
+        venta.refresh_from_db()
+        mesa.refresh_from_db()
+        self.assertEqual(venta.estado, 'PAGADA')
+        self.assertEqual(venta.metodo_pago, 'DEBITO')
+        self.assertEqual(mesa.estado, 'HABILITADA')  # Mesa liberada
+
+    # 23. Cajero opera estrictamente en modalidad Entrega / Mostrador sin mesas
+    def test_cajero_sin_mesas_modalidad_entrega_mostrador(self):
+        self.client.force_login(self.cajero_user)
+        self.client.post(reverse('abrir_jornada'), {'monto_apertura': '15000'})
+        resp_terminal = self.client.get(reverse('crear_ticket'))
+        self.assertEqual(resp_terminal.status_code, 200)
+        # Cajero no tiene selector de mesas ni cuentas abiertas en su terminal
+        self.assertNotContains(resp_terminal, "Selecciona o Asigna una Mesa")
+        self.assertNotContains(resp_terminal, "Cuenta Abierta")
+
 

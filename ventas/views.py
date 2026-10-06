@@ -1073,11 +1073,36 @@ def mesero(request):
             messages.info(request, "Mesa asignada y marcada como ocupada.")
             return redirect(f"/mesero/?local_id={local_actual.id}")
 
+        elif accion == 'cerrar_cuenta_mesa':
+            mesa_obj = get_object_or_404(Mesa, id=mesa_id, punto_venta=local_actual)
+            metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO')
+
+            with transaction.atomic():
+                venta_abierta = Venta.objects.filter(
+                    mesa=mesa_obj,
+                    punto_venta=local_actual,
+                    estado='ABIERTA'
+                ).first()
+
+                if venta_abierta:
+                    venta_abierta.estado = 'PAGADA'
+                    venta_abierta.metodo_pago = metodo_pago
+                    venta_abierta.save()
+
+                    mesa_obj.estado = 'HABILITADA'
+                    mesa_obj.save()
+
+                    total_formateado = f"${int(venta_abierta.total):,}".replace(",", ".")
+                    messages.success(request, f"¡Cuenta de {mesa_obj.identificador} pagada y cerrada exitosamente con {metodo_pago}! Total recaudado: {total_formateado}. La mesa ha quedado libre para nuevos comensales.")
+                else:
+                    mesa_obj.estado = 'HABILITADA'
+                    mesa_obj.save()
+                    messages.info(request, f"Mesa {mesa_obj.identificador} liberada.")
+
+            return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
         elif accion == 'enviar_comanda':
             mesa_obj = Mesa.objects.filter(id=mesa_id).first()
-            if mesa_obj:
-                mesa_obj.estado = 'OCUPADA'
-                mesa_obj.save()
 
             items_raw = request.POST.get('items_json', '[]')
             try:
@@ -1090,85 +1115,110 @@ def mesero(request):
                 total_calculado = 15000
 
             hoy = timezone.localdate()
-            jornada, _ = Jornada.objects.get_or_create(
-                estado='ABIERTA', fecha=hoy,
-                defaults={'usuario_apertura': request.user, 'observaciones': 'Jornada Operativa en Curso'}
-            )
-            caja = Caja.objects.filter(punto_venta=local_actual, jornada=jornada).first()
-            if not caja:
-                caja, _ = Caja.objects.get_or_create(
-                    jornada=jornada,
-                    cajero=request.user,
-                    defaults={
-                        'nombre': f"Caja {local_actual.nombre.split()[0]} - {request.user.first_name or request.user.username}",
-                        'punto_venta': local_actual,
-                        'monto_apertura': 0,
-                        'estado': 'ABIERTA',
-                        'observaciones': 'Caja de comandas y pedidos de salón'
-                    }
+            with transaction.atomic():
+                jornada, _ = Jornada.objects.get_or_create(
+                    estado='ABIERTA', fecha=hoy,
+                    defaults={'usuario_apertura': request.user, 'observaciones': 'Jornada Operativa en Curso'}
+                )
+                caja = Caja.objects.filter(punto_venta=local_actual, jornada=jornada).first()
+                if not caja:
+                    caja, _ = Caja.objects.get_or_create(
+                        jornada=jornada,
+                        cajero=request.user,
+                        defaults={
+                            'nombre': f"Caja {local_actual.nombre.split()[0]} - {request.user.first_name or request.user.username}",
+                            'punto_venta': local_actual,
+                            'monto_apertura': 0,
+                            'estado': 'ABIERTA',
+                            'observaciones': 'Caja de comandas y pedidos de salón'
+                        }
+                    )
+
+                # Regla de Cuenta Abierta: Si la mesa ya tiene una venta ABIERTA, reutilizarla
+                venta_abierta = Venta.objects.filter(
+                    mesa=mesa_obj,
+                    punto_venta=local_actual,
+                    estado='ABIERTA'
+                ).first()
+
+                if venta_abierta:
+                    venta = venta_abierta
+                    venta.total += total_calculado
+                    venta.save()
+                    es_ronda_adicional = True
+                else:
+                    venta = Venta.objects.create(
+                        caja=caja,
+                        cajero=request.user,
+                        punto_venta=local_actual,
+                        modalidad='MESA',
+                        mesa=mesa_obj,
+                        metodo_pago='EFECTIVO',
+                        total=total_calculado,
+                        estado='ABIERTA'
+                    )
+                    es_ronda_adicional = False
+
+                if mesa_obj:
+                    mesa_obj.estado = 'OCUPADA'
+                    mesa_obj.save()
+
+                num_ronda = venta.pedidos.count() + 1
+                nuevo_pedido = Pedido.objects.create(
+                    venta=venta,
+                    estado='EN_PREPARACION',
+                    observaciones=f"Ronda #{num_ronda} enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                 )
 
-            nueva_venta = Venta.objects.create(
-                caja=caja,
-                cajero=request.user,
-                punto_venta=local_actual,
-                modalidad='MESA',
-                mesa=mesa_obj,
-                metodo_pago='EFECTIVO',
-                total=total_calculado,
-                estado='PAGADA'
-            )
+                cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
+                for it in items_lista:
+                    p_nom = it.get('nombre', 'Producto')
+                    p_precio = int(it.get('precio', 0))
+                    p_cant = int(it.get('cantidad', 1))
+                    prod_obj, _ = Producto.objects.get_or_create(
+                        nombre=p_nom,
+                        defaults={'categoria': cat_general, 'precio_base': p_precio}
+                    )
+                    DetalleVenta.objects.create(
+                        venta=venta,
+                        producto=prod_obj,
+                        cantidad=p_cant,
+                        precio_aplicado=p_precio,
+                        subtotal=p_cant * p_precio
+                    )
+                    DetallePedido.objects.create(
+                        pedido=nuevo_pedido,
+                        producto=prod_obj,
+                        cantidad=p_cant,
+                        observaciones=it.get('nota', '')
+                    )
 
-            nuevo_pedido = Pedido.objects.create(
-                venta=nueva_venta,
-                estado='EN_PREPARACION',
-                observaciones=f"Comanda enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-            )
+                tiene_cocina = any(it.get('destino') == 'COCINA' for it in items_lista)
+                tiene_barra = any(it.get('destino') == 'BARRA' for it in items_lista)
 
-            cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
-            for it in items_lista:
-                p_nom = it.get('nombre', 'Producto')
-                p_precio = int(it.get('precio', 0))
-                p_cant = int(it.get('cantidad', 1))
-                prod_obj, _ = Producto.objects.get_or_create(
-                    nombre=p_nom,
-                    defaults={'categoria': cat_general, 'precio_base': p_precio}
-                )
-                DetalleVenta.objects.create(
-                    venta=nueva_venta,
-                    producto=prod_obj,
-                    cantidad=p_cant,
-                    precio_aplicado=p_precio,
-                    subtotal=p_cant * p_precio
-                )
-                DetallePedido.objects.create(
-                    pedido=nuevo_pedido,
-                    producto=prod_obj,
-                    cantidad=p_cant,
-                    observaciones=it.get('nota', '')
-                )
+                if tiene_cocina or not tiene_barra:
+                    Ticket.objects.create(
+                        pedido=nuevo_pedido,
+                        codigo=f"COM-COC-{nuevo_pedido.id:04d}",
+                        tipo_destino='COCINA',
+                        estado='EN_PROCESO',
+                        contenido_impresion=f"Comanda Cocina (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+                    )
+                if tiene_barra:
+                    Ticket.objects.create(
+                        pedido=nuevo_pedido,
+                        codigo=f"COM-BAR-{nuevo_pedido.id:04d}",
+                        tipo_destino='BARRA',
+                        estado='EN_PROCESO',
+                        contenido_impresion=f"Comanda Barra (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+                    )
 
-            tiene_cocina = any(it.get('destino') == 'COCINA' for it in items_lista)
-            tiene_barra = any(it.get('destino') == 'BARRA' for it in items_lista)
+            if es_ronda_adicional:
+                total_acumulado_txt = f"${int(venta.total):,}".replace(",", ".")
+                messages.success(request, f"¡Ronda #{num_ronda} agregada a la cuenta de {mesa_obj.identificador}! Tickets despachados con éxito a Cocina y Barra. Total acumulado: {total_acumulado_txt}")
+            else:
+                messages.success(request, f"¡Cuenta abierta para {mesa_obj.identificador}! Comanda #{nuevo_pedido.id:04d} despachada con éxito a Cocina y Barra. Mesa marcada en atención.")
 
-            if tiene_cocina or not tiene_barra:
-                Ticket.objects.create(
-                    pedido=nuevo_pedido,
-                    codigo=f"COM-COC-{nueva_venta.id:04d}",
-                    tipo_destino='COCINA',
-                    estado='EN_PROCESO',
-                    contenido_impresion=f"Comanda Cocina #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-                )
-            if tiene_barra:
-                Ticket.objects.create(
-                    pedido=nuevo_pedido,
-                    codigo=f"COM-BAR-{nueva_venta.id:04d}",
-                    tipo_destino='BARRA',
-                    estado='EN_PROCESO',
-                    contenido_impresion=f"Comanda Barra #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-                )
-
-            messages.success(request, f"¡Comanda #{nueva_venta.id:04d} despachada con éxito a Cocina y Barra! Mesa {mesa_obj.identificador if mesa_obj else ''} marcada en atención.")
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
     # Mesas del local
@@ -1372,6 +1422,35 @@ def mesero(request):
         }
     ]
 
+    # Cuentas abiertas activas por mesa en este punto de venta
+    ventas_abiertas = Venta.objects.filter(
+        punto_venta=local_actual,
+        estado='ABIERTA',
+        mesa__isnull=False
+    ).select_related('mesa', 'cajero').prefetch_related('detalles__producto', 'pedidos')
+
+    cuentas_abiertas_data = {}
+    for va in ventas_abiertas:
+        rondas_count = va.pedidos.count()
+        detalles_list = []
+        for d in va.detalles.all():
+            detalles_list.append({
+                'nombre': d.producto.nombre,
+                'cantidad': d.cantidad,
+                'precio': int(d.precio_aplicado),
+                'subtotal': int(d.subtotal)
+            })
+        cuentas_abiertas_data[str(va.mesa.id)] = {
+            'venta_id': va.id,
+            'mesa_id': va.mesa.id,
+            'mesa_identificador': va.mesa.identificador,
+            'cajero_nombre': va.cajero.get_full_name() or va.cajero.username,
+            'total': int(va.total),
+            'rondas': rondas_count,
+            'hora_apertura': timezone.localtime(va.fecha_hora).strftime('%H:%M'),
+            'items': detalles_list
+        }
+
     context = {
         "local_actual": local_actual,
         "locales": locales,
@@ -1382,7 +1461,9 @@ def mesero(request):
         "mesas_libres": mesas_libres,
         "mesas_ocupadas": mesas_ocupadas,
         "catalogo_productos": catalogo_productos,
+        "cuentas_abiertas_json": json.dumps(cuentas_abiertas_data),
     }
     return render(request, 'ventas/mesero.html', context)
+
 
 

@@ -234,6 +234,7 @@ class Venta(models.Model):
         ('TRANSFERENCIA', 'Transferencia'),
     ]
     ESTADOS = [
+        ('ABIERTA', 'Abierta / En Consumo'),
         ('PAGADA', 'Pagada / Completada'),
         ('ANULADA', 'Anulada'),
     ]

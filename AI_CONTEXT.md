@@ -6,16 +6,22 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Auditoría de convergencia 06-Oct y notas libres de preparación con responsividad móvil**.
-- resultado esperado: Convergencia 100% validada, código limpio con 0 incidencias (`manage.py check`) y 20/20 pruebas oficiales pasando (`test ventas`). Notas libres para Mesero y Cajero en productos de preparación (comida y bebida), botón de nota táctil más grande con feedback visual, adaptación responsiva para smartphones de Meseros con carrusel de mesas y barra flotante de comanda, y documentación reconciliada en el **Mapa de Convergencia 06-Oct**.
+- tarea actual: **Mesa/Cuenta Abierta con Pedidos Incrementales y Cierre de Mesa Implementado y Validado (100% OK)**.
+- resultado esperado: La regla operativa de Mesa/Cuenta Abierta se encuentra completamente implementada en backend, frontend y suite de pruebas: una mesa acumula múltiples rondas en una única `Venta` con tickets independientes para cada tanda, visualización de consumos en vivo, modal de cobro y liberación automática de la mesa a 'HABILITADA' al pagar. Cajero opera 100% en modalidad entrega rápida / mostrador sin mesas.
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 20 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (20/20 OK). CRUD completo de Locales Gastronómicos habilitado para el Administrador (Crear, Modificar, Eliminar con protección de auditoría). Formateo monetario 100% en Pesos Chilenos (CLP) sin abreviaturas (sin "1k" ni "1M") en toda la aplicación. Trazabilidad de tickets en tiempo real en auditoría de local con distinción Mesero/Cajero, filtrador por hora/estado/rol y modal de detalle compacto. Notas libres en productos de preparación para Mesero y Cajero sin filtros rígidos con despliegue en tickets térmicos y monitor. Adaptación móvil completa para terminal de Mesero con carrusel táctil de mesas y barra flotante de comanda.
-- último avance: **Notas Libres en Preparación, Adaptación Smartphone para Meseros y Separación de Tickets**:
-  - **Notas Libres en Productos de Preparación (Mesero y Cajero)**: Se eliminó el modal anterior con botones de etiquetas rígidas ("Sin cebolla", "Término medio") por un campo de texto libre directo con guardado rápido por tecla `Enter` o botón. El botón "Nota" en las tarjetas de producto se aumentó de tamaño, haciéndolo ergonómico y táctil (`btn-nota-plato`, `btn-nota-cajero`), con feedback visual (`.tiene-nota` y resumen en texto) cuando un producto tiene instrucciones especiales.
-  - **Despliegue Destacado en Tickets y Monitores**: En la comanda en vivo, en los tickets térmicos simulados de Cocina y Barra (`tikCocinaItems`, `tikBarraItems`), en el monitor de tickets del Cajero (`vendedor.html`) y en el detalle de tickets del Administrador (`administrador_local.html`), la nota se muestra visiblemente debajo de cada producto con el distintivo `👉 NOTA: <instrucción>` en color rojo de alto contraste.
-  - **Adaptación Smartphone para Meseros (`< 768px`)**: Se optimizó la interfaz de `mesero.html` para el uso desde teléfonos celulares: carrusel táctil horizontal fluido para el Mapa de Mesas (`.mesas-scroll-container`), pestañas de categoría con desplazamiento horizontal sin saltos (`.filter-cat-scroll`), controles táctiles confortables (+40px) y una **Barra Flotante Inferior de Comanda en Celulares (`.mobile-comanda-bar`)** que muestra mesa activa, total en CLP y acceso en un toque para ver o despachar la comanda.
-  - **Separación Física de Tickets por Destino en Backend**: En `ventas/views.py`, la acción `enviar_comanda` genera de forma atómica e independiente el `Ticket(tipo_destino='COCINA')` y `Ticket(tipo_destino='BARRA')` según los destinos de los ítems despachados.
-  - **Validación Automatizada**: 20 de 20 pruebas oficiales ejecutadas y aprobadas al 100% (`Ran 20 tests - OK`).
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **23 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (23/23 OK)**.
+- último avance: **Implementación Completa de Mesa / Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero**:
+  - **Modelo y Estados de Venta**: Se añadió el estado `('ABIERTA', 'Abierta / En Consumo')` en `Venta.ESTADOS` mediante la migración oficial `0005_alter_venta_estado.py`.
+  - **Reutilización y Rondas Incrementales en Backend (`enviar_comanda`)**: Al despachar productos para una mesa, el backend verifica si ya existe una `Venta` con `estado='ABIERTA'` en dicho local. Si existe, incrementa `venta.total`, crea un nuevo `Pedido` independiente (Ronda #N) con sus `DetallePedido` y emite tickets `Ticket` exclusivamente para los nuevos platos/bebidas de Cocina o Barra, sin reimprimir ni duplicar comandas previas. Si la mesa está libre, abre la atención con `Venta(estado='ABIERTA')` y marca la mesa como `OCUPADA`.
+  - **Cierre y Cobro de Cuenta de Mesa (`cerrar_cuenta_mesa`)**: Acción atómica que localiza la venta abierta, registra el método de pago seleccionado (`EFECTIVO`, `DEBITO`, `CREDITO`, `TRANSFERENCIA`), transiciona la venta a `estado='PAGADA'` y libera automáticamente la mesa a `estado='HABILITADA'`.
+  - **Mapa y Terminal de Mesero Dinámico (`mesero.html`)**:
+    - *Indicador en Tarjetas de Mesa*: Cada mesa ocupada con cuenta abierta muestra una pastilla informativa con el total acumulado (`$XX.XXX`).
+    - *Banner de Cuenta Abierta*: Al seleccionar una mesa ocupada, se despliega un panel destacado con el número de ronda actual, hora de apertura, total acumulado y botones rápidos para "Ver Consumos" y "Cobrar y Cerrar Mesa".
+    - *Comanda Lateral Progresiva*: Al agregar nuevos ítems a una mesa abierta, el panel lateral muestra el acumulado previo y conmuta el botón de envío a "Enviar Ronda Adicional a Cocina/Barra".
+    - *Modal de Consumos Acumulados*: Tabla interactiva con el desglose completo de productos servidos a la mesa en todas sus rondas.
+    - *Modal de Cobro y Cierre*: Resumen del total a cobrar en CLP, selector táctil de método de pago y confirmación de pago y liberación de mesa.
+  - **Aislamiento Cajero vs. Mesero**: El Cajero opera exclusivamente en atención de mostrador y entrega rápida (`VENTA_RAPIDA`), sin mesas ni cuentas abiertas.
+  - **Validación Automatizada**: 23 de 23 pruebas oficiales aprobadas al 100% (`Ran 23 tests in 86.290s - OK`), incorporando pruebas específicas para rondas incrementales en la misma venta, cierre y liberación de mesas, y terminal de cajero sin mesas.
 - avances previos:
   - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
   - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
@@ -131,7 +137,7 @@
 ## 6. errores actuales y observaciones pendientes
 - rendimiento crítico anterior: **RESUELTO**.
 - `python manage.py check`: 0 incidencias reportadas (0 silenced).
-- suite oficial de pruebas: **20 de 20 pruebas automatizadas aprobadas** (`Ran 20 tests in 63.957s - OK`). Documentación reconciliada al 100%.
+- suite oficial de pruebas: **23 de 23 pruebas automatizadas aprobadas** (`Ran 23 tests in 86.290s - OK`). Documentación reconciliada al 100%.
 - observaciones críticas de ChatGPT atendidas en auditoría:
   1. **Avances adelantados autorizados por el usuario**: Reconocidos y formalmente auditados en la sección 9 (CRUD de `PuntoVenta`, CLP global, trazabilidad de tickets, notas libres de preparación, adaptación móvil, repositorio GitHub y paquete importable).
   2. **Documentación contradictoria**: Reconciliada en su totalidad; se eliminaron las referencias desactualizadas a 15 pruebas y a la inexistencia de CRUD.
@@ -143,16 +149,59 @@
   8. **Versión histórica del 29-Sep y paquete de importación**: Completamente aislados del ciclo de ejecución de Django, excluidos por `.gitignore` y sin interferencia con la suite de pruebas.
 
 ## 7. dudas para ChatGPT
-- consulta 1 (Unificación Transaccional del Cajero): Tras validar que la persistencia atómica de comandas del Mesero en SQLite funciona de forma robusta con separación Cocina/Barra, ¿conviene unificar inmediatamente el flujo del Cajero (`/vendedor/`) a SQLite antes de iniciar RF05, o se mantiene en `localStorage` hasta que exista el catálogo unificado en BD?
-- consulta 2 (Aislamiento de Mesero vs Puesto de Trabajo): Actualmente el mesero tiene la capacidad de navegar y despachar comandas en mesas de otros locales mediante el parámetro `?local_id=`. ¿Se debe restringir rígidamente al mesero a su `perfil.punto_venta_actual` (bloqueando mesas de otros locales) o se formaliza como política de mesero rotativo/itinerante?
-- consulta 3 (Higiene de Repositorio): Se detectó que `db.sqlite3` está versionado en el historial de Git y `SECRET_KEY` está fija en `settings.py`. ¿Se autoriza desacoplar `db.sqlite3` del seguimiento de Git (`git rm --cached`) y parametrizar credenciales con variables de entorno (`.env`) en una tarea de estabilización de seguridad?
-
+- aclaración funcional nueva del usuario:
+  - En atención de mesa, la primera comanda **no debe cerrar la venta ni la mesa**.
+  - Una misma mesa puede pedir primero varios productos y después agregar nuevos productos en una o más rondas.
+  - Cada ronda nueva debe incorporarse a la misma atención abierta de esa mesa.
+  - Los nuevos productos deben generar únicamente sus nuevas comandas/tickets de Cocina o Barra según corresponda.
+  - La mesa y la venta permanecen abiertas hasta que el cliente solicite la cuenta.
+  - Recién al solicitar la cuenta y completar el cierre/pago se debe cerrar la venta global y liberar la mesa.
+- ejemplo operacional:
+  - Mesa 5 pide 4 productos -> se crea la atención y se despachan las comandas correspondientes.
+  - Más tarde Mesa 5 pide 2 productos adicionales -> se agregan a la misma atención abierta y se generan solo los tickets de esos 2 productos.
+  - La cuenta final debe considerar los 6 productos.
+  - Solo al cerrar/pagar la cuenta se marca la atención/venta como cerrada y la mesa vuelve a quedar disponible.
+- decisión: Esta regla debe considerarse obligatoria antes de consolidar la persistencia definitiva de Mesero/Cajero y antes de cerrar el diseño de RF05/RF11/RF12/RF13.
 ## 8. respuesta de ChatGPT
-- revisión general: Hubo avances importantes y útiles autorizados directamente por el usuario para soportar presentaciones parciales con funcionamiento real. **No revertir esos adelantos por defecto y no continuar agregando funciones hasta ordenar su integración.**
-- orden técnica: Ejecutar únicamente una **Auditoría de Convergencia Post-Movimiento**, enfocada en ordenar y validar los adelantos autorizados, sin implementar nuevas funcionalidades.
-- entrega requerida: Elaborar y registrar el **Mapa de Convergencia 06-Oct** en `AI_CONTEXT.md` y presentar la auditoría completa.
-- estado de aplicación: **AUDITORÍA Y MAPA DE CONVERGENCIA EJECUTADOS Y COMPLETADOS**.
-
+- revisión general: La auditoría de convergencia queda aceptada. Se incorpora además una regla operativa nueva y prioritaria: **Mesa/Cuenta Abierta con pedidos incrementales**.
+- interpretación funcional aprobada:
+  1. La unidad global de la atención en mesa debe ser una `Venta` abierta asociada a una `Mesa`.
+  2. Esa `Venta` puede contener **múltiples `Pedido`** a lo largo del tiempo.
+  3. Cada vez que el Mesero agrega productos:
+     - no se crea una venta independiente si ya existe una venta abierta para esa mesa;
+     - se crea una nueva ronda/pedido asociada a la misma venta;
+     - se crean sus `DetallePedido`;
+     - se generan únicamente los `Ticket` necesarios para los productos nuevos (Cocina/Barra).
+  4. Los productos pedidos anteriormente no deben volver a imprimirse cuando se agrega una nueva ronda.
+  5. La `Mesa` permanece `OCUPADA` mientras exista una atención/venta abierta.
+  6. La cuenta final debe sumar todos los detalles/pedidos vinculados a esa misma venta.
+  7. El cierre real ocurre únicamente cuando el cliente solicita la cuenta y se ejecuta la acción de cerrar/pagar.
+  8. Al cerrar correctamente:
+     - la `Venta` cambia a estado cerrado/finalizado según el modelo vigente;
+     - se registra el cierre/pago cuando esa fase sea implementada;
+     - la `Mesa` vuelve a estado disponible/libre.
+- regla de integridad:
+  - No debe existir más de una atención/venta abierta simultánea para la misma mesa y Punto de Venta.
+  - Antes de crear una nueva Venta para modalidad `MESA`, el backend debe buscar si ya existe una atención abierta para esa mesa y reutilizarla.
+- diferencia con venta rápida:
+  - `VENTA_RAPIDA` puede completarse en una sola operación.
+  - `MESA` debe soportar múltiples pedidos antes del cierre.
+- impacto en el desarrollo actual:
+  - La persistencia de Mesero implementada hasta ahora debe auditarse para verificar si actualmente crea una Venta nueva en cada comanda.
+  - Si lo hace, **no corregir de forma improvisada todavía**: documentar el comportamiento exacto y adaptar el flujo cuando se ejecute la siguiente fase autorizada.
+  - Esta regla debe incorporarse antes de unificar Cajero/Mesero y antes de considerar cerrado el flujo real de ventas de mesa.
+- pruebas futuras obligatorias:
+  1. Primera comanda en una mesa crea una atención/venta abierta.
+  2. Segunda comanda en la misma mesa reutiliza la misma Venta.
+  3. Segunda comanda genera únicamente tickets para los productos nuevos.
+  4. Total de cuenta acumula correctamente todas las rondas.
+  5. Mesa permanece ocupada después de cada comanda intermedia.
+  6. Cerrar/pagar libera la mesa.
+  7. No se permiten dos ventas abiertas simultáneas para la misma mesa.
+- decisión sobre próximos pasos:
+  - Antes de mover Cajero a SQLite o cerrar RF05, Antigravity debe registrar si el flujo actual de Mesero ya reutiliza una Venta abierta o crea una nueva por cada `enviar_comanda`.
+  - No implementar todavía el cierre/pago si no está definido el flujo de métodos de pago.
+- estado de aplicación: regla funcional registrada; implementación completa pendiente de fase autorizada.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 ### A. Reconciliación del Estado Documental
@@ -313,6 +362,16 @@
 - Pruebas automatizadas para la persistencia real del Cajero (cuando se migre de localStorage a SQLite).
 - Prueba de restricción de mesero a su local asignado.
 
+9. REGLA FUNCIONAL PENDIENTE — MESA / CUENTA ABIERTA
+----------------------------------------------------------------------------------------
+- Una mesa puede realizar múltiples rondas de pedidos dentro de una misma atención.
+- La primera comanda no cierra la Venta.
+- Las rondas siguientes deben reutilizar la misma Venta abierta de la Mesa.
+- Cada ronda genera únicamente sus nuevos DetallePedido/Tickets.
+- La cuenta final acumula todas las rondas.
+- La Mesa se libera solo al cerrar/pagar la cuenta.
+- Debe impedirse más de una Venta abierta simultánea para la misma Mesa.
+
 8. SIGUIENTE PASO RECOMENDADO
 ----------------------------------------------------------------------------------------
 1. Sincronizar lectura de 'DetallePedido.observaciones' en 'get_locales_data()' para reflejar las notas
@@ -323,14 +382,25 @@
 ```
 
 ## 10. siguiente tarea
-- próxima acción: Enviar `AI_CONTEXT.md` actualizado con el Mapa de Convergencia 06-Oct a ChatGPT para recibir la orden técnica de la siguiente fase (Fase 2B / Unificación del Cajero a BD o avance a RF05).
+- próxima acción: **Auditar el comportamiento actual de Mesero respecto de Mesa/Cuenta Abierta**, sin ampliar todavía el sistema.
 - prioridad: Alta
-- tipo de tarea: Coordinación técnica y toma de decisiones.
-- no iniciar todavía sin indicación de ChatGPT:
-  - RF05 (Catálogo en BD)
-  - Modificación de modelos
-  - Refactor masivo del dashboard
-
+- verificar específicamente:
+  - si `enviar_comanda` crea una nueva `Venta` en cada pedido o reutiliza una venta abierta de la mesa;
+  - cómo se calcula actualmente el total acumulado de la mesa;
+  - si una segunda ronda vuelve a imprimir productos anteriores o solo los nuevos;
+  - cuándo cambia actualmente el estado de `Mesa`;
+  - si existe ya algún estado de `Venta` que permita distinguir ABIERTA/CERRADA o equivalente.
+- resultado esperado:
+  - documentar el comportamiento real actual;
+  - indicar qué modelos/campos existentes pueden reutilizarse;
+  - indicar el cambio mínimo necesario para soportar múltiples pedidos por mesa sin perder trazabilidad.
+- no implementar todavía:
+  - cierre/pago definitivo;
+  - métodos de pago;
+  - persistencia nueva del Cajero;
+  - RF05 completo;
+  - refactor masivo.
+- al finalizar: devolver `AI_CONTEXT.md` al usuario para revisión de ChatGPT.
 ## 11. historial breve
 - fecha: 2026-09-22
   - resumen: Creación de proyecto Django Venta_safari, app ventas, settings y templates iniciales
@@ -360,6 +430,9 @@
   - resumen: **Adaptación Smartphone para Meseros** (`< 768px`) con carrusel horizontal táctil de mesas, categorías con scroll horizontal y barra flotante inferior reactiva (`.mobile-comanda-bar`).
 - fecha: 2026-10-06
   - resumen: **Auditoría de Convergencia Post-Movimiento y Mapa de Convergencia 06-Oct** completados e incorporados formalmente en `AI_CONTEXT.md` para revisión y coordinación con ChatGPT.
+
+- fecha: 2026-10-06
+  - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
 - si el usuario autoriza directamente un adelanto funcional para una presentación o demostración, registrarlo como adelanto autorizado y no tratarlo como desviación; posteriormente auditar su integración con los RF vigentes

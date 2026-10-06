@@ -167,6 +167,12 @@
                             </span>
                             {% endif %}
                         </div>
+
+                        <div id="cuentaCardInfo_{{ m.id }}" class="mt-2 text-center" style="display: none;">
+                            <span class="badge bg-warning text-dark border border-dark-subtle w-100 py-1 small fw-bold text-truncate shadow-sm">
+                                <i class="bi bi-receipt me-1"></i><span id="cuentaCardTotal_{{ m.id }}">$0</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
                 {% empty %}
@@ -204,6 +210,39 @@
                             <button type="button" class="btn-comensal" onclick="setComensales(4, this)">4</button>
                             <button type="button" class="btn-comensal" onclick="setComensales(5, this)">5</button>
                             <button type="button" class="btn-comensal" onclick="setComensales(6, this)">6+</button>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Cuenta Abierta de la Mesa Seleccionada -->
+                    <div id="bannerCuentaAbierta" class="card border-0 shadow-sm rounded-4 p-3 mb-3" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #d97706 !important; display: none;">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                    <span class="badge bg-warning text-dark fw-bold px-2 py-1">
+                                        <i class="bi bi-receipt-cutoff me-1"></i>CUENTA ABIERTA
+                                    </span>
+                                    <span class="badge bg-danger text-white fw-bold px-2 py-1" id="cuentaRondasBadge">
+                                        Ronda #1
+                                    </span>
+                                    <span class="small text-muted">
+                                        <i class="bi bi-clock me-1"></i>Iniciada: <strong id="cuentaHoraTexto" class="text-dark">--:--</strong>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                                    <span class="small text-muted">Total Acumulado en Mesa:</span>
+                                    <span class="fs-5 fw-bold text-danger" id="cuentaTotalTexto" style="font-family: 'Oswald', sans-serif;">$0</span>
+                                    <span class="small text-muted" id="cuentaItemsResumen">(0 consumos previos)</span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-bold px-3 bg-white" onclick="abrirModalDetalleCuenta()">
+                                    <i class="bi bi-list-check me-1 text-primary"></i> Ver Consumos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3 shadow-sm" onclick="abrirModalCerrarCuenta()">
+                                    <i class="bi bi-cash-coin me-1"></i> Cobrar y Cerrar Mesa
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -333,9 +372,21 @@
                         </div>
                     </div>
 
+                    <!-- Resumen de Cuenta Abierta en Lateral -->
+                    <div id="lateralCuentaAbiertaBox" class="p-3 rounded-3 mb-3" style="background-color: #fffbeb; border: 1.5px solid #fcd34d; display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-dark"><i class="bi bi-receipt text-warning me-1"></i> Cuenta en Mesa:</span>
+                            <span class="badge bg-warning text-dark fw-bold" id="lateralRondasBadge">Ronda 1</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <small class="text-muted">Total acumulado previo:</small>
+                            <strong class="text-danger fs-6" id="lateralTotalAcumulado">$0</strong>
+                        </div>
+                    </div>
+
                     <!-- Total de la Mesa -->
                     <div class="d-flex justify-content-between align-items-center mb-4 pt-2 border-top">
-                        <span class="fs-5 fw-bold text-dark">Total Comanda:</span>
+                        <span class="fs-5 fw-bold text-dark" id="labelTotalComanda">Total Comanda:</span>
                         <h2 class="fw-bold text-danger mb-0" id="totalComandaTexto" style="font-family: 'Oswald', sans-serif;">
                             $0
                         </h2>
@@ -344,6 +395,11 @@
                     <!-- Botón Despachar Comanda y Generar Tickets Separados -->
                     <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="abrirModalTickets()" disabled>
                         <i class="bi bi-printer-fill me-2 fs-4"></i> Enviar a Cocina y Barra
+                    </button>
+
+                    <!-- Botón Cerrar Cuenta y Cobrar Mesa (Lateral) -->
+                    <button type="button" class="btn btn-success w-100 py-3 rounded-4 fw-bold mt-2 shadow-sm" id="btnCerrarCuentaLateral" style="display: none;" onclick="abrirModalCerrarCuenta()">
+                        <i class="bi bi-cash-coin me-2 fs-5"></i> Cobrar y Cerrar Mesa
                     </button>
 
                     <small class="text-muted text-center d-block mt-2" style="font-size: 0.72rem;">
@@ -508,6 +564,130 @@
         </div>
     </div>
 
+    <!-- MODAL DETALLE DE CONSUMOS ACUMULADOS EN MESA -->
+    <div class="modal fade" id="modalDetalleCuenta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white p-3">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-list-check text-warning me-2"></i>Consumos Acumulados • <span id="modalDetalleMesaNom">Mesa</span>
+                        </h5>
+                        <small class="text-white-50">Rondas despachadas a Cocina y Barra</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <span class="small text-muted">Mesero / Atendido por: <strong id="modalDetalleMeseroNom" class="text-dark">--</strong></span>
+                        <span class="badge bg-danger rounded-pill" id="modalDetalleRondasCount">1 Ronda</span>
+                    </div>
+
+                    <div class="table-responsive mb-3" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-striped align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>Cant.</th>
+                                    <th>Producto</th>
+                                    <th class="text-end">P. Unit</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalDetalleItemsBody" class="small">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 rounded-3 bg-light border">
+                        <span class="fs-6 fw-bold text-dark">Total Acumulado a Cobrar:</span>
+                        <h3 class="fw-bold text-danger mb-0" id="modalDetalleTotal" style="font-family: 'Oswald', sans-serif;">$0</h3>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                        Volver a la Mesa
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-4" onclick="pasarDeDetalleACobro()">
+                        <i class="bi bi-cash-coin me-1"></i> Ir a Cobrar Cuenta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CIERRE DE CUENTA Y PAGO DE MESA -->
+    <div class="modal fade" id="modalCerrarCuenta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-cash-coin text-warning me-2"></i>COBRO Y CIERRE DE CUENTA
+                        </h5>
+                        <small class="text-white-50"><span id="modalCerrarMesaNom">Mesa</span> • Liberación de Comensales</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="" id="formCerrarCuenta">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="cerrar_cuenta_mesa">
+                    <input type="hidden" name="mesa_id" id="modalCerrarMesaId">
+                    <div class="modal-body p-4">
+                        <div class="text-center py-2 mb-3 bg-light rounded-4 border">
+                            <span class="text-muted small d-block">TOTAL FINAL A PAGAR:</span>
+                            <h1 class="display-6 fw-bold text-success mb-0" id="modalCerrarTotal" style="font-family: 'Oswald', sans-serif;">$0</h1>
+                            <small class="text-muted" id="modalCerrarResumen">En 0 rondas acumuladas</small>
+                        </div>
+
+                        <label class="form-label fw-bold small text-dark mb-2">
+                            <i class="bi bi-credit-card-2-front-fill text-primary me-1"></i>Selecciona el Método de Pago:
+                        </label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_efectivo" value="EFECTIVO" checked>
+                                <label class="btn btn-outline-success w-100 py-2 rounded-3 fw-bold small text-start" for="pago_efectivo">
+                                    <i class="bi bi-cash-stack me-1 fs-5"></i> Efectivo
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_debito" value="DEBITO">
+                                <label class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold small text-start" for="pago_debito">
+                                    <i class="bi bi-credit-card-2-back me-1 fs-5"></i> Débito (Redcompra)
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_credito" value="CREDITO">
+                                <label class="btn btn-outline-warning text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_credito">
+                                    <i class="bi bi-credit-card me-1 fs-5"></i> Crédito
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_transferencia" value="TRANSFERENCIA">
+                                <label class="btn btn-outline-info text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_transferencia">
+                                    <i class="bi bi-phone-fill me-1 fs-5"></i> Transferencia
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 border-0">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Al confirmar, la cuenta quedará <strong>PAGADA</strong> y la mesa se marcará automáticamente como <strong>LIBRE / HABILITADA</strong> para la recepción de nuevos comensales.
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Confirmar Pago y Liberar Mesa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Pie de página -->
     <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
         <div class="container d-flex align-items-center justify-content-center gap-2">
@@ -523,6 +703,9 @@
 
     <!-- Script Interactivo del Terminal de Meseros -->
     <script>
+        // Cuentas Abiertas en el local (inyectadas desde Django view)
+        const cuentasAbiertas = JSON.parse('{{ cuentas_abiertas_json|escapejs }}');
+
         // Estado del Mesero
         let mesaSeleccionada = {
             id: 1,
@@ -558,6 +741,9 @@
             }
 
             document.getElementById('comandaMesaNombre').innerText = identificador;
+
+            // Actualizar vista de cuenta abierta para esta mesa
+            actualizarEstadoCuentaMesa(id);
         }
 
         // Seleccionar Comensales
@@ -893,6 +1079,95 @@
             });
         }
 
+        // Funciones de Gestión de Cuenta Abierta y Cierre de Mesa
+        function actualizarEstadoCuentaMesa(mesaId) {
+            const cuenta = cuentasAbiertas[mesaId] || cuentasAbiertas[String(mesaId)];
+            const banner = document.getElementById('bannerCuentaAbierta');
+            const lateralBox = document.getElementById('lateralCuentaAbiertaBox');
+            const btnCerrarLateral = document.getElementById('btnCerrarCuentaLateral');
+            const btnDespachar = document.getElementById('btnDespacharComanda');
+            const labelTotalComanda = document.getElementById('labelTotalComanda');
+
+            if (cuenta) {
+                if (banner) {
+                    banner.style.display = 'block';
+                    document.getElementById('cuentaRondasBadge').innerText = `Ronda #${cuenta.rondas}`;
+                    document.getElementById('cuentaHoraTexto').innerText = cuenta.hora_apertura;
+                    document.getElementById('cuentaTotalTexto').innerText = `$${cuenta.total.toLocaleString('es-CL')}`;
+                    const totalConsumos = cuenta.items.reduce((acc, it) => acc + it.cantidad, 0);
+                    document.getElementById('cuentaItemsResumen').innerText = `(${totalConsumos} ${totalConsumos === 1 ? 'consumo previo' : 'consumos previos'})`;
+                }
+
+                if (lateralBox) {
+                    lateralBox.style.display = 'block';
+                    document.getElementById('lateralRondasBadge').innerText = `${cuenta.rondas} ${cuenta.rondas === 1 ? 'Ronda' : 'Rondas'}`;
+                    document.getElementById('lateralTotalAcumulado').innerText = `$${cuenta.total.toLocaleString('es-CL')}`;
+                }
+
+                if (btnCerrarLateral) btnCerrarLateral.style.display = 'block';
+                if (labelTotalComanda) labelTotalComanda.innerText = 'Nueva Ronda:';
+
+                if (btnDespachar) {
+                    btnDespachar.innerHTML = '<i class="bi bi-printer-fill me-2 fs-4"></i> Enviar Ronda Adicional a Cocina/Barra';
+                }
+            } else {
+                if (banner) banner.style.display = 'none';
+                if (lateralBox) lateralBox.style.display = 'none';
+                if (btnCerrarLateral) btnCerrarLateral.style.display = 'none';
+                if (labelTotalComanda) labelTotalComanda.innerText = 'Total Comanda:';
+                if (btnDespachar) {
+                    btnDespachar.innerHTML = '<i class="bi bi-printer-fill me-2 fs-4"></i> Enviar a Cocina y Barra';
+                }
+            }
+        }
+
+        function abrirModalDetalleCuenta() {
+            const cuenta = cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)];
+            if (!cuenta) return;
+
+            document.getElementById('modalDetalleMesaNom').innerText = mesaSeleccionada.identificador;
+            document.getElementById('modalDetalleMeseroNom').innerText = cuenta.cajero_nombre;
+            document.getElementById('modalDetalleRondasCount').innerText = `${cuenta.rondas} ${cuenta.rondas === 1 ? 'Ronda' : 'Rondas'}`;
+
+            const tbody = document.getElementById('modalDetalleItemsBody');
+            let rowsHtml = '';
+            cuenta.items.forEach(it => {
+                rowsHtml += `
+                    <tr>
+                        <td class="fw-bold">${it.cantidad}x</td>
+                        <td>${escapeHtml(it.nombre)}</td>
+                        <td class="text-end">$${it.precio.toLocaleString('es-CL')}</td>
+                        <td class="text-end fw-bold text-dark">$${it.subtotal.toLocaleString('es-CL')}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = rowsHtml;
+            document.getElementById('modalDetalleTotal').innerText = `$${cuenta.total.toLocaleString('es-CL')}`;
+
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalleCuenta'));
+            modal.show();
+        }
+
+        function pasarDeDetalleACobro() {
+            const modalDetalleEl = document.getElementById('modalDetalleCuenta');
+            const modalDetalle = bootstrap.Modal.getInstance(modalDetalleEl);
+            if (modalDetalle) modalDetalle.hide();
+            abrirModalCerrarCuenta();
+        }
+
+        function abrirModalCerrarCuenta() {
+            const cuenta = cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)];
+            if (!cuenta) return;
+
+            document.getElementById('modalCerrarMesaNom').innerText = mesaSeleccionada.identificador;
+            document.getElementById('modalCerrarMesaId').value = mesaSeleccionada.id;
+            document.getElementById('modalCerrarTotal').innerText = `$${cuenta.total.toLocaleString('es-CL')}`;
+            document.getElementById('modalCerrarResumen').innerText = `En ${cuenta.rondas} ${cuenta.rondas === 1 ? 'ronda acumulada' : 'rondas acumuladas'} (${cuenta.items.length} productos)`;
+
+            const modal = new bootstrap.Modal(document.getElementById('modalCerrarCuenta'));
+            modal.show();
+        }
+
         // Guardado rápido con tecla Enter en modal de notas
         document.addEventListener('DOMContentLoaded', () => {
             const inputNota = document.getElementById('notaTextoInput');
@@ -903,6 +1178,23 @@
                         guardarNota();
                     }
                 });
+            }
+
+            // Reflejar cuentas abiertas en las tarjetas de las mesas
+            Object.keys(cuentasAbiertas).forEach(mId => {
+                const cardInfo = document.getElementById(`cuentaCardInfo_${mId}`);
+                if (cardInfo) {
+                    cardInfo.style.display = 'block';
+                    const totalEl = document.getElementById(`cuentaCardTotal_${mId}`);
+                    if (totalEl) totalEl.innerText = `$${cuentasAbiertas[mId].total.toLocaleString('es-CL')}`;
+                }
+            });
+
+            // Si la primera mesa seleccionada tiene cuenta abierta, inicializar estado
+            const primeraMesaCard = document.querySelector('.mesa-card.mesa-seleccionada');
+            if (primeraMesaCard) {
+                const mId = primeraMesaCard.id.replace('cardMesa_', '');
+                actualizarEstadoCuentaMesa(mId);
             }
         });
     </script>
