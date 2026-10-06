@@ -9,7 +9,7 @@
 - tarea actual: **RF04.1 — Aislamiento operativo por Punto de Venta para Mesero y corrección de fallbacks arbitrarios**.
 - resultado esperado: Corregir únicamente las inconsistencias operativas detectadas en la auditoría RF04 sin construir todavía el CRUD de Puntos de Venta ni modificar catálogo, ventas o dashboard.
 ## 3. estado actual
-- estado: Sesión finalizada/detenida a petición del usuario. Todas las tareas solicitadas completadas con éxito. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Servidor de desarrollo detenido limpiamente.
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 15 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (15/15 OK). Carpeta temporal de la versión 29-Sep eliminada conforme a solicitud del usuario.
 - último avance: Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor apagado limpiamente.
 - último avance técnico (Auditoría RF04):
   - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
