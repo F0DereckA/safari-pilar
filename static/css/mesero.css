@@ -262,67 +262,240 @@
     transform: translateY(-2px);
 }
 
-/* Simulación de Tickets Térmicos de 80mm */
+/* ==========================================================================
+   Simulación Auténtica de Tickets Térmicos de 8 cm (80mm) - B&W Sin Emojis
+   Basado en formato real POS de Parque Safari Chile (Soft Restaurant)
+   ========================================================================== */
 .thermal-ticket-card {
+    width: 80mm;
+    max-width: 320px;
+    margin: 0 auto 20px auto;
     background-color: #ffffff;
-    border: 2px dashed #9ca3af;
-    border-radius: 10px;
-    padding: 20px;
-    font-family: 'Courier New', Courier, monospace;
-    color: #111827;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    color: #000000;
+    font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+    font-size: 12.5px;
+    line-height: 1.35;
+    padding: 18px 14px 22px 14px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
     position: relative;
+    border-left: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
 }
 
+/* Bordes dentados / corte de papel térmico (sawtooth) arriba y abajo */
 .thermal-ticket-card::before {
-    content: "--------------------------------------------------";
+    content: "";
     position: absolute;
-    top: -12px;
+    top: -7px;
     left: 0;
     width: 100%;
-    text-align: center;
-    color: #9ca3af;
-    font-size: 0.75rem;
+    height: 7px;
+    background: linear-gradient(135deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%),
+                linear-gradient(45deg, #ffffff 33.333%, transparent 33.333%, transparent 66.667%, #ffffff 66.667%);
+    background-size: 10px 7px;
 }
 
+.thermal-ticket-card::after {
+    content: "";
+    position: absolute;
+    bottom: -7px;
+    left: 0;
+    width: 100%;
+    height: 7px;
+    background: linear-gradient(135deg, #ffffff 33.333%, transparent 33.333%, transparent 66.667%, #ffffff 66.667%),
+                linear-gradient(45deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%);
+    background-size: 10px 7px;
+}
+
+/* Cabecera del ticket */
 .thermal-ticket-header {
     text-align: center;
-    border-bottom: 1px dashed #4b5563;
-    padding-bottom: 10px;
-    margin-bottom: 12px;
+    color: #000000;
+    margin-bottom: 8px;
 }
 
-.thermal-ticket-title {
+.thermal-header-company {
+    font-size: 14.5px;
     font-weight: 900;
-    font-size: 1.15rem;
-    margin: 0;
+    letter-spacing: 1px;
+}
+
+.thermal-header-sub {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.thermal-header-tax {
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.thermal-header-addr {
+    font-size: 10px;
+    line-height: 1.25;
+    margin: 3px 0;
+    color: #111111;
+}
+
+.thermal-header-loc {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.thermal-ticket-role-title {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+    text-align: center;
+    padding: 3px 0;
     text-transform: uppercase;
+}
+
+/* Divisores térmicos estándar de 80mm */
+.thermal-divider-double {
+    font-size: 10px;
+    letter-spacing: -0.5px;
+    color: #000000;
+    text-align: center;
+    user-select: none;
+    line-height: 1;
+    margin: 4px 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.thermal-divider-single {
+    font-size: 10px;
+    letter-spacing: -0.5px;
+    color: #000000;
+    text-align: center;
+    user-select: none;
+    line-height: 1;
+    margin: 4px 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Metadatos del ticket */
+.thermal-ticket-meta {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: #000000;
+    margin: 4px 0;
+}
+
+.thermal-ticket-meta div {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Encabezados de columna de ítems */
+.thermal-items-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    padding: 2px 0;
+}
+
+/* Ítems del pedido */
+.thermal-items-body {
+    margin: 4px 0;
 }
 
 .thermal-ticket-item {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    font-size: 0.92rem;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    line-height: 1.3;
 }
 
-.thermal-ticket-note {
-    font-size: 0.85rem;
-    color: #dc2626;
+.thermal-ticket-qty {
+    font-weight: 900;
+    min-width: 22px;
+}
+
+.thermal-ticket-name {
     font-weight: 700;
-    padding: 3px 8px;
-    margin-top: 2px;
-    border-left: 3px solid #dc2626;
-    background-color: #fef2f2;
-    border-radius: 4px;
+    flex-grow: 1;
+    text-transform: uppercase;
 }
 
+/* Nota de preparación térmica: 100% Blanco y Negro, sin emojis */
+.thermal-ticket-note {
+    font-size: 11px;
+    font-weight: 700;
+    color: #000000;
+    padding: 1px 0 3px 28px;
+    margin-bottom: 4px;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+/* Totales y resumen */
+.thermal-ticket-totals {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 0;
+}
+
+/* Pie del ticket */
 .thermal-ticket-footer {
-    border-top: 1px dashed #4b5563;
-    padding-top: 10px;
-    margin-top: 12px;
-    font-size: 0.8rem;
     text-align: center;
+    font-size: 10.5px;
+    line-height: 1.35;
+    margin-top: 6px;
+    color: #000000;
+}
+
+/* Soporte oficial para impresión directa en comanderas térmicas de 80mm */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #modalTickets, #modalTickets .modal-dialog, #modalTickets .modal-content, #modalTickets .modal-body, #modalTickets .thermal-ticket-card, #modalTickets .thermal-ticket-card * {
+        visibility: visible !important;
+    }
+    #modalTickets {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .modal-header, .modal-footer, .alert, .modal-backdrop {
+        display: none !important;
+    }
+    #modalTickets .row {
+        display: block !important;
+        margin: 0 !important;
+    }
+    #modalTickets .col-md-6 {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .thermal-ticket-card {
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 auto 15mm auto !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always !important;
+    }
+    .thermal-ticket-card::before,
+    .thermal-ticket-card::after {
+        display: none !important;
+    }
 }
 
 /* ==========================================================================

@@ -487,64 +487,108 @@
                         </div>
                     </div>
 
-                    <div class="row g-4">
+                    <div class="row g-4 justify-content-center">
                         
-                        <!-- TICKET 1: COCINA CALIENTE -->
-                        <div class="col-md-6">
-                            <div class="thermal-ticket-card">
+                        <!-- TICKET 1: COCINA (80mm Monocromático B&W Sin Emojis) -->
+                        <div class="col-md-6 d-flex justify-content-center">
+                            <div class="thermal-ticket-card" id="ticketTermicoCocina">
                                 <div class="thermal-ticket-header">
-                                    <span class="badge bg-danger text-white px-2 py-1 mb-1">COMANDERA COCINA</span>
-                                    <h5 class="thermal-ticket-title text-danger">🔥 TICKET DE COCINA</h5>
-                                    <div><strong>PARQUE SAFARI CHILE</strong></div>
-                                    <small>{{ local_actual.nombre }}</small>
-                                </div>
-
-                                <div class="small mb-2">
-                                    <div><strong>COMANDA:</strong> <span id="tikCocinaCodigo">#COM-COC-0085</span></div>
-                                    <div><strong>MESA:</strong> <span id="tikCocinaMesa">Mesa 1</span></div>
-                                    <div><strong>MESERO:</strong> {{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</div>
-                                    <div><strong>FECHA/HORA:</strong> <span id="tikCocinaHora">--:--</span></div>
-                                </div>
-
-                                <div class="border-top border-bottom border-dark py-2 mb-2">
-                                    <div class="fw-bold small mb-1">PLATOS A COCINAR:</div>
-                                    <div id="tikCocinaItems">
-                                        <!-- Solo ítems de cocina -->
+                                    <div class="thermal-header-company">SAFARI ADVENTURE</div>
+                                    <div class="thermal-header-sub">SAFARI ADVENTURE SAC</div>
+                                    <div class="thermal-header-tax">RUT: 76.041.631-2</div>
+                                    <div class="thermal-header-addr">
+                                        CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38<br>
+                                        LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS
+                                    </div>
+                                    <div class="thermal-header-loc">
+                                        LUGAR EXPEDICION: {{ local_actual.nombre|default:"RESTAURANT PRINCIPAL"|upper }}
                                     </div>
                                 </div>
 
+                                <div class="thermal-divider-double">================================================</div>
+                                <div class="thermal-ticket-role-title">*** COMANDA COCINA ***</div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-meta">
+                                    <div><span>FOLIO:</span> <strong id="tikCocinaCodigo">#COC-0085</strong></div>
+                                    <div><span>FECHA:</span> <span id="tikCocinaFecha">--/--/----</span> <span id="tikCocinaHora">--:--</span></div>
+                                    <div><span>MESA:</span> <strong id="tikCocinaMesa">MESA 1</strong></div>
+                                    <div><span>MESERO:</span> <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username|upper }}</strong></div>
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-items-header">
+                                    <span>CANT.  DESCRIPCION</span>
+                                </div>
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+
+                                <div class="thermal-items-body" id="tikCocinaItems">
+                                    <!-- Solo ítems de cocina -->
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-ticket-totals d-flex justify-content-between">
+                                    <span>TOTAL ITEMS COCINA:</span>
+                                    <strong id="tikCocinaTotalItems">0</strong>
+                                </div>
+                                <div class="thermal-divider-double">================================================</div>
+
                                 <div class="thermal-ticket-footer">
-                                    *** ENTRADA A PLANCHA / COCINA ***
+                                    *** ENTRADA A PRODUCCION COCINA ***<br>
+                                    *** SOFT RESTAURANT V10 ***<br>
+                                    PARQUE SAFARI CHILE
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TICKET 2: BARRA / CAFETERÍA -->
-                        <div class="col-md-6">
-                            <div class="thermal-ticket-card">
+                        <!-- TICKET 2: BARRA / CAFETERÍA (80mm Monocromático B&W Sin Emojis) -->
+                        <div class="col-md-6 d-flex justify-content-center">
+                            <div class="thermal-ticket-card" id="ticketTermicoBarra">
                                 <div class="thermal-ticket-header">
-                                    <span class="badge bg-primary text-white px-2 py-1 mb-1">COMANDERA BARRA</span>
-                                    <h5 class="thermal-ticket-title text-primary">🍹 TICKET DE BARRA</h5>
-                                    <div><strong>PARQUE SAFARI CHILE</strong></div>
-                                    <small>{{ local_actual.nombre }}</small>
-                                </div>
-
-                                <div class="small mb-2">
-                                    <div><strong>COMANDA:</strong> <span id="tikBarraCodigo">#COM-BAR-0085</span></div>
-                                    <div><strong>MESA:</strong> <span id="tikBarraMesa">Mesa 1</span></div>
-                                    <div><strong>MESERO:</strong> {{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</div>
-                                    <div><strong>FECHA/HORA:</strong> <span id="tikBarraHora">--:--</span></div>
-                                </div>
-
-                                <div class="border-top border-bottom border-dark py-2 mb-2">
-                                    <div class="fw-bold small mb-1">BEBIDAS Y CAFETERÍA:</div>
-                                    <div id="tikBarraItems">
-                                        <!-- Solo bebidas / cafetería -->
+                                    <div class="thermal-header-company">SAFARI ADVENTURE</div>
+                                    <div class="thermal-header-sub">SAFARI ADVENTURE SAC</div>
+                                    <div class="thermal-header-tax">RUT: 76.041.631-2</div>
+                                    <div class="thermal-header-addr">
+                                        CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38<br>
+                                        LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS
+                                    </div>
+                                    <div class="thermal-header-loc">
+                                        LUGAR EXPEDICION: {{ local_actual.nombre|default:"RESTAURANT PRINCIPAL"|upper }}
                                     </div>
                                 </div>
 
+                                <div class="thermal-divider-double">================================================</div>
+                                <div class="thermal-ticket-role-title">*** COMANDA BARRA ***</div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-meta">
+                                    <div><span>FOLIO:</span> <strong id="tikBarraCodigo">#BAR-0085</strong></div>
+                                    <div><span>FECHA:</span> <span id="tikBarraFecha">--/--/----</span> <span id="tikBarraHora">--:--</span></div>
+                                    <div><span>MESA:</span> <strong id="tikBarraMesa">MESA 1</strong></div>
+                                    <div><span>MESERO:</span> <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username|upper }}</strong></div>
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-items-header">
+                                    <span>CANT.  DESCRIPCION</span>
+                                </div>
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+
+                                <div class="thermal-items-body" id="tikBarraItems">
+                                    <!-- Solo ítems de barra -->
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-ticket-totals d-flex justify-content-between">
+                                    <span>TOTAL ITEMS BARRA:</span>
+                                    <strong id="tikBarraTotalItems">0</strong>
+                                </div>
+                                <div class="thermal-divider-double">================================================</div>
+
                                 <div class="thermal-ticket-footer">
-                                    *** DESPACHO INMEDIATO BARRA ***
+                                    *** DESPACHO INMEDIATO BARRA ***<br>
+                                    *** SOFT RESTAURANT V10 ***<br>
+                                    PARQUE SAFARI CHILE
                                 </div>
                             </div>
                         </div>
@@ -552,11 +596,16 @@
                     </div>
 
                 </div>
-                <div class="modal-footer bg-light p-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
-                        Cerrar
-                    </button>
-                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="confirmarYAtenderOtra()">
+                <div class="modal-footer bg-light p-3 d-flex justify-content-between flex-wrap gap-2">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                            Cerrar
+                        </button>
+                        <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i> Imprimir Comandas (80mm)
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="confirmarYAtenderOtra()">
                         <i class="bi bi-arrow-right-circle me-1"></i> Atender Siguiente Mesa
                     </button>
                 </div>
@@ -814,7 +863,7 @@
                                 <div class="fw-bold small text-dark">${item.cantidad}x ${item.nombre}</div>
                                 ${item.nota ? `
                                     <div class="comanda-item-nota">
-                                        <strong class="text-danger">👉 NOTA:</strong> ${escapeHtml(item.nota)}
+                                        <strong class="text-danger">* NOTA:</strong> ${escapeHtml(item.nota)}
                                     </div>
                                 ` : ''}
                                 <small class="text-muted">$${item.precio.toLocaleString('es-CL')} c/u</small>
@@ -951,58 +1000,70 @@
             const itemsCocina = items.filter(i => i.destino === 'COCINA');
             const itemsBarra = items.filter(i => i.destino === 'BARRA');
 
-            const horaActual = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            const ahora = new Date();
+            const fechaStr = ahora.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const horaStr = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const numeroComanda = Math.floor(1000 + Math.random() * 9000);
 
             // Poblar Ticket Cocina
-            document.getElementById('tikCocinaCodigo').innerText = `#COM-COC-${numeroComanda}`;
-            document.getElementById('tikCocinaMesa').innerText = `${mesaSeleccionada.identificador} (${comensales} p)`;
-            document.getElementById('tikCocinaHora').innerText = `${horaActual} hrs`;
+            document.getElementById('tikCocinaCodigo').innerText = `#COC-${numeroComanda}`;
+            document.getElementById('tikCocinaFecha').innerText = fechaStr;
+            document.getElementById('tikCocinaHora').innerText = horaStr;
+            document.getElementById('tikCocinaMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
 
             const containerCocina = document.getElementById('tikCocinaItems');
+            let totalItemsCocina = 0;
             if (itemsCocina.length > 0) {
                 let htmlC = '';
                 itemsCocina.forEach(it => {
+                    totalItemsCocina += it.cantidad;
                     htmlC += `
                         <div class="thermal-ticket-item">
-                            <span><strong>${it.cantidad}x</strong> ${escapeHtml(it.nombre)}</span>
+                            <span class="thermal-ticket-qty">${it.cantidad}</span>
+                            <span class="thermal-ticket-name">${escapeHtml(it.nombre).toUpperCase()}</span>
                         </div>
                         ${it.nota ? `
                             <div class="thermal-ticket-note">
-                                👉 NOTA: ${escapeHtml(it.nota)}
+                                * NOTA: ${escapeHtml(it.nota).toUpperCase()}
                             </div>
                         ` : ''}
                     `;
                 });
                 containerCocina.innerHTML = htmlC;
             } else {
-                containerCocina.innerHTML = '<div class="text-muted small italic">-- Sin ítems de cocina --</div>';
+                containerCocina.innerHTML = '<div class="text-center text-muted small py-2">-- SIN ITEMS DE COCINA --</div>';
             }
+            document.getElementById('tikCocinaTotalItems').innerText = totalItemsCocina;
 
             // Poblar Ticket Barra
-            document.getElementById('tikBarraCodigo').innerText = `#COM-BAR-${numeroComanda}`;
-            document.getElementById('tikBarraMesa').innerText = `${mesaSeleccionada.identificador} (${comensales} p)`;
-            document.getElementById('tikBarraHora').innerText = `${horaActual} hrs`;
+            document.getElementById('tikBarraCodigo').innerText = `#BAR-${numeroComanda}`;
+            document.getElementById('tikBarraFecha').innerText = fechaStr;
+            document.getElementById('tikBarraHora').innerText = horaStr;
+            document.getElementById('tikBarraMesa').innerText = `${mesaSeleccionada.identificador.toUpperCase()} (${comensales} PERS.)`;
 
             const containerBarra = document.getElementById('tikBarraItems');
+            let totalItemsBarra = 0;
             if (itemsBarra.length > 0) {
                 let htmlB = '';
                 itemsBarra.forEach(it => {
+                    totalItemsBarra += it.cantidad;
                     htmlB += `
                         <div class="thermal-ticket-item">
-                            <span><strong>${it.cantidad}x</strong> ${escapeHtml(it.nombre)}</span>
+                            <span class="thermal-ticket-qty">${it.cantidad}</span>
+                            <span class="thermal-ticket-name">${escapeHtml(it.nombre).toUpperCase()}</span>
                         </div>
                         ${it.nota ? `
                             <div class="thermal-ticket-note">
-                                👉 NOTA: ${escapeHtml(it.nota)}
+                                * NOTA: ${escapeHtml(it.nota).toUpperCase()}
                             </div>
                         ` : ''}
                     `;
                 });
                 containerBarra.innerHTML = htmlB;
             } else {
-                containerBarra.innerHTML = '<div class="text-muted small italic">-- Sin ítems de barra --</div>';
+                containerBarra.innerHTML = '<div class="text-center text-muted small py-2">-- SIN ITEMS DE BARRA --</div>';
             }
+            document.getElementById('tikBarraTotalItems').innerText = totalItemsBarra;
 
             const modal = new bootstrap.Modal(document.getElementById('modalTickets'));
             modal.show();

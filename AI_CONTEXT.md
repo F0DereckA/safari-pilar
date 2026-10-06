@@ -6,23 +6,34 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Mesa/Cuenta Abierta con Pedidos Incrementales y Cierre de Mesa Implementado y Validado (100% OK)**.
-- resultado esperado: La regla operativa de Mesa/Cuenta Abierta se encuentra completamente implementada en backend, frontend y suite de pruebas: una mesa acumula múltiples rondas en una única `Venta` con tickets independientes para cada tanda, visualización de consumos en vivo, modal de cobro y liberación automática de la mesa a 'HABILITADA' al pagar. Cajero opera 100% en modalidad entrega rápida / mostrador sin mesas.
+- tarea actual: **Estandarización de Tickets Térmicos de Cocina y Barra a 80mm (8 cm) Monocromático Blanco y Negro sin Emojis según Pauta del Docente (100% OK)**.
+- resultado esperado: Los tickets de comanda para Cocina y Barra se ajustan con fidelidad absoluta a la boleta real de Parque Safari (`SAFARI ADVENTURE SAC`, `RUT: 76.041.631-2`) entregada por el docente: diseño 100% monocromático blanco y negro, ancho estricto de 80mm (8 cm), corte dentado (sawtooth), tipografía monoespaciada Courier, notas de preparación en texto plano `* NOTA: <INSTRUCCION>`, sin ningún tipo de emoji (evitando manchas o caracteres corruptos en hardware térmico ESC/POS) y soporte de impresión directa vía `@media print` con botón de impresión rápida.
+
 ## 3. estado actual
 - estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **23 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (23/23 OK)**.
-- último avance: **Implementación Completa de Mesa / Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero**:
-  - **Modelo y Estados de Venta**: Se añadió el estado `('ABIERTA', 'Abierta / En Consumo')` en `Venta.ESTADOS` mediante la migración oficial `0005_alter_venta_estado.py`.
-  - **Reutilización y Rondas Incrementales en Backend (`enviar_comanda`)**: Al despachar productos para una mesa, el backend verifica si ya existe una `Venta` con `estado='ABIERTA'` en dicho local. Si existe, incrementa `venta.total`, crea un nuevo `Pedido` independiente (Ronda #N) con sus `DetallePedido` y emite tickets `Ticket` exclusivamente para los nuevos platos/bebidas de Cocina o Barra, sin reimprimir ni duplicar comandas previas. Si la mesa está libre, abre la atención con `Venta(estado='ABIERTA')` y marca la mesa como `OCUPADA`.
-  - **Cierre y Cobro de Cuenta de Mesa (`cerrar_cuenta_mesa`)**: Acción atómica que localiza la venta abierta, registra el método de pago seleccionado (`EFECTIVO`, `DEBITO`, `CREDITO`, `TRANSFERENCIA`), transiciona la venta a `estado='PAGADA'` y libera automáticamente la mesa a `estado='HABILITADA'`.
-  - **Mapa y Terminal de Mesero Dinámico (`mesero.html`)**:
-    - *Indicador en Tarjetas de Mesa*: Cada mesa ocupada con cuenta abierta muestra una pastilla informativa con el total acumulado (`$XX.XXX`).
-    - *Banner de Cuenta Abierta*: Al seleccionar una mesa ocupada, se despliega un panel destacado con el número de ronda actual, hora de apertura, total acumulado y botones rápidos para "Ver Consumos" y "Cobrar y Cerrar Mesa".
-    - *Comanda Lateral Progresiva*: Al agregar nuevos ítems a una mesa abierta, el panel lateral muestra el acumulado previo y conmuta el botón de envío a "Enviar Ronda Adicional a Cocina/Barra".
-    - *Modal de Consumos Acumulados*: Tabla interactiva con el desglose completo de productos servidos a la mesa en todas sus rondas.
-    - *Modal de Cobro y Cierre*: Resumen del total a cobrar en CLP, selector táctil de método de pago y confirmación de pago y liberación de mesa.
-  - **Aislamiento Cajero vs. Mesero**: El Cajero opera exclusivamente en atención de mostrador y entrega rápida (`VENTA_RAPIDA`), sin mesas ni cuentas abiertas.
-  - **Validación Automatizada**: 23 de 23 pruebas oficiales aprobadas al 100% (`Ran 23 tests in 86.290s - OK`), incorporando pruebas específicas para rondas incrementales en la misma venta, cierre y liberación de mesas, y terminal de cajero sin mesas.
+- último avance: **Estandarización de Tickets Térmicos de Producción para Cocina y Barra (80mm B&W)**:
+  - **Membrete Legal Idéntico al Voucher del Docente**:
+    - Empresa: `SAFARI ADVENTURE` / `SAFARI ADVENTURE SAC`
+    - Identificación Tributaria: `RUT: 76.041.631-2`
+    - Dirección legal: `CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38, LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS`
+    - Lugar de expedición dinámico: `{{ local_actual.nombre|upper }}`
+  - **Erradicación Total de Emojis en Impresión Térmica**:
+    - Retiro de emojis (`🔥`, `🍹`, `👉`) en títulos, badges, líneas de ítems y notas de comandas.
+    - Notas formateadas de manera estándar para comandera física: `* NOTA: <TEXTO EN MAYÚSCULAS>` (ej. `* NOTA: SIN QUESO CHEDDAR`).
+    - Limpieza homogénea aplicada en `mesero.html`, `vendedor.html` y `vendedor_crear_ticket.html`.
+  - **Formato Físico 8 cm (80mm) y Tipografía Monocromo**:
+    - Dimensiones acotadas a `width: 80mm; max-width: 320px;` en pantalla y `80mm` en papel.
+    - Tipografía monoespaciada `Courier New, monospace`, tinta negra pura `#000000` sobre papel blanco térmico `#ffffff`.
+    - Separadores estandarizados tipo ESC/POS (`================================================` y `------------------------------------------------`).
+    - Simulación de corte dentado superior e inferior (*sawtooth pattern*).
+  - **Soporte de Impresión Directa ESC/POS (`@media print`)**:
+    - Regla de impresión configurada para aislar la comanda térmica a 80mm continuo por tickets sin márgenes ni encabezados de navegador.
+    - Botón "Imprimir Comandas (80mm)" integrado en el modal `#modalTickets`.
+  - **Validación Automatizada**: Las 23 pruebas de Django continúan pasando al 100% (`Ran 23 tests - OK`).
 - avances previos:
+  - Implementación completa de Mesa/Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero.
+  - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
+  - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
   - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
   - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
 - último avance técnico (Auditoría RF04):
