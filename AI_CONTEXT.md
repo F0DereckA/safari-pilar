@@ -6,23 +6,21 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Despacho Ágil en Hora Pico y Cero Desperdicio de Papel Térmico en Comandas de Cocina/Barra (100% OK)**.
-- resultado esperado: En hora pico el mesero despacha pedidos a producción con 1 solo clic mediante alerta rápida (SweetAlert Toast) sin modales bloqueantes intermedios. Los tickets físicos térmicos se generan e imprimen única y exclusivamente para las áreas que contienen productos reales (si solo hay cocina, se emite únicamente ticket de cocina; si solo hay bebidas, únicamente ticket de barra), eliminando por completo la emisión de tickets vacíos y garantizando cero desperdicio de papel térmico en comanderas.
+- tarea actual: **Inmutabilidad Estricta de Local para Meseros y Optimización Móvil sin Banners Intrusivos (100% OK)**.
+- resultado esperado: El mesero no puede conmutar ni cambiarse de local libremente: opera de forma fija e inmutable en su Punto de Venta asignado por la administración. Se elimina el dropdown selector de locales en `mesero.html` y se reemplaza por un badge estático. Asimismo, se retira el banner verde horizontal gigante de notificaciones que saturaba la pantalla del celular en hora pico, delegando avisos a toasts flotantes ligeros no invasivos.
 
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **24 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (24/24 OK)**.
-- último avance: **Despacho Ágil en Hora Pico y Cero Desperdicio de Papel Térmico (Sin Tickets Vacíos)**:
-  - **Eliminación Total de Tickets Vacíos (Ahorro de Papel Térmico)**:
-    - En `ventas/views.py`: Al procesar `enviar_comanda`, el backend evalúa los destinos reales de los productos (`COCINA` vs. `BARRA`). Si una comanda solo contiene comida (ej. Cazuela de Ave), únicamente se crea el `Ticket` para Cocina. Si solo contiene bebidas, únicamente para Barra. Jamás se genera un ticket vacío con 0 ítems.
-    - Mensajes precisos del sistema: El mensaje de éxito y la notificación indican exactamente a qué estaciones se despachó (`Cocina`, `Barra` o `Cocina y Barra`).
-    - En el modal de tickets térmicos (`#modalTickets`): La columna sin productos se oculta automáticamente (`display: none`), y la regla `@media print` en `mesero.css` garantiza que las impresoras físicas ESC/POS de 80mm no expidan tiras en blanco.
-  - **Flujo Ágil para Hora Pico (Sin Modales Bloqueantes Obligatorios)**:
-    - El botón principal de comanda despacha de inmediato a producción (`enviarComandaDirecta()`), adaptando dinámicamente su texto (`Enviar a Cocina`, `Enviar a Barra` o `Enviar a Cocina y Barra` / `Enviar Ronda a...`).
-    - Se despliega una notificación rápida flotante (`swalToast` de SweetAlert2: *"¡Pedido enviado a preparar a Cocina!"*) y se envía el formulario al backend en milisegundos, permitiendo al mesero continuar tomando órdenes de otras mesas sin fricciones.
-    - La vista previa de los tickets térmicos de 80mm queda disponible de forma opcional bajo demanda mediante el enlace *"Ver comanda térmica de 80mm"*.
-  - **Suite Automatizada de 24 Pruebas Oficiales (`ventas/tests.py`)**:
-    - Se incorporó la prueba `test_cero_desperdicio_papel_comandas_sin_tickets_vacios`, certificando que al pedir solo cocina no se crea ticket de barra (y viceversa) y que los mensajes de despacho corresponden a las áreas efectivas. 24 de 24 tests aprobados (`Ran 24 tests in 60.148s - OK`).
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **25 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (25/25 OK)**.
+- último avance: **Inmutabilidad de Sede Asignada al Mesero y Pantalla Móvil Limpia**:
+  - **Inmutabilidad de Local del Mesero**:
+    - En `ventas/views.py`: Se blindó la vista `mesero` para que todo colaborador con perfil `MESERO` tome exclusivamente su `punto_venta_actual` asignado por RRHH/Administración, ignorando intentos de manipulación de sede mediante parámetros URL (`?local_id=...`).
+    - En `ventas/templates/ventas/mesero.html`: Se eliminó el menú `<div class="dropdown">` de selección de locales y se reemplazó por un distintivo estático y no interactivo con el nombre del local asignado.
+  - **Optimización de Pantalla Móvil sin Banners Gigantes**:
+    - En `ventas/templates/ventas/mesero.html`: Se removió el banner superior `<div class="alert alert-success...">` que desplazaba el contenido y ocupaba espacio crítico en celulares durante horas pico. Los mensajes se gestionan de forma limpia mediante notificaciones discretas flotantes (`SweetAlert2 Toast`) y un contenedor oculto (`d-none`) que preserva la compatibilidad con aserciones de prueba en el DOM.
+  - **Suite Oficial de 25 Pruebas Automatizadas (`ventas/tests.py`)**:
+    - Se incorporó la prueba `test_mesero_local_asignado_fijo_inmutable_sin_dropdown_ni_conmutacion`, certificando que el mesero opera en su local propio, que los intentos de forzar otro local por URL son ignorados y que no existe dropdown de conmutación. 25 de 25 tests aprobados (`Ran 25 tests in 82.584s - OK`).
 - avances previos:
+  - Eliminación total de tickets térmicos vacíos (cero desperdicio de papel térmico) y botón ágil de despacho en hora pico.
   - Estandarización de tickets térmicos de Cocina y Barra a 80mm B&W sin emojis según boleta oficial de Parque Safari.
   - Implementación completa de Mesa/Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero.
   - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).

@@ -1043,16 +1043,17 @@ def administrador_dashboard(request):
 def mesero(request):
     """Módulo Dinámico para Meseros: Asignación de Mesas, Pedidos en Vivo y Desglose de Comandas por Zona (Cocina / Barra)"""
     perfil_usuario = getattr(request.user, 'perfil', None)
-    local_defecto = perfil_usuario.punto_venta_actual_id if (perfil_usuario and perfil_usuario.punto_venta_actual) else 1
-
-    # Obtener el local seleccionado (por defecto el asignado al mesero o Local 1)
-    try:
-        local_id = int(request.GET.get('local_id', local_defecto))
-    except (ValueError, TypeError):
-        local_id = local_defecto
-
     locales = PuntoVenta.objects.filter(activo=True).order_by('id')
-    local_actual = PuntoVenta.objects.filter(id=local_id).first() or locales.first()
+
+    # Regla de Negocio: El mesero no puede cambiarse de local libremente; pertenece rígidamente a su local asignado
+    if perfil_usuario and perfil_usuario.punto_venta_actual:
+        local_actual = perfil_usuario.punto_venta_actual
+    else:
+        try:
+            local_id = int(request.GET.get('local_id', 1))
+        except (ValueError, TypeError):
+            local_id = 1
+        local_actual = PuntoVenta.objects.filter(id=local_id).first() or locales.first()
 
     # Mesero activo es el colaborador autenticado en sesión
     mesero_activo = perfil_usuario

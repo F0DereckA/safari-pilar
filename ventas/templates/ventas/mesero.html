@@ -40,21 +40,10 @@
                 <!-- Selector de Local y Datos del Mesero Activo -->
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     
-                    <!-- Selector de Local Activo -->
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-dark dropdown-toggle rounded-pill fw-bold bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-shop text-warning me-1"></i> {{ local_actual.nombre }}
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                            <li class="dropdown-header small fw-bold">Seleccionar Punto de Venta:</li>
-                            {% for l in locales %}
-                            <li>
-                                <a class="dropdown-item {% if l.id == local_actual.id %}active bg-danger{% endif %}" href="?local_id={{ l.id }}&mesero_id={{ mesero_activo.id|default:'' }}">
-                                    {{ l.nombre }}
-                                </a>
-                            </li>
-                            {% endfor %}
-                        </ul>
+                    <!-- Local Asignado (Inmutable para Mesero según asignación de RRHH/Administración) -->
+                    <div class="d-flex align-items-center gap-2 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Local asignado: {{ local_actual.nombre }}">
+                        <i class="bi bi-shop text-warning"></i>
+                        <span class="fw-bold text-dark small">{{ local_actual.nombre }}</span>
                     </div>
 
                     <!-- Datos del Mesero en Turno -->
@@ -81,19 +70,11 @@
     <!-- Contenido Principal: Módulo de Meseros -->
     <main class="container-fluid px-lg-5 my-4 flex-grow-1">
 
-        <!-- Mensajes del Sistema -->
+        <!-- Mensajes del Sistema (Sin banners gigantes en pantalla móvil: se gestionan mediante Toast flotante discreto) -->
         {% if messages %}
-        <div class="mb-4">
+        <div class="d-none" id="mensajesSistemaBackend">
             {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'error' %}danger border-2 border-danger shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-check-circle-fill fs-4 text-success"></i>
-                    <div>
-                        <strong>Notificación:</strong> {{ message }}
-                    </div>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+            <span class="backend-msg-item" data-tags="{{ message.tags }}">{{ message }}</span>
             {% endfor %}
         </div>
         {% endif %}

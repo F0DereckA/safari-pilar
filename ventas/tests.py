@@ -426,7 +426,7 @@ class SafariFase2A1Tests(TestCase):
     # 20. Mesero envía comanda, se asocia en tiempo real y se refleja en el local
     def test_mesero_envia_comanda_y_se_refleja_en_local(self):
         self.client.force_login(self.mesero_user)
-        local = PuntoVenta.objects.first()
+        local = self.mesero_user.perfil.punto_venta_actual
         mesa = Mesa.objects.filter(punto_venta=local).first()
         if not mesa:
             mesa = Mesa.objects.create(identificador="Mesa 1", punto_venta=local, capacidad=4)
@@ -462,7 +462,7 @@ class SafariFase2A1Tests(TestCase):
     # 21. Mesa con Cuenta Abierta acumula rondas incrementales en la misma Venta
     def test_cuenta_abierta_rondas_incrementales_en_misma_mesa(self):
         self.client.force_login(self.mesero_user)
-        local = PuntoVenta.objects.first()
+        local = self.mesero_user.perfil.punto_venta_actual
         mesa = Mesa.objects.filter(punto_venta=local).first()
         if not mesa:
             mesa = Mesa.objects.create(identificador="Mesa 2", punto_venta=local, capacidad=4)
@@ -508,7 +508,7 @@ class SafariFase2A1Tests(TestCase):
     # 22. Cierre de Cuenta de Mesa: pasa Venta a PAGADA y libera Mesa a HABILITADA
     def test_cierre_cuenta_mesa_libera_y_paga(self):
         self.client.force_login(self.mesero_user)
-        local = PuntoVenta.objects.first()
+        local = self.mesero_user.perfil.punto_venta_actual
         mesa = Mesa.objects.filter(punto_venta=local).first()
 
         # Abrir cuenta con pedido
@@ -551,7 +551,7 @@ class SafariFase2A1Tests(TestCase):
     # 24. Cero desperdicio de papel térmico: comanda solo genera tickets para destinos con productos reales
     def test_cero_desperdicio_papel_comandas_sin_tickets_vacios(self):
         self.client.force_login(self.mesero_user)
-        local = PuntoVenta.objects.first()
+        local = self.mesero_user.perfil.punto_venta_actual
         mesa = Mesa.objects.filter(punto_venta=local).first()
         if not mesa:
             mesa = Mesa.objects.create(identificador="Mesa 3", punto_venta=local, capacidad=4)
@@ -588,6 +588,30 @@ class SafariFase2A1Tests(TestCase):
         pedido_barra = venta.pedidos.order_by('id').last()
         self.assertTrue(Ticket.objects.filter(pedido=pedido_barra, tipo_destino='BARRA').exists())
         self.assertFalse(Ticket.objects.filter(pedido=pedido_barra, tipo_destino='COCINA').exists())
+
+    # 25. Mesero tiene local fijo e inmutable: sin dropdown de conmutación ni banners gigantes intrusivos
+    def test_mesero_local_asignado_fijo_inmutable_sin_dropdown_ni_conmutacion(self):
+        self.client.force_login(self.mesero_user)
+        perfil = PerfilEmpleado.objects.get(usuario=self.mesero_user)
+        local_propio = perfil.punto_venta_actual
+        otro_local = PuntoVenta.objects.exclude(id=local_propio.id).first()
+
+        # Acceso normal al módulo de mesero
+        resp = self.client.get(reverse('mesero'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['local_actual'], local_propio)
+        # No debe haber dropdown para cambiarse de local libremente
+        self.assertNotContains(resp, "Seleccionar Punto de Venta:")
+        # Debe mostrarse el badge estático con su local asignado
+        self.assertContains(resp, local_propio.nombre)
+
+        # Intento de conmutación forzada mediante URL (?local_id=otro_local)
+        resp_forzado = self.client.get(reverse('mesero') + f"?local_id={otro_local.id}")
+        self.assertEqual(resp_forzado.status_code, 200)
+        # La vista debe blindar la asignación y permanecer en el local propio del colaborador
+        self.assertEqual(resp_forzado.context['local_actual'], local_propio)
+        self.assertNotEqual(resp_forzado.context['local_actual'], otro_local)
+
 
 
 
