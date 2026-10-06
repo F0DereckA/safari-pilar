@@ -59,6 +59,11 @@
 
                 <!-- Navegación y Salida -->
                 <div class="d-flex align-items-center gap-2">
+                    <!-- Horario Oficial Parque Safari: 10:00 a 18:00 -->
+                    <span class="badge {% if en_horario %}bg-success{% else %}bg-warning text-dark{% endif %} px-3 py-2 rounded-pill fw-bold shadow-sm d-none d-lg-inline-block" title="Horario Oficial de Operación: 10:00 a 18:00">
+                        <i class="bi bi-clock-history me-1"></i> 10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})
+                    </span>
+
                     <!-- Centro de Alertas como Ícono Notificador -->
                     <div class="dropdown">
                         <button class="btn btn-light btn-sm position-relative rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" type="button" id="dropdownAlertas" data-bs-toggle="dropdown" aria-expanded="false" title="Centro de Alertas de Traslado" style="width: 38px; height: 38px; border: 1.5px solid var(--safari-cafe-medium); background-color: #ffffff;">
@@ -175,7 +180,7 @@
                 {% endfor %}
             </div>
             <div>
-                <span class="badge bg-success px-3 py-2 fw-bold">
+                <span class="badge {% if local.en_horario and local.estado != 'Inactivo' %}bg-success{% elif local.estado == 'Inactivo' %}bg-danger{% else %}bg-warning text-dark{% endif %} px-3 py-2 fw-bold shadow-sm">
                     <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ local.estado }} • {{ local.turno }}
                 </span>
             </div>
@@ -203,12 +208,12 @@
                     </div>
                 </div>
                 <div class="col-lg-4 text-lg-end">
-                    <span class="text-muted small d-block">VENTAS ACTUALES DE LA JORNADA</span>
+                    <span class="text-muted small d-block">VENTAS DE HOY ({{ hoy_str }})</span>
                     <h1 class="fw-bold text-danger mb-0" style="font-family: 'Oswald', sans-serif; font-size: 2.8rem;">
                         {{ local.total_ventas|pesos_clp }}
                     </h1>
                     <small class="text-success fw-bold">
-                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Jornada activa con {{ local.tickets_emitidos }} comandas emitidas
+                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Jornada activa con {{ local.tickets_emitidos }} comandas emitidas hoy
                     </small>
                 </div>
             </div>
@@ -222,7 +227,7 @@
                         <i class="bi bi-receipt-cutoff"></i>
                     </div>
                     <div>
-                        <div class="admin-kpi-label">Tickets del Turno</div>
+                        <div class="admin-kpi-label">Tickets de Hoy</div>
                         <div class="admin-kpi-val text-dark">{{ local.tickets_emitidos }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Comandas de comida y bebidas</small>
                     </div>

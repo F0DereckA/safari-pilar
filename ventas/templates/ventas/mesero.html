@@ -46,6 +46,12 @@
                         <span class="fw-bold text-dark small">{{ local_actual.nombre }}</span>
                     </div>
 
+                    <!-- Horario Oficial Parque Safari: 10:00 a 18:00 -->
+                    <div class="d-none d-lg-flex align-items-center gap-1 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Horario Oficial de Operación: 10:00 a 18:00">
+                        <i class="bi bi-clock-history text-danger"></i>
+                        <span class="fw-bold text-dark small">10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})</span>
+                    </div>
+
                     <!-- Datos del Mesero en Turno -->
                     <div class="d-none d-md-flex flex-column text-end">
                         <span class="fw-bold text-dark" style="font-size: 0.9rem;">

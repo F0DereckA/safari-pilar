@@ -50,6 +50,10 @@
                         <i class="bi bi-cash-coin me-1"></i> {{ caja_activa.nombre }}
                     </span>
                     {% endif %}
+                    <!-- Horario Oficial Parque Safari: 10:00 a 18:00 -->
+                    <span class="badge {% if en_horario %}bg-success{% else %}bg-warning text-dark{% endif %} px-3 py-2 rounded-pill fw-bold d-none d-lg-inline-block shadow-sm" title="Horario de Atención Oficial: 10:00 a 18:00">
+                        <i class="bi bi-clock-history me-1"></i> 10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})
+                    </span>
                     <a href="{% url 'vendedor' %}" class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold bg-white">
                         <i class="bi bi-arrow-left me-1 text-danger"></i> Monitor Tickets
                     </a>
@@ -982,6 +986,20 @@
         }
 
         const STORAGE_KEY = 'safari_tickets_desarrollo';
+        const STORAGE_DATE_KEY = 'safari_fecha_operativa';
+
+        // Regla Parque Safari: Guiado por día y hora. Al cambiar el día, la cuenta vuelve a 0
+        function obtenerTicketsHoy() {
+            const hoyStr = new Date().toLocaleDateString('es-CL');
+            const fechaGuardada = localStorage.getItem(STORAGE_DATE_KEY);
+            if (fechaGuardada !== hoyStr) {
+                localStorage.setItem(STORAGE_DATE_KEY, hoyStr);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+                return [];
+            }
+            const guardados = localStorage.getItem(STORAGE_KEY);
+            try { return guardados ? JSON.parse(guardados) : []; } catch(e) { return []; }
+        }
 
         // Simular cobro y guardar en Tickets en Desarrollo
         function simularCobro() {
@@ -1032,15 +1050,11 @@
                 destino = 'Barra Cafetería';
             }
 
-            // Obtener lista actual de tickets desde LocalStorage
-            let tickets = [];
-            const guardados = localStorage.getItem(STORAGE_KEY);
-            if (guardados) {
-                try { tickets = JSON.parse(guardados); } catch (e) { tickets = []; }
-            }
+            // Obtener lista actual de tickets de hoy desde LocalStorage
+            let tickets = obtenerTicketsHoy();
 
-            const nuevoNumero = 80 + tickets.length + 1;
-            const ticketId = 'COM-00' + nuevoNumero;
+            const nuevoNumero = tickets.length + 1;
+            const ticketId = 'COM-' + String(nuevoNumero).padStart(4, '0');
             const ahora = new Date();
             const horaStr = ahora.getHours().toString().padStart(2, '0') + ':' + ahora.getMinutes().toString().padStart(2, '0');
 
@@ -1134,15 +1148,11 @@
                 });
             }
 
-            let tickets = [];
-            const guardados = localStorage.getItem(STORAGE_KEY);
-            if (guardados) {
-                try { tickets = JSON.parse(guardados); } catch (e) { tickets = []; }
-            }
-            const nuevoNumero = 80 + tickets.length + 1;
+            const tickets = obtenerTicketsHoy();
+            const nuevoNumero = tickets.length + 1;
             const comandaBadge = document.getElementById('comandaBadge');
             if (comandaBadge) {
-                comandaBadge.innerText = '#COM-00' + nuevoNumero;
+                comandaBadge.innerText = '#COM-' + String(nuevoNumero).padStart(4, '0');
             }
         });
     </script>

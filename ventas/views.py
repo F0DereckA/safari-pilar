@@ -1,3 +1,4 @@
+import datetime
 import json
 from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404, Http404
@@ -237,15 +238,29 @@ def get_locales_data():
     locales_bd = PuntoVenta.objects.all().order_by('id')
     locales = {}
 
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+
+    # Regla Operativa Oficial Parque Safari: Todos los locales abren a las 10:00 y cierran a las 18:00 (10:00 AM a 6:00 PM)
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
     for pv in locales_bd:
         demo = mock_metricas.get(pv.id, {})
 
-        # Consultar ventas reales asociadas en la BD para este punto de venta
-        real_ventas = Venta.objects.filter(punto_venta=pv).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto').order_by('-fecha_hora')[:20]
+        # Regla Parque Safari: Guiado por día y hora. Las ventas corresponden exclusivamente al día actual (hoy).
+        # Al finalizar el día o empezar un nuevo día, la cuenta vuelve automáticamente a 0.
+        real_ventas_hoy = Venta.objects.filter(
+            punto_venta=pv,
+            fecha_hora__date=hoy
+        ).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto').order_by('-fecha_hora')
+
         real_tickets = []
         suma_ventas_reales = 0
 
-        for rv in real_ventas:
+        for rv in real_ventas_hoy:
             rol_c = obtener_rol_usuario(rv.cajero) or "Mesero"
             v_items = []
             for d in rv.detalles.all():
@@ -272,17 +287,16 @@ def get_locales_data():
                 "items_json": json.dumps(v_items)
             })
 
-        base_tickets = demo.get("tickets_recientes", [])
-        for bt in base_tickets:
-            if "items_json" not in bt:
-                bt["items_json"] = json.dumps(bt.get("items", []))
-            if "creador_rol" not in bt:
-                bt["creador_rol"] = "Cajero"
-
-        tickets_combinados = real_tickets + base_tickets
-        total_ventas_calc = demo.get("total_ventas", 0) + suma_ventas_reales
-        tickets_emitidos_calc = demo.get("tickets_emitidos", 0) + len(real_tickets)
+        # Si el local tiene ventas hoy, se muestran; si no, la cuenta del día está limpia en 0
+        total_ventas_calc = suma_ventas_reales
+        tickets_emitidos_calc = len(real_tickets)
         ticket_prom_calc = round(total_ventas_calc / tickets_emitidos_calc) if tickets_emitidos_calc else 0
+
+        turno_oficial = "Horario Oficial (10:00 - 18:00)"
+        if pv.activo:
+            estado_local = "Abierto (10:00 - 18:00)" if en_horario else "Cerrado (Horario 10:00 - 18:00)"
+        else:
+            estado_local = "Inactivo"
 
         locales[pv.id] = {
             "id": pv.id,
@@ -291,19 +305,22 @@ def get_locales_data():
             "descripcion": pv.descripcion or demo.get("descripcion", "Punto gastronómico operativo de Parque Safari."),
             "icono": getattr(pv, 'icono', None) or demo.get("icono", "bi-shop"),
             "color": getattr(pv, 'color', None) or demo.get("color", "#c62828"),
-            "estado": "En Servicio" if pv.activo else "Inactivo",
-            "turno": demo.get("turno", "Turno General (09:00 - 19:00)"),
+            "estado": estado_local,
+            "en_horario": en_horario,
+            "horario_apertura": "10:00",
+            "horario_cierre": "18:00",
+            "turno": turno_oficial,
             "total_ventas": total_ventas_calc,
             "tickets_emitidos": tickets_emitidos_calc,
             "ticket_promedio": ticket_prom_calc,
             "caja_apertura": demo.get("caja_apertura", 0),
             "caja_efectivo": demo.get("caja_efectivo", 0),
             "caja_tarjeta": demo.get("caja_tarjeta", 0),
-            "saldo_actual": demo.get("saldo_actual", 0) + suma_ventas_reales,
+            "saldo_actual": suma_ventas_reales,
             "personal": [],
             "ventas_categoria": demo.get("ventas_categoria", []),
             "metodos_pago": demo.get("metodos_pago", []),
-            "tickets_recientes": tickets_combinados
+            "tickets_recientes": real_tickets
         }
 
     # Si por algún motivo aún no hay locales en BD (p.ej. antes del seeding), cargar los mock por defecto
@@ -471,11 +488,21 @@ def vendedor(request):
     perfil = getattr(request.user, 'perfil', None)
     punto_venta = perfil.punto_venta_actual if perfil else None
 
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
     context = {
         "jornada_activa": jornada_activa,
         "caja_activa": caja_activa,
         "punto_venta": punto_venta,
         "usuario": request.user,
+        "hoy_str": hoy.strftime("%d/%m/%Y"),
+        "ahora_hora_str": ahora_dt.strftime("%H:%M"),
+        "en_horario": en_horario,
+        "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/vendedor.html', context)
 
@@ -607,6 +634,12 @@ def abrir_caja(request):
 def crear_ticket(request):
     """Terminal POS de venta rápida y cobro (requiere jornada del día y caja activa)"""
     hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
     jornada_activa = Jornada.objects.select_related('usuario_apertura').filter(estado='ABIERTA', fecha=hoy).first()
     caja_activa = None
     if jornada_activa:
@@ -628,6 +661,10 @@ def crear_ticket(request):
         "caja_activa": caja_activa,
         "punto_venta": punto_venta,
         "usuario": request.user,
+        "hoy_str": hoy.strftime("%d/%m/%Y"),
+        "ahora_hora_str": ahora_dt.strftime("%H:%M"),
+        "en_horario": en_horario,
+        "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/vendedor_crear_ticket.html', context)
 
@@ -742,6 +779,11 @@ def administrador(request):
     alertas_traslado = AlertaTraslado.objects.select_related('empleado', 'punto_venta_origen', 'punto_venta_destino').order_by('-fecha_hora')[:5]
     total_alertas_no_leidas = AlertaTraslado.objects.filter(leida=False).count()
 
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    en_horario = (datetime.time(10, 0) <= ahora_hora < datetime.time(18, 0))
+
     context = {
         "locales": locales.values(),
         "total_ventas": total_ventas,
@@ -751,6 +793,10 @@ def administrador(request):
         "personal_completo": personal_completo,
         "alertas_traslado": alertas_traslado,
         "total_alertas_no_leidas": total_alertas_no_leidas,
+        "hoy_str": hoy.strftime("%d/%m/%Y"),
+        "ahora_hora_str": ahora_dt.strftime("%H:%M"),
+        "en_horario": en_horario,
+        "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/administrador.html', context)
 
@@ -784,6 +830,13 @@ def administrador_local(request, local_id):
     
     local = locales[local_id]
 
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
     # Alertas de traslado que involucran a este local (salientes o entrantes)
     alertas_local = AlertaTraslado.objects.filter(
         models.Q(punto_venta_origen_id=local_id) | models.Q(punto_venta_destino_id=local_id)
@@ -797,7 +850,10 @@ def administrador_local(request, local_id):
         "local": local,
         "locales": locales.values(),
         "alertas_local": alertas_local,
-        "total_alertas_no_leidas": total_alertas_no_leidas,
+        "hoy_str": hoy.strftime("%d/%m/%Y"),
+        "ahora_hora_str": ahora_dt.strftime("%H:%M"),
+        "en_horario": en_horario,
+        "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/administrador_local.html', context)
 
@@ -1432,11 +1488,19 @@ def mesero(request):
         }
     ]
 
-    # Cuentas abiertas activas por mesa en este punto de venta
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
+    # Cuentas abiertas activas por mesa en este punto de venta (estrictamente del día actual hoy)
     ventas_abiertas = Venta.objects.filter(
         punto_venta=local_actual,
         estado='ABIERTA',
-        mesa__isnull=False
+        mesa__isnull=False,
+        fecha_hora__date=hoy
     ).select_related('mesa', 'cajero').prefetch_related('detalles__producto', 'pedidos')
 
     cuentas_abiertas_data = {}
@@ -1472,6 +1536,10 @@ def mesero(request):
         "mesas_ocupadas": mesas_ocupadas,
         "catalogo_productos": catalogo_productos,
         "cuentas_abiertas_json": json.dumps(cuentas_abiertas_data),
+        "hoy_str": hoy.strftime("%d/%m/%Y"),
+        "ahora_hora_str": ahora_dt.strftime("%H:%M"),
+        "en_horario": en_horario,
+        "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/mesero.html', context)
 

@@ -6,20 +6,22 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Inmutabilidad Estricta de Local para Meseros y Optimización Móvil sin Banners Intrusivos (100% OK)**.
-- resultado esperado: El mesero no puede conmutar ni cambiarse de local libremente: opera de forma fija e inmutable en su Punto de Venta asignado por la administración. Se elimina el dropdown selector de locales en `mesero.html` y se reemplaza por un badge estático. Asimismo, se retira el banner verde horizontal gigante de notificaciones que saturaba la pantalla del celular en hora pico, delegando avisos a toasts flotantes ligeros no invasivos.
+- tarea actual: **Horario Oficial Parque Safari (10:00 a 18:00) y Reinicio Diario Automático a 0 (100% OK)**.
+- resultado esperado: Todos los locales gastronómicos de Parque Safari operan formalmente de 10:00 AM a 6:00 PM (10:00 a 18:00 hrs). El sistema se rige en tiempo real por día y hora: evalúa la hora local de Chile, reflejando el distintivo Abierto/Cerrado. Al cambiar el día o finalizar la jornada, la cuenta y tickets se reinician automáticamente a 0 en backend (filtrado por fecha de hoy en `get_locales_data()` y cuentas de mesas) y en frontend (`localStorage` purgado al detectar cambio de fecha operativa, correlativo parte en `#COM-0001`).
 
 ## 3. estado actual
 - estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **25 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (25/25 OK)**.
-- último avance: **Inmutabilidad de Sede Asignada al Mesero y Pantalla Móvil Limpia**:
-  - **Inmutabilidad de Local del Mesero**:
-    - En `ventas/views.py`: Se blindó la vista `mesero` para que todo colaborador con perfil `MESERO` tome exclusivamente su `punto_venta_actual` asignado por RRHH/Administración, ignorando intentos de manipulación de sede mediante parámetros URL (`?local_id=...`).
-    - En `ventas/templates/ventas/mesero.html`: Se eliminó el menú `<div class="dropdown">` de selección de locales y se reemplazó por un distintivo estático y no interactivo con el nombre del local asignado.
-  - **Optimización de Pantalla Móvil sin Banners Gigantes**:
-    - En `ventas/templates/ventas/mesero.html`: Se removió el banner superior `<div class="alert alert-success...">` que desplazaba el contenido y ocupaba espacio crítico en celulares durante horas pico. Los mensajes se gestionan de forma limpia mediante notificaciones discretas flotantes (`SweetAlert2 Toast`) y un contenedor oculto (`d-none`) que preserva la compatibilidad con aserciones de prueba en el DOM.
+- último avance: **Horario Oficial (10:00 - 18:00) y Reinicio Automático Diario de Tickets y Cuentas a 0**:
+  - **Horario Oficial de Operación (10:00 a 18:00 hrs)**:
+    - En `ventas/views.py`: Se calculan `hora_apertura = time(10, 0)`, `hora_cierre = time(18, 0)` y `en_horario = (10:00 <= ahora_hora < 18:00)`. Se definen los turnos como `"Horario Oficial (10:00 - 18:00)"` y los estados como `"Abierto (10:00 - 18:00)"` o `"Cerrado (Horario 10:00 - 18:00)"`.
+    - En plantillas (`administrador.html`, `administrador_local.html`, `vendedor.html`, `vendedor_crear_ticket.html`, `mesero.html`): Se incorporaron badges visuales dinámicos que muestran el estado operativo según la hora oficial.
+  - **Reinicio Automático Diario a 0 (Guiado por Día y Hora)**:
+    - Backend (`ventas/views.py`): En `get_locales_data()`, el cálculo de ventas y tickets se acota estrictamente a `fecha_hora__date=hoy`. Si un local no registra ventas hoy, arranca limpio con `$0` y `0` comandas (sin arrastrar mocks de jornadas pasadas). En `mesero`, las cuentas abiertas activas de mesas se filtran por `fecha_hora__date=hoy`.
+    - Frontend (`vendedor.html` y `vendedor_crear_ticket.html`): Implementación de `STORAGE_DATE_KEY = 'safari_fecha_operativa'`. Si la fecha almacenada no coincide con la fecha actual del comensal/cajero, la memoria de tickets se purga automáticamente iniciando el día en 0 tickets y correlativo limpio `#COM-0001`.
   - **Suite Oficial de 25 Pruebas Automatizadas (`ventas/tests.py`)**:
-    - Se incorporó la prueba `test_mesero_local_asignado_fijo_inmutable_sin_dropdown_ni_conmutacion`, certificando que el mesero opera en su local propio, que los intentos de forzar otro local por URL son ignorados y que no existe dropdown de conmutación. 25 de 25 tests aprobados (`Ran 25 tests in 82.584s - OK`).
+    - 25 de 25 tests ejecutados y aprobados al 100% (`Ran 25 tests in 62.194s - OK`).
 - avances previos:
+  - Inmutabilidad estricta de local para meseros y optimización de pantalla móvil sin banners intrusivos.
   - Eliminación total de tickets térmicos vacíos (cero desperdicio de papel térmico) y botón ágil de despacho en hora pico.
   - Estandarización de tickets térmicos de Cocina y Barra a 80mm B&W sin emojis según boleta oficial de Parque Safari.
   - Implementación completa de Mesa/Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero.
