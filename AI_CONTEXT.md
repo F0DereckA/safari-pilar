@@ -9,16 +9,19 @@
 - tarea actual: **RF04.1 — Aislamiento operativo por Punto de Venta para Mesero y corrección de fallbacks arbitrarios**.
 - resultado esperado: Corregir únicamente las inconsistencias operativas detectadas en la auditoría RF04 sin construir todavía el CRUD de Puntos de Venta ni modificar catálogo, ventas o dashboard.
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 16 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (16/16 OK). Creación dinámica de nuevos locales gastronómicos habilitada para el Administrador, integrada con asignación de personal y auditoría de jornada.
-- último avance: **Creación Dinámica de Locales Gastronómicos por el Administrador**:
-  - Se agregaron los campos `icono` y `color` al modelo `PuntoVenta` (migración `0004_puntoventa_color_puntoventa_icono.py`).
-  - Se implementó en el panel general (`/administrador/`) el botón destacado y modal interactivo `#modalCrearLocal` para que el Administrador registre nuevos locales con nombre, tipo, descripción, ícono temático y color de marca.
-  - Se refactorizó `get_locales_data()` en `ventas/views.py` para consultar dinámicamente todos los registros de `PuntoVenta` en la base de datos, manteniendo las métricas demo iniciales de los locales 1, 2 y 3 y habilitando métricas limpias para locales creados por el usuario.
-  - Al crear un local, este se refleja de forma instantánea en: (1) Las tarjetas de estado operativo de `/administrador/`, (2) El selector y auditoría detallada de `/administrador/local/<id>/`, (3) Los selectores de asignación y traslado de dotación en `/administrador/trabajadores/`.
-  - Se incorporó la prueba automatizada #16 en `ventas/tests.py`, verificando la creación del local vía POST, persistencia en BD, asignación de colaboradores y navegación a su vista de auditoría.
+- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de 20 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (20/20 OK). CRUD completo de Locales Gastronómicos habilitado para el Administrador (Crear, Modificar, Eliminar con protección de auditoría). Formateo monetario 100% en Pesos Chilenos (CLP) sin abreviaturas (sin "1k" ni "1M") en toda la aplicación. Trazabilidad de tickets en tiempo real en auditoría de local con distinción Mesero/Cajero, filtrador por hora/estado/rol y modal de detalle compacto.
+- último avance: **CRUD de Locales, Formato CLP Completo y Trazabilidad en Vivo de Comandas**:
+  - **CRUD Completo de Puntos de Venta**: Se implementaron las acciones `modificar_local` y `eliminar_local` en `ventas/views.py`. En `administrador.html`, cada tarjeta de local incluye botones de edición y eliminación que despliegan modales dedicados (`#modalEditarLocal_{{ local.id }}` y `#modalEliminarLocal_{{ local.id }}`). La eliminación protege la integridad referencial desasignando colaboradores y desactivando el local de forma segura si tiene ventas históricas (`ProtectedError`).
+  - **Formateo Estricto de Moneda en Pesos Chilenos**: Se resolvió el error de plantilla donde `|stringformat:",d"` producía un `$` solitario. Se creó el módulo `ventas/templatetags/safari_tags.py` (`pesos`, `pesos_clp`) aplicado universalmente a Dashboard, Administrador, Detalle de Local y Mesero, garantizando cifras completas con separador de miles (`$25.400`, `$1.000.000`) sin abreviaturas.
+  - **Trazabilidad de Comandas y Detalle en Vivo (`/administrador/local/<local_id>/`)**:
+    - Visualización de tickets con badge de autoría (`Mesero` vs `Cajero`).
+    - Barra de filtrado compacto en tiempo real por búsqueda de texto, selector horario, rol y estado.
+    - Botón "Ver Detalle" por cada ticket que abre el modal `#modalDetalleTicket` con desglose de productos, cantidades, precios unitarios, notas de preparación y total en CLP.
+    - Integración de despacho de comandas desde el terminal de meseros (`mesero.html`), persistiendo en `Venta`, `DetalleVenta`, `Pedido` y `Ticket`, asociándose inmediatamente al colaborador en sesión y reflejándose en la vista del administrador.
+  - **Ampliación de Suite de Pruebas**: Se añadieron los tests 17, 18, 19 y 20 en `ventas/tests.py`.
 - avances previos:
-  - Unificación del Centro de Alertas en Detalle de Local (`/administrador/local/<local_id>/`): Se eliminaron los banners invasivos del cuerpo de la página y se implementó la campana de notificaciones interactiva con conteo dinámico y descarte asíncrono vía AJAX sin recargar la página.
-  - Entrega de versión histórica funcional del 29-Sep (`version 29 ante de retroalimentar`), publicación oficial en GitHub (https://github.com/F0DereckA/safari-pilar), paquete para importar generado y servidor ejecutándose en background.
+  - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
+  - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
 - último avance técnico (Auditoría RF04):
   - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
   - Levantamiento completo de dependencias en base de datos vs. mock hardcodeado (`get_locales_data()`).

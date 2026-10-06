@@ -1,4 +1,4 @@
-{% load static %}
+{% load static safari_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -212,10 +212,10 @@
                         {% for h in historico_15_meses %}
                         <tr>
                             <td><strong class="text-dark">{{ h.mes }}</strong></td>
-                            <td class="fw-bold" style="font-family: 'Oswald', sans-serif;">${{ h.ventas|stringformat:",d" }}</td>
+                            <td class="fw-bold" style="font-family: 'Oswald', sans-serif;">{{ h.ventas|pesos_clp }}</td>
                             <td>
                                 <strong class="text-success" style="font-family: 'Oswald', sans-serif; font-size: 1.05rem;">
-                                    ${{ h.ganancia|stringformat:",d" }}
+                                    {{ h.ganancia|pesos_clp }}
                                 </strong>
                             </td>
                             <td><span class="badge bg-light text-dark border">{{ h.margen }}%</span></td>
@@ -317,11 +317,8 @@
         let currentChart = null;
 
         function formatearMoneda(val, unidad) {
-            if (unidad === "Millones CLP") {
-                return '$' + val.toFixed(1) + 'M';
-            } else {
-                return '$' + val.toLocaleString('es-CL') + 'K';
-            }
+            let totalPesos = (unidad === "Millones CLP") ? Math.round(val * 1000000) : Math.round(val * 1000);
+            return '$' + totalPesos.toLocaleString('es-CL');
         }
 
         function renderizarChart(tipo) {

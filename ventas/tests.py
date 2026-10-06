@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 from django.test import TestCase, Client
@@ -5,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja
+from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta
 
 
 class SafariFase2A1Tests(TestCase):
@@ -369,5 +370,93 @@ class SafariFase2A1Tests(TestCase):
         self.assertEqual(resp_local.status_code, 200)
         self.assertContains(resp_local, "Heladería Selva Safari")
         self.assertContains(resp_local, "Andrea Pavez")
+
+    # 17. Modificar local existente por administrador
+    def test_modificar_local_administrador(self):
+        self.client.force_login(self.admin_user)
+        local = PuntoVenta.objects.first()
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'modificar_local',
+            'local_id': local.id,
+            'nombre': 'Restaurante Central Safari VIP',
+            'tipo': 'Restaurante Exclusivo',
+            'descripcion': 'Atención buffet y platos calientes especiales.',
+            'icono': 'bi-building-fill',
+            'color': '#c62828',
+            'activo': 'true'
+        }, follow=True)
+        self.assertContains(resp, "actualizado correctamente")
+        local.refresh_from_db()
+        self.assertEqual(local.nombre, 'Restaurante Central Safari VIP')
+        self.assertEqual(local.tipo, 'Restaurante Exclusivo')
+
+    # 18. Eliminar local por administrador
+    def test_eliminar_local_administrador(self):
+        self.client.force_login(self.admin_user)
+        local_temp = PuntoVenta.objects.create(
+            nombre='Kiosco Temporal Test',
+            tipo='Kiosco',
+            descripcion='Local para prueba de borrado',
+            activo=True
+        )
+        # Asignar colaborador temporal
+        perfil = PerfilEmpleado.objects.first()
+        perfil.punto_venta_actual = local_temp
+        perfil.save()
+
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'eliminar_local',
+            'local_id': local_temp.id
+        }, follow=True)
+        self.assertContains(resp, "eliminado exitosamente")
+        self.assertFalse(PuntoVenta.objects.filter(id=local_temp.id).exists())
+        perfil.refresh_from_db()
+        self.assertIsNone(perfil.punto_venta_actual)
+
+    # 19. Filtros de moneda chilena: nunca abrevian en 1k ni 1M y muestran cifras completas con puntos
+    def test_filtro_pesos_chilenos(self):
+        from ventas.templatetags.safari_tags import pesos, pesos_clp
+        self.assertEqual(pesos(1000), "1.000")
+        self.assertEqual(pesos(20000), "20.000")
+        self.assertEqual(pesos(1000000), "1.000.000")
+        self.assertEqual(pesos_clp(25400), "$25.400")
+        self.assertEqual(pesos_clp(1000000), "$1.000.000")
+        self.assertEqual(pesos_clp(0), "$0")
+
+    # 20. Mesero envía comanda, se asocia en tiempo real y se refleja en el local
+    def test_mesero_envia_comanda_y_se_refleja_en_local(self):
+        self.client.force_login(self.mesero_user)
+        local = PuntoVenta.objects.first()
+        mesa = Mesa.objects.filter(punto_venta=local).first()
+        if not mesa:
+            mesa = Mesa.objects.create(identificador="Mesa 1", punto_venta=local, capacidad=4)
+
+        items_comanda = [
+            {"nombre": "Hamburguesa Safari con Papas", "cantidad": 2, "precio": 8900, "destino": "COCINA", "nota": "Sin sal"},
+            {"nombre": "Bebida Coca-Cola 350ml", "cantidad": 1, "precio": 2000, "destino": "BARRA", "nota": ""}
+        ]
+
+        resp = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_comanda)
+        }, follow=True)
+        self.assertContains(resp, "despachada con éxito a Cocina y Barra")
+
+        # Verificar que la mesa quedó OCUPADA
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+
+        # Verificar que la venta quedó registrada en la BD asociada al mesero
+        venta = Venta.objects.filter(mesa=mesa, punto_venta=local).first()
+        self.assertIsNotNone(venta)
+        self.assertEqual(venta.cajero, self.mesero_user)
+        self.assertEqual(int(venta.total), 19800)
+
+        # Ahora el administrador audita el local y ve la comanda en tiempo real con rol Mesero
+        self.client.force_login(self.admin_user)
+        resp_admin_local = self.client.get(reverse('administrador_local', kwargs={'local_id': local.id}))
+        self.assertContains(resp_admin_local, "Mesero")
+        self.assertContains(resp_admin_local, "$19.800")
 
 

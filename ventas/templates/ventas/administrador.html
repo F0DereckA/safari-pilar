@@ -1,4 +1,4 @@
-{% load static %}
+{% load static safari_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -199,7 +199,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Total Vendido Hoy</div>
-                        <div class="admin-kpi-val text-danger">${{ total_ventas|stringformat:",d" }}</div>
+                        <div class="admin-kpi-val text-danger">{{ total_ventas|pesos_clp }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Consolidado {{ locales|length }} Locales (CLP)</small>
                     </div>
                 </div>
@@ -243,7 +243,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Ticket Promedio</div>
-                        <div class="admin-kpi-val text-success">${{ ticket_promedio_global|stringformat:",d" }}</div>
+                        <div class="admin-kpi-val text-success">{{ ticket_promedio_global|pesos_clp }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Gasto promedio por comanda</small>
                     </div>
                 </div>
@@ -280,9 +280,17 @@
                                 <h5 class="local-title">{{ local.nombre }}</h5>
                             </div>
                         </div>
-                        <span class="badge bg-success px-2 py-1">
-                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ local.estado }}
-                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEditarLocal_{{ local.id }}" title="Modificar Local">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEliminarLocal_{{ local.id }}" title="Eliminar Local">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                            <span class="badge {% if local.estado == 'En Servicio' or local.estado == 'Activo' %}bg-success{% else %}bg-secondary{% endif %} px-2 py-1 ms-1">
+                                <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ local.estado }}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Cuerpo de Métricas del Local -->
@@ -294,7 +302,7 @@
                             <div class="col-6">
                                 <div class="local-metric-box">
                                     <div class="local-metric-label">Ventas Hoy</div>
-                                    <div class="local-metric-num text-danger">${{ local.total_ventas|stringformat:",d" }}</div>
+                                    <div class="local-metric-num text-danger">{{ local.total_ventas|pesos_clp }}</div>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -508,6 +516,132 @@
                 </div>
             </div>
         </div>
+
+        <!-- MODALES DE MODIFICACIÓN Y ELIMINACIÓN DE LOCALES -->
+        {% for local in locales %}
+        <!-- Modal Modificar Local #{{ local.id }} -->
+        <div class="modal fade" id="modalEditarLocal_{{ local.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-header text-white" style="background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-pencil-square fs-5 text-warning"></i>
+                            <h5 class="modal-title fw-bold mb-0">Modificar Local #{{ local.id }}</h5>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{% url 'administrador' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="modificar_local">
+                        <input type="hidden" name="local_id" value="{{ local.id }}">
+                        
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark small">
+                                    Nombre del Local <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" name="nombre" class="form-control rounded-3" value="{{ local.nombre }}" required maxlength="100">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark small">
+                                    Tipo de Servicio / Especialidad
+                                </label>
+                                <input type="text" name="tipo" list="listaTiposLocal" class="form-control rounded-3" value="{{ local.tipo }}" maxlength="50">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark small">
+                                    Descripción Operativa
+                                </label>
+                                <textarea name="descripcion" class="form-control rounded-3" rows="2">{{ local.descripcion }}</textarea>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-dark small">Ícono</label>
+                                    <select name="icono" class="form-select rounded-3">
+                                        <option value="bi-shop" {% if local.icono == 'bi-shop' %}selected{% endif %}>🏪 Tienda (bi-shop)</option>
+                                        <option value="bi-building-fill" {% if local.icono == 'bi-building-fill' %}selected{% endif %}>🏛️ Restaurante (bi-building-fill)</option>
+                                        <option value="bi-cup-hot-fill" {% if local.icono == 'bi-cup-hot-fill' %}selected{% endif %}>☕ Cafetería (bi-cup-hot-fill)</option>
+                                        <option value="bi-shop-window" {% if local.icono == 'bi-shop-window' %}selected{% endif %}>🪟 Kiosco (bi-shop-window)</option>
+                                        <option value="bi-snow" {% if local.icono == 'bi-snow' %}selected{% endif %}>🍦 Heladería (bi-snow)</option>
+                                        <option value="bi-cup-straw" {% if local.icono == 'bi-cup-straw' %}selected{% endif %}>🥤 Barra (bi-cup-straw)</option>
+                                        <option value="bi-fire" {% if local.icono == 'bi-fire' %}selected{% endif %}>🔥 Cocina (bi-fire)</option>
+                                        <option value="bi-basket" {% if local.icono == 'bi-basket' %}selected{% endif %}>🧺 Snack (bi-basket)</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-dark small">Color Temático</label>
+                                    <select name="color" class="form-select rounded-3">
+                                        <option value="#c62828" {% if local.color == '#c62828' %}selected{% endif %} style="color: #c62828; font-weight: bold;">🔴 Rojo Safari (#c62828)</option>
+                                        <option value="#6b21a8" {% if local.color == '#6b21a8' %}selected{% endif %} style="color: #6b21a8; font-weight: bold;">🟣 Púrpura Barista (#6b21a8)</option>
+                                        <option value="#0284c7" {% if local.color == '#0284c7' %}selected{% endif %} style="color: #0284c7; font-weight: bold;">🔵 Celeste Oasis (#0284c7)</option>
+                                        <option value="#059669" {% if local.color == '#059669' %}selected{% endif %} style="color: #059669; font-weight: bold;">🟢 Verde Selva (#059669)</option>
+                                        <option value="#d97706" {% if local.color == '#d97706' %}selected{% endif %} style="color: #d97706; font-weight: bold;">🟠 Ámbar Sabana (#d97706)</option>
+                                        <option value="#db2777" {% if local.color == '#db2777' %}selected{% endif %} style="color: #db2777; font-weight: bold;">🌸 Fucsia Frutal (#db2777)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-bold text-dark small">Estado del Local</label>
+                                <select name="activo" class="form-select rounded-3">
+                                    <option value="true" {% if local.estado == 'En Servicio' or local.estado == 'Activo' %}selected{% endif %}>En Servicio / Activo</option>
+                                    <option value="false" {% if local.estado == 'Inactivo' %}selected{% endif %}>Inactivo / En Mantenimiento</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-footer bg-light rounded-bottom-4">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                <i class="bi bi-check2-circle me-1"></i> Actualizar Local
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Eliminar Local #{{ local.id }} -->
+        <div class="modal fade" id="modalEliminarLocal_{{ local.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-header bg-danger text-white">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+                            <h5 class="modal-title fw-bold mb-0">Confirmar Eliminación de Local</h5>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{% url 'administrador' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="eliminar_local">
+                        <input type="hidden" name="local_id" value="{{ local.id }}">
+                        
+                        <div class="modal-body p-4 text-center">
+                            <div class="display-6 text-danger mb-3">
+                                <i class="bi bi-trash3-fill"></i>
+                            </div>
+                            <h5 class="fw-bold text-dark">¿Estás seguro de eliminar el local gastronómico?</h5>
+                            <p class="text-danger fw-bold fs-5 mb-2">{{ local.nombre }}</p>
+                            <p class="text-muted small mb-0">
+                                Al eliminar este local, se liberará a los colaboradores asignados (quedarán sin puesto asignado). Si el local posee transacciones históricas registradas, se desactivará de forma segura para proteger la auditoría del parque.
+                            </p>
+                        </div>
+                        
+                        <div class="modal-footer bg-light rounded-bottom-4 justify-content-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                <i class="bi bi-trash3 me-1"></i> Sí, Eliminar Local
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
 
     </main>
 

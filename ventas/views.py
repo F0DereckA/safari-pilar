@@ -1,3 +1,4 @@
+import json
 from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404, Http404
 from django.http import JsonResponse
@@ -6,7 +7,7 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto
 
 
 def get_locales_data():
@@ -39,10 +40,59 @@ def get_locales_data():
                 {"metodo": "Tarjeta Crédito", "monto": 140000, "porcentaje": 15, "icono": "bi-credit-card-2-front"}
             ],
             "tickets_recientes": [
-                {"id": "COM-0084", "hora": "14:21", "cliente": "Mesa 8", "total": 25400, "cajero": "Carlos Valenzuela", "estado": "En Cocina"},
-                {"id": "COM-0081", "hora": "14:10", "cliente": "Mesa 4", "total": 23000, "cajero": "Carlos Valenzuela", "estado": "En Cocina"},
-                {"id": "COM-0078", "hora": "13:55", "cliente": "Mesa 2", "total": 18900, "cajero": "Carlos Valenzuela", "estado": "Entregado"},
-                {"id": "COM-0075", "hora": "13:40", "cliente": "Mostrador", "total": 14500, "cajero": "Carlos Valenzuela", "estado": "Entregado"}
+                {
+                    "id": "COM-0084",
+                    "hora": "14:21",
+                    "cliente": "Mesa 8",
+                    "total": 25400,
+                    "cajero": "Carlos Valenzuela",
+                    "creador_rol": "Mesero",
+                    "estado": "En Cocina",
+                    "items": [
+                        {"nombre": "Hamburguesa Safari con Papas", "cantidad": 2, "precio": 8900, "subtotal": 17800, "destino": "Cocina", "nota": "Sin cebolla"},
+                        {"nombre": "Bebida Coca-Cola 350ml", "cantidad": 2, "precio": 2000, "subtotal": 4000, "destino": "Barra", "nota": "Bien fría"},
+                        {"nombre": "Porción Papas Fritas Rústicas", "cantidad": 1, "precio": 3600, "subtotal": 3600, "destino": "Cocina", "nota": "Poco condimento"}
+                    ]
+                },
+                {
+                    "id": "COM-0081",
+                    "hora": "14:10",
+                    "cliente": "Mesa 4",
+                    "total": 23000,
+                    "cajero": "Carlos Valenzuela",
+                    "creador_rol": "Cajero",
+                    "estado": "En Cocina",
+                    "items": [
+                        {"nombre": "Churrasco Italiano con Papas", "cantidad": 2, "precio": 8500, "subtotal": 17000, "destino": "Cocina", "nota": "Mayonesa casera aparte"},
+                        {"nombre": "Café Cappuccino", "cantidad": 2, "precio": 3000, "subtotal": 6000, "destino": "Barra", "nota": "Leche descremada"}
+                    ]
+                },
+                {
+                    "id": "COM-0078",
+                    "hora": "13:55",
+                    "cliente": "Mesa 2",
+                    "total": 18900,
+                    "cajero": "Matías González",
+                    "creador_rol": "Mesero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Cazuela de Ave Criolla", "cantidad": 2, "precio": 7500, "subtotal": 15000, "destino": "Cocina", "nota": "Bien caliente"},
+                        {"nombre": "Jugo Natural de Fruta", "cantidad": 1, "precio": 3900, "subtotal": 3900, "destino": "Barra", "nota": "Frambuesa con hielo"}
+                    ]
+                },
+                {
+                    "id": "COM-0075",
+                    "hora": "13:40",
+                    "cliente": "Mostrador",
+                    "total": 14500,
+                    "cajero": "Carlos Valenzuela",
+                    "creador_rol": "Cajero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Menú Infantil Nuggets con Papas", "cantidad": 2, "precio": 5900, "subtotal": 11800, "destino": "Cocina", "nota": "Con ketchup"},
+                        {"nombre": "Jugo en Caja 200ml", "cantidad": 2, "precio": 1350, "subtotal": 2700, "destino": "Barra", "nota": ""}
+                    ]
+                }
             ]
         },
         2: {
@@ -71,9 +121,47 @@ def get_locales_data():
                 {"metodo": "Tarjeta Crédito", "monto": 50000, "porcentaje": 9, "icono": "bi-credit-card-2-front"}
             ],
             "tickets_recientes": [
-                {"id": "COM-0082", "hora": "14:15", "cliente": "Para Llevar", "total": 13300, "cajero": "Camila Soto", "estado": "En Barra"},
-                {"id": "COM-0079", "hora": "13:58", "cliente": "Terraza #1", "total": 8600, "cajero": "Camila Soto", "estado": "Entregado"},
-                {"id": "COM-0076", "hora": "13:42", "cliente": "Para Llevar", "total": 11200, "cajero": "Camila Soto", "estado": "Entregado"}
+                {
+                    "id": "COM-0082",
+                    "hora": "14:15",
+                    "cliente": "Para Llevar",
+                    "total": 13300,
+                    "cajero": "Camila Soto",
+                    "creador_rol": "Cajero",
+                    "estado": "En Barra",
+                    "items": [
+                        {"nombre": "Café de Grano / Cortado", "cantidad": 2, "precio": 2400, "subtotal": 4800, "destino": "Barra", "nota": "Término caliente"},
+                        {"nombre": "Sándwich Ave Pimentón", "cantidad": 1, "precio": 4200, "subtotal": 4200, "destino": "Barra", "nota": "Calentar pan"},
+                        {"nombre": "Medialuna Rellena", "cantidad": 2, "precio": 2150, "subtotal": 4300, "destino": "Barra", "nota": "Manjar"}
+                    ]
+                },
+                {
+                    "id": "COM-0079",
+                    "hora": "13:58",
+                    "cliente": "Terraza #1",
+                    "total": 8600,
+                    "cajero": "Camila Soto",
+                    "creador_rol": "Mesero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Café Cappuccino", "cantidad": 2, "precio": 2800, "subtotal": 5600, "destino": "Barra", "nota": "Canela en polvo"},
+                        {"nombre": "Empanada de Queso", "cantidad": 1, "precio": 3000, "subtotal": 3000, "destino": "Barra", "nota": "Al horno"}
+                    ]
+                },
+                {
+                    "id": "COM-0076",
+                    "hora": "13:42",
+                    "cliente": "Para Llevar",
+                    "total": 11200,
+                    "cajero": "Camila Soto",
+                    "creador_rol": "Cajero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Limonada Menta Jengibre", "cantidad": 2, "precio": 3200, "subtotal": 6400, "destino": "Barra", "nota": "Hielo aparte"},
+                        {"nombre": "Sándwich Pan Jamón y Queso", "cantidad": 1, "precio": 3500, "subtotal": 3500, "destino": "Barra", "nota": "Tostado"},
+                        {"nombre": "Agua Mineral 500ml", "cantidad": 1, "precio": 1300, "subtotal": 1300, "destino": "Barra", "nota": "Sin gas"}
+                    ]
+                }
             ]
         },
         3: {
@@ -102,9 +190,45 @@ def get_locales_data():
                 {"metodo": "Tarjeta Crédito", "monto": 50000, "porcentaje": 13, "icono": "bi-credit-card-2-front"}
             ],
             "tickets_recientes": [
-                {"id": "COM-0083", "hora": "14:18", "cliente": "Mostrador", "total": 7500, "cajero": "Matías González", "estado": "Listo"},
-                {"id": "COM-0080", "hora": "14:02", "cliente": "Paso", "total": 6200, "cajero": "Matías González", "estado": "Entregado"},
-                {"id": "COM-0077", "hora": "13:46", "cliente": "Paso", "total": 4500, "cajero": "Matías González", "estado": "Entregado"}
+                {
+                    "id": "COM-0083",
+                    "hora": "14:18",
+                    "cliente": "Mostrador",
+                    "total": 7500,
+                    "cajero": "Matías González",
+                    "creador_rol": "Cajero",
+                    "estado": "Listo",
+                    "items": [
+                        {"nombre": "Bebida Coca-Cola 350ml", "cantidad": 2, "precio": 2000, "subtotal": 4000, "destino": "Barra", "nota": ""},
+                        {"nombre": "Pan Jamón y Queso", "cantidad": 1, "precio": 3500, "subtotal": 3500, "destino": "Barra", "nota": ""}
+                    ]
+                },
+                {
+                    "id": "COM-0080",
+                    "hora": "14:02",
+                    "cliente": "Paso",
+                    "total": 6200,
+                    "cajero": "Matías González",
+                    "creador_rol": "Cajero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Empanada de Pino al Horno", "cantidad": 1, "precio": 3200, "subtotal": 3200, "destino": "Barra", "nota": ""},
+                        {"nombre": "Agua Mineral 500ml", "cantidad": 2, "precio": 1500, "subtotal": 3000, "destino": "Barra", "nota": ""}
+                    ]
+                },
+                {
+                    "id": "COM-0077",
+                    "hora": "13:46",
+                    "cliente": "Paso",
+                    "total": 4500,
+                    "cajero": "Matías González",
+                    "creador_rol": "Cajero",
+                    "estado": "Entregado",
+                    "items": [
+                        {"nombre": "Sándwich Ave Pimentón", "cantidad": 1, "precio": 3000, "subtotal": 3000, "destino": "Barra", "nota": ""},
+                        {"nombre": "Agua Mineral 500ml", "cantidad": 1, "precio": 1500, "subtotal": 1500, "destino": "Barra", "nota": ""}
+                    ]
+                }
             ]
         }
     }
@@ -115,6 +239,51 @@ def get_locales_data():
 
     for pv in locales_bd:
         demo = mock_metricas.get(pv.id, {})
+
+        # Consultar ventas reales asociadas en la BD para este punto de venta
+        real_ventas = Venta.objects.filter(punto_venta=pv).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto').order_by('-fecha_hora')[:20]
+        real_tickets = []
+        suma_ventas_reales = 0
+
+        for rv in real_ventas:
+            rol_c = obtener_rol_usuario(rv.cajero) or "Mesero"
+            v_items = []
+            for d in rv.detalles.all():
+                nom = d.producto.nombre
+                dest = "Cocina" if any(w in nom.lower() for w in ['hamburguesa', 'cazuela', 'churrasco', 'papas', 'nuggets', 'almuerzo']) else "Barra"
+                v_items.append({
+                    "nombre": nom,
+                    "cantidad": d.cantidad,
+                    "precio": int(d.precio_aplicado),
+                    "subtotal": int(d.subtotal),
+                    "destino": dest,
+                    "nota": ""
+                })
+            suma_ventas_reales += int(rv.total)
+            real_tickets.append({
+                "id": f"COM-{rv.id:04d}",
+                "hora": timezone.localtime(rv.fecha_hora).strftime("%H:%M"),
+                "cliente": rv.mesa.identificador if rv.mesa else "Mostrador",
+                "total": int(rv.total),
+                "cajero": rv.cajero.get_full_name() or rv.cajero.username,
+                "creador_rol": "Mesero" if rol_c == 'MESERO' else "Cajero",
+                "estado": "En Cocina" if any(it["destino"] == "Cocina" for it in v_items) else "Listo",
+                "items": v_items,
+                "items_json": json.dumps(v_items)
+            })
+
+        base_tickets = demo.get("tickets_recientes", [])
+        for bt in base_tickets:
+            if "items_json" not in bt:
+                bt["items_json"] = json.dumps(bt.get("items", []))
+            if "creador_rol" not in bt:
+                bt["creador_rol"] = "Cajero"
+
+        tickets_combinados = real_tickets + base_tickets
+        total_ventas_calc = demo.get("total_ventas", 0) + suma_ventas_reales
+        tickets_emitidos_calc = demo.get("tickets_emitidos", 0) + len(real_tickets)
+        ticket_prom_calc = round(total_ventas_calc / tickets_emitidos_calc) if tickets_emitidos_calc else 0
+
         locales[pv.id] = {
             "id": pv.id,
             "nombre": pv.nombre,
@@ -124,17 +293,17 @@ def get_locales_data():
             "color": getattr(pv, 'color', None) or demo.get("color", "#c62828"),
             "estado": "En Servicio" if pv.activo else "Inactivo",
             "turno": demo.get("turno", "Turno General (09:00 - 19:00)"),
-            "total_ventas": demo.get("total_ventas", 0),
-            "tickets_emitidos": demo.get("tickets_emitidos", 0),
-            "ticket_promedio": demo.get("ticket_promedio", 0),
+            "total_ventas": total_ventas_calc,
+            "tickets_emitidos": tickets_emitidos_calc,
+            "ticket_promedio": ticket_prom_calc,
             "caja_apertura": demo.get("caja_apertura", 0),
             "caja_efectivo": demo.get("caja_efectivo", 0),
             "caja_tarjeta": demo.get("caja_tarjeta", 0),
-            "saldo_actual": demo.get("saldo_actual", 0),
+            "saldo_actual": demo.get("saldo_actual", 0) + suma_ventas_reales,
             "personal": [],
             "ventas_categoria": demo.get("ventas_categoria", []),
             "metodos_pago": demo.get("metodos_pago", []),
-            "tickets_recientes": demo.get("tickets_recientes", [])
+            "tickets_recientes": tickets_combinados
         }
 
     # Si por algún motivo aún no hay locales en BD (p.ej. antes del seeding), cargar los mock por defecto
@@ -506,6 +675,57 @@ def administrador(request):
             messages.success(request, f"¡Local gastronómico '{nuevo_local.nombre}' creado exitosamente! Ya se encuentra disponible para asignación de colaboradores y auditoría.")
             return redirect('administrador')
 
+        elif accion == 'modificar_local':
+            local_id = request.POST.get('local_id')
+            pv = get_object_or_404(PuntoVenta, id=local_id)
+            nombre = request.POST.get('nombre', '').strip()
+            tipo = request.POST.get('tipo', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            icono = request.POST.get('icono', '').strip() or pv.icono or 'bi-shop'
+            color = request.POST.get('color', '').strip() or pv.color or '#c62828'
+            activo_raw = request.POST.get('activo', 'true')
+            activo = activo_raw in ['true', 'True', '1', 'on']
+
+            if not nombre:
+                messages.error(request, "El nombre del local gastronómico no puede estar en blanco.")
+                return redirect('administrador')
+
+            if PuntoVenta.objects.filter(nombre__iexact=nombre).exclude(id=pv.id).exists():
+                messages.error(request, f"Ya existe otro local registrado con el nombre '{nombre}'.")
+                return redirect('administrador')
+
+            pv.nombre = nombre
+            pv.tipo = tipo or "Punto de Venta"
+            pv.descripcion = descripcion or pv.descripcion
+            pv.icono = icono
+            pv.color = color
+            pv.activo = activo
+            pv.save()
+
+            messages.success(request, f"¡Local gastronómico '{pv.nombre}' actualizado correctamente!")
+            return redirect('administrador')
+
+        elif accion == 'eliminar_local':
+            local_id = request.POST.get('local_id')
+            pv = get_object_or_404(PuntoVenta, id=local_id)
+            nombre_local = pv.nombre
+
+            # Desasignar colaboradores de este local
+            PerfilEmpleado.objects.filter(punto_venta_actual=pv).update(punto_venta_actual=None)
+
+            # Eliminar mesas que no tengan ventas asociadas
+            Mesa.objects.filter(punto_venta=pv, ventas__isnull=True).delete()
+
+            try:
+                pv.delete()
+                messages.success(request, f"Local gastronómico '{nombre_local}' eliminado exitosamente del sistema.")
+            except models.ProtectedError:
+                pv.activo = False
+                pv.save()
+                messages.warning(request, f"El local '{nombre_local}' contiene transacciones y ventas históricas en auditoría. Ha sido desactivado e inactivado del servicio.")
+
+            return redirect('administrador')
+
     locales = get_locales_data()
     total_ventas = sum(l["total_ventas"] for l in locales.values())
     total_tickets = sum(l["tickets_emitidos"] for l in locales.values())
@@ -854,8 +1074,89 @@ def mesero(request):
             return redirect(f"/mesero/?local_id={local_actual.id}")
 
         elif accion == 'enviar_comanda':
-            Mesa.objects.filter(id=mesa_id).update(estado='OCUPADA')
-            messages.success(request, "¡Comanda enviada a producción! Tickets despachados a Cocina y Barra.")
+            mesa_obj = Mesa.objects.filter(id=mesa_id).first()
+            if mesa_obj:
+                mesa_obj.estado = 'OCUPADA'
+                mesa_obj.save()
+
+            items_raw = request.POST.get('items_json', '[]')
+            try:
+                items_lista = json.loads(items_raw)
+            except Exception:
+                items_lista = []
+
+            total_calculado = sum(int(it.get('cantidad', 1)) * int(it.get('precio', 0)) for it in items_lista)
+            if total_calculado <= 0:
+                total_calculado = 15000
+
+            hoy = timezone.localdate()
+            jornada, _ = Jornada.objects.get_or_create(
+                estado='ABIERTA', fecha=hoy,
+                defaults={'usuario_apertura': request.user, 'observaciones': 'Jornada Operativa en Curso'}
+            )
+            caja = Caja.objects.filter(punto_venta=local_actual, jornada=jornada).first()
+            if not caja:
+                caja, _ = Caja.objects.get_or_create(
+                    jornada=jornada,
+                    cajero=request.user,
+                    defaults={
+                        'nombre': f"Caja {local_actual.nombre.split()[0]} - {request.user.first_name or request.user.username}",
+                        'punto_venta': local_actual,
+                        'monto_apertura': 0,
+                        'estado': 'ABIERTA',
+                        'observaciones': 'Caja de comandas y pedidos de salón'
+                    }
+                )
+
+            nueva_venta = Venta.objects.create(
+                caja=caja,
+                cajero=request.user,
+                punto_venta=local_actual,
+                modalidad='MESA',
+                mesa=mesa_obj,
+                metodo_pago='EFECTIVO',
+                total=total_calculado,
+                estado='PAGADA'
+            )
+
+            nuevo_pedido = Pedido.objects.create(
+                venta=nueva_venta,
+                estado='EN_PREPARACION',
+                observaciones=f"Comanda enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+            )
+
+            cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
+            for it in items_lista:
+                p_nom = it.get('nombre', 'Producto')
+                p_precio = int(it.get('precio', 0))
+                p_cant = int(it.get('cantidad', 1))
+                prod_obj, _ = Producto.objects.get_or_create(
+                    nombre=p_nom,
+                    defaults={'categoria': cat_general, 'precio_base': p_precio}
+                )
+                DetalleVenta.objects.create(
+                    venta=nueva_venta,
+                    producto=prod_obj,
+                    cantidad=p_cant,
+                    precio_aplicado=p_precio,
+                    subtotal=p_cant * p_precio
+                )
+                DetallePedido.objects.create(
+                    pedido=nuevo_pedido,
+                    producto=prod_obj,
+                    cantidad=p_cant,
+                    observaciones=it.get('nota', '')
+                )
+
+            Ticket.objects.create(
+                pedido=nuevo_pedido,
+                codigo=f"COM-{nueva_venta.id:04d}",
+                tipo_destino='COCINA',
+                estado='EN_PROCESO',
+                contenido_impresion=f"Comanda #{nueva_venta.id} - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+            )
+
+            messages.success(request, f"¡Comanda #{nueva_venta.id:04d} despachada con éxito a Cocina y Barra! Mesa {mesa_obj.identificador if mesa_obj else ''} marcada en atención.")
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
     # Mesas del local

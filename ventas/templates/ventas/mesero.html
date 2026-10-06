@@ -1,4 +1,4 @@
-{% load static %}
+{% load static safari_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -254,7 +254,7 @@
                                             <i class="bi bi-bag-check-fill"></i> {{ p.destino_badge }}
                                         </span>
                                         {% endif %}
-                                        <span class="product-mesero-price">${{ p.precio|stringformat:",d" }}</span>
+                                        <span class="product-mesero-price">{{ p.precio|pesos_clp }}</span>
                                     </div>
                                     <h6 class="product-mesero-title">{{ p.nombre }}</h6>
                                     <p class="text-muted small mb-3">{{ p.descripcion }}</p>
@@ -708,14 +708,45 @@
 
         function confirmarYAtenderOtra() {
             bootstrap.Modal.getInstance(document.getElementById('modalTickets')).hide();
-            // Marcar visualmente la mesa como ocupada
-            const card = document.getElementById(`cardMesa_${mesaSeleccionada.id}`);
-            if (card) {
-                card.className = 'mesa-card mesa-ocupada';
-                card.querySelector('.badge').className = 'badge bg-danger text-white w-100 py-2 fw-bold';
-                card.querySelector('.badge').innerHTML = '<i class="bi bi-person-fill me-1"></i>Ocupada';
-            }
-            vaciarComanda();
+            
+            // Enviar datos al backend para persistir la comanda y tickets
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = window.location.href;
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+
+            const accionInput = document.createElement('input');
+            accionInput.type = 'hidden';
+            accionInput.name = 'accion';
+            accionInput.value = 'enviar_comanda';
+            form.appendChild(accionInput);
+
+            const mesaInput = document.createElement('input');
+            mesaInput.type = 'hidden';
+            mesaInput.name = 'mesa_id';
+            mesaInput.value = mesaSeleccionada.id;
+            form.appendChild(mesaInput);
+
+            const itemsInput = document.createElement('input');
+            itemsInput.type = 'hidden';
+            itemsInput.name = 'items_json';
+            const itemsArray = Object.values(carrito).map(it => ({
+                nombre: it.nombre,
+                cantidad: it.cantidad,
+                precio: it.precio,
+                destino: it.destino,
+                nota: it.nota || ''
+            }));
+            itemsInput.value = JSON.stringify(itemsArray);
+            form.appendChild(itemsInput);
+
+            document.body.appendChild(form);
+            form.submit();
         }
 
         // Filtro por Categoría

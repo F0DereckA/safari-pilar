@@ -1,4 +1,4 @@
-{% load static %}
+{% load static safari_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -205,7 +205,7 @@
                 <div class="col-lg-4 text-lg-end">
                     <span class="text-muted small d-block">VENTAS ACTUALES DE LA JORNADA</span>
                     <h1 class="fw-bold text-danger mb-0" style="font-family: 'Oswald', sans-serif; font-size: 2.8rem;">
-                        ${{ local.total_ventas|stringformat:",d" }}
+                        {{ local.total_ventas|pesos_clp }}
                     </h1>
                     <small class="text-success fw-bold">
                         <i class="bi bi-arrow-up-circle-fill me-1"></i>Jornada activa con {{ local.tickets_emitidos }} comandas emitidas
@@ -236,7 +236,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Ticket Promedio</div>
-                        <div class="admin-kpi-val text-warning">${{ local.ticket_promedio|stringformat:",d" }}</div>
+                        <div class="admin-kpi-val text-warning">{{ local.ticket_promedio|pesos_clp }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Consumo promedio por comensal</small>
                     </div>
                 </div>
@@ -249,7 +249,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Apertura de Caja</div>
-                        <div class="admin-kpi-val text-primary">${{ local.caja_apertura|stringformat:",d" }}</div>
+                        <div class="admin-kpi-val text-primary">{{ local.caja_apertura|pesos_clp }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Fondo inicial para vuelto</small>
                     </div>
                 </div>
@@ -262,8 +262,8 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Efectivo en Caja Actual</div>
-                        <div class="admin-kpi-val text-success">${{ local.saldo_actual|stringformat:",d" }}</div>
-                        <small class="text-muted" style="font-size: 0.72rem;">Apertura + ${{ local.caja_efectivo|stringformat:",d" }} efectivo</small>
+                        <div class="admin-kpi-val text-success">{{ local.saldo_actual|pesos_clp }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Apertura + {{ local.caja_efectivo|pesos_clp }} efectivo</small>
                     </div>
                 </div>
             </div>
@@ -365,7 +365,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="fw-bold small text-dark">{{ cat.nombre }}</span>
                                 <span class="small fw-bold" style="color: {{ cat.color }};">
-                                    ${{ cat.monto|stringformat:",d" }} ({{ cat.porcentaje }}%)
+                                    {{ cat.monto|pesos_clp }} ({{ cat.porcentaje }}%)
                                 </span>
                             </div>
                             <div class="progress" style="height: 10px; border-radius: 8px; background-color: var(--safari-cafe-pastel);">
@@ -396,7 +396,7 @@
                                 <div class="p-2 rounded-3" style="background-color: var(--safari-cafe-light); border: 1px solid var(--safari-cafe-pastel);">
                                     <i class="bi {{ m.icono }} fs-4 text-danger mb-1 d-block"></i>
                                     <div class="small fw-bold text-dark">{{ m.metodo }}</div>
-                                    <div class="fw-bold text-danger" style="font-size: 0.95rem;">${{ m.monto|stringformat:",d" }}</div>
+                                    <div class="fw-bold text-danger" style="font-size: 0.95rem;">{{ m.monto|pesos_clp }}</div>
                                     <small class="text-muted" style="font-size: 0.7rem;">{{ m.porcentaje }}%</small>
                                 </div>
                             </div>
@@ -419,33 +419,92 @@
                     <h5 class="mb-0 fw-bold">
                         <i class="bi bi-clock-history text-warning me-2"></i>Últimas Comandas Emitidas en {{ local.nombre }}
                     </h5>
-                    <small class="text-white-50">Auditoría de tickets registrados por los cajeros de este punto</small>
+                    <small class="text-white-50">Auditoría y trazabilidad en vivo de tickets registrados por meseros y cajeros</small>
                 </div>
                 <span class="badge bg-light text-dark fw-bold">
-                    {{ local.tickets_recientes|length }} Comandas Recientes
+                    {{ local.tickets_recientes|length }} Comandas Registradas
                 </span>
             </div>
 
+            <!-- Barra Compacta de Filtrado en Tiempo Real -->
+            <div class="p-3 bg-light border-bottom">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="filtroTextoTicket" class="form-control" placeholder="Buscar Nº, mesa o personal..." oninput="filtrarTickets()">
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <select id="filtroHoraTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                            <option value="todas">⏰ Todas las Horas</option>
+                            <option value="14">14:00 - 14:59</option>
+                            <option value="13">13:00 - 13:59</option>
+                            <option value="12">12:00 - 12:59</option>
+                            <option value="anterior">Antes de las 12:00</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <select id="filtroRolTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                            <option value="todos">👥 Todos los Roles</option>
+                            <option value="Mesero">Meseros</option>
+                            <option value="Cajero">Cajeros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <select id="filtroEstadoTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                            <option value="todos">📋 Todos los Estados</option>
+                            <option value="En Cocina">En Cocina</option>
+                            <option value="En Barra">En Barra</option>
+                            <option value="Listo">Listo</option>
+                            <option value="Entregado">Entregado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-6 d-flex align-items-center justify-content-end gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="limpiarFiltrosTickets()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+                        </button>
+                        <span id="contadorTicketsVisibles" class="badge bg-white text-dark border px-2 py-1 small fw-bold">
+                            {{ local.tickets_recientes|length }} Comandas
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table class="table detail-table align-middle mb-0">
+                <table class="table detail-table align-middle mb-0" id="tablaTicketsRecientes">
                     <thead>
                         <tr>
                             <th>Nº Comanda</th>
                             <th>Hora</th>
                             <th>Mesa / Modalidad</th>
-                            <th>Cajero Responsable</th>
+                            <th>Creador Responsable</th>
                             <th>Monto Total</th>
                             <th>Estado Actual</th>
+                            <th class="text-center">Detalle</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in local.tickets_recientes %}
-                        <tr>
+                        <tr class="ticket-row" 
+                            data-id="{{ t.id }}" 
+                            data-hora="{{ t.hora }}" 
+                            data-cliente="{{ t.cliente }}" 
+                            data-cajero="{{ t.cajero }}" 
+                            data-rol="{{ t.creador_rol }}" 
+                            data-estado="{{ t.estado }}">
                             <td><strong class="text-danger">#{{ t.id }}</strong></td>
                             <td class="text-muted small"><i class="bi bi-clock me-1"></i>{{ t.hora }} hrs</td>
                             <td><span class="badge bg-light text-dark border">{{ t.cliente }}</span></td>
-                            <td class="text-dark small"><i class="bi bi-person me-1"></i>{{ t.cajero }}</td>
-                            <td><strong class="text-dark" style="font-family: 'Oswald', sans-serif; font-size: 1.1rem;">${{ t.total|stringformat:",d" }}</strong></td>
+                            <td>
+                                {% if t.creador_rol == 'Mesero' %}
+                                <span class="badge bg-warning text-dark rounded-pill me-1"><i class="bi bi-person-walking me-1"></i>Mesero</span>
+                                {% else %}
+                                <span class="badge bg-primary text-white rounded-pill me-1"><i class="bi bi-person-badge me-1"></i>Cajero</span>
+                                {% endif %}
+                                <strong class="text-dark small">{{ t.cajero }}</strong>
+                            </td>
+                            <td><strong class="text-dark" style="font-family: 'Oswald', sans-serif; font-size: 1.1rem;">{{ t.total|pesos_clp }}</strong></td>
                             <td>
                                 {% if t.estado == 'En Cocina' %}
                                 <span class="badge bg-danger text-white"><i class="bi bi-fire me-1"></i>{{ t.estado }}</span>
@@ -457,10 +516,24 @@
                                 <span class="badge bg-secondary text-white"><i class="bi bi-check2-all me-1"></i>{{ t.estado }}</span>
                                 {% endif %}
                             </td>
+                            <td class="text-center">
+                                <button type="button" 
+                                    class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 fw-bold shadow-none btn-ver-detalle-ticket" 
+                                    data-ticket-id="{{ t.id }}"
+                                    data-ticket-hora="{{ t.hora }}"
+                                    data-ticket-cliente="{{ t.cliente }}"
+                                    data-ticket-cajero="{{ t.cajero }}"
+                                    data-ticket-rol="{{ t.creador_rol }}"
+                                    data-ticket-total="{{ t.total|pesos_clp }}"
+                                    data-ticket-estado="{{ t.estado }}"
+                                    data-ticket-items='{{ t.items_json|safe }}'>
+                                    <i class="bi bi-eye-fill me-1"></i>Ver Detalle
+                                </button>
+                            </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted small">
+                        <tr id="sinTicketsRow">
+                            <td colspan="7" class="text-center py-4 text-muted small">
                                 <i class="bi bi-inbox text-muted fs-3 d-block mb-1"></i>
                                 No hay comandas emitidas en este local aún en la jornada.
                             </td>
@@ -468,6 +541,89 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- MODAL DETALLE DE COMANDA / TICKET -->
+        <div class="modal fade" id="modalDetalleTicket" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow-lg" style="background-color: #fdfaf5;">
+                    <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-receipt-cutoff fs-4 text-warning"></i>
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                                    DETALLE DE COMANDA <span id="mdlTicketCodigo">#COM-0000</span>
+                                </h5>
+                                <small class="text-white-50">{{ local.nombre }} • Parque Safari</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body p-3">
+                        <!-- Ficha Resumen -->
+                        <div class="p-2 rounded-3 mb-3 bg-white border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">Mesa / Ubicación:</small>
+                                <span class="badge bg-light text-dark border fw-bold" id="mdlTicketCliente">Mesa 1</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">Hora Emisión:</small>
+                                <span class="fw-bold text-dark small" id="mdlTicketHora">14:00 hrs</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">Responsable:</small>
+                                <span id="mdlTicketRolBadge" class="me-1"></span>
+                                <span class="fw-bold text-dark small" id="mdlTicketCajero">Colaborador</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">Estado:</small>
+                                <span id="mdlTicketEstadoBadge"></span>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Ítems de la Comanda -->
+                        <div class="table-responsive mb-3 rounded-3 border bg-white">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light small">
+                                    <tr>
+                                        <th>Cant.</th>
+                                        <th>Producto</th>
+                                        <th>Destino</th>
+                                        <th class="text-end">P. Unit</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mdlTicketItemsBody" class="small">
+                                    <!-- Filas dinámicas -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Totales -->
+                        <div class="p-3 rounded-3" style="background-color: var(--safari-cafe-light); border: 1.5px dashed var(--safari-cafe-medium);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted small d-block">TOTAL DE LA VENTA (CLP):</span>
+                                    <small class="text-muted" id="mdlTicketItemsConteo" style="font-size: 0.75rem;">0 productos</small>
+                                </div>
+                                <h3 class="fw-bold text-danger mb-0" id="mdlTicketTotal" style="font-family: 'Oswald', sans-serif;">
+                                    $0
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer p-2 bg-light d-flex justify-content-between">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg me-1"></i>Cerrar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i>Imprimir Comanda
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -597,6 +753,149 @@
                 const alertaId = btn.getAttribute('data-alerta-id');
                 marcarAlertasLeidas(alertaId);
             }
+        });
+
+        // ==========================================
+        // FILTRADO DINÁMICO EN TIEMPO REAL DE TICKETS
+        // ==========================================
+        window.filtrarTickets = function() {
+            const texto = (document.getElementById('filtroTextoTicket')?.value || '').toLowerCase().trim();
+            const hora = document.getElementById('filtroHoraTicket')?.value || 'todas';
+            const rol = document.getElementById('filtroRolTicket')?.value || 'todos';
+            const estado = document.getElementById('filtroEstadoTicket')?.value || 'todos';
+
+            const rows = document.querySelectorAll('#tablaTicketsRecientes .ticket-row');
+            let visibles = 0;
+
+            rows.forEach(row => {
+                const id = (row.getAttribute('data-id') || '').toLowerCase();
+                const horaVal = row.getAttribute('data-hora') || '';
+                const cliente = (row.getAttribute('data-cliente') || '').toLowerCase();
+                const cajero = (row.getAttribute('data-cajero') || '').toLowerCase();
+                const rolVal = row.getAttribute('data-rol') || '';
+                const estadoVal = row.getAttribute('data-estado') || '';
+
+                const matchTexto = !texto || id.includes(texto) || cliente.includes(texto) || cajero.includes(texto);
+
+                let matchHora = true;
+                if (hora !== 'todas') {
+                    const hInt = parseInt(horaVal.split(':')[0], 10);
+                    if (hora === 'anterior') {
+                        matchHora = hInt < 12;
+                    } else {
+                        matchHora = hInt === parseInt(hora, 10);
+                    }
+                }
+
+                const matchRol = rol === 'todos' || rolVal === rol;
+                const matchEstado = estado === 'todos' || estadoVal === estado;
+
+                if (matchTexto && matchHora && matchRol && matchEstado) {
+                    row.style.display = '';
+                    visibles++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const badge = document.getElementById('contadorTicketsVisibles');
+            if (badge) {
+                badge.innerText = `${visibles} de ${rows.length} Comandas`;
+            }
+        };
+
+        window.limpiarFiltrosTickets = function() {
+            if (document.getElementById('filtroTextoTicket')) document.getElementById('filtroTextoTicket').value = '';
+            if (document.getElementById('filtroHoraTicket')) document.getElementById('filtroHoraTicket').value = 'todas';
+            if (document.getElementById('filtroRolTicket')) document.getElementById('filtroRolTicket').value = 'todos';
+            if (document.getElementById('filtroEstadoTicket')) document.getElementById('filtroEstadoTicket').value = 'todos';
+            window.filtrarTickets();
+        };
+
+        // ==========================================
+        // APERTURA DE MODAL DETALLE DE TICKET
+        // ==========================================
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-ver-detalle-ticket');
+            if (!btn) return;
+
+            const id = btn.getAttribute('data-ticket-id') || '';
+            const hora = btn.getAttribute('data-ticket-hora') || '';
+            const cliente = btn.getAttribute('data-ticket-cliente') || '';
+            const cajero = btn.getAttribute('data-ticket-cajero') || '';
+            const rol = btn.getAttribute('data-ticket-rol') || '';
+            const total = btn.getAttribute('data-ticket-total') || '$0';
+            const estado = btn.getAttribute('data-ticket-estado') || '';
+            const itemsRaw = btn.getAttribute('data-ticket-items') || '[]';
+
+            document.getElementById('mdlTicketCodigo').innerText = '#' + id;
+            document.getElementById('mdlTicketCliente').innerText = cliente;
+            document.getElementById('mdlTicketHora').innerText = hora + ' hrs';
+            document.getElementById('mdlTicketCajero').innerText = cajero;
+            document.getElementById('mdlTicketTotal').innerText = total;
+
+            const rolBadge = document.getElementById('mdlTicketRolBadge');
+            if (rol === 'Mesero') {
+                rolBadge.className = 'badge bg-warning text-dark rounded-pill';
+                rolBadge.innerHTML = '<i class="bi bi-person-walking me-1"></i>Mesero';
+            } else {
+                rolBadge.className = 'badge bg-primary text-white rounded-pill';
+                rolBadge.innerHTML = '<i class="bi bi-person-badge me-1"></i>Cajero';
+            }
+
+            const estBadge = document.getElementById('mdlTicketEstadoBadge');
+            if (estado === 'En Cocina') {
+                estBadge.className = 'badge bg-danger text-white';
+                estBadge.innerHTML = '<i class="bi bi-fire me-1"></i>' + estado;
+            } else if (estado === 'En Barra') {
+                estBadge.className = 'badge text-white';
+                estBadge.style.backgroundColor = '#6b21a8';
+                estBadge.innerHTML = '<i class="bi bi-cup-hot me-1"></i>' + estado;
+            } else if (estado === 'Listo') {
+                estBadge.className = 'badge bg-success text-white';
+                estBadge.innerHTML = '<i class="bi bi-check2-circle me-1"></i>' + estado;
+            } else {
+                estBadge.className = 'badge bg-secondary text-white';
+                estBadge.innerHTML = '<i class="bi bi-check2-all me-1"></i>' + estado;
+            }
+
+            let items = [];
+            try {
+                items = JSON.parse(itemsRaw);
+            } catch (err) {
+                items = [];
+            }
+
+            const tbody = document.getElementById('mdlTicketItemsBody');
+            tbody.innerHTML = '';
+
+            if (items.length > 0) {
+                items.forEach(it => {
+                    const tr = document.createElement('tr');
+                    const destBadge = it.destino === 'Cocina'
+                        ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Cocina</span>'
+                        : '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Barra</span>';
+                    const notaHtml = it.nota ? `<small class="text-danger d-block fst-italic">* ${it.nota}</small>` : '';
+                    tr.innerHTML = `
+                        <td><strong>${it.cantidad}x</strong></td>
+                        <td>
+                            <div class="fw-bold text-dark">${it.nombre}</div>
+                            ${notaHtml}
+                        </td>
+                        <td>${destBadge}</td>
+                        <td class="text-end text-muted">$${(it.precio || 0).toLocaleString('es-CL')}</td>
+                        <td class="text-end fw-bold text-dark">$${(it.subtotal || (it.cantidad * it.precio) || 0).toLocaleString('es-CL')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('mdlTicketItemsConteo').innerText = `${items.length} productos incluidos`;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">Comanda consolidada de servicio</td></tr>';
+                document.getElementById('mdlTicketItemsConteo').innerText = 'Comanda procesada';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalleTicket'));
+            modal.show();
         });
     });
     </script>
