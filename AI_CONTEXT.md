@@ -6,8 +6,98 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Horario Oficial Parque Safari (10:00 a 18:00) y Reinicio Diario Automático a 0 (100% OK)**.
-- resultado esperado: Todos los locales gastronómicos de Parque Safari operan formalmente de 10:00 AM a 6:00 PM (10:00 a 18:00 hrs). El sistema se rige en tiempo real por día y hora: evalúa la hora local de Chile, reflejando el distintivo Abierto/Cerrado. Al cambiar el día o finalizar la jornada, la cuenta y tickets se reinician automáticamente a 0 en backend (filtrado por fecha de hoy en `get_locales_data()` y cuentas de mesas) y en frontend (`localStorage` purgado al detectar cambio de fecha operativa, correlativo parte en `#COM-0001`).
+- tarea actual: **Registro y Análisis de Feedback de Rúbrica Informe 2 para Plan de Parcheo Tercera Entrega (URGENTE)**.
+- estado de ejecución: **Solo registro y planificación en memoria técnica**. No se realizarán modificaciones de código hasta recibir la siguiente orden explícita de avance por parte del usuario.
+
+## 2.1 PLAN DE PARCHEO URGENTE - TERCERA ENTREGA (FEEDBACK DOCENTE RÚBRICA INFORME 2)
+
+A continuación se registra el desglose completo de observaciones, brechas y acciones correctivas derivadas de la calificación del segundo informe, organizadas por criterio y prioridad técnica para la tercera entrega:
+
+### 1. [2.1.4.9] Configuración del Motor de Base de Datos (PostgreSQL / MySQL) [URGENTE - CRÍTICO]
+- **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
+- **Observación Docente:** *"settings.py mantiene la configuración predeterminada de SQLite y no presenta la conexión requerida a MySQL. El informe propone PostgreSQL, pero esta configuración tampoco se encuentra aplicada en el proyecto entregado."*
+- **Nota del Usuario:** *"esto debemos ver urgente"*.
+- **Acción Requerida para Entrega 3:**
+  - Configurar en `Venta_safari/settings.py` el soporte formal para PostgreSQL / MySQL mediante variables de entorno (`DATABASE_URL` o bloque `DATABASES` dinámico).
+  - Incluir el adaptador correspondiente (`psycopg2-binary` para PostgreSQL y/o `mysqlclient`/`PyMySQL` para MySQL) en `requirements.txt`.
+  - Proveer un fallback condicional inteligente a SQLite para desarrollo local sin servidor activo, pero asegurando que la configuración formal por defecto del proyecto apunte a PostgreSQL/MySQL tal como lo declara el informe y el modelo físico.
+  - Asegurar coherencia entre el texto del informe (que menciona PostgreSQL en infraestructura y script DDL) y `settings.py`.
+
+### 2. [2.1.3.5] Interfaz Específica para Cocina / Cocinero (KDS - Kitchen Display System) [ALTA PRIORIDAD]
+- **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
+- **Observación Docente:** *"El prototipo presenta login, perfiles, navegación, ventas, caja, mesas, comandas, tickets, administración y reportes. Sin embargo, falta una interfaz específica para Cocina/Cocinero que permita visualizar pedidos pendientes, gestionar su preparación y comunicar al mesero cuáles están listos para ser servidos."*
+- **Acción Requerida para Entrega 3:**
+  - Crear la vista y plantilla dedicada para Cocina (`/cocina/` / `cocina.html` / KDS):
+    - Visualización en tarjetas táctiles (tipo Kanban) de pedidos entrantes clasificados por destino (`COCINA` vs `BARRA`).
+    - Flujo de estados interactivo: `PENDIENTE` -> `EN PREPARACIÓN` -> `LISTO PARA ENTREGA`.
+    - Botón de acción para el cocinero (*"Comenzar Preparación"*, *"Marcar Plato Listo"*).
+    - Notificación visual/comunicación al módulo de Mesero para alertar que los platos de la mesa están listos para ser retirados y servidos.
+  - Agregar nuevo rol o perfil específico de Cocinero / Jefe de Cocina si aplica, o permitir acceso operativo de cocina.
+
+### 3. [2.1.5.12] Coherencia en "Cero Credenciales en Código" (SECRET_KEY en settings.py) [ALTA PRIORIDAD]
+- **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
+- **Observación Docente:** *"Los estándares están ampliamente desarrollados; sin embargo, el informe establece explícitamente una política de 'Cero Credenciales en Código' que prohíbe mantener SECRET_KEY directamente en los archivos, mientras que settings.py mantiene esta clave escrita en el código. Debe existir coherencia entre los estándares definidos y su aplicación."*
+- **Nota del Usuario:** *"debemos ajuntar"*.
+- **Acción Requerida para Entrega 3:**
+  - Extraer `SECRET_KEY` de `Venta_safari/settings.py` utilizando `os.environ.get('SECRET_KEY')` o biblioteca de variables de entorno (`python-dotenv` / `decouple`).
+  - Crear archivo `.env.example` en la raíz del repositorio con variables de muestra.
+  - Verificar que el archivo `.env` real esté explícitamente protegido y excluido en `.gitignore`.
+  - Asegurar coherencia absoluta entre las políticas redactadas en el informe y los archivos del repositorio.
+
+### 4. [2.1.6.13] Documentación y Ejecución de Pruebas de Rendimiento (Performance Testing) [ALTA PRIORIDAD]
+- **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
+- **Observación Docente:** *"Se presentan y ejecutan pruebas unitarias y de integración, pero falta desarrollar y documentar con la misma claridad un conjunto específico de pruebas de rendimiento."*
+- **Nota del Usuario:** *"debemos aclarar mas esto"*.
+- **Acción Requerida para Entrega 3:**
+  - Desarrollar, ejecutar y documentar formalmente pruebas de rendimiento (*Performance / Load Testing*):
+    - Medición de latencia y tiempos de respuesta (ms) en endpoints críticos: Login, creación de comanda en mesero, despacho de tickets, consulta de dashboard con 15 meses de transacciones.
+    - Simulación de carga concurrente (ej. 20, 50, 100 usuarios simultáneos en hora pico de Parque Safari) utilizando herramientas como Locust, k6, Apache Benchmark (`ab`) o script automatizado de benchmarking en Python.
+    - Incluir en el informe una sección y tabla formal de resultados de rendimiento: tiempo de respuesta promedio, percentil 95, rendimiento de peticiones por segundo (RPS), consumo de CPU y memoria RAM.
+
+### 5. [2.1.4.8] Sincronización Completa entre Modelo Lógico (Draw.io) y Físico (models.py) [MEDIA-ALTA PRIORIDAD]
+- **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
+- **Observación Docente:** *"El modelo presenta correctamente entidades, claves y relaciones; sin embargo, el modelo lógico no representa completamente todas las entidades y relaciones que posteriormente aparecen implementadas en models.py y en el modelo físico."*
+- **Acción Requerida para Entrega 3:**
+  - Actualizar el diagrama relacional en Draw.io para que represente el 100% de las tablas declaradas en el script SQL y en `ventas/models.py`.
+  - Entidades a sincronizar e incorporar en el diagrama de Draw.io:
+    - `AlertaTraslado` (relacionada con `auth_user` y `punto_venta` origen/destino).
+    - `PrecioEspecial` (relacionada con `producto`).
+    - `Menu` y tabla intermedia `MenuProductos` / `ProductoPuntosVenta`.
+    - `Entrega` (relacionada con `pedido`, `ticket` y `auth_user`).
+    - `ConsumoInterno` y `DetalleConsumoInterno` (relacionada con `auth_user`, `punto_venta` y `producto`).
+  - Reemplazar la imagen en el informe garantizando que modelo lógico, modelo físico y `models.py` sean un reflejo espejo 1:1.
+
+### 6. [2.1.1.2] Enlace al Proyecto de Azure DevOps en el Informe [RECORDATORIO FORMATO]
+- **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
+- **Observación Docente:** *"En el informe NO se evidencia el enlace para acceder y lograr revisar el proyecto en Azure DevOps."*
+- **Nota del Usuario:** *"este fue mi error asi que recordatorio"*.
+- **Acción Requerida para Entrega 3:**
+  - Agregar de forma visible y destacada en el informe (en la portada, en la introducción y en la sección 2.2 de Azure DevOps) el enlace directo hipervinculado a la organización y proyecto de Azure DevOps:
+    `https://dev.azure.com/[organizacion]/[proyecto]`
+  - Verificar que el enlace posea permisos públicos o que el usuario docente (`Miguel Angel López Jerez`) tenga concedidos los permisos de lectura (*Stakeholder* / *Basic*).
+
+### 7. [2.1.2.3] Redacción Estrictamente Impersonal en Paradigma 4+1 [CORRECCIÓN FORMATO]
+- **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
+- **Observación Docente:** *"Las cinco vistas están desarrolladas; sin embargo, se utilizan expresiones en primera persona como 'nos permite' y 'nos permitirán'. La redacción del informe debe mantenerse de manera impersonal."*
+- **Acción Requerida para Entrega 3:**
+  - Realizar un barrido ortotipográfico y estilístico completo en el informe, erradicando toda conjugación en primera persona ("nos permite", "hicimos", "definimos", "nuestro sistema").
+  - Sustituir por redacción técnica impersonal y pasiva refleja: *"el modelo permite"*, *"la arquitectura posibilita"*, *"se define"*, *"se implementó"*, *"el sistema desarrollado"*.
+
+### 8. [2.1.3.7] Plantilla Oficial de Retroalimentación de Pares [GESTIÓN ACADÉMICA]
+- **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
+- **Observación Docente:** *"El formato con los comentarios de las revisiones a modo de retroalimentación por parte de otros equipos, NO es la facilitada por el docente."*
+- **Nota del Usuario:** *"esto debo charlar con el docente porque si le abjunte en un archvio aparte"*.
+- **Acción Requerida para Entrega 3:**
+  - Aclarar con el docente la entrega previa del archivo adjunto.
+  - Transcribir e insertar la información directamente dentro de la plantilla oficial de la Semana 7 facilitada por el profesor, incorporándola de manera visible en el cuerpo principal del informe.
+
+### 9. [2.1.6.15] Registro y Presentación Continua de Avances en Clases [SEGUIMIENTO]
+- **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
+- **Observación Docente:** *"Existen semanas de clases donde no se presentan los avances requeridos por el docente."*
+- **Acción Requerida para Entrega 3:**
+  - Mantener al día la bitácora semanal y presentar puntualmente los avances en cada sesión de clase presencial según el calendario del curso.
+
+---
 
 ## 3. estado actual
 - estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **25 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (25/25 OK)**.
