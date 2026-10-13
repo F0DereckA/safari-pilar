@@ -11,6 +11,17 @@
 
 ## 2.1 PLAN DE PARCHEO URGENTE - TERCERA ENTREGA (FEEDBACK DOCENTE RÚBRICA INFORME 2)
 
+### Calificación Oficial Informe 2: **78,70 / 100,00**
+* **Fecha de Calificación:** Lunes, 12 de octubre de 2026, 17:33 hrs.
+* **Evaluador:** Prof. Miguel Angel López Jerez (INACAP).
+* **Comentario Textual de Retroalimentación del Docente:**
+  > *"El proyecto presenta un desarrollo considerable. Existe una interfaz de inicio de sesión con usuario y contraseña, las rutas están realmente definidas en urls.py y las vistas correspondientes se encuentran implementadas en views.py.*
+  > *También existe diferenciación real de perfiles Administrador, Cajero y Mesero, y el nombre del usuario autenticado aparece en las interfaces correspondientes. El informe, además, describe explícitamente estos perfiles y sus responsabilidades.*
+  > ***Existe una diferencia importante respecto de la problemática: no se presenta un perfil/interfaz independiente para Cocina/Cocinero.***
+  > *El mesero puede preparar la comanda y el proyecto contempla tickets dirigidos a Cocina y Barra, pero falta una interfaz propia donde el cocinero pueda visualizar los pedidos pendientes, cambiar su estado y dejar disponible para el garzón/mesero la información de que el pedido ya está preparado.*
+  > *El modelo relacional presentado contiene PK, FK y relaciones entre las principales entidades. Además, el script físico es considerablemente más amplio e incorpora integridad referencial, restricciones CHECK, UNIQUE, relaciones y diferentes políticas ON DELETE.*
+  > ***Sin embargo, el modelo lógico presentado gráficamente no representa la totalidad de la estructura que posteriormente aparece en el modelo físico y en models.py.*** *La implementación Django contiene, entre otras, entidades para pedidos, detalles de pedidos, tickets, entregas, consumos internos y alertas de traslado que amplían considerablemente el modelo."*
+
 A continuación se registra el desglose completo de observaciones, brechas y acciones correctivas derivadas de la calificación del segundo informe, organizadas por criterio y prioridad técnica para la tercera entrega:
 
 ### 1. [2.1.4.9] Configuración del Motor de Base de Datos (PostgreSQL / MySQL) [URGENTE - CRÍTICO]
