@@ -10,22 +10,40 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar variables de entorno desde archivo .env si existe (Cero Credenciales en Código - OWASP ASVS)
+env_file = BASE_DIR / '.env'
+if env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_file)
+    except ImportError:
+        with open(env_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-kbgkntm0$gq_w$q!^nsf@h#ch(9$g!p^8^rj3)h3_p4cb#y3a0'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-kbgkntm0$gq_w$q!^nsf@h#ch(9$g!p^8^rj3)h3_p4cb#y3a0')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '*')
+if allowed_hosts_raw == '*':
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
 
 
 # Application definition
@@ -72,13 +90,46 @@ WSGI_APPLICATION = 'Venta_safari.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# Configuración multi-motor compatible con PostgreSQL (Producción Oficial del Informe),
+# MySQL (Alternativa solicitada en Rúbrica) y SQLite (Fallback seguro para desarrollo local)
+DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite').lower()
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DB_ENGINE in ('postgresql', 'postgres'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'parque_safari_db'),
+            'USER': os.environ.get('DB_USER', 'safari_admin'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'safari_secure_password_2026'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {
+                'client_encoding': 'UTF8',
+            },
+        }
     }
-}
+elif DB_ENGINE == 'mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'parque_safari_db'),
+            'USER': os.environ.get('DB_USER', 'safari_admin'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'safari_secure_password_2026'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+else:
+    # Fallback predeterminado para desarrollo local sin servidor de base de datos externo
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation

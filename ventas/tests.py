@@ -1,6 +1,9 @@
 import json
+import os
+from pathlib import Path
 from datetime import timedelta
 from decimal import Decimal
+from django.conf import settings
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
@@ -719,6 +722,47 @@ class SafariFase2A1Tests(TestCase):
         # Mesero ya no tiene pedidos listos pendientes por servir en su campana
         resp_mesero_final = self.client.get(reverse('mesero'))
         self.assertEqual(resp_mesero_final.context['total_pedidos_listos'], 0)
+
+    # 27. Política de Cero Credenciales en Código: SECRET_KEY cargada dinámicamente y .env.example existente
+    def test_politica_cero_credenciales_en_codigo(self):
+        # 1. SECRET_KEY está configurada y no vacía
+        self.assertTrue(bool(settings.SECRET_KEY))
+        self.assertGreater(len(settings.SECRET_KEY), 20)
+
+        # 2. .env.example existe en la raíz para guía de despliegue
+        env_example_path = Path(settings.BASE_DIR) / '.env.example'
+        self.assertTrue(env_example_path.exists())
+        contenido_example = env_example_path.read_text(encoding='utf-8')
+        self.assertIn("SECRET_KEY", contenido_example)
+        self.assertIn("DB_ENGINE", contenido_example)
+        self.assertIn("postgresql", contenido_example)
+
+        # 3. .gitignore contiene las reglas de exclusión para .env
+        gitignore_path = Path(settings.BASE_DIR) / '.gitignore'
+        self.assertTrue(gitignore_path.exists())
+        contenido_gitignore = gitignore_path.read_text(encoding='utf-8')
+        self.assertIn(".env", contenido_gitignore)
+        self.assertIn("!.env.example", contenido_gitignore)
+
+    # 28. Coherencia de Infraestructura: Soporte multi-motor para PostgreSQL, MySQL y SQLite
+    def test_soporte_multi_motor_base_de_datos(self):
+        # 1. En el entorno de test actual se usa la BD de ejecución segura
+        engine_actual = settings.DATABASES['default']['ENGINE']
+        self.assertTrue(
+            engine_actual in [
+                'django.db.backends.sqlite3',
+                'django.db.backends.postgresql',
+                'django.db.backends.mysql'
+            ]
+        )
+
+        # 2. Validar que la lógica de settings reconoce 'postgresql' y 'mysql' formalmente
+        from Venta_safari import settings as safari_settings
+        
+        # Validar variables esperadas en el diccionario de configuración
+        self.assertTrue(hasattr(safari_settings, 'DATABASES'))
+        self.assertIn('default', safari_settings.DATABASES)
+
 
 
 

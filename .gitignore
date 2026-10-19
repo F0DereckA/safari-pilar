@@ -28,3 +28,9 @@ desktop.ini
 importar/
 *.zip
 version 29 ante de retroalimentar/
+
+# Seguridad y Variables de Entorno (Cero Credenciales en Código)
+.env
+.env.local
+.env.*
+!.env.example
