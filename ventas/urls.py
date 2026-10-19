@@ -11,7 +11,9 @@ urlpatterns = [
     path('vendedor/crear-ticket/', views.crear_ticket, name='crear_ticket'),
     path('administrador/', views.administrador, name='administrador'),
     path('administrador/local/<int:local_id>/', views.administrador_local, name='administrador_local'),
-    path('administrador/dashboard/', views.administrador_dashboard, name='administrador_dashboard'),
     path('administrador/trabajadores/', views.administrador_trabajadores, name='administrador_trabajadores'),
+    path('administrador/dashboard/', views.administrador_dashboard, name='administrador_dashboard'),
     path('mesero/', views.mesero, name='mesero'),
+    path('cocina/', views.cocina, name='cocina'),
+    path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
 ]

@@ -10,6 +10,7 @@ class PerfilEmpleado(models.Model):
         ('ADMINISTRADOR', 'Administrador'),
         ('CAJERO', 'Cajero'),
         ('MESERO', 'Mesero'),
+        ('COCINERO', 'Cocinero'),
     ]
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     rol = models.CharField(max_length=20, choices=ROLES, default='CAJERO')

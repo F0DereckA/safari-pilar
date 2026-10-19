@@ -71,6 +71,12 @@
     border: 1px solid #bbf7d0;
 }
 
+.role-icon-cocina {
+    background-color: #ffedd5;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+}
+
 
 /* Modal flotante de selección */
 .modal-content-safari {

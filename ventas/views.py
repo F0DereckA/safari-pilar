@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Entrega
 
 
 def get_locales_data():
@@ -401,6 +401,8 @@ def requiere_rol(roles_permitidos):
                     return redirect('vendedor')
                 elif rol == 'MESERO':
                     return redirect('mesero')
+                elif rol == 'COCINERO':
+                    return redirect('cocina')
                 return redirect('index')
 
             return view_func(request, *args, **kwargs)
@@ -434,6 +436,9 @@ def login_view(request):
             elif rol == 'MESERO':
                 messages.success(request, f"Bienvenido(a) Mesero(a) {user.get_full_name() or user.username}.")
                 return redirect('mesero')
+            elif rol == 'COCINERO':
+                messages.success(request, f"Bienvenido(a) Cocinero(a) {user.get_full_name() or user.username}.")
+                return redirect('cocina')
             else:
                 messages.warning(request, "Usuario autenticado sin rol asignado en el sistema.")
                 return redirect('index')
@@ -1223,7 +1228,7 @@ def mesero(request):
                 num_ronda = venta.pedidos.count() + 1
                 nuevo_pedido = Pedido.objects.create(
                     venta=venta,
-                    estado='EN_PREPARACION',
+                    estado='PENDIENTE',
                     observaciones=f"Ronda #{num_ronda} enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                 )
 
@@ -1263,7 +1268,7 @@ def mesero(request):
                         pedido=nuevo_pedido,
                         codigo=f"COM-COC-{nuevo_pedido.id:04d}",
                         tipo_destino='COCINA',
-                        estado='EN_PROCESO',
+                        estado='EMITIDO',
                         contenido_impresion=f"Comanda Cocina (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                     )
                     zonas_despachadas.append("Cocina")
@@ -1272,7 +1277,7 @@ def mesero(request):
                         pedido=nuevo_pedido,
                         codigo=f"COM-BAR-{nuevo_pedido.id:04d}",
                         tipo_destino='BARRA',
-                        estado='EN_PROCESO',
+                        estado='EMITIDO',
                         contenido_impresion=f"Comanda Barra (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                     )
                     zonas_despachadas.append("Barra")
@@ -1525,6 +1530,12 @@ def mesero(request):
             'items': detalles_list
         }
 
+    pedidos_listos = Pedido.objects.filter(
+        venta__punto_venta=local_actual,
+        estado='LISTO',
+        creado_en__date=hoy
+    ).select_related('venta__mesa')
+
     context = {
         "local_actual": local_actual,
         "locales": locales,
@@ -1536,12 +1547,183 @@ def mesero(request):
         "mesas_ocupadas": mesas_ocupadas,
         "catalogo_productos": catalogo_productos,
         "cuentas_abiertas_json": json.dumps(cuentas_abiertas_data),
+        "pedidos_listos": pedidos_listos,
+        "total_pedidos_listos": pedidos_listos.count(),
         "hoy_str": hoy.strftime("%d/%m/%Y"),
         "ahora_hora_str": ahora_dt.strftime("%H:%M"),
         "en_horario": en_horario,
         "horario_oficial": "10:00 a 18:00",
     }
     return render(request, 'ventas/mesero.html', context)
+
+
+@requiere_rol(['COCINERO', 'ADMINISTRADOR'])
+def cocina(request):
+    """
+    KDS (Kitchen Display System) - Módulo Operativo de Cocina y Barra.
+    Permite al personal de cocina ver los pedidos en cola, gestionar su estado
+    de preparación y avisar al personal de salón cuando los platos están listos.
+    """
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    en_horario = (datetime.time(10, 0) <= ahora_hora < datetime.time(18, 0))
+
+    perfil = getattr(request.user, 'perfil', None)
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+
+    # Determinar el local operativo del cocinero
+    if perfil and perfil.punto_venta_actual:
+        local_actual = perfil.punto_venta_actual
+    else:
+        local_id = request.GET.get('local_id')
+        if local_id:
+            local_actual = get_object_or_404(PuntoVenta, id=local_id)
+        else:
+            local_actual = locales.first()
+
+    # Filtro por destino/zona: 'TODAS', 'COCINA', 'BARRA'
+    zona_filtro = request.GET.get('zona', 'TODAS').upper()
+
+    # Consultar pedidos del día activos
+    pedidos_qs = Pedido.objects.filter(
+        venta__punto_venta=local_actual,
+        creado_en__date=hoy,
+        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
+    ).select_related('venta__mesa', 'venta__cajero').prefetch_related('detalles__producto__categoria', 'tickets').order_by('creado_en')
+
+    pedidos_data = []
+    total_pendientes = 0
+    total_en_preparacion = 0
+    total_listos = 0
+
+    for ped in pedidos_qs:
+        tiempo_creacion = timezone.localtime(ped.creado_en)
+        minutos = int((ahora_dt - tiempo_creacion).total_seconds() // 60)
+        
+        items_pedido = []
+        tiene_cocina = False
+        tiene_barra = False
+        
+        for det in ped.detalles.all():
+            cat_id = det.producto.categoria_id if det.producto.categoria else 1
+            if cat_id in [1, 2]:
+                destino_item = 'COCINA'
+                tiene_cocina = True
+            else:
+                destino_item = 'BARRA'
+                tiene_barra = True
+
+            items_pedido.append({
+                'nombre': det.producto.nombre,
+                'cantidad': det.cantidad,
+                'observaciones': det.observaciones or '',
+                'destino': destino_item,
+            })
+
+        if zona_filtro == 'COCINA' and not tiene_cocina:
+            continue
+        elif zona_filtro == 'BARRA' and not tiene_barra:
+            continue
+
+        if ped.estado == 'PENDIENTE':
+            total_pendientes += 1
+        elif ped.estado == 'EN_PREPARACION':
+            total_en_preparacion += 1
+        elif ped.estado == 'LISTO':
+            total_listos += 1
+
+        pedidos_data.append({
+            'id': ped.id,
+            'codigo_ticket': f"COM-{ped.id:04d}",
+            'estado': ped.estado,
+            'estado_display': ped.get_estado_display(),
+            'mesa': ped.venta.mesa.identificador if ped.venta.mesa else 'Mostrador / Para Llevar',
+            'es_mesa': bool(ped.venta.mesa),
+            'cajero': ped.venta.cajero.get_full_name() or ped.venta.cajero.username,
+            'hora_creacion': tiempo_creacion.strftime('%H:%M'),
+            'minutos_transcurridos': minutos,
+            'es_demorado': minutos >= 15,
+            'observaciones': ped.observaciones or '',
+            'items': items_pedido,
+            'tiene_cocina': tiene_cocina,
+            'tiene_barra': tiene_barra,
+        })
+
+    ultimos_entregados = Pedido.objects.filter(
+        venta__punto_venta=local_actual,
+        creado_en__date=hoy,
+        estado='ENTREGADO'
+    ).select_related('venta__mesa').order_by('-actualizado_en')[:5]
+
+    context = {
+        'local_actual': local_actual,
+        'locales': locales,
+        'pedidos': pedidos_data,
+        'zona_filtro': zona_filtro,
+        'total_pendientes': total_pendientes,
+        'total_en_preparacion': total_en_preparacion,
+        'total_listos': total_listos,
+        'total_cola': len(pedidos_data),
+        'ultimos_entregados': ultimos_entregados,
+        'hoy_str': hoy.strftime("%d/%m/%Y"),
+        'ahora_hora_str': ahora_dt.strftime("%H:%M"),
+        'en_horario': en_horario,
+        'horario_oficial': "10:00 a 18:00",
+    }
+    return render(request, 'ventas/cocina.html', context)
+
+
+@requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
+def cambiar_estado_pedido(request):
+    """
+    Endpoint para cambiar el estado de preparación de un pedido en cocina/barra:
+    PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO
+    """
+    if request.method == 'POST':
+        pedido_id = request.POST.get('pedido_id')
+        nuevo_estado = request.POST.get('nuevo_estado', '').upper()
+
+        estados_validos = ['PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO', 'CANCELADO']
+        if nuevo_estado not in estados_validos:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'error', 'mensaje': 'Estado inválido'}, status=400)
+            messages.error(request, "Estado de pedido inválido.")
+            return redirect('cocina')
+
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        pedido.estado = nuevo_estado
+        pedido.save()
+
+        if nuevo_estado == 'ENTREGADO':
+            Entrega.objects.create(
+                pedido=pedido,
+                usuario_entrega=request.user,
+                observaciones=f"Entregado al personal de servicio por {request.user.get_full_name() or request.user.username}"
+            )
+            pedido.tickets.update(estado='FINALIZADO')
+        elif nuevo_estado == 'EN_PREPARACION':
+            pedido.tickets.filter(estado='EMITIDO').update(estado='EN_PROCESO')
+
+        mensaje_exito = f"Pedido #{pedido.id:04d} actualizado a '{pedido.get_estado_display()}' exitosamente."
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({
+                'status': 'ok',
+                'pedido_id': pedido.id,
+                'nuevo_estado': nuevo_estado,
+                'estado_display': pedido.get_estado_display(),
+                'mensaje': mensaje_exito
+            })
+
+        messages.success(request, mensaje_exito)
+        referer = request.META.get('HTTP_REFERER')
+        if referer and ('/cocina/' in referer or '/mesero/' in referer):
+            return redirect(referer)
+        return redirect('cocina')
+
+    return redirect('cocina')
+
 
 
 

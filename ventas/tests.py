@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, Ticket
+from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, Ticket, Pedido, DetallePedido, Entrega
 
 
 class SafariFase2A1Tests(TestCase):
@@ -19,6 +19,7 @@ class SafariFase2A1Tests(TestCase):
     - Validación estricta de Punto de Venta asignado
     - Prevención de registros duplicados e idempotencia
     - Creación de trabajadores con contraseña requerida
+    - Módulo y perfil independiente de Cocina KDS y notificación de pedidos listos
     """
 
     def setUp(self):
@@ -30,6 +31,7 @@ class SafariFase2A1Tests(TestCase):
         self.cajero_user = User.objects.get(username='cvalenzuela')
         self.cajera2_user = User.objects.get(username='csoto')
         self.mesero_user = User.objects.get(username='dsilva')
+        self.cocinero_user = User.objects.get(username='eparedes')
 
     # 1. Login con credenciales inválidas es rechazado
     def test_login_credenciales_invalidas(self):
@@ -42,34 +44,52 @@ class SafariFase2A1Tests(TestCase):
 
     # 2. Acceso anónimo bloqueado en rutas protegidas
     def test_acceso_anonimo_bloqueado(self):
-        rutas = [reverse('administrador'), reverse('vendedor'), reverse('mesero')]
+        rutas = [reverse('administrador'), reverse('vendedor'), reverse('mesero'), reverse('cocina')]
         for ruta in rutas:
             resp = self.client.get(ruta, follow=True)
             self.assertRedirects(resp, reverse('index'))
             self.assertContains(resp, "Acceso protegido")
 
-    # 3. Aislamiento estricto de los 3 roles
+    # 3. Aislamiento estricto de los 4 roles (Administrador, Cajero, Mesero, Cocinero)
     def test_aislamiento_roles(self):
-        # Mesero intentando entrar a administrador o vendedor
+        # Mesero intentando entrar a administrador, vendedor o cocina
         self.client.force_login(self.mesero_user)
         resp_admin = self.client.get(reverse('administrador'), follow=True)
         self.assertRedirects(resp_admin, reverse('mesero'))
         resp_vendedor = self.client.get(reverse('vendedor'), follow=True)
         self.assertRedirects(resp_vendedor, reverse('mesero'))
+        resp_cocina = self.client.get(reverse('cocina'), follow=True)
+        self.assertRedirects(resp_cocina, reverse('mesero'))
 
-        # Cajero intentando entrar a administrador o mesero
+        # Cajero intentando entrar a administrador, mesero o cocina
         self.client.force_login(self.cajero_user)
         resp_admin = self.client.get(reverse('administrador'), follow=True)
         self.assertRedirects(resp_admin, reverse('vendedor'))
         resp_mesero = self.client.get(reverse('mesero'), follow=True)
         self.assertRedirects(resp_mesero, reverse('vendedor'))
+        resp_cocina = self.client.get(reverse('cocina'), follow=True)
+        self.assertRedirects(resp_cocina, reverse('vendedor'))
 
-        # Administrador intentando entrar a vendedor o mesero
+        # Cocinero intentando entrar a administrador, vendedor o mesero
+        self.client.force_login(self.cocinero_user)
+        resp_admin = self.client.get(reverse('administrador'), follow=True)
+        self.assertRedirects(resp_admin, reverse('cocina'))
+        resp_vendedor = self.client.get(reverse('vendedor'), follow=True)
+        self.assertRedirects(resp_vendedor, reverse('cocina'))
+        resp_mesero = self.client.get(reverse('mesero'), follow=True)
+        self.assertRedirects(resp_mesero, reverse('cocina'))
+        # Cocinero accediendo legítimamente a su pantalla KDS
+        resp_kds = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_kds.status_code, 200)
+
+        # Administrador intentando entrar a vendedor o mesero (administrador tiene supervisión en cocina)
         self.client.force_login(self.admin_user)
         resp_vendedor = self.client.get(reverse('vendedor'), follow=True)
         self.assertRedirects(resp_vendedor, reverse('administrador'))
         resp_mesero = self.client.get(reverse('mesero'), follow=True)
         self.assertRedirects(resp_mesero, reverse('administrador'))
+        resp_admin_cocina = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_admin_cocina.status_code, 200)
 
     # 4. Selector visual no altera rol real
     def test_selector_visual_no_afecta_rol_real(self):
@@ -81,6 +101,15 @@ class SafariFase2A1Tests(TestCase):
         }, follow=True)
         # Redirección efectiva basada 100% en PerfilEmpleado de la BD -> /vendedor/
         self.assertRedirects(resp, reverse('vendedor'))
+
+        # Cocinero autenticado con selección visual alterada en POST
+        resp_cocinero = self.client.post(reverse('login'), {
+            'username': 'eparedes',
+            'password': 'safari123',
+            'rol_selector': 'ADMINISTRADOR'
+        }, follow=True)
+        # Redirección efectiva basada 100% en PerfilEmpleado de la BD -> /cocina/
+        self.assertRedirects(resp_cocinero, reverse('cocina'))
 
     # 5. Jornada de ayer abierta NO es válida para el día de hoy
     def test_jornada_ayer_no_valida_hoy(self):
@@ -611,6 +640,86 @@ class SafariFase2A1Tests(TestCase):
         # La vista debe blindar la asignación y permanecer en el local propio del colaborador
         self.assertEqual(resp_forzado.context['local_actual'], local_propio)
         self.assertNotEqual(resp_forzado.context['local_actual'], otro_local)
+
+    # 26. Módulo KDS de Cocina y ciclo completo de comanda (PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO) con notificación al mesero
+    def test_cocinero_flujo_kds_y_notificacion_mesero(self):
+        # 1. Mesero genera comanda para Mesa 1
+        self.client.force_login(self.mesero_user)
+        local = self.mesero_user.perfil.punto_venta_actual
+        mesa = Mesa.objects.filter(punto_venta=local).first()
+        if not mesa:
+            mesa = Mesa.objects.create(identificador="Mesa KDS", punto_venta=local, capacidad=4)
+
+        items_comanda = [
+            {"nombre": "Hamburguesa Safari con Papas", "cantidad": 2, "precio": 8900, "destino": "COCINA", "nota": "Sin cebolla"},
+            {"nombre": "Jugo Natural Frutilla Exprimido", "cantidad": 2, "precio": 3500, "destino": "BARRA", "nota": "Con hielo"}
+        ]
+        resp_mesero = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_comanda)
+        }, follow=True)
+        self.assertEqual(resp_mesero.status_code, 200)
+
+        venta = Venta.objects.filter(mesa=mesa, punto_venta=local, estado='ABIERTA').first()
+        self.assertIsNotNone(venta)
+        pedido = venta.pedidos.order_by('id').last()
+        self.assertIsNotNone(pedido)
+        self.assertEqual(pedido.estado, 'PENDIENTE')
+
+        # 2. Cocinero entra a la pantalla KDS de Cocina y visualiza el pedido en cola
+        self.client.force_login(self.cocinero_user)
+        resp_cocina = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_cocina.status_code, 200)
+        self.assertContains(resp_cocina, "KDS Cocina & Barra")
+        self.assertContains(resp_cocina, f"COM-{pedido.id:04d}")
+        self.assertContains(resp_cocina, "Hamburguesa Safari con Papas")
+        self.assertContains(resp_cocina, "Sin cebolla")
+
+        # 3. Cocinero pasa el pedido a EN_PREPARACION
+        resp_prep = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'EN_PREPARACION'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_prep.status_code, 200)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'EN_PREPARACION')
+
+        # 4. Cocinero termina el plato y lo pasa a LISTO
+        resp_listo = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'LISTO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_listo.status_code, 200)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'LISTO')
+
+        # 5. Mesero accede a su interfaz y recibe la notificación de pedido LISTO para servir
+        self.client.force_login(self.mesero_user)
+        resp_mesero_check = self.client.get(reverse('mesero'))
+        self.assertEqual(resp_mesero_check.status_code, 200)
+        self.assertIn(pedido, resp_mesero_check.context['pedidos_listos'])
+        self.assertContains(resp_mesero_check, f"#COM-{pedido.id:04d}")
+        self.assertContains(resp_mesero_check, "Listo p/ servir")
+
+        # 6. Se entrega el pedido al comensal (ENTREGADO) y se genera registro de auditoría en Entrega
+        resp_entrega = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_entrega.status_code, 200)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'ENTREGADO')
+
+        # Verificar auditoría RF11
+        entrega_registro = Entrega.objects.filter(pedido=pedido).first()
+        self.assertIsNotNone(entrega_registro)
+        self.assertEqual(entrega_registro.usuario_entrega, self.mesero_user)
+
+        # Mesero ya no tiene pedidos listos pendientes por servir en su campana
+        resp_mesero_final = self.client.get(reverse('mesero'))
+        self.assertEqual(resp_mesero_final.context['total_pedidos_listos'], 0)
+
 
 
 

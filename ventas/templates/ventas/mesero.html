@@ -64,6 +64,52 @@
                         MESERO
                     </span>
 
+                    <!-- Centro de Alertas de Cocina: Pedidos Listos para Servir -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm position-relative rounded-pill px-3 fw-bold {% if total_pedidos_listos > 0 %}btn-success text-white shadow-sm{% else %}btn-outline-secondary bg-white text-muted{% endif %}" type="button" id="dropdownPedidosListos" data-bs-toggle="dropdown" aria-expanded="false" title="Pedidos listos en cocina para retirar">
+                            <i class="bi bi-bell-fill {% if total_pedidos_listos > 0 %}text-warning{% endif %} me-1"></i>
+                            Cocina
+                            {% if total_pedidos_listos > 0 %}
+                            <span class="badge bg-danger rounded-pill ms-1">{{ total_pedidos_listos }} Listo{{ total_pedidos_listos|pluralize }}</span>
+                            {% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-3 mt-2" aria-labelledby="dropdownPedidosListos" style="min-width: 320px; max-width: 380px; z-index: 1050;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="bi bi-fire text-danger me-1"></i> Pedidos Listos en Cocina
+                                </h6>
+                                <span class="badge bg-success rounded-pill">{{ total_pedidos_listos }} listos</span>
+                            </div>
+                            {% if pedidos_listos %}
+                                <div class="d-flex flex-column gap-2" style="max-height: 280px; overflow-y: auto;">
+                                    {% for pl in pedidos_listos %}
+                                    <div class="p-2 rounded-3 bg-success-subtle border border-success-subtle d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong class="text-dark d-block">
+                                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ pl.venta.mesa.identificador|default:"Mostrador" }}
+                                            </strong>
+                                            <small class="text-muted font-monospace">#COM-{{ pl.id|stringformat:"04d" }} • Listo p/ servir</small>
+                                        </div>
+                                        <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="m-0">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="pedido_id" value="{{ pl.id }}">
+                                            <input type="hidden" name="nuevo_estado" value="ENTREGADO">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2 py-1 fw-bold shadow-xs" title="Marcar como retirado y servido en la mesa">
+                                                <i class="bi bi-check-lg me-1"></i> Servir
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-3 text-muted small">
+                                    <i class="bi bi-check-circle text-success fs-3 d-block mb-1"></i>
+                                    No hay comandas esperando retiro en cocina en este momento.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
                     <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
                         <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
                     </a>

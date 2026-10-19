@@ -1,0 +1,451 @@
+{% load static safari_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Sistema KDS Cocina & Barra</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    
+    <style>
+        body {
+            background-color: #f4efe9;
+            font-family: 'Nunito', sans-serif;
+            color: #2b2520;
+        }
+        .kds-header {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            color: #ffffff;
+            border-bottom: 3px solid #dc2626;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .kds-brand-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0.5px;
+            color: #f97316;
+            line-height: 1.1;
+        }
+        .kds-card {
+            background: #ffffff;
+            border-radius: 1rem;
+            border: 2px solid #e5e7eb;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            display: flex;
+            flex-column: column;
+            overflow: hidden;
+        }
+        .kds-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+        }
+        .kds-card.estado-pendiente {
+            border-top: 6px solid #f59e0b;
+        }
+        .kds-card.estado-preparacion {
+            border-top: 6px solid #0284c7;
+        }
+        .kds-card.estado-listo {
+            border-top: 6px solid #16a34a;
+            background-color: #f0fdf4;
+        }
+        .kds-card.demorado {
+            border: 2px solid #ef4444 !important;
+            animation: pulso-alerta 2s infinite ease-in-out;
+        }
+        @keyframes pulso-alerta {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 15px 4px rgba(239, 68, 68, 0.35); }
+        }
+        .badge-tiempo-normal {
+            background-color: #dcfce7;
+            color: #166534;
+            font-weight: 700;
+        }
+        .badge-tiempo-medio {
+            background-color: #fef3c7;
+            color: #92400e;
+            font-weight: 700;
+        }
+        .badge-tiempo-urgente {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            font-weight: 800;
+            animation: blinker 1.2s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0.4; }
+        }
+        .kds-item-row {
+            padding: 0.55rem 0.65rem;
+            border-bottom: 1px dashed #e5e7eb;
+            font-size: 0.95rem;
+        }
+        .kds-item-row:last-child {
+            border-bottom: none;
+        }
+        .nota-especial {
+            background-color: #fff1f2;
+            border-left: 3px solid #e11d48;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            color: #be123c;
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-top: 0.2rem;
+        }
+        .kds-btn-action {
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.5px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            padding: 0.65rem 1rem;
+            border-radius: 0.75rem;
+        }
+        .btn-kds-preparar {
+            background-color: #0284c7;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-kds-preparar:hover {
+            background-color: #0369a1;
+            color: #ffffff;
+        }
+        .btn-kds-listo {
+            background-color: #16a34a;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-kds-listo:hover {
+            background-color: #15803d;
+            color: #ffffff;
+        }
+        .btn-kds-entregar {
+            background-color: #4b5563;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-kds-entregar:hover {
+            background-color: #374151;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Header KDS con Estética Táctica de Cocina -->
+    <header class="kds-header py-2 px-3 px-lg-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            
+            <!-- Logo y Título del Sistema KDS -->
+            <div class="d-flex align-items-center gap-3">
+                <a href="{% url 'index' %}" class="d-flex align-items-center gap-2 text-decoration-none" title="Volver al Portal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Safari" style="height: 50px; width: auto; object-fit: contain;">
+                </a>
+                <div>
+                    <h1 class="kds-brand-title mb-0">
+                        <i class="bi bi-fire text-danger me-1"></i> KDS COCINA & BARRA
+                    </h1>
+                    <small class="text-light-subtle d-block" style="font-size: 0.8rem;">
+                        {{ local_actual.nombre }} • Monitor Táctil de Producción
+                    </small>
+                </div>
+            </div>
+
+            <!-- Centro: Filtros Rápidos de Zona -->
+            <div class="d-flex align-items-center gap-1 bg-dark p-1 rounded-pill border border-secondary shadow-sm">
+                <a href="?zona=TODAS{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'TODAS' %}btn-warning text-dark{% else %}btn-outline-light text-white border-0{% endif %}">
+                    <i class="bi bi-grid-fill me-1"></i> Todos ({{ total_cola }})
+                </a>
+                <a href="?zona=COCINA{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'COCINA' %}btn-danger{% else %}btn-outline-light text-white border-0{% endif %}">
+                    <i class="bi bi-fire me-1"></i> Cocina Caliente
+                </a>
+                <a href="?zona=BARRA{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'BARRA' %}btn-info text-dark{% else %}btn-outline-light text-white border-0{% endif %}">
+                    <i class="bi bi-cup-straw me-1"></i> Barra & Bebidas
+                </a>
+            </div>
+
+            <!-- Derecha: Estado de Turno, Datos del Cocinero y Reloj -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Horario Oficial -->
+                <span class="badge {% if en_horario %}bg-success{% else %}bg-warning text-dark{% endif %} px-3 py-2 rounded-pill fw-bold shadow-sm d-none d-xl-inline-block">
+                    <i class="bi bi-clock-history me-1"></i> 10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})
+                </span>
+
+                <!-- Reloj en vivo -->
+                <div class="bg-black text-warning px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
+                    <i class="bi bi-clock me-1"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
+                </div>
+
+                <!-- Botón de Auto-Recarga -->
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-2" onclick="location.reload()" title="Actualizar comanderas">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+
+                <!-- Cocinero Activo -->
+                <div class="d-flex align-items-center gap-2 bg-secondary bg-opacity-25 px-3 py-1 rounded-pill border border-secondary text-white">
+                    <i class="bi bi-person-fill text-warning"></i>
+                    <span class="small fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <span class="badge bg-danger ms-1">Cocinero</span>
+                </div>
+
+                <!-- Salir -->
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container-fluid px-3 px-lg-4 my-3 flex-grow-1">
+
+        <!-- Mensajes del Sistema -->
+        {% if messages %}
+        <div class="mb-3">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible fade show rounded-4 py-2 px-3 shadow-sm" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-5"></i>
+                    <div>{{ message }}</div>
+                </div>
+                <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Barra de Estado de la Cola en Cocina -->
+        <div class="row g-2 mb-3 align-items-center">
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
+                    <div class="rounded-circle p-2 bg-warning-subtle text-warning fs-5">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Pendientes</div>
+                        <h4 class="mb-0 fw-bold text-dark font-monospace">{{ total_pendientes }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
+                    <div class="rounded-circle p-2 bg-primary-subtle text-primary fs-5">
+                        <i class="bi bi-fire"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Plancha / Barra</div>
+                        <h4 class="mb-0 fw-bold text-primary font-monospace">{{ total_en_preparacion }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
+                    <div class="rounded-circle p-2 bg-success-subtle text-success fs-5">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Listos p/ Servir</div>
+                        <h4 class="mb-0 fw-bold text-success font-monospace">{{ total_listos }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center justify-content-between shadow-xs">
+                    <div>
+                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Cola Total Activa</div>
+                        <h4 class="mb-0 fw-bold text-dark font-monospace">{{ total_cola }}</h4>
+                    </div>
+                    <span class="badge bg-dark rounded-pill px-3 py-2 small">
+                        <i class="bi bi-wifi text-success me-1"></i> KDS En Vivo
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grilla de Comandas Activas (KDS Cards) -->
+        {% if pedidos %}
+        <div class="row g-3">
+            {% for p in pedidos %}
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <div class="kds-card h-100 {% if p.estado == 'PENDIENTE' %}estado-pendiente{% elif p.estado == 'EN_PREPARACION' %}estado-preparacion{% else %}estado-listo{% endif %} {% if p.es_demorado and p.estado != 'LISTO' %}demorado{% endif %}">
+                    
+                    <!-- Header de Comanda -->
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-start {% if p.estado == 'LISTO' %}bg-success-subtle{% else %}bg-light{% endif %}">
+                        <div>
+                            <span class="badge bg-dark text-white font-monospace px-2 py-1 mb-1" style="font-size: 0.85rem;">
+                                {{ p.codigo_ticket }}
+                            </span>
+                            <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                                {% if p.es_mesa %}
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ p.mesa }}
+                                {% else %}
+                                    <i class="bi bi-bag-check-fill text-warning me-1"></i> {{ p.mesa }}
+                                {% endif %}
+                            </h5>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                Por: {{ p.cajero }} • {{ p.hora_creacion }} hrs
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if p.minutos_transcurridos < 5 %}badge-tiempo-normal{% elif p.minutos_transcurridos < 15 %}badge-tiempo-medio{% else %}badge-tiempo-urgente{% endif %} px-2 py-1 mb-1 d-block" title="Tiempo de espera de la comanda">
+                                <i class="bi bi-stopwatch me-1"></i>{{ p.minutos_transcurridos }} min
+                            </span>
+                            <span class="badge {% if p.estado == 'PENDIENTE' %}bg-warning text-dark{% elif p.estado == 'EN_PREPARACION' %}bg-primary{% else %}bg-success{% endif %} text-uppercase fw-bold" style="font-size: 0.7rem;">
+                                {{ p.estado_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Cuerpo: Lista de Platos y Preparaciones -->
+                    <div class="p-2 flex-grow-1 bg-white">
+                        <div class="d-flex flex-column">
+                            {% for item in p.items %}
+                            <div class="kds-item-row">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-secondary font-monospace fs-6 px-2 py-1 text-white fw-bold">
+                                            {{ item.cantidad }}x
+                                        </span>
+                                        <strong class="text-dark">{{ item.nombre }}</strong>
+                                    </div>
+                                    <span class="badge {% if item.destino == 'COCINA' %}bg-danger-subtle text-danger border border-danger{% else %}bg-info-subtle text-info-emphasis border border-info{% endif %} small" style="font-size: 0.65rem;">
+                                        {{ item.destino }}
+                                    </span>
+                                </div>
+                                {% if item.observaciones %}
+                                <div class="nota-especial">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ item.observaciones }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        {% if p.observaciones %}
+                        <div class="mt-2 p-2 rounded bg-warning-subtle text-dark small border border-warning" style="font-size: 0.8rem;">
+                            <strong><i class="bi bi-chat-left-dots-fill me-1"></i> Nota comanda:</strong> {{ p.observaciones }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Footer: Botones de Acción KDS Táctil -->
+                    <div class="p-2 bg-light border-top">
+                        <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100">
+                            {% csrf_token %}
+                            <input type="hidden" name="pedido_id" value="{{ p.id }}">
+                            
+                            {% if p.estado == 'PENDIENTE' %}
+                                <input type="hidden" name="nuevo_estado" value="EN_PREPARACION">
+                                <button type="submit" class="btn btn-kds-preparar kds-btn-action w-100 shadow-sm">
+                                    <i class="bi bi-fire me-1"></i> INICIAR PREPARACIÓN
+                                </button>
+                            {% elif p.estado == 'EN_PREPARACION' %}
+                                <input type="hidden" name="nuevo_estado" value="LISTO">
+                                <button type="submit" class="btn btn-kds-listo kds-btn-action w-100 shadow-sm">
+                                    <i class="bi bi-bell-fill me-1"></i> ¡MARCAR LISTO PARA SERVIR!
+                                </button>
+                            {% elif p.estado == 'LISTO' %}
+                                <input type="hidden" name="nuevo_estado" value="ENTREGADO">
+                                <div class="text-center mb-1 text-success fw-bold small">
+                                    <i class="bi bi-check2-circle me-1"></i> Notificado al Mesero
+                                </div>
+                                <button type="submit" class="btn btn-kds-entregar kds-btn-action w-100 shadow-sm">
+                                    <i class="bi bi-check-lg me-1"></i> DESPACHAR / ENTREGADO
+                                </button>
+                            {% endif %}
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Estado Vacío: Sin comandas en cola -->
+        <div class="text-center py-5 bg-white rounded-4 border shadow-sm my-4">
+            <div class="p-4 rounded-circle bg-success-subtle text-success d-inline-block mb-3">
+                <i class="bi bi-check2-all display-3"></i>
+            </div>
+            <h3 class="fw-bold text-dark" style="font-family: 'Oswald', sans-serif;">
+                ¡COCINA AL DÍA!
+            </h3>
+            <p class="text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
+                No hay pedidos pendientes ni en preparación en este momento para {{ local_actual.nombre }}. Las nuevas comandas emitidas por meseros o cajeros aparecerán automáticamente aquí.
+            </p>
+            <button type="button" class="btn btn-outline-dark rounded-pill px-4 fw-bold" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Pantalla
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Historial Colapsable de Pedidos Despachados Hoy -->
+        {% if ultimos_entregados %}
+        <div class="mt-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold small text-uppercase">
+                    <i class="bi bi-clock-history me-1"></i> Últimos Pedidos Despachados Hoy ({{ ultimos_entregados.count }})
+                </span>
+            </div>
+            <div class="row g-2">
+                {% for u in ultimos_entregados %}
+                <div class="col-sm-6 col-md-4 col-xl-2">
+                    <div class="p-2 bg-white rounded-3 border text-muted small shadow-xs">
+                        <div class="d-flex justify-content-between">
+                            <strong class="text-dark font-monospace">#COM-{{ u.id|stringformat:"04d" }}</strong>
+                            <span class="badge bg-secondary-subtle text-dark">Entregado</span>
+                        </div>
+                        <div>{{ u.venta.mesa.identificador|default:"Mostrador" }}</div>
+                        <div class="font-monospace text-muted" style="font-size: 0.7rem;">
+                            {{ u.actualizado_en|date:"H:i" }} hrs
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <!-- Footer minimalista -->
+    <footer class="py-2 text-center text-muted small bg-white border-top">
+        <strong>Safari Pilar KDS</strong> • Módulo Operativo de Cocina & Barra • Auto-refresco activo cada 15 segundos
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script Anti Doble Envío -->
+    <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+
+    <script>
+        // Actualizar reloj en vivo
+        function actualizarReloj() {
+            const ahora = new Date();
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            const segundos = String(ahora.getSeconds()).padStart(2, '0');
+            const el = document.getElementById('relojVivo');
+            if (el) el.innerText = `${horas}:${minutos}:${segundos}`;
+        }
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+
+        // Auto-refresco cada 15 segundos para recibir nuevos pedidos en cocina
+        setTimeout(function() {
+            location.reload();
+        }, 15000);
+    </script>
+</body>
+</html>

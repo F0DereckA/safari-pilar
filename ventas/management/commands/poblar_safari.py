@@ -133,7 +133,7 @@ class Command(BaseCommand):
         personal_inicial = [
             {"username": "cvalenzuela", "first_name": "Carlos", "last_name": "Valenzuela M.", "rut": "15.421.890-3", "rol": "CAJERO", "telefono": "+56 9 8421 8903", "local_id": 1},
             {"username": "mmorales", "first_name": "Marcela", "last_name": "Morales P.", "rut": "17.654.120-K", "rol": "MESERO", "telefono": "+56 9 7654 1201", "local_id": 1},
-            {"username": "eparedes", "first_name": "Esteban", "last_name": "Paredes G.", "rut": "18.320.911-5", "rol": "MESERO", "telefono": "+56 9 8320 9115", "local_id": 1},
+            {"username": "eparedes", "first_name": "Esteban", "last_name": "Paredes G.", "rut": "18.320.911-5", "rol": "COCINERO", "telefono": "+56 9 8320 9115", "local_id": 1},
             {"username": "dsilva", "first_name": "Daniela", "last_name": "Silva C.", "rut": "19.789.442-1", "rol": "MESERO", "telefono": "+56 9 9789 4421", "local_id": 1},
             {"username": "csoto", "first_name": "Camila", "last_name": "Soto Rojas", "rut": "16.890.312-4", "rol": "CAJERO", "telefono": "+56 9 6890 3124", "local_id": 2},
             {"username": "rfuentes", "first_name": "Rodrigo", "last_name": "Fuentes A.", "rut": "20.145.789-2", "rol": "MESERO", "telefono": "+56 9 0145 7892", "local_id": 2},
@@ -171,10 +171,17 @@ class Command(BaseCommand):
                     "activo": True
                 }
             )
-            # Asegurar que el punto de venta esté asignado si el perfil ya existía sin puesto
-            if not p_creado and not perfil.punto_venta_actual and pdata["local_id"]:
-                perfil.punto_venta_actual = puntos.get(pdata["local_id"])
-                perfil.save()
+            # Asegurar que el punto de venta y rol estén sincronizados
+            if not p_creado:
+                cambios = False
+                if not perfil.punto_venta_actual and pdata["local_id"]:
+                    perfil.punto_venta_actual = puntos.get(pdata["local_id"])
+                    cambios = True
+                if perfil.rol != pdata["rol"]:
+                    perfil.rol = pdata["rol"]
+                    cambios = True
+                if cambios:
+                    perfil.save()
 
         # 4. MESAS OPERATIVAS (Si no existen)
         if Mesa.objects.count() == 0:
