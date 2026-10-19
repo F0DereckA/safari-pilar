@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.cache import cache
-from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, Ticket, Pedido, DetallePedido, Entrega
+from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu
 
 
 class SafariFase2A1Tests(TestCase):
@@ -1098,6 +1098,155 @@ class SafariFase2A1Tests(TestCase):
         }, follow=True)
         self.assertContains(resp_del_ok, "eliminada definitivamente")
         self.assertFalse(Mesa.objects.filter(id=mesa_limpia.id).exists())
+
+    # 42. CRUD Productos: Aislamiento por rol y listado real desde BD (Semana 11)
+    def test_crud_productos_acceso_restringido_y_listado_desde_bd(self):
+        # 1. Acceso anónimo y cajero bloqueados
+        resp_anon = self.client.get(reverse('administrador_productos'), follow=True)
+        self.assertRedirects(resp_anon, reverse('index'))
+        self.assertContains(resp_anon, "Acceso protegido")
+
+        self.client.force_login(self.cajero_user)
+        resp_cajero = self.client.get(reverse('administrador_productos'), follow=True)
+        self.assertRedirects(resp_cajero, reverse('vendedor'))
+        self.assertContains(resp_cajero, "Acceso restringido")
+
+        # 2. Administrador accede correctamente al catálogo
+        self.client.force_login(self.admin_user)
+        resp_admin = self.client.get(reverse('administrador_productos'))
+        self.assertEqual(resp_admin.status_code, 200)
+        self.assertContains(resp_admin, "CATÁLOGO CENTRALIZADO DE PRODUCTOS")
+        self.assertContains(resp_admin, "Hamburguesa Safari con Papas")
+
+    # 43. CRUD Productos: Creación válida y rechazo de datos inválidos (Semana 11)
+    def test_crud_productos_creacion_valida_y_rechazo_datos_invalidos(self):
+        self.client.force_login(self.admin_user)
+        cat = Categoria.objects.first()
+        pv = PuntoVenta.objects.first()
+
+        # 1. Creación exitosa
+        resp_ok = self.client.post(reverse('administrador_productos'), {
+            'accion': 'crear',
+            'nombre': 'Chorrillana Campestre Safari',
+            'categoria_id': cat.id,
+            'precio_base': '12500',
+            'descripcion': 'Papas rústicas con carne mechada y cebolla caramelizada',
+            'puntos_venta': [pv.id],
+            'activo': 'on'
+        }, follow=True)
+        self.assertContains(resp_ok, "creado exitosamente")
+        nuevo_prod = Producto.objects.filter(nombre='Chorrillana Campestre Safari').first()
+        self.assertIsNotNone(nuevo_prod)
+        self.assertEqual(nuevo_prod.precio_base, 12500)
+        self.assertTrue(nuevo_prod.puntos_venta.filter(id=pv.id).exists())
+
+        # 2. Rechazo con nombre vacío
+        resp_vacio = self.client.post(reverse('administrador_productos'), {
+            'accion': 'crear',
+            'nombre': '',
+            'categoria_id': cat.id,
+            'precio_base': '5000'
+        }, follow=True)
+        self.assertContains(resp_vacio, "El nombre del producto es obligatorio")
+
+    # 44. CRUD Productos: Modificación, Toggle Estado y Eliminación Protegida (Semana 11)
+    def test_crud_productos_edicion_toggle_y_eliminacion_protegida(self):
+        self.client.force_login(self.admin_user)
+        cat = Categoria.objects.first()
+        pv = PuntoVenta.objects.first()
+
+        # Producto para prueba
+        prod = Producto.objects.create(nombre='Bebida Especial Test', categoria=cat, precio_base=2500, activo=True)
+        prod.puntos_venta.add(pv)
+
+        # 1. Modificar
+        resp_mod = self.client.post(reverse('administrador_productos'), {
+            'accion': 'modificar',
+            'producto_id': prod.id,
+            'nombre': 'Bebida Especial Renovada',
+            'categoria_id': cat.id,
+            'precio_base': '2900',
+            'descripcion': 'Nueva fórmula',
+            'puntos_venta': [pv.id],
+            'activo': 'on'
+        }, follow=True)
+        self.assertContains(resp_mod, "actualizado correctamente")
+        prod.refresh_from_db()
+        self.assertEqual(prod.nombre, 'Bebida Especial Renovada')
+        self.assertEqual(prod.precio_base, 2900)
+
+        # 2. Toggle de estado (Pausar/Activar)
+        resp_toggle = self.client.post(reverse('administrador_productos'), {
+            'accion': 'toggle_estado',
+            'producto_id': prod.id
+        }, follow=True)
+        self.assertContains(resp_toggle, "desactivado del catálogo")
+        prod.refresh_from_db()
+        self.assertFalse(prod.activo)
+
+        # 3. Eliminación protegida: Si tiene ventas históricas -> Soft-delete
+        jornada = Jornada.objects.create(fecha=timezone.localdate(), estado='ABIERTA', usuario_apertura=self.admin_user)
+        caja = Caja.objects.create(jornada=jornada, cajero=self.admin_user, punto_venta=pv, nombre="Caja Test Prod", estado='ABIERTA')
+        venta = Venta.objects.create(caja=caja, cajero=self.admin_user, punto_venta=pv, total=2900, estado='PAGADA')
+        DetalleVenta.objects.create(venta=venta, producto=prod, cantidad=1, precio_aplicado=2900, subtotal=2900)
+
+        resp_del_prot = self.client.post(reverse('administrador_productos'), {
+            'accion': 'eliminar',
+            'producto_id': prod.id
+        }, follow=True)
+        self.assertContains(resp_del_prot, "registra ventas históricas")
+        # El producto no se elimina físicamente, se preserva inactivo
+        self.assertTrue(Producto.objects.filter(id=prod.id).exists())
+
+        # 4. Producto sin ventas -> Eliminación física permitida
+        prod_limpio = Producto.objects.create(nombre='Item Sin Ventas', categoria=cat, precio_base=1000)
+        resp_del_fisico = self.client.post(reverse('administrador_productos'), {
+            'accion': 'eliminar',
+            'producto_id': prod_limpio.id
+        }, follow=True)
+        self.assertContains(resp_del_fisico, "eliminado definitivamente")
+        self.assertFalse(Producto.objects.filter(id=prod_limpio.id).exists())
+
+    # 45. CRUD Menús: Listado por local y creación de cartas de carta (Semana 11)
+    def test_crud_menus_listado_y_creacion_por_local(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+        prods = list(Producto.objects.filter(activo=True)[:3])
+
+        # 1. Acceder al mantenedor de menús
+        resp_get = self.client.get(reverse('administrador_menus'))
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertContains(resp_get, "CARTAS Y MENÚS POR PUNTO DE VENTA")
+
+        # 2. Crear nueva carta de menú
+        resp_crear = self.client.post(reverse('administrador_menus'), {
+            'accion': 'crear',
+            'nombre': 'Carta Ejecutiva Safari',
+            'punto_venta_id': pv.id,
+            'productos': [p.id for p in prods],
+            'activo': 'on'
+        }, follow=True)
+        self.assertContains(resp_crear, "asignado exitosamente")
+
+        menu_creado = Menu.objects.filter(nombre='Carta Ejecutiva Safari', punto_venta=pv).first()
+        self.assertIsNotNone(menu_creado)
+        self.assertEqual(menu_creado.productos.count(), len(prods))
+
+        # 3. Toggle de estado y eliminación
+        resp_toggle = self.client.post(reverse('administrador_menus'), {
+            'accion': 'toggle_estado',
+            'menu_id': menu_creado.id
+        }, follow=True)
+        self.assertContains(resp_toggle, "desactivado")
+        menu_creado.refresh_from_db()
+        self.assertFalse(menu_creado.activo)
+
+        resp_del = self.client.post(reverse('administrador_menus'), {
+            'accion': 'eliminar',
+            'menu_id': menu_creado.id
+        }, follow=True)
+        self.assertContains(resp_del, "eliminado del sistema")
+        self.assertFalse(Menu.objects.filter(id=menu_creado.id).exists())
 
 
 

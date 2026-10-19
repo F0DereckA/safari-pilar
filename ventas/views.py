@@ -7,10 +7,11 @@ from django.contrib import messages
 from django.db import models, transaction
 from django.utils import timezone
 from django.core.cache import cache
+from decimal import Decimal
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Entrega
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega
 
 
 def get_locales_data():
@@ -1326,6 +1327,241 @@ def administrador_mesas(request):
         'mesas_inactivas': mesas_inactivas,
     }
     return render(request, 'ventas/administrador_mesas.html', context)
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_productos(request):
+    """
+    CRUD de Catálogo Centralizado de Productos Gastronómicos (Semana 11):
+    Gestión administrativa conectada a la base de datos real (listar, crear, modificar, activar/desactivar y eliminar protegido).
+    Permite asociar productos a categorías oficiales y a los puntos de venta donde se comercializan.
+    """
+    categorias = Categoria.objects.filter(activo=True).order_by('nombre')
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+
+    # Filtros GET
+    cat_filtro_id = request.GET.get('categoria_id', '')
+    local_filtro_id = request.GET.get('local_id', '')
+    busqueda_q = request.POST.get('q', request.GET.get('q', '')).strip()
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'crear':
+            nombre = request.POST.get('nombre', '').strip()
+            categoria_id = request.POST.get('categoria_id')
+            precio_base_raw = request.POST.get('precio_base', '0').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            puntos_venta_ids = request.POST.getlist('puntos_venta')
+            activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+
+            if not nombre:
+                messages.error(request, "El nombre del producto es obligatorio.")
+                return redirect('administrador_productos')
+
+            try:
+                precio_base = max(Decimal('0'), Decimal(precio_base_raw.replace('.', '').replace(',', '.')))
+            except Exception:
+                messages.error(request, "El precio base debe ser un valor numérico válido.")
+                return redirect('administrador_productos')
+
+            cat_obj = get_object_or_404(Categoria, id=categoria_id)
+
+            prod = Producto.objects.create(
+                nombre=nombre,
+                categoria=cat_obj,
+                precio_base=precio_base,
+                descripcion=descripcion,
+                activo=activo
+            )
+            if puntos_venta_ids:
+                prod.puntos_venta.set(PuntoVenta.objects.filter(id__in=puntos_venta_ids))
+
+            precio_fmt = f"${int(precio_base):,}".replace(',', '.')
+            messages.success(request, f"¡Producto '{nombre}' ({precio_fmt}) creado exitosamente en categoría '{cat_obj.nombre}'!")
+            return redirect('administrador_productos')
+
+        elif accion == 'modificar':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+
+            nombre = request.POST.get('nombre', prod.nombre).strip()
+            categoria_id = request.POST.get('categoria_id')
+            precio_base_raw = request.POST.get('precio_base', str(prod.precio_base)).strip()
+            descripcion = request.POST.get('descripcion', prod.descripcion).strip()
+            puntos_venta_ids = request.POST.getlist('puntos_venta')
+            activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+
+            if not nombre:
+                messages.error(request, "El nombre del producto no puede quedar vacío.")
+                return redirect('administrador_productos')
+
+            try:
+                precio_base = max(Decimal('0'), Decimal(precio_base_raw.replace('.', '').replace(',', '.')))
+            except Exception:
+                precio_base = prod.precio_base
+
+            cat_obj = Categoria.objects.filter(id=categoria_id).first() or prod.categoria
+
+            prod.nombre = nombre
+            prod.categoria = cat_obj
+            prod.precio_base = precio_base
+            prod.descripcion = descripcion
+            prod.activo = activo
+            prod.save()
+
+            if puntos_venta_ids:
+                prod.puntos_venta.set(PuntoVenta.objects.filter(id__in=puntos_venta_ids))
+            else:
+                prod.puntos_venta.clear()
+
+            messages.success(request, f"¡Producto '{nombre}' actualizado correctamente!")
+            return redirect('administrador_productos')
+
+        elif accion == 'toggle_estado':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+            prod.activo = not prod.activo
+            prod.save()
+            estado_txt = "activado y disponible" if prod.activo else "desactivado del catálogo"
+            messages.info(request, f"Producto '{prod.nombre}' {estado_txt}.")
+            return redirect('administrador_productos')
+
+        elif accion == 'eliminar':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+
+            tiene_ventas = DetalleVenta.objects.filter(producto=prod).exists() or DetallePedido.objects.filter(producto=prod).exists()
+            if tiene_ventas:
+                # Soft-delete para no quebrar integridad tributaria ni historial
+                prod.activo = False
+                prod.save()
+                messages.warning(
+                    request,
+                    f"El producto '{prod.nombre}' registra ventas históricas en el sistema. "
+                    "Por motivos de integridad contable y tributaria, se ha desactivado del catálogo sin eliminar sus registros históricos."
+                )
+            else:
+                nom = prod.nombre
+                prod.delete()
+                messages.success(request, f"Producto '{nom}' eliminado definitivamente de la base de datos.")
+
+            return redirect('administrador_productos')
+
+    # Queryset base
+    productos_qs = Producto.objects.select_related('categoria').prefetch_related('puntos_venta').order_by('categoria__nombre', 'nombre')
+    if cat_filtro_id:
+        productos_qs = productos_qs.filter(categoria_id=cat_filtro_id)
+    if local_filtro_id:
+        productos_qs = productos_qs.filter(puntos_venta__id=local_filtro_id)
+    if busqueda_q:
+        productos_qs = productos_qs.filter(models.Q(nombre__icontains=busqueda_q) | models.Q(descripcion__icontains=busqueda_q))
+
+    total_productos = productos_qs.count()
+    activos_count = productos_qs.filter(activo=True).count()
+    inactivos_count = total_productos - activos_count
+
+    context = {
+        'productos': productos_qs,
+        'categorias': categorias,
+        'locales': locales,
+        'cat_filtro_id': int(cat_filtro_id) if cat_filtro_id.isdigit() else None,
+        'local_filtro_id': int(local_filtro_id) if local_filtro_id.isdigit() else None,
+        'busqueda_q': busqueda_q,
+        'total_productos': total_productos,
+        'activos_count': activos_count,
+        'inactivos_count': inactivos_count,
+    }
+    return render(request, 'ventas/administrador_productos.html', context)
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_menus(request):
+    """
+    CRUD de Menús de Carta por Punto de Venta (Semana 11):
+    Gestión administrativa de cartas gastronómicas asociadas a cada local con sus productos vinculados.
+    """
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+    productos_disponibles = Producto.objects.filter(activo=True).select_related('categoria').order_by('categoria__nombre', 'nombre')
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'crear':
+            nombre = request.POST.get('nombre', '').strip()
+            punto_venta_id = request.POST.get('punto_venta_id')
+            productos_ids = request.POST.getlist('productos')
+            activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+
+            if not nombre:
+                messages.error(request, "El nombre de la carta o menú es obligatorio.")
+                return redirect('administrador_menus')
+
+            local_obj = get_object_or_404(PuntoVenta, id=punto_venta_id)
+            menu_obj = Menu.objects.create(
+                nombre=nombre,
+                punto_venta=local_obj,
+                activo=activo
+            )
+            if productos_ids:
+                menu_obj.productos.set(Producto.objects.filter(id__in=productos_ids))
+
+            messages.success(request, f"¡Menú '{nombre}' asignado exitosamente a {local_obj.nombre} ({menu_obj.productos.count()} productos vinculados)!")
+            return redirect('administrador_menus')
+
+        elif accion == 'modificar':
+            menu_id = request.POST.get('menu_id')
+            menu_obj = get_object_or_404(Menu, id=menu_id)
+
+            nombre = request.POST.get('nombre', menu_obj.nombre).strip()
+            punto_venta_id = request.POST.get('punto_venta_id')
+            productos_ids = request.POST.getlist('productos')
+            activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+
+            if not nombre:
+                messages.error(request, "El nombre del menú no puede quedar vacío.")
+                return redirect('administrador_menus')
+
+            local_obj = PuntoVenta.objects.filter(id=punto_venta_id).first() or menu_obj.punto_venta
+            menu_obj.nombre = nombre
+            menu_obj.punto_venta = local_obj
+            menu_obj.activo = activo
+            menu_obj.save()
+
+            if productos_ids:
+                menu_obj.productos.set(Producto.objects.filter(id__in=productos_ids))
+            else:
+                menu_obj.productos.clear()
+
+            messages.success(request, f"¡Menú '{nombre}' actualizado correctamente!")
+            return redirect('administrador_menus')
+
+        elif accion == 'toggle_estado':
+            menu_id = request.POST.get('menu_id')
+            menu_obj = get_object_or_404(Menu, id=menu_id)
+            menu_obj.activo = not menu_obj.activo
+            menu_obj.save()
+            estado_txt = "activado" if menu_obj.activo else "desactivado"
+            messages.info(request, f"Menú '{menu_obj.nombre}' {estado_txt}.")
+            return redirect('administrador_menus')
+
+        elif accion == 'eliminar':
+            menu_id = request.POST.get('menu_id')
+            menu_obj = get_object_or_404(Menu, id=menu_id)
+            nom = menu_obj.nombre
+            menu_obj.delete()
+            messages.success(request, f"Menú '{nom}' eliminado del sistema.")
+            return redirect('administrador_menus')
+
+    menus_qs = Menu.objects.select_related('punto_venta').prefetch_related('productos__categoria').order_by('punto_venta__id', 'nombre')
+
+    context = {
+        'menus': menus_qs,
+        'locales': locales,
+        'productos_disponibles': productos_disponibles,
+        'total_menus': menus_qs.count(),
+    }
+    return render(request, 'ventas/administrador_menus.html', context)
 
 
 @requiere_rol(['ADMINISTRADOR'])

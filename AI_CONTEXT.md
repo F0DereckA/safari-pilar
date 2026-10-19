@@ -6,13 +6,16 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Recuperación académica Semana 10 (13/10) + avance controlado Semana 11 (20/10)**.
-- contexto: El usuario no asistió a la clase del 13/10/2026. Para llegar preparado a la clase del 20/10/2026, el proyecto debe cubrir **todo lo exigido en Semana 10** y mostrar además un avance visible y real de algunos mantenedores de Semana 11.
-- prioridad inmediata:
-  1. Completar y dejar demostrable todo lo correspondiente a Semana 10.
-  2. Consolidar CRUD ya existentes que cuentan para Semana 11.
-  3. Implementar un primer CRUD nuevo de Semana 11 y dejar iniciados los siguientes sin intentar cerrar toda la semana de una vez.
-- resultado esperado: Llegar al 20/10 con login/roles/validaciones/error handling completos y demostrables, más avance real de CRUD de Usuarios, Puntos de Venta y Mesas, y base preparada para Productos/Menús.
+- tarea actual: **Semana 11 (20/10) — Paso 5: Historial de Acciones realizadas (análisis y diseño de trazabilidad) + sincronización académica**.
+- estado académico vigente:
+  - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37/37 pruebas)**.
+  - CRUD Usuarios: **YA EXISTENTE / VALIDADO**.
+  - CRUD Puntos de Venta: **YA EXISTENTE / VALIDADO**.
+  - CRUD Mesas: **COMPLETADO (41/41 pruebas)**.
+  - CRUD Productos y Menús con BD: **COMPLETADO (45/45 pruebas)**.
+  - suite vigente reportada: **45/45 pruebas aprobadas al 100% (Ran 45 tests OK)**.
+  - Historial de Acciones: **SIGUIENTE PASO PRIORITARIO** (análisis inicial y reutilización de modelos de trazabilidad existentes sin sobredimensionar).
+- objetivo inmediato: avanzar con el diseño y visualización inicial de trazabilidad/auditoría sin alterar el core operativo ni romper KDS Cocina, Mesa/Cuenta Abierta o Caja.
 ---
 
 ### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11
@@ -123,13 +126,19 @@ Contenido solicitado por docente:
      - Eliminación segura: Si la mesa tiene ventas históricas, se desactiva (soft-delete) para preservar integridad contable; si no tiene historial, se elimina limpiamente.
      - Cobertura de pruebas: Pruebas unitarias 38, 39, 40 y 41 aprobadas al 100% (41/41 tests OK).
 
-4. **Productos y Menús — SOLO PINCELADA INICIAL**
-   - No completar todavía RF05 entero.
-   - Verificar modelos existentes `Categoria`, `Producto` y `Menu`.
-   - Crear/confirmar rutas y vista administrativa inicial para listar datos reales desde BD.
-   - Si el tiempo y estabilidad lo permiten, habilitar creación/edición básica de Producto.
-   - Para Menú, basta en esta fase con lectura/listado real y dejar preparado el flujo de mantenimiento.
-   - No duplicar catálogos hardcodeados ni crear una segunda fuente de verdad.
+4. **Productos y Menús — GESTIÓN CON BD (COMPLETADO AL 100%)**
+   - Implementado en `/administrador/productos/` y `/administrador/menus/`, accesible solo para `ADMINISTRADOR`.
+   - Lee y gestiona datos reales directamente desde la base de datos (modelos `Producto`, `Categoria`, `Menu`, `PuntoVenta`).
+   - Funciones operativas:
+     - Listar productos con filtros por categoría, local asignado y búsqueda por nombre/código.
+     - Crear nuevo producto con precio, categoría y punto de venta opcional.
+     - Modificar producto (nombre, precio, categoría, punto de venta).
+     - Activar/desactivar producto (`toggle_estado`) para disponibilidad operativa.
+     - Eliminación contablemente segura: Si el producto registra ventas históricas (`DetalleVenta` o `DetallePedido`), se aplica soft-delete (`activo=False`) para no destruir la auditoría fiscal ni balances; si no registra ventas, se borra físicamente.
+     - Gestión de Menús: Listar cartas por Punto de Venta, creación de cartas asociadas a locales y vinculación múltiple de productos reales.
+     - Cobertura de pruebas: Pruebas unitarias 42, 43, 44 y 45 agregadas y aprobadas al 100% (**45/45 tests OK**).
+   - Seeding y persistencia: Comando oficial `poblar_safari` actualizado con categorías oficiales (5), productos representativos (16) y menús por local (3), manteniendo idempotencia.
+   - Regla de no regresión respetada: Las terminales de Mesero y Cajero no sufrieron alteraciones en sus flujos operativos.
 
 5. **Historial de Acciones — SOLO DISEÑO/REUTILIZACIÓN INICIAL**
    - Revisar qué trazabilidad real ya existe (`AlertaTraslado`, ventas, pedidos, tickets, usuario creador, fechas).
@@ -418,38 +427,89 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resultado: Se reconstruyó de forma fidedigna el estado del código al 29-Sep (restauración del banner `SUPERVISIÓN DE LOCALES Y PERSONAL`, Centro de Alertas como bloque en el cuerpo, alertas nativas `confirm()`, recarga completa por POST, seeding en el ciclo HTTP y validación con `test_fase2a.py` al 100% OK). Se dispuso en el proyecto y directamente en el Escritorio con instrucciones para correr en el puerto 8001.
 
 ## 6. errores actuales y observaciones pendientes
-- estado funcional actual reportado: `python manage.py check` sin incidencias y **25/25 pruebas actuales aprobadas**.
-- observaciones de ChatGPT:
-  1. El archivo conserva bloques históricos con conteos de 23, 20 y 15 pruebas. Desde esta fecha, el conteo vigente debe considerarse **25 pruebas** hasta que una ejecución posterior demuestre otro número.
-  2. La configuración multi-motor figura como completada, pero para la Entrega 3 se necesita evidencia verificable de al menos un motor externo real (preferentemente PostgreSQL si ese es el motor declarado en el informe), no solo configuración condicional en `settings.py`.
-  3. El feedback del docente exige pruebas de rendimiento documentadas; las mediciones antiguas de ~5 ms después de retirar PBKDF2 no sustituyen un ensayo formal de carga concurrente.
-  4. El nuevo rol `COCINERO` y el KDS se consideran parte vigente del alcance debido al feedback docente y al adelanto autorizado por el usuario.
-  5. Las modificaciones del modelo lógico, imágenes y Word permanecen pausadas hasta iniciar el nuevo informe; no modificar documentos antiguos.
+- estado académico vigente:
+  - Semana 10: COMPLETADA.
+  - CRUD Mesas: COMPLETADO.
+  - suite más reciente reportada: **41/41 tests OK**.
+- observaciones:
+  1. El archivo todavía conserva cifras históricas de 25, 23, 20 y 15 pruebas. Mantenerlas solo como historial; no usarlas como estado vigente.
+  2. El bloque `estado actual` antiguo todavía menciona 25 pruebas y debe considerarse histórico respecto del resultado posterior de 41/41.
+  3. Las auditorías viejas de RF04 y del flujo Cajero/Mesero conservan hallazgos que pueden haber sido corregidos después; no tomarlos como estado actual sin verificar código.
+  4. Para la clase del 20/10, el valor académico inmediato está en mostrar mantenedores reales conectados a BD, no en abrir nuevas funciones grandes.
+  5. Word, Draw.io y pruebas de rendimiento continúan pendientes para fases posteriores y no deben distraer esta preparación.
 ## 7. dudas para ChatGPT
-- decisión: El siguiente trabajo técnico debe concentrarse en cerrar dos evidencias que afectan directamente la rúbrica:
-  1. comprobar de manera reproducible el funcionamiento con el motor relacional externo declarado;
-  2. ejecutar pruebas formales de rendimiento/carga y registrar métricas utilizables en el nuevo informe.
-- no abrir todavía el Punto 4 documental ni modificar Word/Draw.io.
+- decisión: Semana 10 y CRUD Mesas se consideran cerrados para la preparación inmediata de clase.
+- siguiente enfoque: Productos y Menús conectados realmente a BD como avance parcial de Semana 11.
+- Historial de Acciones se mantiene en análisis inicial; no crear aún un nuevo sistema de auditoría sin revisar primero la trazabilidad existente.
 ## 8. respuesta de ChatGPT
-- decisión actual: Priorizar el calendario académico inmediato. Antes de continuar con nuevas optimizaciones, completar **Semana 10 (13/10)** y llegar a **Semana 11 (20/10)** con avance real demostrable.
-- ejecutar en este orden:
-  1. Cerrar Semana 10: errores personalizados + validaciones/robustez + pruebas.
-  2. Validar como evidencia de Semana 11 los CRUD ya existentes de Usuarios y Puntos de Venta.
-  3. Implementar CRUD básico de Mesas.
-  4. Dejar una primera vista administrativa real de Productos/Menús conectada a BD, sin cerrar aún RF05 completo.
-  5. Analizar el futuro Historial de Acciones reutilizando trazabilidad existente antes de crear nuevos modelos.
-- mantener pendientes para una fase posterior:
-  - pruebas formales de rendimiento 20/50/100 usuarios;
-  - redacción del nuevo informe;
-  - Draw.io/modelo lógico 1:1;
-  - refactor de dashboard;
-  - centralización completa RF05 si no es necesaria para la demostración del 20/10.
-- validación obligatoria tras cada bloque:
-  - `python manage.py check`;
-  - `python manage.py test ventas`;
-  - registrar conteo exacto vigente;
-  - verificar regresión manual de ADMINISTRADOR, CAJERO, MESERO y COCINERO.
-- estado de aplicación: pendiente de ejecución por Antigravity.
+- orden actual: Ejecutar únicamente el bloque **Semana 11 — Productos y Menús (avance inicial real con BD)**.
+- no rehacer:
+  - login;
+  - roles;
+  - seguridad de Semana 10;
+  - CRUD Usuarios;
+  - CRUD PuntoVenta;
+  - CRUD Mesas.
+
+### Orden para Antigravity
+1. **Auditar modelos actuales**
+   - Leer `Categoria`, `Producto` y `Menu` en `ventas/models.py`.
+   - Registrar campos y relaciones reales.
+   - No crear migraciones antes de confirmar que son estrictamente necesarias.
+
+2. **Crear gestión administrativa inicial de Productos**
+   - Acceso exclusivo de Administrador.
+   - Listar registros reales desde ORM.
+   - Crear y editar Producto usando campos reales.
+   - Validar entradas.
+   - Mostrar Categoria y Punto(s) de Venta asociados cuando esas relaciones existan.
+   - Si existe `activo`, permitir activar/desactivar.
+   - Si no existe, no inventarlo solo para esta clase.
+
+3. **Crear gestión administrativa inicial de Menús**
+   - Listar menús reales desde ORM.
+   - Mostrar el Punto de Venta y productos relacionados.
+   - Permitir creación/edición básica únicamente si el modelo existente lo soporta limpiamente.
+   - No implementar promociones, vigencias u otras reglas no pedidas.
+
+4. **Navegación**
+   - Integrar acceso claro desde el panel Administrador sin saturar la interfaz.
+   - Mantener diseño coherente con los otros mantenedores.
+
+5. **No romper terminales existentes**
+   - No eliminar todavía arrays/mock de catálogo utilizados por Mesero o Cajero.
+   - La pantalla administrativa nueva puede usar BD aunque las terminales todavía no hayan migrado completamente.
+   - Documentar esta transición explícitamente.
+
+6. **Historial de Acciones**
+   - Solo revisar trazabilidad existente al terminar Productos/Menús.
+   - Entregar propuesta mínima de eventos y posible reutilización.
+   - No crear nuevo modelo todavía.
+
+7. **Pruebas y regresión**
+   - Agregar pruebas mínimas del mantenedor nuevo.
+   - Ejecutar `python manage.py check`.
+   - Ejecutar `python manage.py test ventas`.
+   - Registrar el nuevo total exacto de pruebas.
+   - Verificar manualmente que ADMINISTRADOR, CAJERO, MESERO y COCINERO sigan entrando a sus módulos.
+   - Verificar que Mesa/Cuenta Abierta, KDS y tickets Cocina/Barra no se rompan.
+
+### Resultado esperado para mostrar el 20/10
+- Usuarios: CRUD funcionando.
+- Puntos de Venta: CRUD funcionando.
+- Mesas: CRUD funcionando.
+- Productos: mantenedor inicial real conectado a BD.
+- Menús: listado/gestión inicial real conectada a BD.
+- Historial: diseño inicial explicado.
+- Semana 10: errores personalizados y validaciones demostrables.
+
+### Límites
+- No completar RF05 entero.
+- No migrar todavía Mesero/Cajero al catálogo nuevo.
+- No tocar Word/Draw.io.
+- No ejecutar todavía la fase formal de performance 20/50/100.
+- No crear funciones fuera de lo necesario para la clase del 20/10.
+- estado: pendiente de ejecución por Antigravity.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 ### A. Reconciliación del Estado Documental
@@ -630,21 +690,23 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- próxima acción: Ejecutar el **Plan Académico de Recuperación Semana 10 + Avance Semana 11** definido al inicio del archivo y en la sección 8.
-- prioridad: URGENTE por calendario de clases.
-- orden inmediato:
-  1. Semana 10 completa.
-  2. CRUD Usuarios y PuntoVenta: validar como ya cumplidos.
-  3. CRUD Mesas: implementar.
-  4. Productos/Menús: dejar avance inicial real conectado a BD.
-  5. Historial de Acciones: análisis inicial.
-- criterio de término de esta orden:
-  - todo lo del 13/10 demostrable;
-  - avance visible y funcional de lo pedido para 20/10;
-  - `manage.py check` limpio;
-  - suite completa pasando;
-  - sin regresiones en KDS, Mesa/Cuenta Abierta, Caja, roles ni tickets.
-- al finalizar: actualizar este `AI_CONTEXT.md` indicando exactamente qué quedó COMPLETADO, PARCIAL y PENDIENTE de Semana 10 y Semana 11, y devolverlo al usuario.
+- próxima acción: Implementar **avance inicial real de Productos y Menús con BD** según sección 8.
+- prioridad: URGENTE por clase del 20/10.
+- punto de partida confirmado:
+  - Semana 10 completa.
+  - Usuarios completo.
+  - PuntoVenta completo.
+  - Mesas completo.
+  - suite vigente previa: 41/41.
+- criterio de término:
+  - Producto listado desde BD;
+  - creación/edición básica funcional y validada;
+  - Menu listado desde BD con sus relaciones visibles;
+  - navegación desde Administrador;
+  - pruebas nuevas aprobadas;
+  - regresión de módulos existentes aprobada;
+  - nuevo conteo exacto de tests registrado.
+- después de esto: realizar únicamente análisis inicial de Historial de Acciones y detener para revisión de ChatGPT/usuario.
 ## 11. historial breve
 - fecha: 2026-09-22
   - resumen: Creación de proyecto Django Venta_safari, app ventas, settings y templates iniciales
@@ -679,6 +741,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
+- para la preparación de Semana 11, el último conteo vigente reportado es 41/41 pruebas después del CRUD de Mesas; cifras menores que aparezcan en bloques anteriores se consideran históricas
 - prioridad académica inmediata: recuperar completamente los objetivos de Semana 10 (13/10/2026) y llegar a la clase de Semana 11 (20/10/2026) con CRUD de Usuarios y PuntoVenta consolidados, CRUD básico de Mesas implementado y avance inicial real de Productos/Menús
 - desde la retroalimentación de Informe 2 y su implementación posterior, `COCINERO` es un rol operativo vigente del sistema junto a `ADMINISTRADOR`, `CAJERO` y `MESERO`; no eliminarlo sin nueva instrucción del usuario/docente
 - si el usuario autoriza directamente un adelanto funcional para una presentación o demostración, registrarlo como adelanto autorizado y no tratarlo como desviación; posteriormente auditar su integración con los RF vigentes
