@@ -71,7 +71,7 @@ CREATE TABLE perfil_empleado (
     activo BOOLEAN DEFAULT TRUE,
     CONSTRAINT fk_perfil_usuario FOREIGN KEY (usuario_id) REFERENCES auth_user(id) ON DELETE CASCADE,
     CONSTRAINT fk_perfil_puntoventa FOREIGN KEY (punto_venta_actual_id) REFERENCES punto_venta(id) ON DELETE SET NULL,
-    CONSTRAINT chk_rol_valido CHECK (rol IN ('ADMINISTRADOR', 'CAJERO', 'MESERO'))
+    CONSTRAINT chk_rol_valido CHECK (rol IN ('ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'))
 );
 
 -- Registro y auditoría de reasignación / traslado de personal entre locales
