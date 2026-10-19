@@ -16,4 +16,8 @@ urlpatterns = [
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
+    # Rutas de prueba/auditoría para errores HTTP personalizados (Semana 10)
+    path('404/', views.error_404_view, name='error_404'),
+    path('500/', views.error_500_view, name='error_500'),
 ]
+

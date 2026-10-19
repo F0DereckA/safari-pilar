@@ -411,10 +411,15 @@ def requiere_rol(roles_permitidos):
 
 
 def login_view(request):
-    """RF01: Inicio de sesión real con django.contrib.auth y redirección automática por rol"""
+    """RF01: Inicio de sesión real con django.contrib.auth y redirección automática por rol (Semana 10)"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
+
+        # Validar campos requeridos obligatorios (Semana 10)
+        if not username or not password:
+            messages.warning(request, "Por favor completa todos los campos requeridos (nombre de usuario y contraseña).")
+            return redirect('index')
 
         # Validar autenticación
         user = authenticate(request, username=username, password=password)
@@ -463,6 +468,28 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado tu sesión de forma segura. ¡Hasta pronto!")
     return redirect('index')
+
+
+def error_404_view(request, exception=None):
+    """
+    Manejador personalizado de error HTTP 404 (Semana 10).
+    Captura rutas inexistentes, URLs malformadas y llamadas get_object_or_404.
+    Presenta interfaz amigable y coherente con Parque Safari sin exponer detalles técnicos.
+    """
+    rol = None
+    if request.user.is_authenticated:
+        rol = obtener_rol_usuario(request.user)
+    return render(request, '404.html', {'rol_usuario': rol, 'path_solicitado': request.path}, status=404)
+
+
+def error_500_view(request):
+    """
+    Manejador personalizado de error HTTP 500 (Semana 10).
+    Captura excepciones no controladas del servidor.
+    Oculta trazas técnicas sensibles al usuario final (blindaje OWASP) y provee retorno seguro.
+    """
+    return render(request, '500.html', {}, status=500)
+
 
 
 def index(request):

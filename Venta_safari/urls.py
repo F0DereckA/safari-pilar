@@ -21,3 +21,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('ventas.urls')),
 ]
+
+# Manejadores de error HTTP personalizados (Semana 10)
+handler404 = 'ventas.views.error_404_view'
+handler500 = 'ventas.views.error_500_view'
+

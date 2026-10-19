@@ -804,6 +804,59 @@ class SafariFase2A1Tests(TestCase):
         self.assertEqual(resp_crear_ticket.status_code, 200)
         self.assertContains(resp_crear_ticket, 'mobile-comanda-bar')
 
+    # 30. Validación estricta de campos vacíos en Login (Requisito Semana 10)
+    def test_login_validacion_campos_vacios(self):
+        from django.contrib.messages import get_messages
+        # 1. Envío con usuario y contraseña vacíos
+        resp_vacio = self.client.post(reverse('login'), {'username': '', 'password': ''}, follow=True)
+        self.assertEqual(resp_vacio.status_code, 200)
+        mensajes = [str(m) for m in get_messages(resp_vacio.wsgi_request)]
+        self.assertTrue(any('completa todos los campos requeridos' in m for m in mensajes))
+        self.assertFalse(resp_vacio.wsgi_request.user.is_authenticated)
+
+        # 2. Envío solo con usuario sin contraseña
+        resp_sin_pass = self.client.post(reverse('login'), {'username': 'admin_safari', 'password': ''}, follow=True)
+        self.assertEqual(resp_sin_pass.status_code, 200)
+        mensajes_sin_pass = [str(m) for m in get_messages(resp_sin_pass.wsgi_request)]
+        self.assertTrue(any('completa todos los campos requeridos' in m for m in mensajes_sin_pass))
+        self.assertFalse(resp_sin_pass.wsgi_request.user.is_authenticated)
+
+    # 31. Manejador personalizado de error HTTP 404 - Página no encontrada (Requisito Semana 10)
+    def test_manejador_error_404_personalizado(self):
+        from django.test import override_settings
+        # 1. Verificar ruta de prueba/auditoría /404/
+        resp_preview = self.client.get(reverse('error_404'))
+        self.assertEqual(resp_preview.status_code, 404)
+        self.assertContains(resp_preview, "404", status_code=404)
+        self.assertContains(resp_preview, "Ruta o Recurso No Encontrado", status_code=404)
+        self.assertContains(resp_preview, "Volver al Portal de Inicio", status_code=404)
+
+        # 2. Con DEBUG=False, verificar captura real de URL inexistente
+        with override_settings(DEBUG=False):
+            resp_real = self.client.get('/ruta-inexistente-safari-12345/')
+            self.assertEqual(resp_real.status_code, 404)
+            self.assertContains(resp_real, "Ruta o Recurso No Encontrado", status_code=404)
+
+    # 32. Manejador personalizado de error HTTP 500 - Error de servidor blindado (Requisito Semana 10)
+    def test_manejador_error_500_personalizado(self):
+        resp_500 = self.client.get(reverse('error_500'))
+        self.assertEqual(resp_500.status_code, 500)
+        self.assertContains(resp_500, "500", status_code=500)
+        self.assertContains(resp_500, "Error Interno del Servidor", status_code=500)
+        self.assertContains(resp_500, "Blindaje de Seguridad y Robustez (OWASP)", status_code=500)
+        self.assertContains(resp_500, "Volver al Portal de Inicio", status_code=500)
+
+    # 33. Robustez ante IDs inexistentes o manipulados sin caídas de servidor (Requisito Semana 10)
+    def test_robustez_id_inexistente_no_derriba_servidor(self):
+        from django.test import override_settings
+        self.client.force_login(self.admin_user)
+        # Petición a local inexistente (ID 99999) con DEBUG=False debe retornar 404 controlado y no 500
+        with override_settings(DEBUG=False):
+            resp_local_invalido = self.client.get('/administrador/local/99999/')
+            self.assertEqual(resp_local_invalido.status_code, 404)
+            self.assertContains(resp_local_invalido, "Ruta o Recurso No Encontrado", status_code=404)
+
+
 
 
 
