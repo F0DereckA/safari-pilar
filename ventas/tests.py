@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
+from django.core.cache import cache
 from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, Ticket, Pedido, DetallePedido, Entrega
 
 
@@ -26,6 +27,7 @@ class SafariFase2A1Tests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.client = Client()
         # Poblar datos demo con el comando idempotente oficial
         call_command('poblar_safari')
@@ -35,6 +37,9 @@ class SafariFase2A1Tests(TestCase):
         self.cajera2_user = User.objects.get(username='csoto')
         self.mesero_user = User.objects.get(username='dsilva')
         self.cocinero_user = User.objects.get(username='eparedes')
+
+    def tearDown(self):
+        cache.clear()
 
     # 1. Login con credenciales inválidas es rechazado
     def test_login_credenciales_invalidas(self):
@@ -855,6 +860,115 @@ class SafariFase2A1Tests(TestCase):
             resp_local_invalido = self.client.get('/administrador/local/99999/')
             self.assertEqual(resp_local_invalido.status_code, 404)
             self.assertContains(resp_local_invalido, "Ruta o Recurso No Encontrado", status_code=404)
+
+    # 34. Protección contra Ataques de Fuerza Bruta y Límite de Intentos Fallidos (OWASP)
+    def test_bloqueo_fuerza_bruta_por_intentos_fallidos(self):
+        cache.clear()
+        target_user = 'usuario_ataque_bruta'
+        User.objects.create_user(username=target_user, password='safariPassword2026')
+
+        # Simular 4 intentos fallidos: deben retornar advertencia con intentos restantes
+        for i in range(1, 5):
+            resp = self.client.post(reverse('login'), {
+                'username': target_user,
+                'password': f'clave_erronea_{i}'
+            }, follow=True)
+            self.assertContains(resp, "Credenciales incorrectas")
+            self.assertContains(resp, f"Te quedan {5 - i} intento(s)")
+
+        # 5to intento fallido: activa el bloqueo temporal por 5 minutos
+        resp_quinto = self.client.post(reverse('login'), {
+            'username': target_user,
+            'password': 'clave_erronea_5'
+        }, follow=True)
+        self.assertContains(resp_quinto, "Has superado el límite de 5 intentos fallidos")
+        self.assertContains(resp_quinto, "bloqueado temporalmente por 5 minutos")
+
+        # 6to intento: incluso ingresando la contraseña real 'safariPassword2026', el acceso sigue bloqueado
+        resp_bloqueado = self.client.post(reverse('login'), {
+            'username': target_user,
+            'password': 'safariPassword2026'
+        }, follow=True)
+        self.assertContains(resp_bloqueado, "Acceso temporalmente bloqueado")
+        self.assertFalse(resp_bloqueado.context['user'].is_authenticated)
+
+        # Si se restablece la caché de bloqueo (o pasan 5 minutos), el usuario puede ingresar normalmente
+        cache.clear()
+        resp_exito = self.client.post(reverse('login'), {
+            'username': target_user,
+            'password': 'safariPassword2026'
+        }, follow=True)
+        self.assertTrue(resp_exito.context['user'].is_authenticated)
+        cache.clear()
+
+    # 35. Cabeceras HTTP de Seguridad, Cookies Seguras y Criptografía de Contraseñas (OWASP)
+    def test_cabeceras_seguridad_http_y_cookies(self):
+        # 1. Cabeceras HTTP en respuestas
+        resp = self.client.get(reverse('index'))
+        self.assertEqual(resp.headers.get('X-Frame-Options'), 'DENY')
+        self.assertEqual(resp.headers.get('X-Content-Type-Options'), 'nosniff')
+
+        # 2. Configuración segura de cookies de sesión y CSRF
+        self.assertTrue(settings.SESSION_COOKIE_HTTPONLY)
+        self.assertTrue(settings.CSRF_COOKIE_HTTPONLY)
+        self.assertEqual(settings.SESSION_COOKIE_SAMESITE, 'Lax')
+        self.assertEqual(settings.CSRF_COOKIE_SAMESITE, 'Lax')
+        self.assertTrue(settings.SESSION_EXPIRE_AT_BROWSER_CLOSE)
+        self.assertEqual(settings.SESSION_COOKIE_AGE, 28800)
+
+        # 3. Hashers de contraseña criptográficamente robustos
+        self.assertIn('django.contrib.auth.hashers.PBKDF2PasswordHasher', settings.PASSWORD_HASHERS)
+
+    # 36. Defensa de Entrada de Datos: Sanitización de Cantidades y Precios Negativos
+    def test_defensa_cantidades_y_precios_negativos(self):
+        self.client.force_login(self.mesero_user)
+        pv = PuntoVenta.objects.first()
+        mesa = Mesa.objects.filter(punto_venta=pv).first()
+
+        # Intento de inyectar comanda con cantidades negativas y precios negativos
+        payload_malicioso = [
+            {"nombre": "Plato Hack", "cantidad": -10, "precio": -8000, "nota": "Ataque", "destino": "COCINA"}
+        ]
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(payload_malicioso)
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        # Verificar que el backend sanitizó a cantidad >= 1 y precio >= 0 sin romper la BD
+        ultima_venta = Venta.objects.filter(mesa=mesa).order_by('-id').first()
+        self.assertIsNotNone(ultima_venta)
+        detalle = ultima_venta.detalles.filter(producto__nombre="Plato Hack").first()
+        self.assertIsNotNone(detalle)
+        self.assertGreaterEqual(detalle.cantidad, 1)
+        self.assertGreaterEqual(detalle.precio_aplicado, 0)
+        self.assertGreaterEqual(detalle.subtotal, 0)
+
+        # Probar endpoint cambiar_estado_pedido con ID de pedido inválido (no numérico)
+        resp_pedido_invalido = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': 'id_invalido_malicioso',
+            'nuevo_estado': 'LISTO'
+        }, follow=True)
+        self.assertContains(resp_pedido_invalido, "Identificador de pedido inválido")
+
+    # 37. Validación de Longitud Mínima de Contraseña en Gestión de Colaboradores
+    def test_validacion_longitud_minima_password_trabajador(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+
+        # Intento de registrar colaborador con contraseña de 4 caracteres (< 6)
+        resp = self.client.post(reverse('administrador_trabajadores'), {
+            'accion': 'crear',
+            'nombre': 'Claudio',
+            'apellido': 'Bravo',
+            'rut': '15.222.333-4',
+            'rol': 'MESERO',
+            'local_id': pv.id,
+            'password': '1234'  # Muy corta
+        }, follow=True)
+        self.assertContains(resp, "al menos 6 caracteres")
+        self.assertFalse(User.objects.filter(first_name='Claudio', last_name='Bravo').exists())
 
 
 

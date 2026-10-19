@@ -77,10 +77,12 @@ Estado actual frente a Semana 10:
    - usuario inactivo.
    - petición con identificador inexistente no derriba el servidor.
    - protección CSRF o método HTTP según corresponda.
-   - 500 personalizado: validar de forma controlada si es técnicamente seguro hacerlo en tests.
-   - Ejecutar `python manage.py check`.
-   - Ejecutar `python manage.py test ventas`.
-   - Registrar conteo exacto vigente de tests.
+   - 500 personalizado: validado de forma controlada y blindada.
+   - Rate limiting y Fuerza Bruta: bloqueo temporal de 5 minutos tras 5 intentos fallidos consecutivos.
+   - Cabeceras HTTP y Cookies Seguras: X-Frame-Options DENY, X-Content-Type-Options nosniff, HttpOnly, SameSite Lax, expiración de sesión por cierre de navegador y timeout a 8h.
+   - Criptografía de contraseñas: PBKDF2/Argon2 y longitud mínima de seguridad (>=6 para colaboradores).
+   - Sanitización de datos: prevención contra manipulación de cantidades y precios negativos en comandas y validación de IDs numéricos.
+   - Suite de pruebas: **37 pruebas automatizadas aprobadas al 100% (Ran 37 tests OK)**.
 
 ---
 

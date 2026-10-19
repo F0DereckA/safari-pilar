@@ -6,8 +6,10 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.db import models, transaction
 from django.utils import timezone
+from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
+
 from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Entrega
 
 
@@ -410,8 +412,22 @@ def requiere_rol(roles_permitidos):
     return decorator
 
 
+def obtener_ip_cliente(request):
+    """Obtiene la dirección IP real del cliente considerando proxies inversos"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    return ip
+
+
+MAX_INTENTOS_LOGIN = 5
+TIEMPO_BLOQUEO_LOGIN = 300  # 5 minutos en segundos
+
+
 def login_view(request):
-    """RF01: Inicio de sesión real con django.contrib.auth y redirección automática por rol (Semana 10)"""
+    """RF01: Inicio de sesión real con django.contrib.auth, protección de fuerza bruta y redirección automática por rol"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
@@ -421,6 +437,19 @@ def login_view(request):
             messages.warning(request, "Por favor completa todos los campos requeridos (nombre de usuario y contraseña).")
             return redirect('index')
 
+        # Control de Rate Limiting y Protección contra Ataques de Fuerza Bruta (OWASP)
+        ip_cliente = obtener_ip_cliente(request)
+        key_bloqueo = f"login_bloqueado_{ip_cliente}_{username.lower()}"
+        key_intentos = f"login_intentos_{ip_cliente}_{username.lower()}"
+
+        if cache.get(key_bloqueo):
+            messages.error(
+                request,
+                f"Acceso temporalmente bloqueado por superar el límite de {MAX_INTENTOS_LOGIN} intentos fallidos. "
+                "Por motivos de seguridad, espera 5 minutos antes de volver a intentarlo."
+            )
+            return redirect('index')
+
         # Validar autenticación
         user = authenticate(request, username=username, password=password)
         if user is not None:
@@ -428,6 +457,10 @@ def login_view(request):
             if not user.is_active or (perfil and not perfil.activo):
                 messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador.")
                 return redirect('index')
+
+            # Autenticación exitosa: Limpiar contadores de intentos fallidos
+            cache.delete(key_bloqueo)
+            cache.delete(key_intentos)
 
             login(request, user)
             rol = obtener_rol_usuario(user)
@@ -457,7 +490,27 @@ def login_view(request):
                     messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador.")
                     return redirect('index')
 
-            messages.error(request, "Credenciales incorrectas. Verifica tu nombre de usuario y contraseña.")
+            # Registro de intento fallido para prevención de fuerza bruta
+            intentos_previos = cache.get(key_intentos, 0)
+            intentos_actuales = intentos_previos + 1
+
+            if intentos_actuales >= MAX_INTENTOS_LOGIN:
+                cache.set(key_bloqueo, True, timeout=TIEMPO_BLOQUEO_LOGIN)
+                cache.delete(key_intentos)
+                messages.error(
+                    request,
+                    f"Credenciales incorrectas. Has superado el límite de {MAX_INTENTOS_LOGIN} intentos fallidos. "
+                    "Tu acceso ha sido bloqueado temporalmente por 5 minutos por razones de seguridad."
+                )
+            else:
+                cache.set(key_intentos, intentos_actuales, timeout=TIEMPO_BLOQUEO_LOGIN)
+                intentos_restantes = MAX_INTENTOS_LOGIN - intentos_actuales
+                messages.error(
+                    request,
+                    f"Credenciales incorrectas. Verifica tu nombre de usuario y contraseña. "
+                    f"Te quedan {intentos_restantes} intento(s) antes del bloqueo de seguridad."
+                )
+
             return redirect('index')
 
     return redirect('index')
@@ -916,6 +969,10 @@ def administrador_trabajadores(request):
                 messages.error(request, "Debes ingresar una contraseña para el nuevo colaborador.")
                 return redirect('administrador_trabajadores')
 
+            if len(password) < 6:
+                messages.error(request, "La contraseña debe tener al menos 6 caracteres por razones de seguridad.")
+                return redirect('administrador_trabajadores')
+
             local_obj = PuntoVenta.objects.filter(id=local_id).first() if local_id else None
             user = User.objects.create(
                 username=username,
@@ -947,6 +1004,9 @@ def administrador_trabajadores(request):
             user.last_name = request.POST.get('apellido', user.last_name).strip()
             nueva_pass = request.POST.get('password', '').strip()
             if nueva_pass:
+                if len(nueva_pass) < 6:
+                    messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres por razones de seguridad.")
+                    return redirect('administrador_trabajadores')
                 user.set_password(nueva_pass)
             user.save()
 
@@ -1199,7 +1259,23 @@ def mesero(request):
             except Exception:
                 items_lista = []
 
-            total_calculado = sum(int(it.get('cantidad', 1)) * int(it.get('precio', 0)) for it in items_lista)
+            # Sanitización de ítems: filtrar datos malformados y asegurar valores no negativos (OWASP)
+            items_validos = []
+            for it in items_lista:
+                try:
+                    cant = max(1, int(it.get('cantidad', 1)))
+                    precio = max(0, int(it.get('precio', 0)))
+                    items_validos.append({
+                        'nombre': str(it.get('nombre', 'Producto')).strip()[:120],
+                        'precio': precio,
+                        'cantidad': cant,
+                        'nota': str(it.get('nota', '')).strip()[:200],
+                        'destino': 'BARRA' if it.get('destino') == 'BARRA' else 'COCINA'
+                    })
+                except (ValueError, TypeError):
+                    continue
+
+            total_calculado = sum(it['cantidad'] * it['precio'] for it in items_validos)
             if total_calculado <= 0:
                 total_calculado = 15000
 
@@ -1260,10 +1336,10 @@ def mesero(request):
                 )
 
                 cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
-                for it in items_lista:
-                    p_nom = it.get('nombre', 'Producto')
-                    p_precio = int(it.get('precio', 0))
-                    p_cant = int(it.get('cantidad', 1))
+                for it in items_validos:
+                    p_nom = it['nombre']
+                    p_precio = it['precio']
+                    p_cant = it['cantidad']
                     prod_obj, _ = Producto.objects.get_or_create(
                         nombre=p_nom,
                         defaults={'categoria': cat_general, 'precio_base': p_precio}
@@ -1279,11 +1355,11 @@ def mesero(request):
                         pedido=nuevo_pedido,
                         producto=prod_obj,
                         cantidad=p_cant,
-                        observaciones=it.get('nota', '')
+                        observaciones=it['nota']
                     )
 
-                tiene_cocina = any(it.get('destino') == 'COCINA' for it in items_lista)
-                tiene_barra = any(it.get('destino') == 'BARRA' for it in items_lista)
+                tiene_cocina = any(it['destino'] == 'COCINA' for it in items_validos)
+                tiene_barra = any(it['destino'] == 'BARRA' for it in items_validos)
 
                 # Fallback de seguridad si ningún ítem trae destino definido
                 if not tiene_cocina and not tiene_barra:
@@ -1708,7 +1784,15 @@ def cambiar_estado_pedido(request):
     PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO
     """
     if request.method == 'POST':
-        pedido_id = request.POST.get('pedido_id')
+        pedido_raw = request.POST.get('pedido_id', '')
+        try:
+            pedido_id = int(pedido_raw)
+        except (ValueError, TypeError):
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'error', 'mensaje': 'Identificador de pedido inválido'}, status=400)
+            messages.error(request, "Identificador de pedido inválido.")
+            return redirect('cocina')
+
         nuevo_estado = request.POST.get('nuevo_estado', '').upper()
 
         estados_validos = ['PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO', 'CANCELADO']

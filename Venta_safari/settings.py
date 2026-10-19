@@ -132,8 +132,16 @@ else:
     }
 
 
-# Password validation
+# Password validation & Hashing
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -141,6 +149,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -149,6 +160,41 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+
+# ==============================================================================
+# POLÍTICAS DE SEGURIDAD, CABECERAS HTTP Y PROTECCIÓN DE DATOS (OWASP)
+# ==============================================================================
+# Protección contra Clickjacking (impide incrustar en iframes no autorizados)
+X_FRAME_OPTIONS = 'DENY'
+
+# Protección contra MIME-type sniffing
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Filtro XSS en navegadores
+SECURE_BROWSER_XSS_FILTER = True
+
+# Configuración segura de Cookies de Sesión y CSRF (mitiga XSS e interceptación de tokens)
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+
+# Política SameSite para mitigar ataques CSRF cross-origin
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Cierre automático de sesión al cerrar el navegador (seguridad en terminales compartidas de venta)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Duración máxima de sesión activa (8 horas = 28800 segundos, turno operativo oficial 10:00 a 18:00)
+SESSION_COOKIE_AGE = 28800
+
+# Caché en memoria para Rate Limiting y protección contra ataques de fuerza bruta
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'safari-security-cache',
+    }
+}
 
 
 # Internationalization
@@ -180,3 +226,4 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
