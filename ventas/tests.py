@@ -763,6 +763,48 @@ class SafariFase2A1Tests(TestCase):
         self.assertTrue(hasattr(safari_settings, 'DATABASES'))
         self.assertIn('default', safari_settings.DATABASES)
 
+    # 29. Adaptabilidad visual y Responsive Design para Tabletas y Smartphones (Criterio Rúbrica 2.1.3.6)
+    def test_adaptabilidad_visual_y_responsive_design(self):
+        # 1. Verificar meta viewport en todas las pantallas principales del sistema
+        self.client.force_login(self.admin_user)
+        resp_admin = self.client.get(reverse('administrador'))
+        self.assertEqual(resp_admin.status_code, 200)
+        self.assertContains(resp_admin, 'name="viewport"')
+        self.assertContains(resp_admin, 'width=device-width')
+        self.assertContains(resp_admin, 'table-responsive')
+
+        self.client.force_login(self.mesero_user)
+        resp_mesero = self.client.get(reverse('mesero'))
+        self.assertEqual(resp_mesero.status_code, 200)
+        self.assertContains(resp_mesero, 'name="viewport"')
+        self.assertContains(resp_mesero, 'mobile-comanda-bar')
+
+        self.client.force_login(self.cocinero_user)
+        resp_cocina = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_cocina.status_code, 200)
+        self.assertContains(resp_cocina, 'name="viewport"')
+        self.assertContains(resp_cocina, 'kds-header')
+
+        self.client.force_login(self.cajero_user)
+        resp_vendedor = self.client.get(reverse('vendedor'))
+        self.assertEqual(resp_vendedor.status_code, 200)
+        self.assertContains(resp_vendedor, 'name="viewport"')
+
+        # Abrir jornada y caja para acceder al terminal de venta rápida
+        hoy = timezone.localdate()
+        jornada = Jornada.objects.create(usuario_apertura=self.admin_user, estado='ABIERTA', fecha=hoy)
+        Caja.objects.create(
+            jornada=jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.cajero_user.perfil.punto_venta_actual,
+            estado='ABIERTA',
+            monto_apertura=0
+        )
+        resp_crear_ticket = self.client.get(reverse('crear_ticket'))
+        self.assertEqual(resp_crear_ticket.status_code, 200)
+        self.assertContains(resp_crear_ticket, 'mobile-comanda-bar')
+
+
 
 
 

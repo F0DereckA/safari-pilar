@@ -694,6 +694,17 @@
 
     </main>
 
+    <!-- BARRA FLOTANTE INFERIOR PARA MÓVILES Y TABLETS (Criterio 2.1.3.6) -->
+    <div class="mobile-comanda-bar d-lg-none" id="mobileComandaBar">
+        <div class="total-comanda-pill">
+            <span class="total-comanda-label" id="mobileComandaMesa">Mostrador • 0 ítems</span>
+            <span class="total-comanda-monto" id="mobileComandaTotal">$0</span>
+        </div>
+        <button type="button" class="btn-ver-comanda-flotante" onclick="scrollHaciaComanda()">
+            <i class="bi bi-receipt-cutoff"></i> Ver Comanda
+        </button>
+    </div>
+
     <!-- Modal de Nota Especial Libre para Cajero -->
     <div class="modal fade" id="modalNotaCajero" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -967,6 +978,20 @@
             document.getElementById('subtotalDisplay').innerText = formatearMoneda(total);
             document.getElementById('totalActualDisplay').innerText = formatearMoneda(total);
             document.getElementById('itemCountBadge').innerText = totalItems + (totalItems === 1 ? ' ítem' : ' ítems');
+
+            // Actualizar barra flotante para tabletas y smartphones
+            const mobTotal = document.getElementById('mobileComandaTotal');
+            const mobLabel = document.getElementById('mobileComandaMesa');
+            if (mobTotal) mobTotal.innerText = formatearMoneda(total);
+            if (mobLabel) mobLabel.innerText = `Mostrador • ${totalItems} ` + (totalItems === 1 ? 'ítem' : 'ítems');
+        }
+
+        // Scroll suave hacia el resumen de comanda en tabletas y smartphones
+        function scrollHaciaComanda() {
+            const panel = document.querySelector('.order-summary-panel');
+            if (panel) {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // Limpiar el pedido
