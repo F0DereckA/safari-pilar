@@ -1,0 +1,471 @@
+{% load static %}
+{% load safari_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Gestión de Mesas y Salones</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares con Cache-Buster -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.1">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.1">
+
+    <style>
+        .mesa-badge-habilitada {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .mesa-badge-ocupada {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+        .mesa-badge-inactiva {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        .mesa-badge-reservada {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #7dd3fc;
+        }
+        .mesa-card {
+            border-radius: 1rem;
+            border: 1.5px solid #e2e8f0;
+            background: #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .mesa-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+        }
+        .btn-safari-header {
+            background-color: #ffffff !important;
+            border: 1.5px solid #a71d1d !important;
+            color: #a71d1d !important;
+            box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+            transition: all 0.25s ease-in-out !important;
+            text-decoration: none !important;
+        }
+        .btn-safari-header:hover {
+            background-color: #fff4f2 !important;
+            border-color: #821414 !important;
+            color: #821414 !important;
+            transform: translateY(-1.5px) !important;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Administrador -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Home -->
+                <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                    <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Gestión de Mesas y Salones · Semana 11</span>
+                    </div>
+                </a>
+
+                <!-- Navegación y Accesos Rápidos -->
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'administrador' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-building-fill text-danger me-1"></i> Locales
+                    </a>
+                    <a href="{% url 'administrador_trabajadores' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-people-fill text-danger me-1"></i> Trabajadores
+                    </a>
+                    <a href="{% url 'administrador_dashboard' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-bar-chart-line-fill text-warning me-1"></i> Dashboard
+                    </a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Salir
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-grow-1 py-4">
+        <div class="container-fluid px-lg-5">
+
+            <!-- Mensajes del Sistema (Django Messages) -->
+            {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger border-2 border-danger shadow-sm{% elif message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'info' %}info border-2 border-info shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Título y Botón Principal Crear Mesa -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1" style="font-family: 'Oswald', sans-serif;">
+                        <i class="bi bi-grid-3x3-gap-fill text-danger me-2"></i>MANTENEDOR DE MESAS Y SECTORES
+                    </h2>
+                    <p class="text-muted small mb-0">
+                        Administra la capacidad, identificadores y disponibilidad de mesas en los puntos gastronómicos de Parque Safari.
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalCrearMesa">
+                        <i class="bi bi-plus-circle-fill fs-5"></i> Nueva Mesa
+                    </button>
+                </div>
+            </div>
+
+            <!-- Métricas KPI Rápidas -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #b91c1c; width: 48px; height: 48px;">
+                                <i class="bi bi-grid-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted fw-bold d-block">TOTAL MESAS</small>
+                                <span class="fs-4 fw-bold text-dark">{{ total_mesas }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #dcfce7; color: #15803d; width: 48px; height: 48px;">
+                                <i class="bi bi-check-circle-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted fw-bold d-block">DISPONIBLES / LIBRES</small>
+                                <span class="fs-4 fw-bold text-success">{{ mesas_libres }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #fef3c7; color: #b45309; width: 48px; height: 48px;">
+                                <i class="bi bi-person-fill-lock fs-4"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted fw-bold d-block">OCUPADAS EN CONSUMO</small>
+                                <span class="fs-4 fw-bold text-warning">{{ mesas_ocupadas }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #f1f5f9; color: #475569; width: 48px; height: 48px;">
+                                <i class="bi bi-tools fs-4"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted fw-bold d-block">EN MANTENIMIENTO</small>
+                                <span class="fs-4 fw-bold text-secondary">{{ mesas_inactivas }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros de Local y Búsqueda -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+                <form method="GET" action="{% url 'administrador_mesas' %}" class="row g-2 align-items-center">
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
+                                <i class="bi bi-building"></i>
+                            </span>
+                            <select name="local_id" class="form-select bg-light border-start-0" onchange="this.form.submit()">
+                                <option value="">Todos los Locales Gastronómicos</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.id }}" {% if local_seleccionado and local_seleccionado.id == loc.id %}selected{% endif %}>
+                                    {{ loc.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" name="q" value="{{ busqueda_q }}" placeholder="Buscar por mesa (ej: Mesa 1, Terraza)..." class="form-select bg-light border-start-0 rounded-end-pill">
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-danger w-100 rounded-pill fw-bold">
+                            Filtrar
+                        </button>
+                        {% if local_seleccionado or busqueda_q %}
+                        <a href="{% url 'administrador_mesas' %}" class="btn btn-light rounded-pill px-3" title="Limpiar Filtros">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            <!-- Listado de Mesas -->
+            <div class="row g-3">
+                {% for m in mesas %}
+                <div class="col-sm-6 col-md-4 col-xl-3">
+                    <div class="mesa-card p-3 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <!-- Encabezado de la tarjeta -->
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium); font-size: 0.7rem;">
+                                        ID #{{ m.id }}
+                                    </span>
+                                    <h5 class="fw-bold text-dark mt-1 mb-0">{{ m.identificador }}</h5>
+                                </div>
+                                <span class="badge rounded-pill px-2 py-1 small fw-bold {% if m.estado == 'HABILITADA' %}mesa-badge-habilitada{% elif m.estado == 'OCUPADA' %}mesa-badge-ocupada{% elif m.estado == 'RESERVADA' %}mesa-badge-reservada{% else %}mesa-badge-inactiva{% endif %}">
+                                    {{ m.get_estado_display }}
+                                </span>
+                            </div>
+
+                            <!-- Datos del Local y Capacidad -->
+                            <div class="text-muted small mb-3">
+                                <div class="mb-1 text-truncate">
+                                    <i class="bi bi-building text-danger me-1"></i><strong>{{ m.punto_venta.nombre }}</strong>
+                                </div>
+                                <div>
+                                    <i class="bi bi-people-fill text-warning me-1"></i>Capacidad: <strong>{{ m.capacidad }} comensales</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Acciones Administrativas -->
+                        <div class="pt-2 border-top d-flex justify-content-between align-items-center">
+                            <!-- Toggle Estado -->
+                            <form method="POST" action="{% url 'administrador_mesas' %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="toggle_estado">
+                                <input type="hidden" name="mesa_id" value="{{ m.id }}">
+                                {% if m.estado == 'INACTIVA' %}
+                                <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" title="Habilitar Mesa">
+                                    <i class="bi bi-check-circle me-1"></i>Habilitar
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" title="Poner en Mantenimiento" {% if m.estado == 'OCUPADA' %}disabled{% endif %}>
+                                    <i class="bi bi-pause-circle me-1"></i>Desactivar
+                                </button>
+                                {% endif %}
+                            </form>
+
+                            <div class="d-flex gap-1">
+                                <!-- Botón Modificar -->
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEditarMesa_{{ m.id }}" title="Modificar Mesa">
+                                    <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
+                                </button>
+                                <!-- Botón Eliminar -->
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarMesa_{{ m.id }}" title="Eliminar Mesa" {% if m.estado == 'OCUPADA' %}disabled{% endif %}>
+                                    <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Modal Editar Mesa -->
+                <div class="modal fade" id="modalEditarMesa_{{ m.id }}" tabindex="-1" aria-labelledby="labelEditarMesa_{{ m.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header bg-light rounded-top-4 border-bottom">
+                                <h5 class="modal-title fw-bold text-dark" id="labelEditarMesa_{{ m.id }}">
+                                    <i class="bi bi-pencil-square text-primary me-2"></i>Modificar Mesa: {{ m.identificador }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{% url 'administrador_mesas' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="modificar">
+                                <input type="hidden" name="mesa_id" value="{{ m.id }}">
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-muted">Identificador de la Mesa:</label>
+                                        <input type="text" name="identificador" value="{{ m.identificador }}" required class="form-control rounded-3" maxlength="20">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-muted">Punto de Venta / Local:</label>
+                                        <select name="punto_venta_id" class="form-select rounded-3" required>
+                                            {% for loc in locales %}
+                                            <option value="{{ loc.id }}" {% if m.punto_venta_id == loc.id %}selected{% endif %}>
+                                                {{ loc.nombre }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold small text-muted">Capacidad (Personas):</label>
+                                            <input type="number" name="capacidad" value="{{ m.capacidad }}" min="1" max="100" required class="form-control rounded-3">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold small text-muted">Estado Administrativo:</label>
+                                            <select name="estado" class="form-select rounded-3">
+                                                <option value="HABILITADA" {% if m.estado == 'HABILITADA' %}selected{% endif %}>Habilitada / Libre</option>
+                                                <option value="OCUPADA" {% if m.estado == 'OCUPADA' %}selected{% endif %}>Ocupada</option>
+                                                <option value="RESERVADA" {% if m.estado == 'RESERVADA' %}selected{% endif %}>Reservada</option>
+                                                <option value="INACTIVA" {% if m.estado == 'INACTIVA' %}selected{% endif %}>Inactiva / Mantenimiento</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light rounded-bottom-4 border-top">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Guardar Cambios</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Eliminar Mesa -->
+                <div class="modal fade" id="modalEliminarMesa_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header bg-danger text-white rounded-top-4">
+                                <h5 class="modal-title fw-bold">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminar Mesa: {{ m.identificador }}
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{% url 'administrador_mesas' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="eliminar">
+                                <input type="hidden" name="mesa_id" value="{{ m.id }}">
+                                <div class="modal-body p-4 text-center">
+                                    <p class="fs-5 text-dark mb-2">
+                                        ¿Estás seguro de que deseas eliminar <strong>{{ m.identificador }}</strong> de <em>{{ m.punto_venta.nombre }}</em>?
+                                    </p>
+                                    <div class="alert alert-warning text-start small mb-0 rounded-3">
+                                        <i class="bi bi-shield-lock-fill text-warning me-1"></i>
+                                        <strong>Protección de Integridad:</strong> Si esta mesa registra consumos históricos, el sistema la desactivará automáticamente para preservar los registros de caja y auditoría tributaria sin provocar pérdida de datos.
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light rounded-bottom-4 border-top justify-content-center">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Confirmar Eliminación</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% empty %}
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+                        <i class="bi bi-inbox text-muted fs-1 mb-2 d-block"></i>
+                        <h5 class="fw-bold text-dark">No se encontraron mesas registradas</h5>
+                        <p class="text-muted small mb-3">No hay mesas que coincidan con los filtros aplicados o aún no se han creado en este local.</p>
+                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold mx-auto" data-bs-toggle="modal" data-bs-target="#modalCrearMesa">
+                            <i class="bi bi-plus-circle me-1"></i> Crear Primera Mesa
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal Crear Nueva Mesa -->
+    <div class="modal fade" id="modalCrearMesa" tabindex="-1" aria-labelledby="labelCrearMesa" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-danger text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="labelCrearMesa">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Registrar Nueva Mesa de Atención
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_mesas' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="crear">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Identificador de la Mesa (ej: Mesa 15, Terraza 3):</label>
+                            <input type="text" name="identificador" placeholder="Ej: Mesa 15" required class="form-control rounded-3" maxlength="20">
+                            <div class="form-text">Debe ser único dentro del mismo local gastronómico.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Punto de Venta / Local Asignado:</label>
+                            <select name="punto_venta_id" class="form-select rounded-3" required>
+                                <option value="">Selecciona el local...</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.id }}" {% if local_seleccionado and local_seleccionado.id == loc.id %}selected{% endif %}>
+                                    {{ loc.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">Capacidad Máxima:</label>
+                                <input type="number" name="capacidad" value="4" min="1" max="100" required class="form-control rounded-3">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">Estado Inicial:</label>
+                                <select name="estado" class="form-select rounded-3">
+                                    <option value="HABILITADA" selected>Habilitada / Libre</option>
+                                    <option value="INACTIVA">Inactiva (Mantenimiento)</option>
+                                    <option value="RESERVADA">Reservada</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light rounded-bottom-4 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Crear Mesa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Oficial -->
+    <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
+        <div class="container">
+            <small class="text-white-50">
+                Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Administración y Mesas (Semana 11)
+            </small>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

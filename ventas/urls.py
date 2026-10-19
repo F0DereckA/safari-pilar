@@ -12,6 +12,7 @@ urlpatterns = [
     path('administrador/', views.administrador, name='administrador'),
     path('administrador/local/<int:local_id>/', views.administrador_local, name='administrador_local'),
     path('administrador/trabajadores/', views.administrador_trabajadores, name='administrador_trabajadores'),
+    path('administrador/mesas/', views.administrador_mesas, name='administrador_mesas'),
     path('administrador/dashboard/', views.administrador_dashboard, name='administrador_dashboard'),
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),

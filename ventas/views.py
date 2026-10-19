@@ -1156,6 +1156,179 @@ def administrador_trabajadores(request):
 
 
 @requiere_rol(['ADMINISTRADOR'])
+def administrador_mesas(request):
+    """
+    CRUD de Mesas para Administrador (Semana 11):
+    Gestión integral de mesas por Punto de Venta: listar, crear, modificar, activar/desactivar y eliminar protegido.
+    Garantiza unicidad de identificador por local y protección contra alteración de cuentas abiertas en consumo.
+    """
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+
+    # Filtro opcional por local
+    local_id_filtro = request.GET.get('local_id', '')
+    local_seleccionado = None
+    if local_id_filtro:
+        try:
+            local_id = int(local_id_filtro)
+            local_seleccionado = PuntoVenta.objects.filter(id=local_id).first()
+        except (ValueError, TypeError):
+            pass
+
+    # Búsqueda por texto (ej: "Mesa 1", "Terraza")
+    busqueda_q = request.POST.get('q', request.GET.get('q', '')).strip()
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'crear':
+            identificador = request.POST.get('identificador', '').strip()
+            punto_venta_id = request.POST.get('punto_venta_id')
+            capacidad_raw = request.POST.get('capacidad', '4')
+            estado = request.POST.get('estado', 'HABILITADA')
+
+            if not identificador:
+                messages.error(request, "El identificador de la mesa es obligatorio (ej: Mesa 12, Terraza 5).")
+                return redirect('administrador_mesas')
+
+            try:
+                capacidad = max(1, int(capacidad_raw))
+            except (ValueError, TypeError):
+                capacidad = 4
+
+            local_obj = PuntoVenta.objects.filter(id=punto_venta_id, activo=True).first()
+            if not local_obj:
+                messages.error(request, "Debes seleccionar un Punto de Venta válido para la mesa.")
+                return redirect('administrador_mesas')
+
+            # Validación de unicidad de identificador en el mismo Punto de Venta
+            if Mesa.objects.filter(identificador__iexact=identificador, punto_venta=local_obj).exists():
+                messages.error(request, f"Ya existe una mesa con el identificador '{identificador}' en {local_obj.nombre}.")
+                return redirect(f"/administrador/mesas/?local_id={local_obj.id}")
+
+            Mesa.objects.create(
+                identificador=identificador,
+                punto_venta=local_obj,
+                capacidad=capacidad,
+                estado=estado
+            )
+            messages.success(request, f"¡Mesa '{identificador}' creada exitosamente en {local_obj.nombre} (Capacidad: {capacidad} personas)!")
+            return redirect(f"/administrador/mesas/?local_id={local_obj.id}")
+
+        elif accion == 'modificar':
+            mesa_id = request.POST.get('mesa_id')
+            mesa_obj = get_object_or_404(Mesa, id=mesa_id)
+
+            nuevo_identificador = request.POST.get('identificador', '').strip()
+            nuevo_local_id = request.POST.get('punto_venta_id')
+            nueva_capacidad_raw = request.POST.get('capacidad', '4')
+            nuevo_estado = request.POST.get('estado', mesa_obj.estado)
+
+            if not nuevo_identificador:
+                messages.error(request, "El identificador de la mesa no puede quedar vacío.")
+                return redirect(f"/administrador/mesas/?local_id={mesa_obj.punto_venta_id}")
+
+            try:
+                nueva_capacidad = max(1, int(nueva_capacidad_raw))
+            except (ValueError, TypeError):
+                nueva_capacidad = mesa_obj.capacidad
+
+            nuevo_local = PuntoVenta.objects.filter(id=nuevo_local_id, activo=True).first() or mesa_obj.punto_venta
+
+            # Validación de unicidad excluyendo la propia mesa
+            if Mesa.objects.filter(identificador__iexact=nuevo_identificador, punto_venta=nuevo_local).exclude(id=mesa_obj.id).exists():
+                messages.error(request, f"Ya existe otra mesa con el identificador '{nuevo_identificador}' en {nuevo_local.nombre}.")
+                return redirect(f"/administrador/mesas/?local_id={mesa_obj.punto_venta_id}")
+
+            # Regla de Integridad de Cuenta Abierta
+            cuenta_abierta = Venta.objects.filter(mesa=mesa_obj, estado='ABIERTA').exists()
+            if cuenta_abierta and nuevo_estado == 'INACTIVA':
+                messages.warning(request, f"La mesa '{mesa_obj.identificador}' tiene actualmente una comanda o cuenta abierta en consumo. Debe ser cobrada o cerrada antes de marcarla como Inactiva.")
+                return redirect(f"/administrador/mesas/?local_id={mesa_obj.punto_venta_id}")
+
+            mesa_obj.identificador = nuevo_identificador
+            mesa_obj.punto_venta = nuevo_local
+            mesa_obj.capacidad = nueva_capacidad
+            mesa_obj.estado = nuevo_estado
+            mesa_obj.save()
+
+            messages.success(request, f"¡Mesa '{nuevo_identificador}' actualizada correctamente!")
+            return redirect(f"/administrador/mesas/?local_id={nuevo_local.id}")
+
+        elif accion == 'toggle_estado':
+            mesa_id = request.POST.get('mesa_id')
+            mesa_obj = get_object_or_404(Mesa, id=mesa_id)
+
+            if mesa_obj.estado == 'INACTIVA':
+                mesa_obj.estado = 'HABILITADA'
+                mesa_obj.save()
+                messages.success(request, f"Mesa '{mesa_obj.identificador}' activada y habilitada para atención.")
+            else:
+                cuenta_abierta = Venta.objects.filter(mesa=mesa_obj, estado='ABIERTA').exists()
+                if cuenta_abierta:
+                    messages.warning(request, f"No es posible desactivar la mesa '{mesa_obj.identificador}' porque tiene una comanda abierta en salón.")
+                    return redirect(f"/administrador/mesas/?local_id={mesa_obj.punto_venta_id}")
+                mesa_obj.estado = 'INACTIVA'
+                mesa_obj.save()
+                messages.info(request, f"Mesa '{mesa_obj.identificador}' desactivada (marcada en mantenimiento).")
+
+            return redirect(f"/administrador/mesas/?local_id={mesa_obj.punto_venta_id}")
+
+        elif accion == 'eliminar':
+            mesa_id = request.POST.get('mesa_id')
+            mesa_obj = get_object_or_404(Mesa, id=mesa_id)
+            local_id = mesa_obj.punto_venta_id
+
+            # Protección de Integridad Referencial
+            tiene_ventas = mesa_obj.ventas.exists()
+            tiene_cuenta_abierta = mesa_obj.ventas.filter(estado='ABIERTA').exists()
+
+            if tiene_cuenta_abierta:
+                messages.error(request, f"Imposible eliminar la mesa '{mesa_obj.identificador}': Tiene una cuenta activa en consumo.")
+                return redirect(f"/administrador/mesas/?local_id={local_id}")
+
+            if tiene_ventas:
+                # Soft-delete o marcado como inactiva para no violar historial contable
+                mesa_obj.estado = 'INACTIVA'
+                mesa_obj.save()
+                messages.warning(
+                    request,
+                    f"La mesa '{mesa_obj.identificador}' posee historial de ventas registradas. "
+                    "Por motivos de auditoría e integridad tributaria, se ha desactivado y retirado del plano operativo sin eliminar sus registros históricos."
+                )
+            else:
+                identificador_eliminado = mesa_obj.identificador
+                mesa_obj.delete()
+                messages.success(request, f"Mesa '{identificador_eliminado}' eliminada definitivamente del sistema.")
+
+            return redirect(f"/administrador/mesas/?local_id={local_id}")
+
+    # Queryset base de mesas
+    mesas_qs = Mesa.objects.select_related('punto_venta').order_by('punto_venta__id', 'identificador')
+    if local_seleccionado:
+        mesas_qs = mesas_qs.filter(punto_venta=local_seleccionado)
+    if busqueda_q:
+        mesas_qs = mesas_qs.filter(models.Q(identificador__icontains=busqueda_q) | models.Q(punto_venta__nombre__icontains=busqueda_q))
+
+    # Métricas de mesas
+    total_mesas = mesas_qs.count()
+    mesas_libres = mesas_qs.filter(estado='HABILITADA').count()
+    mesas_ocupadas = mesas_qs.filter(estado='OCUPADA').count()
+    mesas_inactivas = mesas_qs.filter(estado='INACTIVA').count()
+
+    context = {
+        'mesas': mesas_qs,
+        'locales': locales,
+        'local_seleccionado': local_seleccionado,
+        'busqueda_q': busqueda_q,
+        'total_mesas': total_mesas,
+        'mesas_libres': mesas_libres,
+        'mesas_ocupadas': mesas_ocupadas,
+        'mesas_inactivas': mesas_inactivas,
+    }
+    return render(request, 'ventas/administrador_mesas.html', context)
+
+
+@requiere_rol(['ADMINISTRADOR'])
 def administrador_dashboard(request):
     """Página de Dashboard Analítico con gráfico mixto barras + línea (hasta 15 meses)"""
     # Histórico de 15 meses (Julio 2025 a Septiembre 2026)

@@ -970,6 +970,135 @@ class SafariFase2A1Tests(TestCase):
         self.assertContains(resp, "al menos 6 caracteres")
         self.assertFalse(User.objects.filter(first_name='Claudio', last_name='Bravo').exists())
 
+    # 38. CRUD Mesas: Listar y Crear Mesa por Administrador (Semana 11)
+    def test_crud_mesas_listar_y_crear_administrador(self):
+        # 1. Acceso protegido: Anónimo es bloqueado y Cajero es redirigido a su panel
+        resp_anon = self.client.get(reverse('administrador_mesas'), follow=True)
+        self.assertRedirects(resp_anon, reverse('index'))
+        self.assertContains(resp_anon, "Acceso protegido")
+
+        self.client.force_login(self.cajero_user)
+        resp_cajero = self.client.get(reverse('administrador_mesas'), follow=True)
+        self.assertRedirects(resp_cajero, reverse('vendedor'))
+        self.assertContains(resp_cajero, "Acceso restringido")
+
+        # 2. Administrador accede correctamente al mantenedor
+        self.client.force_login(self.admin_user)
+        resp_admin = self.client.get(reverse('administrador_mesas'))
+        self.assertEqual(resp_admin.status_code, 200)
+        self.assertContains(resp_admin, "MANTENEDOR DE MESAS Y SECTORES")
+
+        # 3. Crear nueva mesa con capacidad 6
+        pv = PuntoVenta.objects.first()
+        resp_crear = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'crear',
+            'identificador': 'Mesa VIP 99',
+            'punto_venta_id': pv.id,
+            'capacidad': 6,
+            'estado': 'HABILITADA'
+        }, follow=True)
+        self.assertContains(resp_crear, "creada exitosamente")
+        mesa_creada = Mesa.objects.filter(identificador='Mesa VIP 99', punto_venta=pv).first()
+        self.assertIsNotNone(mesa_creada)
+        self.assertEqual(mesa_creada.capacidad, 6)
+        self.assertEqual(mesa_creada.estado, 'HABILITADA')
+
+    # 39. CRUD Mesas: Validación de Unicidad de Identificador por Local (Semana 11)
+    def test_crud_mesas_validacion_unicidad_mismo_local(self):
+        self.client.force_login(self.admin_user)
+        pv1 = PuntoVenta.objects.get(id=1)
+        pv2 = PuntoVenta.objects.get(id=2)
+
+        # Crear primera mesa en local 1
+        Mesa.objects.create(identificador='Mesa Única A', punto_venta=pv1, capacidad=4)
+
+        # Intento de duplicar identificador en el mismo local 1 -> Debe ser rechazado
+        resp_dup = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'crear',
+            'identificador': 'Mesa Única A',
+            'punto_venta_id': pv1.id,
+            'capacidad': 4,
+            'estado': 'HABILITADA'
+        }, follow=True)
+        self.assertContains(resp_dup, "Ya existe una mesa con el identificador")
+        self.assertEqual(Mesa.objects.filter(identificador='Mesa Única A', punto_venta=pv1).count(), 1)
+
+        # Pero en local 2, el mismo identificador SÍ está permitido (aislamiento por local)
+        resp_ok_otro = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'crear',
+            'identificador': 'Mesa Única A',
+            'punto_venta_id': pv2.id,
+            'capacidad': 4,
+            'estado': 'HABILITADA'
+        }, follow=True)
+        self.assertContains(resp_ok_otro, "creada exitosamente")
+        self.assertTrue(Mesa.objects.filter(identificador='Mesa Única A', punto_venta=pv2).exists())
+
+    # 40. CRUD Mesas: Modificar Identificador, Capacidad y Estado (Semana 11)
+    def test_crud_mesas_modificar_capacidad_e_identificador(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+        mesa = Mesa.objects.create(identificador='Terraza Temp', punto_venta=pv, capacidad=2, estado='HABILITADA')
+
+        resp_mod = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'modificar',
+            'mesa_id': mesa.id,
+            'identificador': 'Terraza VIP Renovada',
+            'punto_venta_id': pv.id,
+            'capacidad': 10,
+            'estado': 'HABILITADA'
+        }, follow=True)
+        self.assertContains(resp_mod, "actualizada correctamente")
+
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.identificador, 'Terraza VIP Renovada')
+        self.assertEqual(mesa.capacidad, 10)
+
+    # 41. CRUD Mesas: Integridad de Cuentas Abiertas y Eliminación Segura (Semana 11)
+    def test_crud_mesas_proteccion_cuenta_abierta_y_eliminacion_segura(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+        jornada = Jornada.objects.create(fecha=timezone.localdate(), estado='ABIERTA', usuario_apertura=self.admin_user)
+        caja = Caja.objects.create(jornada=jornada, cajero=self.admin_user, punto_venta=pv, nombre="Caja Test", estado='ABIERTA')
+
+        # 1. Mesa con cuenta ABIERTA en consumo
+        mesa_con_cuenta = Mesa.objects.create(identificador='Mesa En Consumo', punto_venta=pv, capacidad=4, estado='OCUPADA')
+        Venta.objects.create(
+            caja=caja,
+            cajero=self.admin_user,
+            punto_venta=pv,
+            modalidad='MESA',
+            mesa=mesa_con_cuenta,
+            total=25000,
+            estado='ABIERTA'
+        )
+
+        # Intentar desactivar mesa con cuenta abierta -> Debe ser protegido
+        resp_toggle = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'toggle_estado',
+            'mesa_id': mesa_con_cuenta.id
+        }, follow=True)
+        self.assertContains(resp_toggle, "No es posible desactivar la mesa")
+        mesa_con_cuenta.refresh_from_db()
+        self.assertEqual(mesa_con_cuenta.estado, 'OCUPADA')
+
+        # Intentar eliminar mesa con cuenta abierta -> Rechazado
+        resp_del_abierta = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'eliminar',
+            'mesa_id': mesa_con_cuenta.id
+        }, follow=True)
+        self.assertContains(resp_del_abierta, "Tiene una cuenta activa en consumo")
+        self.assertTrue(Mesa.objects.filter(id=mesa_con_cuenta.id).exists())
+
+        # 2. Mesa recién creada sin ventas -> Eliminación definitiva física
+        mesa_limpia = Mesa.objects.create(identificador='Mesa Sin Ventas', punto_venta=pv, capacidad=4)
+        resp_del_ok = self.client.post(reverse('administrador_mesas'), {
+            'accion': 'eliminar',
+            'mesa_id': mesa_limpia.id
+        }, follow=True)
+        self.assertContains(resp_del_ok, "eliminada definitivamente")
+        self.assertFalse(Mesa.objects.filter(id=mesa_limpia.id).exists())
+
 
 
 

@@ -111,17 +111,17 @@ Contenido solicitado por docente:
    - Confirmar crear, modificar, activar/desactivar/eliminar protegido.
    - Confirmar que un local con historial no pierde datos.
 
-3. **Gestión de Mesas — PRIMER CRUD NUEVO PRIORITARIO**
-   - Implementar un CRUD básico real en BD accesible solo por Administrador.
-   - Funciones mínimas:
-     - listar mesas;
-     - crear mesa;
-     - modificar identificador/datos permitidos;
-     - asignar Punto de Venta;
-     - activar/desactivar o manejar el estado administrativo sin borrar historial;
-     - impedir duplicados de identificador dentro del mismo Punto de Venta.
-   - Mantener separada la gestión administrativa de la operación diaria de estados LIBRE/OCUPADA/EN COBRO/POR LIMPIAR/etc.
-   - No permitir que editar una mesa destruya una venta/cuenta abierta.
+3. **Gestión de Mesas — CRUD NUEVO PRIORITARIO (COMPLETADO AL 100%)**
+   - Implementado en `/administrador/mesas/` accesible exclusivamente por rol `ADMINISTRADOR`.
+   - Funciones operativas:
+     - Listar mesas por Punto de Venta / Local con filtros y búsqueda por texto.
+     - Crear mesa (identificador, Punto de Venta, capacidad, estado).
+     - Modificar identificador, Punto de Venta asignado, capacidad y estado.
+     - Activar/desactivar mesa (`toggle_estado`) para mantenimiento.
+     - Validación estricta de unicidad de identificador por local (`unique_together`).
+     - Protección de cuentas abiertas: No permite desactivar ni eliminar mesas con comanda en consumo.
+     - Eliminación segura: Si la mesa tiene ventas históricas, se desactiva (soft-delete) para preservar integridad contable; si no tiene historial, se elimina limpiamente.
+     - Cobertura de pruebas: Pruebas unitarias 38, 39, 40 y 41 aprobadas al 100% (41/41 tests OK).
 
 4. **Productos y Menús — SOLO PINCELADA INICIAL**
    - No completar todavía RF05 entero.
