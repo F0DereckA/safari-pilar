@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'ventas.middleware.SafariErrorHandlingMiddleware',
 ]
 
 ROOT_URLCONF = 'Venta_safari.urls'

@@ -20,7 +20,8 @@ urlpatterns = [
     path('cocina/', views.cocina, name='cocina'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
     # Rutas de prueba/auditoría para errores HTTP personalizados (Semana 10)
+    path('400/', views.error_400_view, name='error_400'),
+    path('403/', views.error_403_view, name='error_403'),
     path('404/', views.error_404_view, name='error_404'),
     path('500/', views.error_500_view, name='error_500'),
 ]
-

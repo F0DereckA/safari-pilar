@@ -536,6 +536,28 @@ def error_404_view(request, exception=None):
     return render(request, '404.html', {'rol_usuario': rol, 'path_solicitado': request.path}, status=404)
 
 
+def error_403_view(request, exception=None):
+    """
+    Manejador personalizado de error HTTP 403 (Semana 10).
+    Captura accesos no autorizados y permisos denegados.
+    """
+    rol = None
+    if request.user.is_authenticated:
+        rol = obtener_rol_usuario(request.user)
+    return render(request, '403.html', {'rol_usuario': rol, 'path_solicitado': request.path}, status=403)
+
+
+def error_400_view(request, exception=None):
+    """
+    Manejador personalizado de error HTTP 400 (Semana 10).
+    Captura solicitudes inválidas y manipulación de parámetros.
+    """
+    rol = None
+    if request.user.is_authenticated:
+        rol = obtener_rol_usuario(request.user)
+    return render(request, '400.html', {'rol_usuario': rol, 'path_solicitado': request.path}, status=400)
+
+
 def error_500_view(request):
     """
     Manejador personalizado de error HTTP 500 (Semana 10).

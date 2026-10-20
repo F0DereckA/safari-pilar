@@ -13,7 +13,8 @@
   - CRUD Puntos de Venta: **YA EXISTENTE / VALIDADO**.
   - CRUD Mesas: **COMPLETADO (41/41 pruebas)**.
   - CRUD Productos y Menús con BD: **COMPLETADO (45/45 pruebas)**.
-  - suite vigente reportada: **45/45 pruebas aprobadas al 100% (Ran 45 tests OK)**.
+  - Blindaje Middleware Errores HTTP (404, 403, 400, 500): **COMPLETADO (47/47 pruebas)**. Intercepta URLs mal escritas (ej: `/adminitrador/`) mostrando siempre la página corporativa amigable de Parque Safari en desarrollo y producción.
+  - suite vigente reportada: **47/47 pruebas aprobadas al 100% (Ran 47 tests OK)**.
   - Historial de Acciones: **SIGUIENTE PASO PRIORITARIO** (análisis inicial y reutilización de modelos de trazabilidad existentes sin sobredimensionar).
 - objetivo inmediato: avanzar con el diseño y visualización inicial de trazabilidad/auditoría sin alterar el core operativo ni romper KDS Cocina, Mesa/Cuenta Abierta o Caja.
 ---

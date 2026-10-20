@@ -842,6 +842,11 @@ class SafariFase2A1Tests(TestCase):
             self.assertEqual(resp_real.status_code, 404)
             self.assertContains(resp_real, "Ruta o Recurso No Encontrado", status_code=404)
 
+        # 3. Intercepción por middleware en peticiones erróneas (ej: typo /adminitrador/)
+        resp_typo = self.client.get('/adminitrador/')
+        self.assertEqual(resp_typo.status_code, 404)
+        self.assertContains(resp_typo, "Ruta o Recurso No Encontrado", status_code=404)
+
     # 32. Manejador personalizado de error HTTP 500 - Error de servidor blindado (Requisito Semana 10)
     def test_manejador_error_500_personalizado(self):
         resp_500 = self.client.get(reverse('error_500'))
@@ -1247,6 +1252,22 @@ class SafariFase2A1Tests(TestCase):
         }, follow=True)
         self.assertContains(resp_del, "eliminado del sistema")
         self.assertFalse(Menu.objects.filter(id=menu_creado.id).exists())
+
+    # 46. Manejador personalizado de error HTTP 403 - Acceso Denegado (Semana 10)
+    def test_manejador_error_403_personalizado(self):
+        resp_403 = self.client.get(reverse('error_403'))
+        self.assertEqual(resp_403.status_code, 403)
+        self.assertContains(resp_403, "403", status_code=403)
+        self.assertContains(resp_403, "Acceso Restringido o No Autorizado", status_code=403)
+        self.assertContains(resp_403, "Volver al Portal de Inicio", status_code=403)
+
+    # 47. Manejador personalizado de error HTTP 400 - Solicitud Incorrecta (Semana 10)
+    def test_manejador_error_400_personalizado(self):
+        resp_400 = self.client.get(reverse('error_400'))
+        self.assertEqual(resp_400.status_code, 400)
+        self.assertContains(resp_400, "400", status_code=400)
+        self.assertContains(resp_400, "Solicitud o Parámetros Incorrectos", status_code=400)
+        self.assertContains(resp_400, "Volver al Portal de Inicio", status_code=400)
 
 
 
