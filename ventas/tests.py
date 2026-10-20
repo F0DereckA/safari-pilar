@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.cache import cache
-from ventas.models import PuntoVenta, PerfilEmpleado, Jornada, Caja, Mesa, Venta, DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu
+from ventas.models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Jornada, Caja, Mesa, Venta, DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu
 
 
 class SafariFase2A1Tests(TestCase):
@@ -1268,6 +1268,115 @@ class SafariFase2A1Tests(TestCase):
         self.assertContains(resp_400, "400", status_code=400)
         self.assertContains(resp_400, "Solicitud o Parámetros Incorrectos", status_code=400)
         self.assertContains(resp_400, "Volver al Portal de Inicio", status_code=400)
+
+    # 48. Historial de Acciones: Aislamiento estricto de roles (Semana 11)
+    def test_historial_acceso_restringido_y_aislamiento_roles(self):
+        # Anónimo es redirigido al index
+        resp_anon = self.client.get(reverse('administrador_historial'), follow=True)
+        self.assertRedirects(resp_anon, reverse('index'))
+        self.assertContains(resp_anon, "Acceso protegido")
+
+        # Cajero es bloqueado y redirigido a vendedor
+        self.client.force_login(self.cajero_user)
+        resp_cajero = self.client.get(reverse('administrador_historial'), follow=True)
+        self.assertRedirects(resp_cajero, reverse('vendedor'))
+        self.assertContains(resp_cajero, "Acceso restringido")
+
+        # Mesero es bloqueado y redirigido a mesero
+        self.client.force_login(self.mesero_user)
+        resp_mesero = self.client.get(reverse('administrador_historial'), follow=True)
+        self.assertRedirects(resp_mesero, reverse('mesero'))
+        self.assertContains(resp_mesero, "Acceso restringido")
+
+        # Cocinero es bloqueado y redirigido a cocina
+        self.client.force_login(self.cocinero_user)
+        resp_cocinero = self.client.get(reverse('administrador_historial'), follow=True)
+        self.assertRedirects(resp_cocinero, reverse('cocina'))
+        self.assertContains(resp_cocinero, "Acceso restringido")
+
+        # Administrador tiene acceso legítimo
+        self.client.force_login(self.admin_user)
+        resp_admin = self.client.get(reverse('administrador_historial'))
+        self.assertEqual(resp_admin.status_code, 200)
+        self.assertContains(resp_admin, "BITÁCORA Y HISTORIAL DE ACCIONES")
+
+    # 49. Historial de Acciones: Consolidación unificada de eventos reales de BD (Semana 11)
+    def test_historial_consolidacion_eventos_desde_bd(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+
+        # 1. Crear una jornada y caja
+        jornada = Jornada.objects.create(usuario_apertura=self.admin_user, estado='ABIERTA')
+        caja = Caja.objects.create(
+            nombre="Caja Auditoría",
+            punto_venta=pv,
+            jornada=jornada,
+            cajero=self.cajero_user,
+            monto_apertura=Decimal('150000.00'),
+            estado='ABIERTA'
+        )
+
+        # 2. Crear una venta
+        venta = Venta.objects.create(
+            caja=caja,
+            cajero=self.cajero_user,
+            punto_venta=pv,
+            modalidad='VENTA_RAPIDA',
+            total=Decimal('28500.00'),
+            estado='PAGADA'
+        )
+
+        # 3. Crear una alerta de traslado
+        alerta = AlertaTraslado.objects.create(
+            empleado=self.mesero_user,
+            punto_venta_origen=pv,
+            punto_venta_destino=PuntoVenta.objects.last(),
+            autorizado_por=self.admin_user,
+            motivo="Refuerzo horario peak"
+        )
+
+        # 4. Consultar historial
+        resp = self.client.get(reverse('administrador_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f"JOR-A-{jornada.id}")
+        self.assertContains(resp, f"CAJ-A-{caja.id}")
+        self.assertContains(resp, f"VEN-{venta.id}")
+        self.assertContains(resp, f"TRA-{alerta.id}")
+        self.assertContains(resp, "Refuerzo horario peak")
+
+    # 50. Historial de Acciones: Filtros por tipo de evento y búsqueda (Semana 11)
+    def test_historial_filtros_y_busqueda(self):
+        self.client.force_login(self.admin_user)
+        pv = PuntoVenta.objects.first()
+        jornada = Jornada.objects.create(usuario_apertura=self.admin_user, estado='ABIERTA')
+        caja = Caja.objects.create(
+            nombre="Caja Filtros",
+            punto_venta=pv,
+            jornada=jornada,
+            cajero=self.cajero_user,
+            monto_apertura=Decimal('75000.00'),
+            estado='ABIERTA'
+        )
+        venta = Venta.objects.create(
+            caja=caja,
+            cajero=self.cajero_user,
+            punto_venta=pv,
+            modalidad='VENTA_RAPIDA',
+            total=Decimal('42000.00'),
+            estado='PAGADA'
+        )
+
+        # Filtrar solo VENTAS
+        resp_ventas = self.client.get(reverse('administrador_historial') + '?tipo=VENTA')
+        self.assertEqual(resp_ventas.status_code, 200)
+        self.assertContains(resp_ventas, f"VEN-{venta.id}")
+        self.assertNotContains(resp_ventas, f"CAJ-A-{caja.id}")
+
+        # Búsqueda por texto específico
+        resp_search = self.client.get(reverse('administrador_historial') + '?q=Filtros')
+        self.assertEqual(resp_search.status_code, 200)
+        self.assertContains(resp_search, "Caja Filtros")
+        self.assertNotContains(resp_search, f"VEN-{venta.id}")
 
 
 

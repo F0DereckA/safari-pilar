@@ -6,17 +6,17 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Semana 11 (20/10) — Paso 5: Historial de Acciones realizadas (análisis y diseño de trazabilidad) + sincronización académica**.
+- tarea actual: **Semana 11 (20/10) — COMPLETADA AL 100% con 50/50 pruebas unitarias aprobadas**.
 - estado académico vigente:
   - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37/37 pruebas)**.
-  - CRUD Usuarios: **YA EXISTENTE / VALIDADO**.
-  - CRUD Puntos de Venta: **YA EXISTENTE / VALIDADO**.
+  - CRUD Usuarios: **COMPLETADO / VALIDADO**.
+  - CRUD Puntos de Venta: **COMPLETADO / VALIDADO**.
   - CRUD Mesas: **COMPLETADO (41/41 pruebas)**.
   - CRUD Productos y Menús con BD: **COMPLETADO (45/45 pruebas)**.
   - Blindaje Middleware Errores HTTP (404, 403, 400, 500): **COMPLETADO (47/47 pruebas)**. Intercepta URLs mal escritas (ej: `/adminitrador/`) mostrando siempre la página corporativa amigable de Parque Safari en desarrollo y producción.
-  - suite vigente reportada: **47/47 pruebas aprobadas al 100% (Ran 47 tests OK)**.
-  - Historial de Acciones: **SIGUIENTE PASO PRIORITARIO** (análisis inicial y reutilización de modelos de trazabilidad existentes sin sobredimensionar).
-- objetivo inmediato: avanzar con el diseño y visualización inicial de trazabilidad/auditoría sin alterar el core operativo ni romper KDS Cocina, Mesa/Cuenta Abierta o Caja.
+  - Historial de Acciones y Trazabilidad Operativa: **COMPLETADO (50/50 pruebas)**. Consolidación cronológica unificada en `/administrador/historial/` de Jornadas, Cajas, Traslados de personal, Ventas y Entregas KDS con filtros por tipo, local y búsqueda rápida.
+  - suite vigente reportada: **50/50 pruebas aprobadas al 100% (Ran 50 tests OK)**.
+- estado del sistema: Todo el alcance de Semana 10 y Semana 11 se encuentra 100% funcional, probado y conectado a base de datos real SQLite sin alterar KDS Cocina, Mesero ni Caja.
 ---
 
 ### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11
@@ -141,26 +141,28 @@ Contenido solicitado por docente:
    - Seeding y persistencia: Comando oficial `poblar_safari` actualizado con categorías oficiales (5), productos representativos (16) y menús por local (3), manteniendo idempotencia.
    - Regla de no regresión respetada: Las terminales de Mesero y Cajero no sufrieron alteraciones en sus flujos operativos.
 
-5. **Historial de Acciones — SOLO DISEÑO/REUTILIZACIÓN INICIAL**
-   - Revisar qué trazabilidad real ya existe (`AlertaTraslado`, ventas, pedidos, tickets, usuario creador, fechas).
-   - No crear todavía un sistema de auditoría gigante.
-   - Proponer qué eventos mínimos deberían registrarse en un futuro historial:
-     - creación/modificación/desactivación de usuario;
-     - creación/modificación/desactivación de PuntoVenta;
-     - cambios administrativos de mesas;
-     - aperturas/cierres de caja;
-     - cierres de venta/cuenta.
-   - Si existe una estructura reutilizable, documentarla antes de crear un nuevo modelo.
+5. **Historial de Acciones y Trazabilidad Operativa (COMPLETADO AL 100%)**
+   - Implementado en `/administrador/historial/`, accesible exclusivamente por rol `ADMINISTRADOR`.
+   - Lee y consolida eventos reales directamente desde la base de datos (modelos `Jornada`, `Caja`, `AlertaTraslado`, `Venta`, `Entrega`), sin necesidad de añadir tablas artificiales ni migraciones complejas.
+   - Funciones operativas:
+     - Línea de tiempo cronológica descendente con Ref. ID, marca de tiempo (`fecha_hora`), badge de acción, descripción detallada, local y usuario responsable.
+     - Filtro por tipo de evento (Jornadas, Cajas, Traslados de Personal, Ventas Gastronómicas, Entregas Cocina KDS).
+     - Filtro por Punto de Venta / Local.
+     - Búsqueda libre por texto (nombre de usuario, ID de referencia, local o descripción).
+     - Indicadores KPI superiores en tiempo real (Total Eventos, Jornadas, Cajas, Traslados, Ventas, Cocina KDS).
+     - Enlace integrado en la barra de navegación del Administrador en todos los módulos.
+   - Cobertura de pruebas: Pruebas unitarias 48, 49 y 50 agregadas y aprobadas al 100% (**50/50 tests OK**).
 
-#### Criterio de llegada a clase del 20/10
-- Semana 10: 100% demostrable.
+#### Criterio de llegada a clase del 20/10 — COMPLETADO AL 100%
+- Semana 10: 100% demostrable (Login por perfiles, Rate Limiting, OWASP, 404/403/400/500 personalizados sin stack traces).
 - Semana 11:
-  - Usuarios: CRUD real ya existente y validado.
-  - Puntos de Venta: CRUD real ya existente y validado.
-  - Mesas: CRUD básico real implementado.
-  - Productos/Menús: inicio visible conectado a BD.
-  - Historial de Acciones: análisis/diseño inicial, no necesariamente CRUD completo.
-- No romper KDS Cocina, Mesa/Cuenta Abierta, Caja, roles, tickets Cocina/Barra ni responsive móvil.
+  - Usuarios: CRUD real existente y validado.
+  - Puntos de Venta: CRUD real existente y validado.
+  - Mesas: CRUD completo con protección de comanda abierta y soft-delete contable.
+  - Productos/Menús: CRUD completo conectado a BD por local.
+  - Historial de Acciones: Bitácora completa y funcional con eventos reales de BD.
+- Suite oficial: **50 pruebas unitarias aprobadas al 100% (Ran 50 tests OK)**.
+- Sin regresiones: KDS Cocina, Mesa/Cuenta Abierta, Caja, roles y responsive móvil 100% estables.
 
 ---
 ### RECORDATORIO URGENTE PARA EL SIGUIENTE INFORME (ENTREGA 3 - PUNTO 4 Y DOCUMENTACIÓN)

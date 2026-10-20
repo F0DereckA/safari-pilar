@@ -1587,6 +1587,205 @@ def administrador_menus(request):
 
 
 @requiere_rol(['ADMINISTRADOR'])
+def administrador_historial(request):
+    """
+    Historial de Acciones y Trazabilidad Operativa (Semana 11).
+    Consolida de manera unificada y cronológica los eventos reales registrados en la BD:
+    - Aperturas y Cierres de Jornada (Jornada)
+    - Aperturas y Cierres de Caja (Caja)
+    - Traslados y reasignaciones de colaboradores (AlertaTraslado)
+    - Ventas realizadas y cobradas (Venta)
+    - Despachos y entregas de pedidos en Cocina KDS (Entrega)
+    """
+    tipo_filtro = request.GET.get('tipo', 'TODOS').strip().upper()
+    local_filtro = request.GET.get('local', '').strip()
+    busqueda = request.GET.get('q', '').strip().lower()
+
+    eventos = []
+
+    # 1. Eventos de Jornada
+    jornadas_qs = Jornada.objects.select_related('usuario_apertura', 'usuario_cierre').all()
+    for j in jornadas_qs:
+        eventos.append({
+            'id_ref': f"JOR-A-{j.id}",
+            'tipo': 'JORNADA',
+            'subtipo': 'Apertura de Jornada',
+            'badge_clase': 'bg-primary text-white',
+            'icono': 'bi-calendar-check-fill text-primary',
+            'titulo': f"Apertura de Jornada #{j.id}",
+            'descripcion': f"Jornada operativa iniciada ({j.fecha}). Observaciones: {j.observaciones or 'Sin observaciones'}",
+            'usuario': j.usuario_apertura.get_full_name() or j.usuario_apertura.username,
+            'local': 'Parque Safari General',
+            'local_id': None,
+            'fecha_hora': j.fecha_hora_apertura,
+            'monto': None,
+            'estado': j.estado,
+        })
+        if j.fecha_hora_cierre and j.usuario_cierre:
+            eventos.append({
+                'id_ref': f"JOR-C-{j.id}",
+                'tipo': 'JORNADA',
+                'subtipo': 'Cierre de Jornada',
+                'badge_clase': 'bg-secondary text-white',
+                'icono': 'bi-calendar-x-fill text-secondary',
+                'titulo': f"Cierre de Jornada #{j.id}",
+                'descripcion': f"Jornada operativa finalizada y cuadrada por supervisión.",
+                'usuario': j.usuario_cierre.get_full_name() or j.usuario_cierre.username,
+                'local': 'Parque Safari General',
+                'local_id': None,
+                'fecha_hora': j.fecha_hora_cierre,
+                'monto': None,
+                'estado': 'CERRADA',
+            })
+
+    # 2. Eventos de Caja
+    cajas_qs = Caja.objects.select_related('cajero', 'punto_venta', 'jornada').all()
+    for c in cajas_qs:
+        eventos.append({
+            'id_ref': f"CAJ-A-{c.id}",
+            'tipo': 'CAJA',
+            'subtipo': 'Apertura de Caja',
+            'badge_clase': 'bg-success text-white',
+            'icono': 'bi-cash-coin text-success',
+            'titulo': f"Apertura {c.nombre}",
+            'descripcion': f"Caja habilitada en {c.punto_venta.nombre} con fondo de ${c.monto_apertura:,.0f} CLP.",
+            'usuario': c.cajero.get_full_name() or c.cajero.username,
+            'local': c.punto_venta.nombre,
+            'local_id': str(c.punto_venta.id),
+            'fecha_hora': c.fecha_hora_apertura,
+            'monto': c.monto_apertura,
+            'estado': c.estado,
+        })
+        if c.fecha_hora_cierre and c.monto_cierre is not None:
+            eventos.append({
+                'id_ref': f"CAJ-C-{c.id}",
+                'tipo': 'CAJA',
+                'subtipo': 'Cierre y Cuadre de Caja',
+                'badge_clase': 'bg-dark text-white',
+                'icono': 'bi-lock-fill text-dark',
+                'titulo': f"Cierre {c.nombre}",
+                'descripcion': f"Caja cerrada en {c.punto_venta.nombre} con saldo final de ${c.monto_cierre:,.0f} CLP.",
+                'usuario': c.cajero.get_full_name() or c.cajero.username,
+                'local': c.punto_venta.nombre,
+                'local_id': str(c.punto_venta.id),
+                'fecha_hora': c.fecha_hora_cierre,
+                'monto': c.monto_cierre,
+                'estado': 'CERRADA',
+            })
+
+    # 3. Eventos de Traslado de Personal
+    traslados_qs = AlertaTraslado.objects.select_related('empleado', 'punto_venta_origen', 'punto_venta_destino', 'autorizado_por').all()
+    for t in traslados_qs:
+        origen_nom = t.punto_venta_origen.nombre if t.punto_venta_origen else "Sin Asignar"
+        autor_nom = (t.autorizado_por.get_full_name() or t.autorizado_por.username) if t.autorizado_por else "Administración"
+        emp_nom = t.empleado.get_full_name() or t.empleado.username
+        eventos.append({
+            'id_ref': f"TRA-{t.id}",
+            'tipo': 'TRASLADO',
+            'subtipo': 'Reasignación de Personal',
+            'badge_clase': 'bg-warning text-dark',
+            'icono': 'bi-arrow-left-right text-warning',
+            'titulo': f"Reasignación: {emp_nom}",
+            'descripcion': f"Traslado desde '{origen_nom}' hacia '{t.punto_venta_destino.nombre}'. Motivo: {t.motivo or 'Operativo'}",
+            'usuario': autor_nom,
+            'local': t.punto_venta_destino.nombre,
+            'local_id': str(t.punto_venta_destino.id),
+            'fecha_hora': t.fecha_hora,
+            'monto': None,
+            'estado': 'LEÍDA' if t.leida else 'PENDIENTE',
+        })
+
+    # 4. Eventos de Venta
+    ventas_qs = Venta.objects.select_related('cajero', 'punto_venta', 'mesa').all()
+    for v in ventas_qs:
+        modalidad_txt = f"Consumo en Mesa {v.mesa.identificador}" if (v.modalidad == 'MESA' and v.mesa) else "Venta Rápida / Mostrador"
+        eventos.append({
+            'id_ref': f"VEN-{v.id}",
+            'tipo': 'VENTA',
+            'subtipo': f"Venta {v.get_modalidad_display()}",
+            'badge_clase': 'bg-danger text-white',
+            'icono': 'bi-receipt text-danger',
+            'titulo': f"Venta #{v.id} (${v.total:,.0f} CLP)",
+            'descripcion': f"{modalidad_txt} • Pago: {v.get_metodo_pago_display()} • Estado: {v.get_estado_display()}",
+            'usuario': v.cajero.get_full_name() or v.cajero.username,
+            'local': v.punto_venta.nombre,
+            'local_id': str(v.punto_venta.id),
+            'fecha_hora': v.fecha_hora,
+            'monto': v.total,
+            'estado': v.estado,
+        })
+
+    # 5. Eventos de Entrega / Cocina KDS
+    entregas_qs = Entrega.objects.select_related('pedido__venta__punto_venta', 'usuario_entrega').all()
+    for e in entregas_qs:
+        local_e = e.pedido.venta.punto_venta if (e.pedido and e.pedido.venta) else None
+        usu_ent = (e.usuario_entrega.get_full_name() or e.usuario_entrega.username) if e.usuario_entrega else "Cocina KDS"
+        eventos.append({
+            'id_ref': f"ENT-{e.id}",
+            'tipo': 'COCINA',
+            'subtipo': 'Entrega de Pedido',
+            'badge_clase': 'bg-info text-dark',
+            'icono': 'bi-check-circle-fill text-info',
+            'titulo': f"Entrega Pedido #{e.pedido.id}",
+            'descripcion': f"Comanda despachada al cliente. Observaciones: {e.observaciones or 'Completado'}",
+            'usuario': usu_ent,
+            'local': local_e.nombre if local_e else 'Cocina Central',
+            'local_id': str(local_e.id) if local_e else None,
+            'fecha_hora': e.fecha_hora_entrega,
+            'monto': None,
+            'estado': 'ENTREGADO',
+        })
+
+    # Ordenar cronológicamente descendente (lo más reciente primero)
+    eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
+
+    # Conteo de KPIs globales
+    total_eventos = len(eventos)
+    total_jornadas = sum(1 for e in eventos if e['tipo'] == 'JORNADA')
+    total_cajas = sum(1 for e in eventos if e['tipo'] == 'CAJA')
+    total_traslados = sum(1 for e in eventos if e['tipo'] == 'TRASLADO')
+    total_ventas = sum(1 for e in eventos if e['tipo'] == 'VENTA')
+    total_cocina = sum(1 for e in eventos if e['tipo'] == 'COCINA')
+
+    # Filtro por tipo
+    if tipo_filtro and tipo_filtro != 'TODOS':
+        eventos = [e for e in eventos if e['tipo'] == tipo_filtro]
+
+    # Filtro por local
+    if local_filtro:
+        eventos = [e for e in eventos if e['local_id'] == local_filtro]
+
+    # Búsqueda libre
+    if busqueda:
+        eventos = [
+            e for e in eventos
+            if busqueda in e['titulo'].lower()
+            or busqueda in e['descripcion'].lower()
+            or busqueda in e['usuario'].lower()
+            or busqueda in e['local'].lower()
+            or busqueda in e['id_ref'].lower()
+        ]
+
+    locales_disponibles = PuntoVenta.objects.filter(activo=True).order_by('nombre')
+
+    context = {
+        'eventos': eventos,
+        'total_eventos_filtrados': len(eventos),
+        'total_eventos': total_eventos,
+        'total_jornadas': total_jornadas,
+        'total_cajas': total_cajas,
+        'total_traslados': total_traslados,
+        'total_ventas': total_ventas,
+        'total_cocina': total_cocina,
+        'locales_disponibles': locales_disponibles,
+        'tipo_filtro': tipo_filtro,
+        'local_filtro': local_filtro,
+        'busqueda': busqueda,
+    }
+    return render(request, 'ventas/administrador_historial.html', context)
+
+
+@requiere_rol(['ADMINISTRADOR'])
 def administrador_dashboard(request):
     """Página de Dashboard Analítico con gráfico mixto barras + línea (hasta 15 meses)"""
     # Histórico de 15 meses (Julio 2025 a Septiembre 2026)
