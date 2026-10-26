@@ -41,6 +41,12 @@ class SafariErrorHandlingMiddleware:
                 from ventas.views import error_400_view
                 return error_400_view(request)
 
+        # Cabeceras de seguridad reforzadas OWASP (Defense in Depth)
+        if 'Referrer-Policy' not in response:
+            response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        if 'Permissions-Policy' not in response:
+            response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+
         return response
 
     def process_exception(self, request, exception):

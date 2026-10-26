@@ -1610,8 +1610,8 @@ def administrador_historial(request):
             'id_ref': f"JOR-A-{j.id}",
             'tipo': 'JORNADA',
             'subtipo': 'Apertura de Jornada',
-            'badge_clase': 'bg-primary text-white',
-            'icono': 'bi-calendar-check-fill text-primary',
+            'badge_clase': 'badge-status-success',
+            'icono': 'bi-calendar-check-fill text-success',
             'titulo': f"Apertura de Jornada #{j.id}",
             'descripcion': f"Jornada operativa iniciada ({j.fecha}). Observaciones: {j.observaciones or 'Sin observaciones'}",
             'usuario': j.usuario_apertura.get_full_name() or j.usuario_apertura.username,
@@ -1626,8 +1626,8 @@ def administrador_historial(request):
                 'id_ref': f"JOR-C-{j.id}",
                 'tipo': 'JORNADA',
                 'subtipo': 'Cierre de Jornada',
-                'badge_clase': 'bg-secondary text-white',
-                'icono': 'bi-calendar-x-fill text-secondary',
+                'badge_clase': 'badge-status-danger',
+                'icono': 'bi-calendar-x-fill text-danger',
                 'titulo': f"Cierre de Jornada #{j.id}",
                 'descripcion': f"Jornada operativa finalizada y cuadrada por supervisión.",
                 'usuario': j.usuario_cierre.get_full_name() or j.usuario_cierre.username,
@@ -1645,7 +1645,7 @@ def administrador_historial(request):
             'id_ref': f"CAJ-A-{c.id}",
             'tipo': 'CAJA',
             'subtipo': 'Apertura de Caja',
-            'badge_clase': 'bg-success text-white',
+            'badge_clase': 'badge-status-success',
             'icono': 'bi-cash-coin text-success',
             'titulo': f"Apertura {c.nombre}",
             'descripcion': f"Caja habilitada en {c.punto_venta.nombre} con fondo de ${c.monto_apertura:,.0f} CLP.",
@@ -1661,8 +1661,8 @@ def administrador_historial(request):
                 'id_ref': f"CAJ-C-{c.id}",
                 'tipo': 'CAJA',
                 'subtipo': 'Cierre y Cuadre de Caja',
-                'badge_clase': 'bg-dark text-white',
-                'icono': 'bi-lock-fill text-dark',
+                'badge_clase': 'badge-status-danger',
+                'icono': 'bi-lock-fill text-danger',
                 'titulo': f"Cierre {c.nombre}",
                 'descripcion': f"Caja cerrada en {c.punto_venta.nombre} con saldo final de ${c.monto_cierre:,.0f} CLP.",
                 'usuario': c.cajero.get_full_name() or c.cajero.username,
@@ -1683,7 +1683,7 @@ def administrador_historial(request):
             'id_ref': f"TRA-{t.id}",
             'tipo': 'TRASLADO',
             'subtipo': 'Reasignación de Personal',
-            'badge_clase': 'bg-warning text-dark',
+            'badge_clase': 'badge-status-warning',
             'icono': 'bi-arrow-left-right text-warning',
             'titulo': f"Reasignación: {emp_nom}",
             'descripcion': f"Traslado desde '{origen_nom}' hacia '{t.punto_venta_destino.nombre}'. Motivo: {t.motivo or 'Operativo'}",
@@ -1699,12 +1699,21 @@ def administrador_historial(request):
     ventas_qs = Venta.objects.select_related('cajero', 'punto_venta', 'mesa').all()
     for v in ventas_qs:
         modalidad_txt = f"Consumo en Mesa {v.mesa.identificador}" if (v.modalidad == 'MESA' and v.mesa) else "Venta Rápida / Mostrador"
+        if v.estado == 'PAGADA':
+            v_badge = 'badge-status-success'
+            v_icono = 'bi-receipt text-success'
+        elif v.estado == 'ANULADA':
+            v_badge = 'badge-status-danger'
+            v_icono = 'bi-receipt text-danger'
+        else:
+            v_badge = 'badge-status-warning'
+            v_icono = 'bi-receipt text-warning'
         eventos.append({
             'id_ref': f"VEN-{v.id}",
             'tipo': 'VENTA',
             'subtipo': f"Venta {v.get_modalidad_display()}",
-            'badge_clase': 'bg-danger text-white',
-            'icono': 'bi-receipt text-danger',
+            'badge_clase': v_badge,
+            'icono': v_icono,
             'titulo': f"Venta #{v.id} (${v.total:,.0f} CLP)",
             'descripcion': f"{modalidad_txt} • Pago: {v.get_metodo_pago_display()} • Estado: {v.get_estado_display()}",
             'usuario': v.cajero.get_full_name() or v.cajero.username,
@@ -1724,8 +1733,8 @@ def administrador_historial(request):
             'id_ref': f"ENT-{e.id}",
             'tipo': 'COCINA',
             'subtipo': 'Entrega de Pedido',
-            'badge_clase': 'bg-info text-dark',
-            'icono': 'bi-check-circle-fill text-info',
+            'badge_clase': 'badge-status-success',
+            'icono': 'bi-check-circle-fill text-success',
             'titulo': f"Entrega Pedido #{e.pedido.id}",
             'descripcion': f"Comanda despachada al cliente. Observaciones: {e.observaciones or 'Completado'}",
             'usuario': usu_ent,

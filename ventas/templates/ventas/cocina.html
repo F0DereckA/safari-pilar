@@ -51,17 +51,18 @@
             box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
         }
         .kds-card.estado-pendiente {
-            border-top: 6px solid #f59e0b;
+            border-top: 6px solid var(--status-warning-border, #f59e0b);
         }
         .kds-card.estado-preparacion {
-            border-top: 6px solid #0284c7;
+            border-top: 6px solid var(--safari-yellow-dark, #d97706);
+            background-color: #fffdfa;
         }
         .kds-card.estado-listo {
-            border-top: 6px solid #16a34a;
-            background-color: #f0fdf4;
+            border-top: 6px solid var(--safari-green, #16a34a);
+            background-color: var(--status-success-bg, #f0fdf4);
         }
         .kds-card.demorado {
-            border: 2px solid #ef4444 !important;
+            border: 2px solid var(--status-danger-border, #ef4444) !important;
             animation: pulso-alerta 2s infinite ease-in-out;
         }
         @keyframes pulso-alerta {

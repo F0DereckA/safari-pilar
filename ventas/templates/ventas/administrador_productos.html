@@ -22,19 +22,21 @@
     <style>
         .prod-card {
             border-radius: 1rem;
-            border: 1.5px solid #e2e8f0;
+            border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
             background: #ffffff;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
         .prod-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 10px 20px rgba(92, 66, 48, 0.08);
+            border-color: var(--safari-cafe-medium, #cbbba6);
         }
         .badge-cat {
-            background-color: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fde68a;
+            background-color: var(--status-warning-bg, #fef3c7);
+            color: var(--status-warning-text, #92400e);
+            border: 1px solid var(--status-warning-border, #fde68a);
             font-size: 0.72rem;
+            font-weight: 700;
         }
         .btn-safari-header {
             background-color: #ffffff !important;
@@ -136,12 +138,12 @@
                 </div>
             </div>
 
-            <!-- Métricas Rápidas -->
+            <!-- Métricas Rápidas con Semántica Oficial -->
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="card card-safari rounded-4 p-3 bg-white h-100">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #b91c1c; width: 48px; height: 48px;">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); width: 48px; height: 48px;">
                                 <i class="bi bi-box-seam-fill fs-4"></i>
                             </div>
                             <div>
@@ -152,9 +154,9 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="card card-safari rounded-4 p-3 bg-white h-100">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #dcfce7; color: #15803d; width: 48px; height: 48px;">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: var(--status-success-bg); color: var(--status-success-text); width: 48px; height: 48px;">
                                 <i class="bi bi-check-circle-fill fs-4"></i>
                             </div>
                             <div>
@@ -165,27 +167,27 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="card card-safari rounded-4 p-3 bg-white h-100">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #f1f5f9; color: #475569; width: 48px; height: 48px;">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: var(--status-danger-bg); color: var(--status-danger-text); width: 48px; height: 48px;">
                                 <i class="bi bi-pause-circle-fill fs-4"></i>
                             </div>
                             <div>
                                 <small class="text-muted fw-bold d-block">DESACTIVADOS</small>
-                                <span class="fs-4 fw-bold text-secondary">{{ inactivos_count }}</span>
+                                <span class="fs-4 fw-bold text-danger">{{ inactivos_count }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="card card-safari rounded-4 p-3 bg-white h-100">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: #fef3c7; color: #b45309; width: 48px; height: 48px;">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="background-color: var(--status-warning-bg); color: var(--status-warning-text); width: 48px; height: 48px;">
                                 <i class="bi bi-tags-fill fs-4"></i>
                             </div>
                             <div>
                                 <small class="text-muted fw-bold d-block">CATEGORÍAS</small>
-                                <span class="fs-4 fw-bold text-warning">{{ categorias|length }}</span>
+                                <span class="fs-4 fw-bold" style="color: var(--safari-yellow-dark);">{{ categorias|length }}</span>
                             </div>
                         </div>
                     </div>
@@ -193,7 +195,7 @@
             </div>
 
             <!-- Filtros y Búsqueda -->
-            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+            <div class="card card-safari rounded-4 p-3 mb-4 bg-white">
                 <form method="GET" action="{% url 'administrador_productos' %}" class="row g-2 align-items-center">
                     <div class="col-md-4">
                         <div class="input-group">
@@ -252,17 +254,17 @@
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <div class="prod-card p-3 h-100 d-flex flex-column justify-content-between">
                         <div>
-                            <!-- Encabezado de la tarjeta -->
+                            <!-- Encabezado de la tarjeta con Semántica Oficial -->
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <span class="badge badge-cat px-2 py-1 rounded-pill fw-bold">
                                     <i class="bi bi-tag-fill me-1"></i>{{ p.categoria.nombre }}
                                 </span>
                                 {% if p.activo %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-bold">
+                                <span class="badge badge-status-success rounded-pill px-2 py-1 small fw-bold">
                                     <i class="bi bi-check-circle-fill me-1"></i>Activo
                                 </span>
                                 {% else %}
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 small fw-bold">
+                                <span class="badge badge-status-danger rounded-pill px-2 py-1 small fw-bold">
                                     <i class="bi bi-pause-circle-fill me-1"></i>Inactivo
                                 </span>
                                 {% endif %}
@@ -284,11 +286,11 @@
                                 <small class="text-muted fw-bold d-block mb-1" style="font-size: 0.72rem;">DISPONIBLE EN:</small>
                                 <div class="d-flex flex-wrap gap-1">
                                     {% for pv in p.puntos_venta.all %}
-                                    <span class="badge bg-light text-dark border small" style="font-size: 0.68rem;">
+                                    <span class="badge bg-light text-dark border small" style="font-size: 0.68rem; border-color: var(--safari-cafe-pastel) !important;">
                                         <i class="bi bi-building text-danger me-1"></i>{{ pv.nombre }}
                                     </span>
                                     {% empty %}
-                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle small" style="font-size: 0.68rem;">
+                                    <span class="badge badge-status-warning small" style="font-size: 0.68rem;">
                                         Sin local asignado
                                     </span>
                                     {% endfor %}
@@ -303,18 +305,18 @@
                                 <input type="hidden" name="accion" value="toggle_estado">
                                 <input type="hidden" name="producto_id" value="{{ p.id }}">
                                 {% if p.activo %}
-                                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" title="Desactivar producto">
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Pausar o desactivar producto de la carta">
                                     <i class="bi bi-pause-fill me-1"></i>Pausar
                                 </button>
                                 {% else %}
-                                <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" title="Activar producto">
+                                <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" title="Reactivar producto en la carta">
                                     <i class="bi bi-play-fill me-1"></i>Activar
                                 </button>
                                 {% endif %}
                             </form>
 
                             <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEditarProducto_{{ p.id }}" title="Modificar Producto">
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-color: var(--safari-yellow-dark);" data-bs-toggle="modal" data-bs-target="#modalEditarProducto_{{ p.id }}" title="Modificar Producto">
                                     <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarProducto_{{ p.id }}" title="Eliminar Producto">

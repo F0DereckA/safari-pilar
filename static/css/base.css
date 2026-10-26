@@ -1,18 +1,47 @@
 /* ==========================================================================
    Base & Common Styles - Safari Pilar (Venta_safari)
-   Paleta: Rojo, Amarillo, Colores Pasteles de Café
+   Sistema Centralizado de Identidad Visual:
+   - Paleta Corporativa: Rojo Safari, Amarillo Safari, Colores Claros de Café
+   - Semántica Oficial de Estados:
+     🔴 ALERTA / ERROR / CANCELADO / INACTIVO  -> ROJO
+     🟢 PERMITIDO / HABILITADO / PAGADO / LISTO -> VERDE
+     🟡 EN ESPERA / EN PROCESO / PENDIENTE      -> AMARILLO
    ========================================================================== */
 
 :root {
+    /* Paleta Corporativa de Identidad */
     --safari-red: #a71d1d;
     --safari-red-dark: #821414;
-    --safari-yellow: #f3b233;
-    --safari-yellow-dark: #d99616;
-    --safari-cafe-light: #f7f3eb;
+    --safari-red-hover: #b91c1c;
+    --safari-yellow: #f59e0b;
+    --safari-yellow-dark: #d97706;
+    --safari-yellow-light: #fef3c7;
+    --safari-yellow-hover: #fbbf24;
+
+    /* Tonos Claros Safari (Cálidos, Arena, Pergamino) */
+    --safari-cafe-light: #fbf7ee;
     --safari-cafe-pastel: #ede4d3;
     --safari-cafe-medium: #cbbba6;
     --safari-cafe-dark: #5c4230;
     --safari-cafe-deep: #3b281d;
+    --safari-card-bg: #ffffff;
+    --safari-card-border: #ede4d3;
+
+    /* Semántica Oficial Predefinida */
+    /* 🔴 Alerta / Error / Cancelado / Inactivo / Anulado */
+    --status-danger-bg: #fee2e2;
+    --status-danger-text: #991b1b;
+    --status-danger-border: #fca5a5;
+
+    /* 🟢 Permitido / Exitoso / Habilitado / Pagado / Entregado / Disponible */
+    --status-success-bg: #dcfce7;
+    --status-success-text: #166534;
+    --status-success-border: #86efac;
+
+    /* 🟡 En espera / En proceso / Pendiente / Ocupada / En Preparación / Reservada */
+    --status-warning-bg: #fef3c7;
+    --status-warning-text: #92400e;
+    --status-warning-border: #fde68a;
 }
 
 body {
@@ -22,6 +51,104 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+}
+
+/* ==========================================================================
+   Clases Semánticas Oficiales de Estado
+   ========================================================================== */
+
+/* 🔴 Alerta, Cancelado, Inactivo, Error, Cierre */
+.badge-status-danger,
+.badge-safari-danger {
+    background-color: var(--status-danger-bg) !important;
+    color: var(--status-danger-text) !important;
+    border: 1.5px solid var(--status-danger-border) !important;
+    font-weight: 700;
+}
+
+/* 🟢 Permitido, Habilitado, Pagado, Entregado, Libre, Apertura */
+.badge-status-success,
+.badge-safari-success {
+    background-color: var(--status-success-bg) !important;
+    color: var(--status-success-text) !important;
+    border: 1.5px solid var(--status-success-border) !important;
+    font-weight: 700;
+}
+
+/* 🟡 En espera, En proceso, Pendiente, Ocupada, Preparación, Reasignación */
+.badge-status-warning,
+.badge-safari-warning {
+    background-color: var(--status-warning-bg) !important;
+    color: var(--status-warning-text) !important;
+    border: 1.5px solid var(--status-warning-border) !important;
+    font-weight: 700;
+}
+
+/* Neutral / Información Informativa Safari */
+.badge-safari-neutral {
+    background-color: var(--safari-cafe-pastel) !important;
+    color: var(--safari-cafe-dark) !important;
+    border: 1.5px solid var(--safari-cafe-medium) !important;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   Tarjetas Estándar Safari (Homogeneización entre páginas antiguas y nuevas)
+   ========================================================================== */
+.card-safari,
+.safari-card {
+    background-color: var(--safari-card-bg);
+    border: 1.5px solid var(--safari-cafe-pastel);
+    border-radius: 1rem;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-safari:hover,
+.safari-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(92, 66, 48, 0.1);
+    border-color: var(--safari-cafe-medium);
+}
+
+.safari-box-light {
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-pastel);
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(92, 66, 48, 0.04);
+}
+
+/* Botones Safari Oficiales */
+.btn-safari-red {
+    background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);
+    color: #ffffff !important;
+    border: 1px solid var(--safari-red-dark);
+    font-weight: 700;
+    border-radius: 30px;
+    transition: all 0.2s ease;
+}
+
+.btn-safari-red:hover {
+    background: linear-gradient(135deg, var(--safari-red-hover) 0%, var(--safari-red) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(167, 29, 29, 0.35);
+}
+
+.btn-safari-yellow {
+    background: linear-gradient(180deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%);
+    color: var(--safari-cafe-deep) !important;
+    border: 1px solid var(--safari-yellow-dark);
+    font-weight: 700;
+    border-radius: 30px;
+    transition: all 0.2s ease;
+}
+
+.btn-safari-yellow:hover {
+    background: linear-gradient(180deg, #ffc857 0%, #e0981b 100%);
+    color: #000000 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 150, 22, 0.35);
 }
 
 h1, h2, h3, h4, h5, .brand-title {

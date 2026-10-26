@@ -55,14 +55,15 @@
     box-shadow: 0 8px 24px rgba(34, 197, 94, 0.2);
 }
 
+/* Mesa en proceso de consumo / atención -> Amarillo */
 .mesa-card.mesa-ocupada {
-    border-color: #ef4444;
-    background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
+    border-color: var(--safari-yellow, #f59e0b);
+    background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
 }
 
 .mesa-card.mesa-ocupada:hover {
-    border-color: #dc2626;
-    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.2);
+    border-color: var(--safari-yellow-dark, #d97706);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
 }
 
 .mesa-card.mesa-reservada {
@@ -70,10 +71,17 @@
     background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
 }
 
+/* Mesa inactiva / fuera de servicio -> Rojo */
+.mesa-card.mesa-inactiva {
+    border-color: var(--safari-red, #ef4444);
+    background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
+    opacity: 0.75;
+}
+
 .mesa-card.mesa-seleccionada {
-    border-color: #0284c7 !important;
-    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%) !important;
-    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.25) !important;
+    border-color: var(--safari-red) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fff4f2 100%) !important;
+    box-shadow: 0 0 0 4px rgba(167, 29, 29, 0.25) !important;
 }
 
 .mesa-title {

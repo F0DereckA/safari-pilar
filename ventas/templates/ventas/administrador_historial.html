@@ -44,11 +44,11 @@
             transition: background-color 0.2s ease;
         }
         .timeline-row:hover {
-            background-color: #f8fafc;
+            background-color: #fff9f0;
         }
     </style>
 </head>
-<body class="d-flex flex-column min-vh-100 bg-light">
+<body class="d-flex flex-column min-vh-100">
 
     <!-- Cenefa tribal superior -->
     <div class="tribal-divider"></div>
@@ -135,54 +135,54 @@
             </div>
         </div>
 
-        <!-- Indicadores KPI Consolidados -->
+        <!-- Indicadores KPI Consolidados con Semántica Oficial -->
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Total Eventos</small>
                     <div class="fs-3 fw-bold text-dark my-1">{{ total_eventos }}</div>
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill small">Auditados</span>
+                    <span class="badge badge-safari-neutral rounded-pill small">Auditados</span>
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Jornadas</small>
-                    <div class="fs-3 fw-bold text-primary my-1">{{ total_jornadas }}</div>
-                    <span class="badge bg-primary-subtle text-primary rounded-pill small">Ciclo Diario</span>
+                    <div class="fs-3 fw-bold text-dark my-1">{{ total_jornadas }}</div>
+                    <span class="badge badge-status-success rounded-pill small">Ciclo Diario</span>
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Cajas</small>
-                    <div class="fs-3 fw-bold text-success my-1">{{ total_cajas }}</div>
-                    <span class="badge bg-success-subtle text-success rounded-pill small">Turnos / Cuadres</span>
+                    <div class="fs-3 fw-bold text-dark my-1">{{ total_cajas }}</div>
+                    <span class="badge badge-status-success rounded-pill small">Turnos / Cuadres</span>
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Traslados</small>
-                    <div class="fs-3 fw-bold text-warning my-1">{{ total_traslados }}</div>
-                    <span class="badge bg-warning-subtle text-dark rounded-pill small">Reasignaciones</span>
+                    <div class="fs-3 fw-bold my-1" style="color: var(--safari-yellow-dark);">{{ total_traslados }}</div>
+                    <span class="badge badge-status-warning rounded-pill small">Reasignaciones</span>
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Ventas</small>
                     <div class="fs-3 fw-bold text-danger my-1">{{ total_ventas }}</div>
-                    <span class="badge bg-danger-subtle text-danger rounded-pill small">Comprobantes</span>
+                    <span class="badge badge-safari-danger rounded-pill small">Comprobantes</span>
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
+                <div class="card card-safari rounded-4 p-3 bg-white text-center h-100">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Cocina KDS</small>
-                    <div class="fs-3 fw-bold text-info my-1">{{ total_cocina }}</div>
-                    <span class="badge bg-info-subtle text-dark rounded-pill small">Entregas</span>
+                    <div class="fs-3 fw-bold text-success my-1">{{ total_cocina }}</div>
+                    <span class="badge badge-status-success rounded-pill small">Entregas</span>
                 </div>
             </div>
         </div>
 
         <!-- Filtros y Búsqueda -->
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+        <div class="card card-safari rounded-4 p-3 mb-4 bg-white">
             <form method="GET" class="row g-2 align-items-center">
                 
                 <!-- Filtro por Tipo de Evento -->
@@ -301,22 +301,22 @@
                                 </span>
                             </td>
 
-                            <!-- Estado -->
+                            <!-- Estado con Semántica Oficial -->
                             <td class="pe-3 text-center">
                                 {% if ev.estado == 'ABIERTA' or ev.estado == 'PAGADA' or ev.estado == 'ENTREGADO' or ev.estado == 'LEÍDA' %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                                <span class="badge badge-status-success rounded-pill px-2 py-1 small">
                                     {{ ev.estado }}
                                 </span>
-                                {% elif ev.estado == 'CERRADA' %}
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 small">
-                                    CERRADA
+                                {% elif ev.estado == 'CERRADA' or ev.estado == 'CANCELADA' or ev.estado == 'ANULADA' %}
+                                <span class="badge badge-status-danger rounded-pill px-2 py-1 small">
+                                    {{ ev.estado }}
                                 </span>
-                                {% elif ev.estado == 'PENDIENTE' %}
-                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2 py-1 small">
-                                    PENDIENTE
+                                {% elif ev.estado == 'PENDIENTE' or ev.estado == 'EN_PROCESO' %}
+                                <span class="badge badge-status-warning rounded-pill px-2 py-1 small">
+                                    {{ ev.estado }}
                                 </span>
                                 {% else %}
-                                <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small">
+                                <span class="badge badge-safari-neutral rounded-pill px-2 py-1 small">
                                     {{ ev.estado }}
                                 </span>
                                 {% endif %}

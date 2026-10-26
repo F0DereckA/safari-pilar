@@ -187,15 +187,19 @@
 
                         <div>
                             {% if m.estado == 'HABILITADA' %}
-                            <span class="badge bg-success text-white w-100 py-2 fw-bold">
+                            <span class="badge badge-status-success w-100 py-2 fw-bold">
                                 <i class="bi bi-check-circle-fill me-1"></i>Libre
                             </span>
                             {% elif m.estado == 'OCUPADA' %}
-                            <span class="badge bg-danger text-white w-100 py-2 fw-bold">
-                                <i class="bi bi-person-fill me-1"></i>Ocupada
+                            <span class="badge badge-status-warning w-100 py-2 fw-bold">
+                                <i class="bi bi-person-fill me-1"></i>En Atención
+                            </span>
+                            {% elif m.estado == 'INACTIVA' %}
+                            <span class="badge badge-status-danger w-100 py-2 fw-bold">
+                                <i class="bi bi-slash-circle-fill me-1"></i>Inactiva
                             </span>
                             {% else %}
-                            <span class="badge bg-warning text-dark w-100 py-2 fw-bold">
+                            <span class="badge badge-status-warning w-100 py-2 fw-bold">
                                 <i class="bi bi-clock-fill me-1"></i>Reservada
                             </span>
                             {% endif %}

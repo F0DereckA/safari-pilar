@@ -22,13 +22,14 @@
     <style>
         .menu-card {
             border-radius: 1rem;
-            border: 1.5px solid #e2e8f0;
+            border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
             background: #ffffff;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
         .menu-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 10px 20px rgba(92, 66, 48, 0.08);
+            border-color: var(--safari-cafe-medium, #cbbba6);
         }
         .btn-safari-header {
             background-color: #ffffff !important;
@@ -145,18 +146,18 @@
                                     <h4 class="fw-bold text-dark mt-1 mb-0">{{ m.nombre }}</h4>
                                 </div>
                                 {% if m.activo %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-bold">
+                                <span class="badge badge-status-success rounded-pill px-2 py-1 small fw-bold">
                                     <i class="bi bi-check-circle-fill me-1"></i>Carta Activa
                                 </span>
                                 {% else %}
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 small fw-bold">
+                                <span class="badge badge-status-danger rounded-pill px-2 py-1 small fw-bold">
                                     <i class="bi bi-pause-circle-fill me-1"></i>Pausada
                                 </span>
                                 {% endif %}
                             </div>
 
                             <!-- Local Asignado -->
-                            <div class="mb-3 p-2 rounded-3 bg-light border small">
+                            <div class="mb-3 p-2 rounded-3 bg-light border small" style="border-color: var(--safari-cafe-pastel) !important;">
                                 <div class="text-muted fw-bold">
                                     <i class="bi bi-building text-danger me-1"></i>PUNTO DE VENTA:
                                 </div>
@@ -172,7 +173,7 @@
                                         <i class="bi bi-list-check text-warning me-1"></i>Productos en Carta ({{ m.productos.count }}):
                                     </span>
                                 </div>
-                                <div class="border rounded-3 p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
+                                <div class="border rounded-3 p-2 bg-light" style="max-height: 200px; overflow-y: auto; border-color: var(--safari-cafe-pastel) !important;">
                                     {% for p in m.productos.all %}
                                     <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light-subtle small">
                                         <div class="text-truncate me-2">
@@ -198,7 +199,7 @@
                                 <input type="hidden" name="accion" value="toggle_estado">
                                 <input type="hidden" name="menu_id" value="{{ m.id }}">
                                 {% if m.activo %}
-                                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" title="Desactivar carta">
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" title="Desactivar carta">
                                     <i class="bi bi-pause-fill me-1"></i>Pausar
                                 </button>
                                 {% else %}
@@ -209,7 +210,7 @@
                             </form>
 
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#modalEditarMenu_{{ m.id }}" title="Modificar Carta">
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 py-1" style="border-color: var(--safari-yellow-dark);" data-bs-toggle="modal" data-bs-target="#modalEditarMenu_{{ m.id }}" title="Modificar Carta">
                                     <i class="bi bi-pencil-fill me-1"></i>Editar
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#modalEliminarMenu_{{ m.id }}" title="Eliminar Carta">
