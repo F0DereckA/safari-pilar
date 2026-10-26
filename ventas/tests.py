@@ -1379,9 +1379,219 @@ class SafariFase2A1Tests(TestCase):
         self.assertNotContains(resp_search, f"VEN-{venta.id}")
 
 
+# ==============================================================================
+# SEMANA 12: TESTS DE CUADRATURA, ARQUEO, LEY N° 20.956 Y CIERRE DE JORNADA
+# ==============================================================================
+class Semana12CuadraturaYRedondeoTests(TestCase):
+    """
+    Pruebas unitarias integrales para los requerimientos de la Semana 12:
+    - Regla de Redondeo en Efectivo (Ley N° 20.956 Banco Central de Chile).
+    - Subproceso de Cuadratura y Arqueo físico de denominaciones (Billetes y Monedas).
+    - Cierre de Caja con estados de cuadratura (CUADRADA, SOBRANTE, FALTANTE).
+    - Cierre de Jornada Operativa por supervisor validando cajas abiertas.
+    """
 
+    def setUp(self):
+        self.client = Client()
+        self.admin_user = User.objects.create_user(
+            username='admin_s12', password='password123',
+            first_name='Admin', last_name='Safari', is_staff=True
+        )
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR')
 
+        self.cajero_user = User.objects.create_user(
+            username='cajero_s12', password='password123',
+            first_name='Carlos', last_name='Cajero'
+        )
+        self.pv = PuntoVenta.objects.create(
+            nombre='Restaurante Safari S12', tipo='Restaurante', descripcion='Local S12'
+        )
+        PerfilEmpleado.objects.create(
+            usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv
+        )
 
+        self.otro_cajero = User.objects.create_user(
+            username='otro_cajero_s12', password='password123',
+            first_name='Lucia', last_name='Cajera'
+        )
+        PerfilEmpleado.objects.create(
+            usuario=self.otro_cajero, rol='CAJERO', punto_venta_actual=self.pv
+        )
 
+        self.jornada = Jornada.objects.create(
+            fecha=timezone.localdate(),
+            usuario_apertura=self.admin_user,
+            estado='ABIERTA'
+        )
 
+    def test_redondeo_ley_20956_efectivo_hacia_abajo(self):
+        """Cantidades terminadas en 1 a 5 se redondean hacia abajo a la decena inferior"""
+        from ventas.utils import calcular_redondeo_ley_20956
+        # Terminación en 1
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1001'), 'EFECTIVO')
+        self.assertEqual(monto, Decimal('1000'))
+        self.assertEqual(ajuste, Decimal('-1'))
 
+        # Terminación en 3
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1323'), 'EFECTIVO')
+        self.assertEqual(monto, Decimal('1320'))
+        self.assertEqual(ajuste, Decimal('-3'))
+
+        # Terminación en 5 (oficial Ley 20.956)
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1995'), 'EFECTIVO')
+        self.assertEqual(monto, Decimal('1990'))
+        self.assertEqual(ajuste, Decimal('-5'))
+
+    def test_redondeo_ley_20956_efectivo_hacia_arriba(self):
+        """Cantidades terminadas en 6 a 9 se redondean hacia arriba a la decena superior"""
+        from ventas.utils import calcular_redondeo_ley_20956
+        # Terminación en 6
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1326'), 'EFECTIVO')
+        self.assertEqual(monto, Decimal('1330'))
+        self.assertEqual(ajuste, Decimal('4'))
+
+        # Terminación en 9
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1999'), 'EFECTIVO')
+        self.assertEqual(monto, Decimal('2000'))
+        self.assertEqual(ajuste, Decimal('1'))
+
+    def test_redondeo_ley_20956_tarjetas_sin_redondeo(self):
+        """Operaciones con tarjeta o transferencia se cobran al peso exacto sin redondeo"""
+        from ventas.utils import calcular_redondeo_ley_20956
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1995'), 'DEBITO')
+        self.assertEqual(monto, Decimal('1995'))
+        self.assertEqual(ajuste, Decimal('0'))
+
+        monto_cred, ajuste_cred = calcular_redondeo_ley_20956(Decimal('1997'), 'CREDITO')
+        self.assertEqual(monto_cred, Decimal('1997'))
+        self.assertEqual(ajuste_cred, Decimal('0'))
+
+    def test_calcular_total_arqueo_denominaciones(self):
+        """Verifica que el modelo Caja sume correctamente todas las denominaciones chilenas"""
+        caja = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            nombre='Caja Test Arqueo',
+            monto_apertura=Decimal('10000.00'),
+            billetes_20000=2,
+            billetes_10000=1,
+            billetes_5000=3,
+            billetes_2000=5,
+            billetes_1000=10,
+            monedas_500=4,
+            monedas_100=8,
+            monedas_50=2,
+            monedas_10=5,
+            monedas_5=0,
+            monedas_1=0
+        )
+        self.assertEqual(caja.calcular_total_arqueo(), 87950)
+
+    def test_cerrar_caja_cuadratura_exacta(self):
+        """El cajero realiza el arqueo físico y la caja cuadra exactamente con lo esperado"""
+        caja = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            nombre='Caja S12 Exacta',
+            monto_apertura=Decimal('20000.00'),
+            estado='ABIERTA'
+        )
+        Venta.objects.create(
+            caja=caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            modalidad='VENTA_RAPIDA',
+            metodo_pago='EFECTIVO',
+            total=Decimal('30000.00'),
+            estado='PAGADA'
+        )
+        self.client.login(username='cajero_s12', password='password123')
+        resp = self.client.post(reverse('cerrar_caja'), {
+            'caja_id': caja.id,
+            'billetes_20000': '2',
+            'billetes_10000': '1',
+            'billetes_5000': '0',
+            'billetes_2000': '0',
+            'billetes_1000': '0',
+            'monedas_500': '0',
+            'monedas_100': '0',
+            'monedas_50': '0',
+            'monedas_10': '0',
+            'monedas_5': '0',
+            'monedas_1': '0',
+            'observaciones_cierre': 'Turno sin descuadres'
+        })
+        self.assertEqual(resp.status_code, 302)
+        caja.refresh_from_db()
+        self.assertEqual(caja.estado, 'CERRADA')
+        self.assertEqual(caja.estado_cuadre, 'CUADRADA')
+        self.assertEqual(caja.total_efectivo_declarado, Decimal('50000.00'))
+        self.assertEqual(caja.diferencia_cuadre, Decimal('0.00'))
+
+    def test_cerrar_caja_sobrante_y_faltante(self):
+        """Verifica que el arqueo detecte correctamente sobrantes y faltantes"""
+        caja = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            nombre='Caja S12 Dif',
+            monto_apertura=Decimal('10000.00'),
+            estado='ABIERTA'
+        )
+        self.client.login(username='cajero_s12', password='password123')
+        self.client.post(reverse('cerrar_caja'), {
+            'caja_id': caja.id,
+            'billetes_10000': '1',
+            'billetes_2000': '1',
+        })
+        caja.refresh_from_db()
+        self.assertEqual(caja.estado_cuadre, 'SOBRANTE')
+        self.assertEqual(caja.diferencia_cuadre, Decimal('2000.00'))
+
+    def test_cerrar_caja_seguridad_otro_cajero(self):
+        """Un cajero no puede cerrar la caja de otro colaborador"""
+        caja_carlos = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            nombre='Caja de Carlos',
+            monto_apertura=Decimal('10000.00'),
+            estado='ABIERTA'
+        )
+        self.client.login(username='otro_cajero_s12', password='password123')
+        resp = self.client.post(reverse('cerrar_caja'), {
+            'caja_id': caja_carlos.id,
+            'billetes_10000': '1'
+        })
+        caja_carlos.refresh_from_db()
+        self.assertEqual(caja_carlos.estado, 'ABIERTA')
+
+    def test_cerrar_jornada_bloqueo_cajas_abiertas(self):
+        """El administrador no puede cerrar jornada si quedan cajas abiertas sin arquear (salvo forzar)"""
+        Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv,
+            nombre='Caja Pendiente',
+            monto_apertura=Decimal('10000.00'),
+            estado='ABIERTA'
+        )
+        self.client.login(username='admin_s12', password='password123')
+        resp = self.client.post(reverse('cerrar_jornada'), {
+            'jornada_id': self.jornada.id,
+            'forzar_cierre': '0'
+        })
+        self.jornada.refresh_from_db()
+        self.assertEqual(self.jornada.estado, 'ABIERTA')
+
+        # Con forzar_cierre = 1
+        resp_forzar = self.client.post(reverse('cerrar_jornada'), {
+            'jornada_id': self.jornada.id,
+            'forzar_cierre': '1',
+            'observaciones_cierre': 'Cierre forzado por contingencia'
+        })
+        self.jornada.refresh_from_db()
+        self.assertEqual(self.jornada.estado, 'CERRADA')
+        self.assertEqual(self.jornada.usuario_cierre, self.admin_user)

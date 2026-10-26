@@ -602,9 +602,15 @@ def vendedor(request):
     hora_cierre = datetime.time(18, 0)
     en_horario = (hora_apertura <= ahora_hora < hora_cierre)
 
+    resumen_caja = None
+    if caja_activa:
+        from ventas.utils import calcular_resumen_caja
+        resumen_caja = calcular_resumen_caja(caja_activa)
+
     context = {
         "jornada_activa": jornada_activa,
         "caja_activa": caja_activa,
+        "resumen_caja": resumen_caja,
         "punto_venta": punto_venta,
         "usuario": request.user,
         "hoy_str": hoy.strftime("%d/%m/%Y"),
@@ -736,6 +742,157 @@ def abrir_caja(request):
         return redirect('vendedor')
 
     return redirect('vendedor')
+
+
+@requiere_rol(['CAJERO', 'ADMINISTRADOR'])
+def cerrar_caja(request):
+    """
+    Subproceso de Cuadratura y Arqueo al Cerrar Caja (Semana 12).
+    Desglose obligatorio de billetes ($20.000, $10.000, $5.000, $2.000, $1.000)
+    y monedas ($500, $100, $50, $10, $5, $1) según pauta y Ley N° 20.956.
+    """
+    if request.method == 'POST':
+        caja_id = request.POST.get('caja_id')
+        if not caja_id:
+            messages.error(request, "No se especificó la caja a cerrar.")
+            return redirect('vendedor')
+
+        caja = get_object_or_404(Caja, id=caja_id)
+
+        # Validación de permisos: cajero asignado o administrador
+        es_admin = request.user.is_staff or request.user.is_superuser or (
+            hasattr(request.user, 'perfil') and request.user.perfil.rol == 'ADMINISTRADOR'
+        )
+        if caja.cajero != request.user and not es_admin:
+            messages.error(request, "No tienes permisos para cerrar la caja de otro colaborador.")
+            return redirect('vendedor')
+
+        if caja.estado == 'CERRADA':
+            messages.warning(request, f"La {caja.nombre} ya se encuentra cerrada.")
+            return redirect('vendedor')
+
+        # Procesar desglose de billetes y monedas
+        def parse_cant(field):
+            raw = request.POST.get(field, '0').strip()
+            try:
+                val = int(raw)
+                return max(0, val)
+            except (ValueError, TypeError):
+                return 0
+
+        caja.billetes_20000 = parse_cant('billetes_20000')
+        caja.billetes_10000 = parse_cant('billetes_10000')
+        caja.billetes_5000 = parse_cant('billetes_5000')
+        caja.billetes_2000 = parse_cant('billetes_2000')
+        caja.billetes_1000 = parse_cant('billetes_1000')
+
+        caja.monedas_500 = parse_cant('monedas_500')
+        caja.monedas_100 = parse_cant('monedas_100')
+        caja.monedas_50 = parse_cant('monedas_50')
+        caja.monedas_10 = parse_cant('monedas_10')
+        caja.monedas_5 = parse_cant('monedas_5')
+        caja.monedas_1 = parse_cant('monedas_1')
+
+        obs_cierre = request.POST.get('observaciones_cierre', '').strip()
+        if obs_cierre:
+            caja.observaciones = (caja.observaciones or '') + f"\n[Cierre por {request.user.username}]: {obs_cierre}"
+
+        # Resumen financiero y comparación de cuadratura
+        from ventas.utils import calcular_resumen_caja
+        resumen = calcular_resumen_caja(caja)
+
+        total_contado = caja.calcular_total_arqueo()
+        total_esperado = resumen['total_efectivo_esperado']
+        diferencia = Decimal(str(total_contado)) - total_esperado
+
+        caja.total_efectivo_declarado = Decimal(str(total_contado))
+        caja.total_efectivo_esperado = total_esperado
+        caja.diferencia_cuadre = diferencia
+        caja.monto_cierre = Decimal(str(total_contado))
+        caja.fecha_hora_cierre = timezone.now()
+        caja.estado = 'CERRADA'
+
+        if diferencia == 0:
+            caja.estado_cuadre = 'CUADRADA'
+            msg_estado = "Cuadratura Exacta (Sin diferencias)"
+            msg_func = messages.success
+        elif diferencia > 0:
+            caja.estado_cuadre = 'SOBRANTE'
+            msg_estado = f"Sobrante de caja: +${int(diferencia):,} CLP".replace(',', '.')
+            msg_func = messages.warning
+        else:
+            caja.estado_cuadre = 'FALTANTE'
+            msg_estado = f"Faltante de caja: -${int(abs(diferencia)):,} CLP".replace(',', '.')
+            msg_func = messages.error
+
+        caja.save()
+
+        msg_func(
+            request,
+            f"✅ ¡{caja.nombre} cerrada y arqueada exitosamente! "
+            f"Efectivo contado: ${int(total_contado):,} CLP | "
+            f"Esperado: ${int(total_esperado):,} CLP | "
+            f"Resultado: {msg_estado}."
+        )
+
+        origen = request.POST.get('origen_redirect', '')
+        if origen == 'administrador_local' and caja.punto_venta:
+            return redirect('administrador_local', local_id=caja.punto_venta.id)
+        elif origen == 'administrador':
+            return redirect('administrador')
+        return redirect('vendedor')
+
+    return redirect('vendedor')
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def cerrar_jornada(request):
+    """
+    Cierre de Jornada Operativa Diaria (Semana 12).
+    Permite al supervisor/administrador finalizar la jornada diaria
+    validando que todas las cajas del día estén cerradas y cuadradas.
+    """
+    if request.method == 'POST':
+        jornada_id = request.POST.get('jornada_id')
+        if not jornada_id:
+            messages.error(request, "No se especificó la jornada a cerrar.")
+            return redirect('administrador')
+
+        jornada = get_object_or_404(Jornada, id=jornada_id)
+
+        if jornada.estado == 'CERRADA':
+            messages.warning(request, f"La Jornada #{jornada.id} ya se encuentra cerrada.")
+            return redirect('administrador')
+
+        # Verificar si quedan cajas abiertas asociadas a esta jornada
+        cajas_abiertas = jornada.cajas.filter(estado='ABIERTA')
+        forzar = request.POST.get('forzar_cierre') == '1'
+
+        if cajas_abiertas.exists() and not forzar:
+            nombres = ", ".join([c.nombre for c in cajas_abiertas])
+            messages.error(
+                request,
+                f"No es posible cerrar la jornada porque aún hay {cajas_abiertas.count()} caja(s) abierta(s): {nombres}. "
+                f"Todas las cajas deben cerrarse y arquearse antes del cierre de jornada."
+            )
+            return redirect('administrador')
+
+        obs = request.POST.get('observaciones_cierre', '').strip()
+        if obs:
+            jornada.observaciones = (jornada.observaciones or '') + f"\n[Cierre Jornada por {request.user.username}]: {obs}"
+
+        jornada.estado = 'CERRADA'
+        jornada.fecha_hora_cierre = timezone.now()
+        jornada.usuario_cierre = request.user
+        jornada.save()
+
+        messages.success(
+            request,
+            f"🔒 ¡Jornada #{jornada.id} ({jornada.fecha.strftime('%d/%m/%Y')}) cerrada oficialmente con éxito por supervisión!"
+        )
+        return redirect('administrador')
+
+    return redirect('administrador')
 
 
 @requiere_rol(['CAJERO'])
@@ -892,6 +1049,13 @@ def administrador(request):
     ahora_hora = ahora_dt.time()
     en_horario = (datetime.time(10, 0) <= ahora_hora < datetime.time(18, 0))
 
+    # Semana 12: Jornada operativa y estado de cajas para supervisión
+    jornada_activa = Jornada.objects.select_related('usuario_apertura', 'usuario_cierre').prefetch_related('cajas__cajero', 'cajas__punto_venta').filter(
+        fecha=hoy
+    ).order_by('-id').first()
+    cajas_jornada = list(jornada_activa.cajas.all()) if jornada_activa else []
+    cajas_abiertas_count = sum(1 for c in cajas_jornada if c.estado == 'ABIERTA')
+
     context = {
         "locales": locales.values(),
         "total_ventas": total_ventas,
@@ -901,6 +1065,9 @@ def administrador(request):
         "personal_completo": personal_completo,
         "alertas_traslado": alertas_traslado,
         "total_alertas_no_leidas": total_alertas_no_leidas,
+        "jornada_activa": jornada_activa,
+        "cajas_jornada": cajas_jornada,
+        "cajas_abiertas_count": cajas_abiertas_count,
         "hoy_str": hoy.strftime("%d/%m/%Y"),
         "ahora_hora_str": ahora_dt.strftime("%H:%M"),
         "en_horario": en_horario,
@@ -1657,14 +1824,30 @@ def administrador_historial(request):
             'estado': c.estado,
         })
         if c.fecha_hora_cierre and c.monto_cierre is not None:
+            cuadre_txt = ""
+            if c.total_efectivo_declarado is not None:
+                diff_val = c.diferencia_cuadre or 0
+                if diff_val == 0:
+                    badge_c = 'badge-status-success'
+                    diff_tag = "Cuadratura Exacta ($0)"
+                elif diff_val > 0:
+                    badge_c = 'badge-status-warning'
+                    diff_tag = f"Sobrante (+${int(diff_val):,} CLP)".replace(',', '.')
+                else:
+                    badge_c = 'badge-status-danger'
+                    diff_tag = f"Faltante (-${int(abs(diff_val)):,} CLP)".replace(',', '.')
+                cuadre_txt = f" | Arqueo: ${int(c.total_efectivo_declarado):,} contado vs ${int(c.total_efectivo_esperado or 0):,} esperado ({diff_tag})"
+            else:
+                badge_c = 'badge-status-danger'
+
             eventos.append({
                 'id_ref': f"CAJ-C-{c.id}",
                 'tipo': 'CAJA',
                 'subtipo': 'Cierre y Cuadre de Caja',
-                'badge_clase': 'badge-status-danger',
+                'badge_clase': badge_c,
                 'icono': 'bi-lock-fill text-danger',
                 'titulo': f"Cierre {c.nombre}",
-                'descripcion': f"Caja cerrada en {c.punto_venta.nombre} con saldo final de ${c.monto_cierre:,.0f} CLP.",
+                'descripcion': f"Caja cerrada en {c.punto_venta.nombre} con saldo final de ${c.monto_cierre:,.0f} CLP.{cuadre_txt}",
                 'usuario': c.cajero.get_full_name() or c.cajero.username,
                 'local': c.punto_venta.nombre,
                 'local_id': str(c.punto_venta.id),
@@ -1873,6 +2056,12 @@ def mesero(request):
                 ).first()
 
                 if venta_abierta:
+                    from ventas.utils import calcular_redondeo_ley_20956
+                    monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(venta_abierta.total, metodo_pago)
+
+                    venta_abierta.total_sin_redondeo = venta_abierta.total
+                    venta_abierta.redondeo_ley_20956 = ajuste_redondeo
+                    venta_abierta.total = monto_final
                     venta_abierta.estado = 'PAGADA'
                     venta_abierta.metodo_pago = metodo_pago
                     venta_abierta.save()
@@ -1881,7 +2070,8 @@ def mesero(request):
                     mesa_obj.save()
 
                     total_formateado = f"${int(venta_abierta.total):,}".replace(",", ".")
-                    messages.success(request, f"¡Cuenta de {mesa_obj.identificador} pagada y cerrada exitosamente con {metodo_pago}! Total recaudado: {total_formateado}. La mesa ha quedado libre para nuevos comensales.")
+                    txt_redondeo = f" (Ajuste Ley 20.956 en efectivo: {'+' if ajuste_redondeo > 0 else ''}${int(ajuste_redondeo):,} CLP)" if ajuste_redondeo != 0 else ""
+                    messages.success(request, f"¡Cuenta de {mesa_obj.identificador} pagada y cerrada exitosamente con {metodo_pago}! Total recaudado: {total_formateado}{txt_redondeo}. La mesa ha quedado libre para nuevos comensales.")
                 else:
                     mesa_obj.estado = 'HABILITADA'
                     mesa_obj.save()

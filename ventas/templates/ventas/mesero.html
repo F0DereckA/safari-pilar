@@ -763,6 +763,16 @@
                             </div>
                         </div>
 
+                        <!-- Indicador en vivo de Ley N° 20.956 (Regla de Redondeo en Efectivo) -->
+                        <div id="boxRedondeoLey" class="alert alert-light border rounded-3 py-2 px-3 mb-3" style="border-left: 4px solid #16a34a !important;">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="small text-muted">
+                                    <i class="bi bi-shield-check text-success me-1"></i>
+                                    <strong>Ley N&deg; 20.956 (Efectivo):</strong> <span id="txtDetalleRedondeo">Sin ajuste necesario</span>
+                                </span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold" id="badgeRedondeoMonto">$0</span>
+                            </div>
+                        </div>
                         <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 border-0">
                             <i class="bi bi-info-circle-fill me-1"></i>
                             Al confirmar, la cuenta quedará <strong>PAGADA</strong> y la mesa se marcará automáticamente como <strong>LIBRE / HABILITADA</strong> para la recepción de nuevos comensales.
@@ -1357,6 +1367,48 @@
             abrirModalCerrarCuenta();
         }
 
+        
+        function actualizarTotalConRedondeo() {
+            if (!mesaSeleccionada) return;
+            const cuenta = cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)];
+            if (!cuenta) return;
+
+            const metodo = document.querySelector('input[name="metodo_pago"]:checked')?.value || 'EFECTIVO';
+            const totalOriginal = Math.round(Number(cuenta.total) || 0);
+            const boxRedondeo = document.getElementById('boxRedondeoLey');
+            const txtDetalle = document.getElementById('txtDetalleRedondeo');
+            const badgeMonto = document.getElementById('badgeRedondeoMonto');
+            const displayTotal = document.getElementById('modalCerrarTotal');
+
+            if (metodo === 'EFECTIVO') {
+                const resto = totalOriginal % 10;
+                let ajuste = 0;
+                if (resto === 0) {
+                    ajuste = 0;
+                } else if (resto <= 5) {
+                    ajuste = -resto;
+                } else {
+                    ajuste = 10 - resto;
+                }
+                const totalRedondeado = totalOriginal + ajuste;
+                displayTotal.innerText = `$${totalRedondeado.toLocaleString('es-CL')}`;
+
+                if (boxRedondeo) boxRedondeo.classList.remove('d-none');
+                if (ajuste !== 0) {
+                    txtDetalle.innerText = `Total base $${totalOriginal.toLocaleString('es-CL')} -> Redondeo Ley 20.956: ${ajuste > 0 ? '+' : ''}$${ajuste} CLP`;
+                    badgeMonto.innerText = `${ajuste > 0 ? '+' : ''}$${ajuste} CLP`;
+                    badgeMonto.className = ajuste > 0 ? 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill fw-bold' : 'badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill fw-bold';
+                } else {
+                    txtDetalle.innerText = 'Monto exacto a la decena (sin redondeo).';
+                    badgeMonto.innerText = '$0 CLP';
+                    badgeMonto.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold';
+                }
+            } else {
+                displayTotal.innerText = `$${totalOriginal.toLocaleString('es-CL')}`;
+                if (boxRedondeo) boxRedondeo.classList.add('d-none');
+            }
+        }
+
         function abrirModalCerrarCuenta() {
             const cuenta = cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)];
             if (!cuenta) return;
@@ -1367,11 +1419,16 @@
             document.getElementById('modalCerrarResumen').innerText = `En ${cuenta.rondas} ${cuenta.rondas === 1 ? 'ronda acumulada' : 'rondas acumuladas'} (${cuenta.items.length} productos)`;
 
             const modal = new bootstrap.Modal(document.getElementById('modalCerrarCuenta'));
+            actualizarTotalConRedondeo();
             modal.show();
         }
 
         // Guardado rápido con tecla Enter en modal de notas
         document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[name="metodo_pago"]').forEach(r => {
+                r.addEventListener('change', actualizarTotalConRedondeo);
+            });
+
             // Disparar notificación flotante Toast en hora pico con mensajes del sistema
             {% if messages %}
                 {% for message in messages %}

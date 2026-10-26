@@ -104,6 +104,50 @@ class Caja(models.Model):
     estado = models.CharField(max_length=15, choices=ESTADOS, default='ABIERTA')
     observaciones = models.TextField(blank=True, null=True)
 
+    # ==========================================================================
+    # Subproceso de Cuadratura y Arqueo por Denominación (Semana 12 / Ley 20.956)
+    # ==========================================================================
+    billetes_20000 = models.PositiveIntegerField(default=0, help_text="Billetes $20.000")
+    billetes_10000 = models.PositiveIntegerField(default=0, help_text="Billetes $10.000")
+    billetes_5000 = models.PositiveIntegerField(default=0, help_text="Billetes $5.000")
+    billetes_2000 = models.PositiveIntegerField(default=0, help_text="Billetes $2.000")
+    billetes_1000 = models.PositiveIntegerField(default=0, help_text="Billetes $1.000")
+
+    monedas_500 = models.PositiveIntegerField(default=0, help_text="Monedas $500")
+    monedas_100 = models.PositiveIntegerField(default=0, help_text="Monedas $100")
+    monedas_50 = models.PositiveIntegerField(default=0, help_text="Monedas $50")
+    monedas_10 = models.PositiveIntegerField(default=0, help_text="Monedas $10")
+    monedas_5 = models.PositiveIntegerField(default=0, help_text="Monedas $5 (Pauta / Ley 20.956)")
+    monedas_1 = models.PositiveIntegerField(default=0, help_text="Monedas $1 (Pauta / Ley 20.956)")
+
+    total_efectivo_declarado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_efectivo_esperado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    diferencia_cuadre = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    ESTADOS_CUADRE = [
+        ('PENDIENTE', 'Pendiente de Cierre'),
+        ('CUADRADA', 'Cuadrada Exacta'),
+        ('SOBRANTE', 'Sobrante en Caja'),
+        ('FALTANTE', 'Faltante en Caja'),
+    ]
+    estado_cuadre = models.CharField(max_length=20, choices=ESTADOS_CUADRE, default='PENDIENTE')
+
+    def calcular_total_arqueo(self):
+        """Calcula el total físico contado por el cajero"""
+        return (
+            self.billetes_20000 * 20000 +
+            self.billetes_10000 * 10000 +
+            self.billetes_5000 * 5000 +
+            self.billetes_2000 * 2000 +
+            self.billetes_1000 * 1000 +
+            self.monedas_500 * 500 +
+            self.monedas_100 * 100 +
+            self.monedas_50 * 50 +
+            self.monedas_10 * 10 +
+            self.monedas_5 * 5 +
+            self.monedas_1 * 1
+        )
+
     def __str__(self):
         return f"{self.nombre} - {self.punto_venta.nombre} [{self.get_estado_display()}]"
 
@@ -245,6 +289,8 @@ class Venta(models.Model):
     modalidad = models.CharField(max_length=20, choices=MODALIDADES, default='VENTA_RAPIDA')
     mesa = models.ForeignKey(Mesa, on_delete=models.SET_NULL, null=True, blank=True, related_name='ventas')
     metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO, default='EFECTIVO')
+    total_sin_redondeo = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Monto antes de redondeo de ley")
+    redondeo_ley_20956 = models.DecimalField(max_digits=8, decimal_places=2, default=0, help_text="Ajuste Ley 20.956 para efectivo")
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PAGADA')
     fecha_hora = models.DateTimeField(auto_now_add=True)

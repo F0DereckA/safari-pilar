@@ -664,10 +664,31 @@
                             <span class="text-success fw-semibold">Entrega en Mostrador</span>
                         </div>
 
-                        <!-- Caja de Total Actual -->
+                                                <!-- Selección de Método de Pago y Ley N° 20.956 -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-wallet2 text-primary me-1"></i> M&eacute;todo de Pago:</span>
+                                <span class="badge bg-light text-muted border px-2 py-0" style="font-size: 0.7rem;">Caja POS</span>
+                            </label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="pos_metodo_pago" id="pos_pago_efectivo" value="EFECTIVO" checked onchange="actualizarResumen()">
+                                <label class="btn btn-outline-success btn-sm fw-bold" for="pos_pago_efectivo">Efectivo</label>
+                                <input type="radio" class="btn-check" name="pos_metodo_pago" id="pos_pago_debito" value="DEBITO" onchange="actualizarResumen()">
+                                <label class="btn btn-outline-primary btn-sm fw-bold" for="pos_pago_debito">D&eacute;bito</label>
+                                <input type="radio" class="btn-check" name="pos_metodo_pago" id="pos_pago_credito" value="CREDITO" onchange="actualizarResumen()">
+                                <label class="btn btn-outline-warning text-dark btn-sm fw-bold" for="pos_pago_credito">Cr&eacute;dito</label>
+                                <input type="radio" class="btn-check" name="pos_metodo_pago" id="pos_pago_transferencia" value="TRANSFERENCIA" onchange="actualizarResumen()">
+                                <label class="btn btn-outline-info text-dark btn-sm fw-bold" for="pos_pago_transferencia">Transf.</label>
+                            </div>
+                        </div>
+
+<!-- Caja de Total Actual -->
                         <div class="total-box mb-3">
                             <span class="text-uppercase fw-bold small text-muted" style="letter-spacing: 1px;">TOTAL ACTUAL</span>
                             <h2 class="total-number" id="totalActualDisplay">$0</h2>
+                            <div id="boxRedondeoPOS" class="small mt-1 text-success fw-semibold d-none">
+                                <i class="bi bi-shield-check me-1"></i> <span id="txtRedondeoPOS">Ley N&deg; 20.956 (Efectivo)</span>
+                            </div>
                             <small class="text-muted">Pesos Chilenos (CLP)</small>
                         </div>
 
@@ -760,7 +781,7 @@
                         Los ítems de comida por cocinar han sido derivados a <strong>Cocina</strong> y las bebidas preparadas a <strong>Barra</strong>.
                     </p>
                     <div class="p-3 rounded-3 my-3" style="background-color: var(--safari-cafe-pastel); border: 1.5px dashed var(--safari-cafe-medium);">
-                        <div class="small text-muted">Total Cobrado:</div>
+                        <div class="small text-muted">Total Cobrado (<span id="modalMetodoPagoTexto" class="fw-bold text-dark">Efectivo</span>):</div>
                         <div class="fs-2 fw-bold text-danger" id="modalTotalCobrado">$0</div>
                         <div class="small fw-bold text-dark mt-1">
                             Ticket Comanda: <span id="modalTicketId" class="text-danger">#COM-0085</span> • Caja Alimentos 01
@@ -915,6 +936,17 @@
         }
 
         // Formato moneda CLP
+        
+        // Cálculo oficial de redondeo en efectivo conforme a Ley N° 20.956
+        function calcularRedondeoChile(monto, metodo) {
+            const m = Math.round(Number(monto) || 0);
+            if (metodo !== 'EFECTIVO' || m === 0) return { final: m, ajuste: 0 };
+            const resto = m % 10;
+            if (resto === 0) return { final: m, ajuste: 0 };
+            if (resto <= 5) return { final: m - resto, ajuste: -resto };
+            return { final: m + (10 - resto), ajuste: 10 - resto };
+        }
+
         function formatearMoneda(valor) {
             return '$' + valor.toLocaleString('es-CL');
         }
@@ -976,7 +1008,23 @@
             }
 
             document.getElementById('subtotalDisplay').innerText = formatearMoneda(total);
-            document.getElementById('totalActualDisplay').innerText = formatearMoneda(total);
+            
+            const metodoSeleccionado = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO';
+            const resRedondeo = calcularRedondeoChile(total, metodoSeleccionado);
+            const boxRedondeo = document.getElementById('boxRedondeoPOS');
+            const txtRedondeo = document.getElementById('txtRedondeoPOS');
+
+            document.getElementById('totalActualDisplay').innerText = formatearMoneda(resRedondeo.final);
+
+            if (boxRedondeo && txtRedondeo) {
+                if (metodoSeleccionado === 'EFECTIVO' && total > 0 && resRedondeo.ajuste !== 0) {
+                    boxRedondeo.classList.remove('d-none');
+                    txtRedondeo.innerText = `Ajuste Ley 20.956: ${resRedondeo.ajuste > 0 ? '+' : ''}$${resRedondeo.ajuste} CLP (Efectivo)`;
+                } else {
+                    boxRedondeo.classList.add('d-none');
+                }
+            }
+
             document.getElementById('itemCountBadge').innerText = totalItems + (totalItems === 1 ? ' ítem' : ' ítems');
 
             // Actualizar barra flotante para tabletas y smartphones
@@ -1101,7 +1149,13 @@
 
             // Actualizar modal
             document.getElementById('modalTicketId').innerText = '#' + ticketId;
-            document.getElementById('modalTotalCobrado').innerText = formatearMoneda(total);
+            
+            const metodoCobro = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO';
+            const redondeoCobro = calcularRedondeoChile(total, metodoCobro);
+            const elMetodoTxt = document.getElementById('modalMetodoPagoTexto');
+            if (elMetodoTxt) elMetodoTxt.innerText = metodoCobro;
+            document.getElementById('modalTotalCobrado').innerText = formatearMoneda(redondeoCobro.final);
+
             document.getElementById('modalDestinoTexto').innerHTML = `
                 El pedido <strong>#${ticketId}</strong> fue derivado a <strong>${destino}</strong> con estado <strong>${estadoInicial.toUpperCase()}</strong>.
             `;
