@@ -11,15 +11,15 @@ from django.db.models import Sum
 
 def calcular_redondeo_ley_20956(monto, metodo_pago='EFECTIVO'):
     """
-    Aplica la Regla de Redondeo estipulada en la Ley N° 20.956 para operaciones en efectivo:
-    - Cantidades que terminen en 1, 2, 3, 4 o 5 se redondean hacia abajo a la decena inferior.
-    - Cantidades que terminen en 6, 7, 8 o 9 se redondean hacia arriba a la decena superior.
+    Aplica la Regla de Redondeo para operaciones en efectivo (1 al 4 hacia abajo, 5 al 9 hacia arriba):
+    - Cantidades que terminen en 1, 2, 3 o 4 se redondean hacia abajo a la decena inferior.
+    - Cantidades que terminen en 5, 6, 7, 8 o 9 se redondean hacia arriba a la decena superior.
     - Operaciones con tarjetas o transferencias electrónicas no se redondean (pago al peso exacto).
     
     Retorna tupla: (monto_final, ajuste_redondeo)
     Ejemplos:
-      $1.995 -> $1.990 (ajuste: -5)
-      $1.996 -> $2.000 (ajuste: +4)
+      $1.994 -> $1.990 (ajuste: -4)
+      $1.995 -> $2.000 (ajuste: +5)
       $2.000 -> $2.000 (ajuste: 0)
     """
     monto_dec = Decimal(str(monto))
@@ -32,7 +32,7 @@ def calcular_redondeo_ley_20956(monto, metodo_pago='EFECTIVO'):
     if resto == 0:
         ajuste = 0
         final = monto_int
-    elif resto <= 5:
+    elif resto <= 4:
         ajuste = -resto
         final = monto_int - resto
     else:

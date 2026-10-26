@@ -1425,7 +1425,7 @@ class Semana12CuadraturaYRedondeoTests(TestCase):
         )
 
     def test_redondeo_ley_20956_efectivo_hacia_abajo(self):
-        """Cantidades terminadas en 1 a 5 se redondean hacia abajo a la decena inferior"""
+        """Cantidades terminadas en 1 a 4 se redondean hacia abajo a la decena inferior"""
         from ventas.utils import calcular_redondeo_ley_20956
         # Terminación en 1
         monto, ajuste = calcular_redondeo_ley_20956(Decimal('1001'), 'EFECTIVO')
@@ -1437,14 +1437,19 @@ class Semana12CuadraturaYRedondeoTests(TestCase):
         self.assertEqual(monto, Decimal('1320'))
         self.assertEqual(ajuste, Decimal('-3'))
 
-        # Terminación en 5 (oficial Ley 20.956)
-        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1995'), 'EFECTIVO')
+        # Terminación en 4
+        monto, ajuste = calcular_redondeo_ley_20956(Decimal('1994'), 'EFECTIVO')
         self.assertEqual(monto, Decimal('1990'))
-        self.assertEqual(ajuste, Decimal('-5'))
+        self.assertEqual(ajuste, Decimal('-4'))
 
     def test_redondeo_ley_20956_efectivo_hacia_arriba(self):
-        """Cantidades terminadas en 6 a 9 se redondean hacia arriba a la decena superior"""
+        """Cantidades terminadas en 5 a 9 se redondean hacia arriba a la decena superior"""
         from ventas.utils import calcular_redondeo_ley_20956
+        # Terminación en 5 (hacia arriba)
+        monto_5, ajuste_5 = calcular_redondeo_ley_20956(Decimal('1995'), 'EFECTIVO')
+        self.assertEqual(monto_5, Decimal('2000'))
+        self.assertEqual(ajuste_5, Decimal('5'))
+
         # Terminación en 6
         monto, ajuste = calcular_redondeo_ley_20956(Decimal('1326'), 'EFECTIVO')
         self.assertEqual(monto, Decimal('1330'))

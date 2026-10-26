@@ -943,7 +943,7 @@
             if (metodo !== 'EFECTIVO' || m === 0) return { final: m, ajuste: 0 };
             const resto = m % 10;
             if (resto === 0) return { final: m, ajuste: 0 };
-            if (resto <= 5) return { final: m - resto, ajuste: -resto };
+            if (resto <= 4) return { final: m - resto, ajuste: -resto };
             return { final: m + (10 - resto), ajuste: 10 - resto };
         }
 
