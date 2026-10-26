@@ -28,8 +28,22 @@
         <div class="container-fluid px-lg-5">
             <div class="d-flex align-items-center justify-content-between">
                 
-                <!-- Logo como botón para volver al inicio -->
+                <!-- Logo oficial inteligente: si está autenticado lleva a su módulo, si no al inicio -->
+                {% if request.user.is_authenticated %}
+                    {% if request.user.perfil.rol == 'ADMINISTRADOR' or request.user.is_staff or request.user.is_superuser %}
+                    <a href="{% url 'administrador' %}" class="logo-link" title="Ir al Panel de Administración">
+                    {% elif request.user.perfil.rol == 'CAJERO' %}
+                    <a href="{% url 'vendedor' %}" class="logo-link" title="Ir a Terminal de Ventas">
+                    {% elif request.user.perfil.rol == 'MESERO' %}
+                    <a href="{% url 'mesero' %}" class="logo-link" title="Ir a Terminal de Meseros">
+                    {% elif request.user.perfil.rol == 'COCINERO' %}
+                    <a href="{% url 'cocina' %}" class="logo-link" title="Ir a KDS Cocina">
+                    {% else %}
+                    <a href="{% url 'index' %}" class="logo-link" title="Portal Principal">
+                    {% endif %}
+                {% else %}
                 <a href="{% url 'index' %}" class="logo-link" title="Volver a la pantalla principal">
+                {% endif %}
                     <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 58px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
                     <div>
                         <h1 class="brand-text-main">Venta Safari</h1>
