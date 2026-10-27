@@ -276,7 +276,7 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="{% url 'login' %}">
+                <form method="POST" action="{% url 'login' %}" autocomplete="off">
                     {% csrf_token %}
                     <div class="modal-body p-4">
                         <p class="text-center fw-semibold text-muted mb-3">
@@ -343,14 +343,14 @@
                             <label class="form-label small fw-bold text-dark">
                                 <i class="bi bi-person-fill text-danger me-1"></i> Usuario
                             </label>
-                            <input type="text" name="username" id="loginUsername" class="form-control" required placeholder="Ej: eparedes, cvalenzuela, rgomez, dsilva">
+                            <input type="text" name="username" id="loginUsername" class="form-control" required placeholder="Ej: eparedes, cvalenzuela, rgomez, dsilva" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-dark">
                                 <i class="bi bi-key-fill text-danger me-1"></i> Contraseña
                             </label>
-                            <input type="password" name="password" id="loginPassword" class="form-control" required placeholder="Ingresa tu contraseña">
+                            <input type="password" name="password" id="loginPassword" class="form-control" required placeholder="Ingresa tu contraseña" autocomplete="new-password" data-lpignore="true">
                         </div>
 
                         <!-- Tarjeta de Ayuda con Credenciales de Prueba -->
