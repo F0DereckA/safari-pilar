@@ -305,6 +305,87 @@
             </div>
         </div>
 
+
+        <!-- REGISTRO DE VENTAS RECIENTES Y CONTROL ANTI-FRAUDE DE ANULACIONES -->
+        {% if ventas_recientes %}
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #b91c1c; width: 38px; height: 38px;">
+                        <i class="bi bi-shield-lock-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Control Anti-Fraude: Ventas Recientes de la Caja</h6>
+                        <small class="text-muted">Las anulaciones requieren obligatoriamente visado de Supervisor y motivo justificado para auditoría</small>
+                    </div>
+                </div>
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-clock-history me-1"></i> Turno Actual
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th># Venta</th>
+                            <th>Hora</th>
+                            <th>Modalidad</th>
+                            <th>Total Cobrado</th>
+                            <th>Método de Pago</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acción de Seguridad</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        {% for v in ventas_recientes %}
+                        <tr>
+                            <td class="fw-bold">VEN-{{ v.id }}</td>
+                            <td>{{ v.fecha_hora|date:"H:i" }} hrs</td>
+                            <td>
+                                {% if v.modalidad == 'MESA' and v.mesa %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                        <i class="bi bi-shop me-1"></i> Mesa {{ v.mesa.identificador }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                                        <i class="bi bi-bag-check me-1"></i> Mostrador
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">${{ v.total|floatformat:0 }} CLP</td>
+                            <td>{{ v.get_metodo_pago_display }}</td>
+                            <td>
+                                {% if v.estado == 'PAGADA' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Pagada
+                                    </span>
+                                {% elif v.estado == 'ANULADA' %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Anulada
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">
+                                        {{ v.get_estado_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if v.estado == 'PAGADA' %}
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="abrirModalAnular('{{ v.id }}', '{{ v.total|floatformat:0 }}')">
+                                    <i class="bi bi-shield-x me-1"></i> Anular Venta
+                                </button>
+                                {% else %}
+                                <span class="text-muted small">Sin acción</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
     </main>
 
     <!-- MODAL 1: APERTURA DE JORNADA Y CAJA INICIAL (RF02 & RF03) -->
@@ -679,6 +760,88 @@
     <script src="{% static 'js/safari_alerts.js' %}"></script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+    
+    <!-- MODAL ANTI-FRAUDE: ANULACIÓN DE VENTA CON SUPERVISIÓN -->
+    <div class="modal fade" id="modalAnularVenta" tabindex="-1" aria-labelledby="modalAnularVentaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold" id="modalAnularVentaLabel">
+                        <i class="bi bi-shield-lock-fill me-2"></i> Anulación de Venta (Anti-Fraude)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formAnularVenta" method="POST" action="">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Protocolo Anti-Fraude:</strong> La anulación revierte el registro contable y queda asentada en la auditoría del Administrador con marca temporal y usuario responsable.
+                        </div>
+
+                        <div class="bg-light p-3 rounded-3 mb-3 border">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">Venta Seleccionada:</span>
+                                <strong id="lblVentaId" class="text-dark">#0</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="text-muted small">Monto a Revertir:</span>
+                                <strong id="lblVentaTotal" class="text-danger">$0 CLP</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                Motivo de la Anulación <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5"></textarea>
+                            <div class="form-text small">Obligatorio (mínimo 5 caracteres) para registro de auditoría.</div>
+                        </div>
+
+                        <div class="border-top pt-3 mt-3">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-key-fill text-danger"></i>
+                                <span class="small fw-bold text-dark">Autorización de Supervisor Requerida</span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                Ingrese las credenciales de un usuario con perfil de <strong>ADMINISTRADOR</strong> para visar esta anulación:
+                            </p>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Usuario Administrador</label>
+                                    <input type="text" name="supervisor_username" class="form-control form-control-sm" placeholder="ej: rgomez" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Contraseña</label>
+                                    <input type="password" name="supervisor_password" class="form-control form-control-sm" placeholder="••••••••" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0 p-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                            <i class="bi bi-check2-circle me-1"></i> Confirmar Anulación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function abrirModalAnular(ventaId, total) {
+        const form = document.getElementById('formAnularVenta');
+        form.action = '/ventas/' + ventaId + '/anular/';
+        document.getElementById('lblVentaId').textContent = 'VEN-' + ventaId;
+        document.getElementById('lblVentaTotal').textContent = '$' + Number(total).toLocaleString('es-CL') + ' CLP';
+        const modalEl = document.getElementById('modalAnularVenta');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+    </script>
+
+    <script src="{% static 'js/seguridad_sesion.js' %}"></script>
 
     <!-- Lógica de Control de Tickets en Desarrollo (Vanilla JS con LocalStorage) -->
     <script>

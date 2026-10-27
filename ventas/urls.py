@@ -22,6 +22,9 @@ urlpatterns = [
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
+    path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
+    path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
+
     # Rutas de prueba/auditoría para errores HTTP personalizados (Semana 10)
     path('400/', views.error_400_view, name='error_400'),
     path('403/', views.error_403_view, name='error_403'),

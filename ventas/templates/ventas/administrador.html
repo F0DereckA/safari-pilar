@@ -176,6 +176,12 @@
                     <a href="{% url 'administrador_historial' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
                         <i class="bi bi-clock-history text-danger me-1"></i> Historial
                     </a>
+                    <form method="POST" action="{% url 'administrador_backup' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #0d6efd; color: #0d6efd; box-shadow: 0 0 10px rgba(13, 110, 253, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);" title="Generar Copia de Seguridad Inmediata de Base de Datos (Disaster Recovery)">
+                            <i class="bi bi-database-down text-primary me-1"></i> Respaldo BD
+                        </button>
+                    </form>
                     <a href="{% url 'administrador_dashboard' %}" class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d; box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08);">
                         <i class="bi bi-bar-chart-line-fill text-warning me-1"></i> Dashboard
                     </a>
@@ -889,6 +895,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/anti_doble_envio.js' %}"></script>
+    <script src="{% static 'js/seguridad_sesion.js' %}"></script>
 
     <!-- Script para Gestión Dinámica del Centro de Alertas -->
     <form id="formCsrfAlertas" style="display:none;">{% csrf_token %}</form>

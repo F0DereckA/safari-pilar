@@ -6,17 +6,27 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Semana 11 (20/10) — COMPLETADA AL 100% con 50/50 pruebas unitarias aprobadas**.
+- tarea actual: **Semana 12 (27/10/2026) y Blindaje de Seguridad/Resiliencia — COMPLETADOS AL 100%**.
 - estado académico vigente:
-  - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37/37 pruebas)**.
-  - CRUD Usuarios: **COMPLETADO / VALIDADO**.
-  - CRUD Puntos de Venta: **COMPLETADO / VALIDADO**.
-  - CRUD Mesas: **COMPLETADO (41/41 pruebas)**.
-  - CRUD Productos y Menús con BD: **COMPLETADO (45/45 pruebas)**.
-  - Blindaje Middleware Errores HTTP (404, 403, 400, 500): **COMPLETADO (47/47 pruebas)**. Intercepta URLs mal escritas (ej: `/adminitrador/`) mostrando siempre la página corporativa amigable de Parque Safari en desarrollo y producción.
-  - Historial de Acciones y Trazabilidad Operativa: **COMPLETADO (50/50 pruebas)**. Consolidación cronológica unificada en `/administrador/historial/` de Jornadas, Cajas, Traslados de personal, Ventas y Entregas KDS con filtros por tipo, local y búsqueda rápida.
-  - suite vigente reportada: **50/50 pruebas aprobadas al 100% (Ran 50 tests OK)**.
-- estado del sistema: Todo el alcance de Semana 10 y Semana 11 se encuentra 100% funcional, probado y conectado a base de datos real SQLite sin alterar KDS Cocina, Mesero ni Caja.
+  - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37 pruebas)**.
+  - Semana 11 (20/10): **COMPLETADA AL 100% (50 pruebas)** (CRUD Usuarios, Locales, Mesas, Productos/Menús e Historial unificado).
+  - Semana 12 (27/10): **COMPLETADA AL 100%**:
+    * Apertura y cierre de jornada diaria (RF02) desde Administrador y Cajero.
+    * Apertura y cierre de cajas individuales con fondo inicial de sencillo/vuelto (RF03).
+    * Diferenciación de ventas rápidas en barra (boleta inmediata) vs. consumo en mesa de garzón (boleta al finalizar).
+    * Modal interactivo de cuadratura/arqueo de caja con desglose de billetes ($20.000, $10.000, $5.000, $2.000, $1.000) y monedas ($500, $100, $50, $10, $5, $1).
+    * Cálculo de cuadratura en tiempo real (monto declarado vs esperado: exacto, sobrante o faltante).
+    * Adaptación legal de regla de redondeo en efectivo (Ley N° 20.956): terminaciones de 1 a 4 redondean hacia abajo a la decena anterior, 5 a 9 hacia arriba a la decena superior. Pagos electrónicos sin redondeo.
+  - **Evaluación 3 - Ingeniería de Software (35%)**:
+    * Documento oficial generado: `Evaluacion_3_Ingenieria_de_Software_Parque_Safari.docx` (4.0 MB).
+    * Primera mitad completada al 100%: Sección 1 (Diseño Lógico: 5 mockups con heurísticas de Nielsen, MER conceptual de 19 entidades, Modelo Relacional 3FN) y Sección 2 (Diseño Físico: arquitectura MVT, patrones GoF, script DDL SQL completo de 14 tablas y diccionario de datos).
+  - **Blindaje de Seguridad, Integridad y Resiliencia ante Caídas y Fraude — IMPLEMENTADO**:
+    1. *Control Anti-Fraude en Anulaciones*: Requiere autorización de supervisor (credenciales de Administrador), justificación obligatoria (>= 5 caracteres), trazabilidad en historial (`AlertaTraslado`) y liberación de mesas asociadas.
+    2. *Control de Concurrencia con Bloqueo de Fila (`select_for_update`)*: Aplicado en `cerrar_cuenta_mesa`, `enviar_comanda`, `abrir_caja`, `cerrar_caja` para evitar colisiones entre tablets y terminales concurrentes.
+    3. *Cierre de Sesión por Inactividad (Auto-Logout)*: Script cliente `static/js/seguridad_sesion.js` que detecta inactividad a los 15 minutos, con modal preventivo interactivo a los 14 minutos (cuenta regresiva de 60 segundos) y renovación automática por interacción (`SESSION_SAVE_EVERY_REQUEST = True`).
+    4. *Protección contra Fuerza Bruta a nivel de IP (OWASP)*: Bloqueo de red por 15 minutos tras 10 intentos fallidos globales, mitigando ataques de diccionario o pulverización de contraseñas.
+    5. *Comando de Respaldo y Recuperación ante Desastres (`py manage.py backup_safari`)*: Snapshot en caliente con SQLite backup API, compresión GZIP, cálculo de checksum SHA-256, verificación física de integridad (`PRAGMA integrity_check`), rotación automática de 14 días y botón directo en el panel de Administración.
+- estado del sistema: Todo el alcance se encuentra implementado, probado y persistido en SQLite sin alterar KDS Cocina, Mesero ni Caja. Procesos en segundo plano actualmente detenidos de forma limpia.
 ---
 
 ### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11
@@ -693,7 +703,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- próxima acción: Implementar **avance inicial real de Productos y Menús con BD** según sección 8.
+- próxima acción: Retomar la **Segunda Mitad de la Evaluación 3** (Sección 3: Aspectos de integridad, disponibilidad y confidencialidad a testear, y Sección 4: Prototipo de software con CRUDs, consultas y reportes) o reiniciar el servidor de desarrollo (`py manage.py runserver`) según la instrucción del usuario.
 - prioridad: URGENTE por clase del 20/10.
 - punto de partida confirmado:
   - Semana 10 completa.
@@ -711,6 +721,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - nuevo conteo exacto de tests registrado.
 - después de esto: realizar únicamente análisis inicial de Historial de Acciones y detener para revisión de ChatGPT/usuario.
 ## 11. historial breve
+- fecha: 2026-10-27
+  - resumen: **Semana 12 (27/10/2026) y Blindaje de Resiliencia completados**:
+    * Implementación del proceso principal de ventas: ciclo de jornada (RF02), apertura/cierre de cajas con fondo de sencillo (RF03), ventas en barra vs. comandas de salón.
+    * Subproceso de cuadratura y arqueo al cerrar caja: desglose por unidades de billetes ($20.000 a $1.000) y monedas ($500 a $1), con cálculo dinámico de exactitud, sobrante o faltante.
+    * Implementación de regla de redondeo en efectivo adaptada de la Ley N° 20.956 (1 a 4 hacia abajo, 5 a 9 hacia arriba).
+    * Elaboración de la primera mitad del informe técnico oficial para INACAP: `Evaluacion_3_Ingenieria_de_Software_Parque_Safari.docx` (Sección 1: Diseño Lógico y Sección 2: Diseño Físico).
+    * Implementación de las 5 protecciones de seguridad y resiliencia: Control Anti-Fraude de anulaciones con clave de supervisor, concurrencia `select_for_update`, auto-logout por inactividad a los 15 min con advertencia modal, rate limiting de red contra ataques de fuerza bruta y comando de backups en caliente `backup_safari` con GZIP y SHA-256.
 - fecha: 2026-09-22
   - resumen: Creación de proyecto Django Venta_safari, app ventas, settings y templates iniciales
 - fecha: 2026-09-22

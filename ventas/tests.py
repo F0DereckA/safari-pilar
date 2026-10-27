@@ -1600,3 +1600,139 @@ class Semana12CuadraturaYRedondeoTests(TestCase):
         self.jornada.refresh_from_db()
         self.assertEqual(self.jornada.estado, 'CERRADA')
         self.assertEqual(self.jornada.usuario_cierre, self.admin_user)
+
+
+# ==============================================================================
+# PRUEBAS DE SEGURIDAD, INTEGRIDAD Y RESILIENCIA ANTE CAÍDAS Y FRAUDE
+# ==============================================================================
+class ProteccionesSeguridadYResilienciaTests(TestCase):
+    """
+    Pruebas de verificación de los mecanismos de seguridad, concurrencia y resiliencia:
+    1. Control anti-fraude en anulación de ventas con autorización de supervisor (PIN/Clave)
+    2. Concurrencia con bloqueo de fila (select_for_update)
+    3. Respaldo de BD en caliente (backup_safari) con integridad SHA-256
+    4. Rate Limiting y bloqueo por fuerza bruta a nivel de red (IP global)
+    5. Cierre de sesión por inactividad prolongada
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.pv = PuntoVenta.objects.create(nombre="Barra Rápida Safari", tipo="BARRA")
+        self.mesa = Mesa.objects.create(identificador="Mesa 10", punto_venta=self.pv, capacidad=4, estado="OCUPADA")
+        self.admin = User.objects.create_user(username="supervisor_safari", password="password123")
+        PerfilEmpleado.objects.create(usuario=self.admin, rol="ADMINISTRADOR", punto_venta_actual=self.pv)
+
+        self.cajero = User.objects.create_user(username="cajero_seguro", password="password123")
+        PerfilEmpleado.objects.create(usuario=self.cajero, rol="CAJERO", punto_venta_actual=self.pv)
+
+        self.jornada = Jornada.objects.create(
+            fecha=timezone.localdate(),
+            estado="ABIERTA",
+            usuario_apertura=self.admin
+        )
+        self.caja = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.cajero,
+            punto_venta=self.pv,
+            nombre="Caja 1",
+            monto_apertura=Decimal("20000.00"),
+            estado="ABIERTA"
+        )
+        self.venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv,
+            modalidad="MESA",
+            mesa=self.mesa,
+            metodo_pago="EFECTIVO",
+            total=Decimal("15000.00"),
+            estado="PAGADA"
+        )
+
+    def test_anular_venta_con_supervisor_exitoso(self):
+        """Un cajero puede anular una venta solo si cuenta con credenciales válidas de un supervisor"""
+        self.client.login(username="cajero_seguro", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "Cliente devolvió producto por error de digitación",
+            "supervisor_username": "supervisor_safari",
+            "supervisor_password": "password123"
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "ANULADA")
+
+        # Verifica que la mesa asociada quede habilitada
+        self.mesa.refresh_from_db()
+        self.assertEqual(self.mesa.estado, "HABILITADA")
+
+        # Verifica trazabilidad de auditoría en AlertaTraslado
+        alerta = AlertaTraslado.objects.filter(empleado=self.cajero, autorizado_por=self.admin).first()
+        self.assertIsNotNone(alerta)
+        self.assertIn("ANULACIÓN", alerta.motivo)
+
+    def test_anular_venta_sin_credenciales_supervisor_rechazado(self):
+        """Un cajero no puede anular una venta si no suministra credenciales válidas de supervisor"""
+        self.client.login(username="cajero_seguro", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "Intento de anulación sin permiso",
+            "supervisor_username": "supervisor_safari",
+            "supervisor_password": "clave_erronea_falsa"
+        }, follow=True)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "PAGADA")
+
+    def test_anular_venta_admin_directo(self):
+        """Un administrador puede anular una venta directamente indicando el motivo de auditoría"""
+        self.client.login(username="supervisor_safari", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "Corrección administrativa autorizada por gerencia"
+        }, follow=True)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "ANULADA")
+
+    def test_anular_venta_motivo_muy_corto_rechazado(self):
+        """La anulación exige un motivo detallado mayor o igual a 5 caracteres para auditoría"""
+        self.client.login(username="supervisor_safari", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "err"
+        }, follow=True)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "PAGADA")
+
+    def test_comando_backup_safari(self):
+        """El comando backup_safari genera un snapshot íntegro, comprimido y con hash SHA-256"""
+        from django.core.management import call_command
+        import tempfile, shutil
+        temp_dir = tempfile.mkdtemp()
+        try:
+            call_command("backup_safari", output_dir=temp_dir)
+            archivos = os.listdir(temp_dir)
+            tiene_gz = any(f.endswith(".gz") for f in archivos)
+            tiene_sha = any(f.endswith(".sha256") for f in archivos)
+            self.assertTrue(tiene_gz, "Debe generar archivo .gz")
+            self.assertTrue(tiene_sha, "Debe generar archivo .sha256")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_login_rate_limiting_ip_global(self):
+        """Bloqueo de seguridad a nivel de IP tras 10 intentos fallidos de autenticación (OWASP)"""
+        url_login = reverse("login")
+        # Realizamos 10 intentos con credenciales erróneas simulando ataque de diccionario
+        for i in range(10):
+            self.client.post(url_login, {
+                "username": f"usuario_ataque_{i}",
+                "password": "password_incorrecta"
+            })
+        
+        # El 11vo intento debe ser rechazado por IP bloqueada
+        resp = self.client.post(url_login, {
+            "username": "usuario_cualquiera",
+            "password": "password_cualquiera"
+        }, follow=True)
+        self.assertContains(resp, "Acceso de red bloqueado temporalmente")
+
+    def test_logout_por_inactividad(self):
+        """El cierre de sesión por inactividad notifica al usuario del motivo institucional"""
+        self.client.login(username="cajero_seguro", password="password123")
+        resp = self.client.get(reverse("logout") + "?motivo=inactividad", follow=True)
+        self.assertContains(resp, "inactividad")

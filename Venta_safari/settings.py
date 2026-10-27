@@ -189,6 +189,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Duración máxima de sesión activa (8 horas = 28800 segundos, turno operativo oficial 10:00 a 18:00)
 SESSION_COOKIE_AGE = 28800
 
+# Renovación de expiración en cada interacción activa del usuario
+SESSION_SAVE_EVERY_REQUEST = True
+
 # Caché en memoria para Rate Limiting y protección contra ataques de fuerza bruta
 CACHES = {
     'default': {

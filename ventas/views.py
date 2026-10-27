@@ -442,6 +442,16 @@ def login_view(request):
         ip_cliente = obtener_ip_cliente(request)
         key_bloqueo = f"login_bloqueado_{ip_cliente}_{username.lower()}"
         key_intentos = f"login_intentos_{ip_cliente}_{username.lower()}"
+        key_ip_bloqueo = f"login_ip_bloqueado_{ip_cliente}"
+        key_ip_intentos = f"login_ip_intentos_{ip_cliente}"
+
+        if cache.get(key_ip_bloqueo):
+            messages.error(
+                request,
+                "Acceso de red bloqueado temporalmente por acumulación de múltiples intentos fallidos. "
+                "Por motivos de seguridad institucional, espera 15 minutos antes de volver a intentarlo."
+            )
+            return redirect('index')
 
         if cache.get(key_bloqueo):
             messages.error(
@@ -462,6 +472,8 @@ def login_view(request):
             # Autenticación exitosa: Limpiar contadores de intentos fallidos
             cache.delete(key_bloqueo)
             cache.delete(key_intentos)
+            cache.delete(key_ip_bloqueo)
+            cache.delete(key_ip_intentos)
 
             login(request, user)
             rol = obtener_rol_usuario(user)
@@ -495,6 +507,14 @@ def login_view(request):
             intentos_previos = cache.get(key_intentos, 0)
             intentos_actuales = intentos_previos + 1
 
+            # Registro de intentos fallidos a nivel de IP global (máx 10 por IP)
+            intentos_ip = cache.get(key_ip_intentos, 0) + 1
+            if intentos_ip >= 10:
+                cache.set(key_ip_bloqueo, True, timeout=900)  # Bloqueo de 15 minutos
+                cache.delete(key_ip_intentos)
+            else:
+                cache.set(key_ip_intentos, intentos_ip, timeout=TIEMPO_BLOQUEO_LOGIN)
+
             if intentos_actuales >= MAX_INTENTOS_LOGIN:
                 cache.set(key_bloqueo, True, timeout=TIEMPO_BLOQUEO_LOGIN)
                 cache.delete(key_intentos)
@@ -519,8 +539,12 @@ def login_view(request):
 
 def logout_view(request):
     """Cierre de sesión seguro y retorno al portal inicial"""
+    motivo = request.GET.get('motivo')
     logout(request)
-    messages.info(request, "Has cerrado tu sesión de forma segura. ¡Hasta pronto!")
+    if motivo == 'inactividad':
+        messages.warning(request, "Tu sesión fue cerrada automáticamente tras 15 minutos de inactividad por políticas de seguridad institucional.")
+    else:
+        messages.info(request, "Has cerrado tu sesión de forma segura. ¡Hasta pronto!")
     return redirect('index')
 
 
@@ -607,10 +631,17 @@ def vendedor(request):
         from ventas.utils import calcular_resumen_caja
         resumen_caja = calcular_resumen_caja(caja_activa)
 
+    ventas_recientes = []
+    if caja_activa:
+        ventas_recientes = Venta.objects.filter(caja=caja_activa).order_by('-fecha_hora')[:10]
+    elif punto_venta:
+        ventas_recientes = Venta.objects.filter(punto_venta=punto_venta).order_by('-fecha_hora')[:10]
+
     context = {
         "jornada_activa": jornada_activa,
         "caja_activa": caja_activa,
         "resumen_caja": resumen_caja,
+        "ventas_recientes": ventas_recientes,
         "punto_venta": punto_venta,
         "usuario": request.user,
         "hoy_str": hoy.strftime("%d/%m/%Y"),
@@ -694,13 +725,13 @@ def abrir_caja(request):
 
         with transaction.atomic():
             hoy = timezone.localdate()
-            jornada_activa = Jornada.objects.filter(estado='ABIERTA', fecha=hoy).first()
+            jornada_activa = Jornada.objects.select_for_update().filter(estado='ABIERTA', fecha=hoy).first()
             if not jornada_activa:
                 messages.error(request, "No existe una jornada abierta para el día de hoy. Debe realizarse la apertura de jornada primero.")
                 return redirect('vendedor')
 
             # Reutilizar caja si ya existe una abierta para este cajero en esta jornada
-            caja_existente = Caja.objects.filter(
+            caja_existente = Caja.objects.select_for_update().filter(
                 jornada=jornada_activa,
                 cajero=request.user,
                 estado='ABIERTA'
@@ -757,7 +788,7 @@ def cerrar_caja(request):
             messages.error(request, "No se especificó la caja a cerrar.")
             return redirect('vendedor')
 
-        caja = get_object_or_404(Caja, id=caja_id)
+        caja = get_object_or_404(Caja.objects.select_for_update(), id=caja_id)
 
         # Validación de permisos: cajero asignado o administrador
         es_admin = request.user.is_staff or request.user.is_superuser or (
@@ -1862,21 +1893,38 @@ def administrador_historial(request):
         origen_nom = t.punto_venta_origen.nombre if t.punto_venta_origen else "Sin Asignar"
         autor_nom = (t.autorizado_por.get_full_name() or t.autorizado_por.username) if t.autorizado_por else "Administración"
         emp_nom = t.empleado.get_full_name() or t.empleado.username
-        eventos.append({
-            'id_ref': f"TRA-{t.id}",
-            'tipo': 'TRASLADO',
-            'subtipo': 'Reasignación de Personal',
-            'badge_clase': 'badge-status-warning',
-            'icono': 'bi-arrow-left-right text-warning',
-            'titulo': f"Reasignación: {emp_nom}",
-            'descripcion': f"Traslado desde '{origen_nom}' hacia '{t.punto_venta_destino.nombre}'. Motivo: {t.motivo or 'Operativo'}",
-            'usuario': autor_nom,
-            'local': t.punto_venta_destino.nombre,
-            'local_id': str(t.punto_venta_destino.id),
-            'fecha_hora': t.fecha_hora,
-            'monto': None,
-            'estado': 'LEÍDA' if t.leida else 'PENDIENTE',
-        })
+        if t.motivo and t.motivo.startswith("[ANULACIÓN"):
+            eventos.append({
+                'id_ref': f"ANUL-{t.id}",
+                'tipo': 'VENTA',
+                'subtipo': 'Anulación Autorizada (Anti-Fraude)',
+                'badge_clase': 'badge-status-danger',
+                'icono': 'bi-shield-x text-danger',
+                'titulo': f"Anulación: {emp_nom}",
+                'descripcion': t.motivo,
+                'usuario': autor_nom,
+                'local': t.punto_venta_destino.nombre if t.punto_venta_destino else "Parque Safari General",
+                'local_id': str(t.punto_venta_destino.id) if t.punto_venta_destino else None,
+                'fecha_hora': t.fecha_hora,
+                'monto': None,
+                'estado': 'ANULADA',
+            })
+        else:
+            eventos.append({
+                'id_ref': f"TRA-{t.id}",
+                'tipo': 'TRASLADO',
+                'subtipo': 'Reasignación de Personal',
+                'badge_clase': 'badge-status-warning',
+                'icono': 'bi-arrow-left-right text-warning',
+                'titulo': f"Reasignación: {emp_nom}",
+                'descripcion': f"Traslado desde '{origen_nom}' hacia '{t.punto_venta_destino.nombre}'. Motivo: {t.motivo or 'Operativo'}",
+                'usuario': autor_nom,
+                'local': t.punto_venta_destino.nombre,
+                'local_id': str(t.punto_venta_destino.id),
+                'fecha_hora': t.fecha_hora,
+                'monto': None,
+                'estado': 'LEÍDA' if t.leida else 'PENDIENTE',
+            })
 
     # 4. Eventos de Venta
     ventas_qs = Venta.objects.select_related('cajero', 'punto_venta', 'mesa').all()
@@ -2045,11 +2093,11 @@ def mesero(request):
             return redirect(f"/mesero/?local_id={local_actual.id}")
 
         elif accion == 'cerrar_cuenta_mesa':
-            mesa_obj = get_object_or_404(Mesa, id=mesa_id, punto_venta=local_actual)
             metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO')
 
             with transaction.atomic():
-                venta_abierta = Venta.objects.filter(
+                mesa_obj = get_object_or_404(Mesa.objects.select_for_update(), id=mesa_id, punto_venta=local_actual)
+                venta_abierta = Venta.objects.select_for_update().filter(
                     mesa=mesa_obj,
                     punto_venta=local_actual,
                     estado='ABIERTA'
@@ -2129,7 +2177,7 @@ def mesero(request):
                     )
 
                 # Regla de Cuenta Abierta: Si la mesa ya tiene una venta ABIERTA, reutilizarla
-                venta_abierta = Venta.objects.filter(
+                venta_abierta = Venta.objects.select_for_update().filter(
                     mesa=mesa_obj,
                     punto_venta=local_actual,
                     estado='ABIERTA'
@@ -2667,3 +2715,104 @@ def cambiar_estado_pedido(request):
 
 
 
+
+@requiere_rol(['CAJERO', 'ADMINISTRADOR'])
+def anular_venta(request, venta_id):
+    """
+    Control Anti-Fraude en Ventas:
+    Permite anular una venta previa garantizando trazabilidad y autorización de supervisión.
+    - Si el usuario es ADMINISTRADOR: puede anular indicando motivo.
+    - Si el usuario es CAJERO: debe suministrar credenciales válidas (username y password) de un ADMINISTRADOR / Supervisor.
+    - Requiere motivo explicativo obligatorio (mínimo 5 caracteres).
+    - Aplica transaction.atomic() y select_for_update() para evitar condiciones de carrera.
+    - Restaura el estado de la mesa si estaba en consumo y registra auditoría en el historial.
+    """
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo_anulacion', '').strip()
+        if not motivo or len(motivo) < 5:
+            messages.error(request, "Debe especificar un motivo detallado para la anulación (mínimo 5 caracteres).")
+            return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+        rol_actual = obtener_rol_usuario(request.user)
+        autorizado_por = None
+
+        if rol_actual == 'ADMINISTRADOR':
+            autorizado_por = request.user
+        else:
+            sup_user = request.POST.get('supervisor_username', '').strip()
+            sup_pass = request.POST.get('supervisor_password', '')
+
+            if not sup_user or not sup_pass:
+                messages.error(request, "Acción denegada: Se requiere usuario y contraseña de Supervisor/Administrador para autorizar la anulación.")
+                return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+            supervisor = authenticate(request, username=sup_user, password=sup_pass)
+            if not supervisor or obtener_rol_usuario(supervisor) != 'ADMINISTRADOR':
+                messages.error(request, "Acción denegada: Credenciales de Supervisor inválidas o usuario sin privilegios de Administrador.")
+                return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+            autorizado_por = supervisor
+
+        with transaction.atomic():
+            venta = Venta.objects.select_for_update().filter(id=venta_id).first()
+            if not venta:
+                messages.error(request, f"La venta #{venta_id} no fue encontrada en el sistema.")
+                return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+            if venta.estado == 'ANULADA':
+                messages.warning(request, f"La venta #{venta.id} ya se encontraba anulada.")
+                return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+            monto_previo = venta.total
+            venta.estado = 'ANULADA'
+            venta.save()
+
+            # Si estaba ligada a una mesa, liberar mesa si no quedan otras ventas abiertas
+            if venta.mesa:
+                otras_activas = Venta.objects.filter(mesa=venta.mesa, estado='ABIERTA').exclude(id=venta.id).exists()
+                if not otras_activas:
+                    mesa = Mesa.objects.select_for_update().get(id=venta.mesa.id)
+                    mesa.estado = 'HABILITADA'
+                    mesa.save()
+
+            # Trazabilidad en AlertaTraslado / Bitácora
+            audit_msg = (
+                f"[ANULACIÓN #{venta.id}] ${int(monto_previo):,} CLP. "
+                f"Solicitado por {request.user.username}. "
+                f"Autorizado por {autorizado_por.username}. Motivo: {motivo}"
+            )
+            AlertaTraslado.objects.create(
+                empleado=request.user,
+                punto_venta_origen=venta.punto_venta,
+                punto_venta_destino=venta.punto_venta,
+                autorizado_por=autorizado_por,
+                fecha_hora=timezone.now(),
+                motivo=audit_msg[:255]
+            )
+
+            messages.success(
+                request,
+                f"¡Venta #{venta.id} anulada exitosamente! Autorizado por supervisor '{autorizado_por.get_full_name() or autorizado_por.username}'. Registro guardado en auditoría."
+            )
+            return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+    return redirect('vendedor')
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_backup(request):
+    """
+    Generación manual/inmediata de Copia de Seguridad de la Base de Datos (Disaster Recovery).
+    Crea un snapshot íntegro, comprimido y con verificación SHA-256 en la carpeta /backups/.
+    """
+    if request.method == 'POST':
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        try:
+            call_command('backup_safari', stdout=out)
+            messages.success(request, "Copia de seguridad física generada con éxito en caliente, comprimida en GZIP y verificada con SHA-256.")
+        except Exception as e:
+            messages.error(request, f"Error al generar la copia de seguridad: {str(e)}")
+        return redirect('administrador')
+    return redirect('administrador')
