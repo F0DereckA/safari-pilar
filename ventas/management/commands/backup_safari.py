@@ -46,14 +46,21 @@ class Command(BaseCommand):
             try:
                 from django.db import connection
                 dst_conn = sqlite3.connect(temp_backup)
-                if os.path.exists(db_path):
-                    src_conn = sqlite3.connect(db_path)
+                if db_path and os.path.exists(str(db_path)):
+                    src_conn = sqlite3.connect(str(db_path))
                     src_conn.backup(dst_conn)
                     src_conn.close()
                 else:
-                    # Entorno de pruebas o BD en memoria: usar la conexión activa de Django
+                    # Entorno de pruebas o BD en memoria: usar la conexión activa evitando bloqueo por transacción abierta
                     connection.ensure_connection()
-                    connection.connection.backup(dst_conn)
+                    raw_conn = connection.connection
+                    if getattr(raw_conn, 'in_transaction', False):
+                        for line in raw_conn.iterdump():
+                            if line not in ('BEGIN TRANSACTION;', 'COMMIT;'):
+                                dst_conn.execute(line)
+                        dst_conn.commit()
+                    else:
+                        raw_conn.backup(dst_conn)
                 dst_conn.close()
             except Exception as e:
                 self.stderr.write(self.style.ERROR(f"Error al realizar snapshot SQLite: {e}"))
