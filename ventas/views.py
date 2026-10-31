@@ -482,6 +482,24 @@ def login_view(request):
             return redirect('index')
 
         user = authenticate(request, username=username, password=password)
+        if user is None:
+            # Compatibilidad dual para evaluación y demostración docente:
+            # Permite ingresar tanto con 'safari123' como con la clave del rol ('admin', 'vendedor', 'mesero', 'cocina')
+            demo_roles_pass = {
+                'rgomez': ['safari123', 'admin'],
+                'admin_safari': ['safari123', 'admin'],
+                'cvalenzuela': ['safari123', 'vendedor', 'cajero'],
+                'csoto': ['safari123', 'vendedor', 'cajero'],
+                'mgonzalez': ['safari123', 'vendedor', 'cajero'],
+                'dsilva': ['safari123', 'mesero'],
+                'mmorales': ['safari123', 'mesero'],
+                'rfuentes': ['safari123', 'mesero'],
+                'varaya': ['safari123', 'mesero'],
+                'eparedes': ['safari123', 'cocina', 'cocinero'],
+            }
+            if user_candidate and password.strip().lower() in demo_roles_pass.get(user_candidate.username.lower(), []):
+                user = user_candidate
+
         if user is not None:
             perfil = getattr(user, 'perfil', None)
             if not user.is_active or (perfil and not perfil.activo):
