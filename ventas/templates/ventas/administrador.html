@@ -1097,8 +1097,18 @@
             actualizandoAdminLive = false;
         }
     }
-    // Sincronizar suavemente en segundo plano cada 5 segundos
-    setInterval(autoActualizarAdminLive, 5000);
+    // Sincronizar en vivo cada 1.5 segundos (1500 ms) con gestion inteligente de recursos
+    let adminInterval = setInterval(autoActualizarAdminLive, 1500);
+
+    document.addEventListener('visibilitychange', () => {
+        clearInterval(adminInterval);
+        if (document.visibilityState === 'visible') {
+            autoActualizarAdminLive();
+            adminInterval = setInterval(autoActualizarAdminLive, 1500);
+        } else {
+            adminInterval = setInterval(autoActualizarAdminLive, 6000);
+        }
+    });
     </script>
 </body>
 </html>

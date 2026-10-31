@@ -517,8 +517,18 @@
             }
         }
 
-        // Ejecutar auto-actualización silenciosa cada 3.5 segundos
-        setInterval(autoActualizarCocina, 3500);
+        // Auto-actualización ultra-rápida a 1 segundo (1000 ms) con ahorro inteligente de recursos
+        let kdsInterval = setInterval(autoActualizarCocina, 1000);
+
+        document.addEventListener('visibilitychange', () => {
+            clearInterval(kdsInterval);
+            if (document.visibilityState === 'visible') {
+                autoActualizarCocina();
+                kdsInterval = setInterval(autoActualizarCocina, 1000);
+            } else {
+                kdsInterval = setInterval(autoActualizarCocina, 5000);
+            }
+        });
 
         // Envío AJAX táctil inmediato de acciones en comandas sin parpadeos ni salto arriba
         async function enviarAccionKdsAjax(e, form) {

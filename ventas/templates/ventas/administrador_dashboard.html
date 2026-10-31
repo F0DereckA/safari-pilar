@@ -760,7 +760,18 @@
             } catch(e) {}
             finally { sincDashboard = false; }
         }
-        setInterval(autoSincronizarDashboard, 6000);
+        // Sincronizar KPIs en vivo cada 1.5 segundos (1500 ms) con gestion inteligente de recursos
+        let dashInterval = setInterval(autoSincronizarDashboard, 1500);
+
+        document.addEventListener('visibilitychange', () => {
+            clearInterval(dashInterval);
+            if (document.visibilityState === 'visible') {
+                autoSincronizarDashboard();
+                dashInterval = setInterval(autoSincronizarDashboard, 1500);
+            } else {
+                dashInterval = setInterval(autoSincronizarDashboard, 6000);
+            }
+        });
 
         });
     </script>

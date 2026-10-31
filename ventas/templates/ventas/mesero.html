@@ -1518,7 +1518,18 @@
                 sincronizandoMesas = false;
             }
         }
-        setInterval(autoSincronizarMesasMesero, 4000);
+        // Sincronización ultra-rápida a 1 segundo (1000 ms)
+        let meseroInterval = setInterval(autoSincronizarMesasMesero, 1000);
+
+        document.addEventListener('visibilitychange', () => {
+            clearInterval(meseroInterval);
+            if (document.visibilityState === 'visible') {
+                autoSincronizarMesasMesero();
+                meseroInterval = setInterval(autoSincronizarMesasMesero, 1000);
+            } else {
+                meseroInterval = setInterval(autoSincronizarMesasMesero, 5000);
+            }
+        });
     </script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/anti_doble_envio.js' %}"></script>
