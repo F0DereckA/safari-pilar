@@ -189,9 +189,21 @@ class Producto(models.Model):
     descripcion = models.TextField(blank=True, null=True)
     puntos_venta = models.ManyToManyField(PuntoVenta, blank=True, related_name='productos_disponibles')
     activo = models.BooleanField(default=True)
+    en_oferta = models.BooleanField(default=False, help_text="Indica si el producto tiene promoción u oferta activa")
+    precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional (ej. $1 para 2da unidad, 2x1, oferta)")
+    descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Segunda hamburguesa a $1!, Promo 2x1, 25% OFF")
     creado_en = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def precio_actual(self):
+        """Retorna el precio de oferta si está activa y definida; de lo contrario el precio base"""
+        if self.en_oferta and self.precio_oferta is not None and self.precio_oferta > 0:
+            return self.precio_oferta
+        return self.precio_base
+
     def __str__(self):
+        if self.en_oferta and self.precio_oferta is not None:
+            return f"{self.nombre} [PROMO: ${self.precio_oferta:,.0f} (Base: ${self.precio_base:,.0f})]"
         return f"{self.nombre} (${self.precio_base:,.0f})"
 
     class Meta:

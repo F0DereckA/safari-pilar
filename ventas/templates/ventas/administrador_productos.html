@@ -69,13 +69,13 @@
                     <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
                     <div>
                         <h1 class="brand-text-main">Venta Safari</h1>
-                        <span class="brand-text-sub">Catálogo de Productos · Semana 11</span>
+                        <span class="brand-text-sub">Catálogo Gastronómico Centralizado</span>
                     </div>
                 </a>
 
                 <!-- Navegación y Accesos Rápidos -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
+                                        <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
                     <div class="dropdown">
                         <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownLocales" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
                             <i class="bi bi-building-fill text-danger"></i>
@@ -86,8 +86,12 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador' %}"><i class="bi bi-grid-fill text-danger me-2"></i>Vista General de Locales</a></li>
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
+                            {% empty %}
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 1 %}"><i class="bi bi-shop text-danger me-2"></i>Restaurante Central Safari</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 2 %}"><i class="bi bi-cup-hot text-purple me-2" style="color: #6b21a8;"></i>Cafetería La Selva</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 3 %}"><i class="bi bi-cup-straw text-warning me-2"></i>Barra & Kiosco Oasis</a></li>
                             {% endfor %}
-                            </ul>
+                        </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
@@ -123,12 +127,6 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_dashboard' %}"><i class="bi bi-bar-chart-line-fill text-warning me-2"></i>Dashboard Analítico</a></li>
                         </ul>
                     </div>
-
-                    <!-- ACCESO DESTACADO AL CENTRO DE GESTIÓN -->
-                    <a href="{% url 'administrador_gestion' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold shadow-sm d-none d-sm-inline-flex align-items-center gap-1">
-                        <i class="bi bi-sliders"></i>
-                        <span>Centro de Gestión</span>
-                    </a>
 
                     <!-- RELOJ DISCRETO DE SESIÓN -->
                     <div id="contenedorRelojSesion"></div>
@@ -312,9 +310,19 @@
                             </div>
 
                             <h5 class="fw-bold text-dark mb-1">{{ p.nombre }}</h5>
+                            {% if p.en_oferta and p.precio_oferta %}
+                            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
+                                <span class="fs-5 fw-bold text-danger">${{ p.precio_oferta|floatformat:0 }} CLP</span>
+                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA" }}
+                                </span>
+                            </div>
+                            {% else %}
                             <div class="fs-5 fw-bold text-danger mb-2">
                                 {{ p.precio_base|pesos_clp }}
                             </div>
+                            {% endif %}
 
                             {% if p.descripcion %}
                             <p class="text-muted small mb-2 text-truncate" title="{{ p.descripcion }}">
@@ -357,6 +365,9 @@
                             </form>
 
                             <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalOfertaProducto_{{ p.id }}" title="Gestionar Oferta Promocional">
+                                    <i class="bi bi-fire" style="font-size: 0.85rem;"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-color: var(--safari-yellow-dark);" data-bs-toggle="modal" data-bs-target="#modalEditarProducto_{{ p.id }}" title="Modificar Producto">
                                     <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
                                 </button>
@@ -366,6 +377,60 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+
+                <!-- Modal Oferta Rápida #{{ p.id }} (Tarea 6) -->
+                <div class="modal fade" id="modalOfertaProducto_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                    <i class="bi bi-fire"></i>
+                                    <span>Configurar Oferta: {{ p.nombre }}</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{% url 'administrador_productos' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="gestionar_oferta">
+                                <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                <div class="modal-body p-4">
+                                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                                        <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.72rem;">Precio Base Oficial</small>
+                                        <div class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</div>
+                                    </div>
+
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" name="en_oferta" id="check_of_prod_{{ p.id }}" {% if p.en_oferta %}checked{% endif %} onchange="document.getElementById('sec_of_{{ p.id }}').classList.toggle('d-none', !this.checked)">
+                                        <label class="form-check-label fw-bold text-danger" for="check_of_prod_{{ p.id }}">
+                                            <i class="bi bi-fire me-1"></i> Activar Oferta / Promoción
+                                        </label>
+                                    </div>
+
+                                    <div id="sec_of_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Precio Promocional de Oferta ($ CLP):</label>
+                                            <input type="number" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                            <div class="form-text small" style="font-size: 0.72rem;">
+                                                Acepta monedas de $1 o $5 pesos para eventos especiales (ej: "Lleva la segunda hamburguesa a $1").
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Etiqueta o Motivo Promocional:</label>
+                                            <input type="text" name="descripcion_oferta" value="{{ p.descripcion_oferta|default:'' }}" maxlength="120" class="form-control rounded-3" placeholder="Ej: ¡Segunda hamburguesa a $1 peso!">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Guardar Oferta
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -552,7 +617,7 @@
     <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
         <div class="container">
             <small class="text-white-50">
-                Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Catálogo Centralizado (Semana 11)
+                Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Catálogo Centralizado
             </small>
         </div>
     </footer>

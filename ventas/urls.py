@@ -20,13 +20,14 @@ urlpatterns = [
     path('administrador/menus/', views.administrador_menus, name='administrador_menus'),
     path('administrador/historial/', views.administrador_historial, name='administrador_historial'),
     path('administrador/dashboard/', views.administrador_dashboard, name='administrador_dashboard'),
+    path('administrador/dashboard/exportar/', views.exportar_reporte_ventas, name='exportar_reporte_ventas'),
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
     path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
     path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
 
-    # Rutas de prueba/auditoría para errores HTTP personalizados (Semana 10)
+    # Rutas de verificación para errores HTTP personalizados
     path('400/', views.error_400_view, name='error_400'),
     path('403/', views.error_403_view, name='error_403'),
     path('404/', views.error_404_view, name='error_404'),

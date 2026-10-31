@@ -42,7 +42,7 @@
 
                 <!-- Navegación y Salida -->
                 <div class="d-flex align-items-center gap-3">
-                                        <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
+                                                            <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
                     <div class="dropdown">
                         <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownLocales" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
                             <i class="bi bi-building-fill text-danger"></i>
@@ -53,8 +53,12 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador' %}"><i class="bi bi-grid-fill text-danger me-2"></i>Vista General de Locales</a></li>
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
+                            {% empty %}
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 1 %}"><i class="bi bi-shop text-danger me-2"></i>Restaurante Central Safari</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 2 %}"><i class="bi bi-cup-hot text-purple me-2" style="color: #6b21a8;"></i>Cafetería La Selva</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 3 %}"><i class="bi bi-cup-straw text-warning me-2"></i>Barra & Kiosco Oasis</a></li>
                             {% endfor %}
-                            </ul>
+                        </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
@@ -91,12 +95,6 @@
                         </ul>
                     </div>
 
-                    <!-- ACCESO DESTACADO AL CENTRO DE GESTIÓN -->
-                    <a href="{% url 'administrador_gestion' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold shadow-sm d-none d-sm-inline-flex align-items-center gap-1">
-                        <i class="bi bi-sliders"></i>
-                        <span>Centro de Gestión</span>
-                    </a>
-
                     <!-- RELOJ DISCRETO DE SESIÓN -->
                     <div id="contenedorRelojSesion"></div>
 
@@ -129,15 +127,21 @@
             
             <!-- Selector de Temporalidad (Hora / Día / Mes) -->
             <div>
-                <div class="timeframe-selector">
-                    <button class="btn-timeframe" id="btnHora" onclick="cambiarTemporalidad('hora')">
-                        <i class="bi bi-clock me-1"></i> Por Hora
-                    </button>
-                    <button class="btn-timeframe" id="btnDia" onclick="cambiarTemporalidad('dia')">
-                        <i class="bi bi-calendar-date me-1"></i> Por Día
-                    </button>
-                    <button class="btn-timeframe active" id="btnMes" onclick="cambiarTemporalidad('mes')">
-                        <i class="bi bi-calendar-range me-1"></i> Por Mes (15 Meses)
+                                <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                    <div class="timeframe-selector">
+                        <button class="btn-timeframe" id="btnHora" onclick="cambiarTemporalidad('hora')">
+                            <i class="bi bi-clock me-1"></i> Por Hora
+                        </button>
+                        <button class="btn-timeframe" id="btnDia" onclick="cambiarTemporalidad('dia')">
+                            <i class="bi bi-calendar-date me-1"></i> Por Día
+                        </button>
+                        <button class="btn-timeframe active" id="btnMes" onclick="cambiarTemporalidad('mes')">
+                            <i class="bi bi-calendar-range me-1"></i> Por Mes (15 Meses)
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalExportarVentas" title="Descargar reporte de ventas en Excel, Word o PDF">
+                        <i class="bi bi-file-earmark-arrow-down-fill fs-6"></i>
+                        <span>Exportar Reporte</span>
                     </button>
                 </div>
             </div>
@@ -301,6 +305,165 @@
                 </table>
             </div>
         </div>
+
+    
+    <!-- Modal Oficial de Exportación de Reportes de Ventas (Excel, Word, PDF) -->
+    <div class="modal fade" id="modalExportarVentas" tabindex="-1" aria-labelledby="modalExportarVentasLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="modalExportarVentasLabel">
+                        <i class="bi bi-file-earmark-arrow-down-fill"></i>
+                        <span>Exportar Reporte de Ventas • Parque Safari</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form method="GET" action="{% url 'exportar_reporte_ventas' %}" target="_blank" id="formExportarVentas">
+                    <div class="modal-body p-4">
+                        <div class="alert alert-light border rounded-3 p-3 mb-4" style="background-color: #f8fafc; border-left: 4px solid var(--safari-red) !important;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-info-circle-fill text-danger fs-5 mt-1"></i>
+                                <div class="small">
+                                    <strong>Centro de Extracción y Reportes Oficiales:</strong>
+                                    <div class="text-muted mt-1">
+                                        Selecciona la temporalidad (día específico de los 15 meses, semana, mes o comparativa completa) y el formato deseado para generar el archivo descargable o vista imprimible oficial.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 1. TEMPORALIDAD -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark mb-2">
+                                <i class="bi bi-calendar3 text-danger me-1"></i> 1. Rango de Tiempo / Temporalidad:
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-md-3 col-6">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rango15Meses" value="15_meses" checked onchange="actualizarControlesRango()">
+                                    <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rango15Meses">
+                                        15 Meses (Histórico)
+                                    </label>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoMes" value="mes" onchange="actualizarControlesRango()">
+                                    <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoMes">
+                                        Mes Específico
+                                    </label>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoSemana" value="semana" onchange="actualizarControlesRango()">
+                                    <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoSemana">
+                                        Semana Completa
+                                    </label>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoDia" value="dia" onchange="actualizarControlesRango()">
+                                    <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoDia">
+                                        Día Específico
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Selector dinámico para Día Específico -->
+                            <div id="contenedorDiaSelector" class="mt-3 p-3 rounded-3 bg-light border d-none">
+                                <label for="inputFechaDia" class="form-label small fw-bold text-dark mb-1">
+                                    Seleccionar Día (Rango de 15 meses: Julio 2025 - Octubre 2026):
+                                </label>
+                                <input type="date" class="form-control rounded-3" id="inputFechaDia" name="fecha" min="2025-07-01" max="2026-10-31" value="2026-10-31">
+                            </div>
+
+                            <!-- Selector dinámico para Mes Específico -->
+                            <div id="contenedorMesSelector" class="mt-3 p-3 rounded-3 bg-light border d-none">
+                                <label for="selectMesEspecifico" class="form-label small fw-bold text-dark mb-1">
+                                    Seleccionar Mes Histórico:
+                                </label>
+                                <select class="form-select rounded-3" id="selectMesEspecifico" name="mes">
+                                    <option value="2026-10" selected>Octubre 2026 (Actual)</option>
+                                    <option value="2026-09">Septiembre 2026</option>
+                                    <option value="2026-08">Agosto 2026</option>
+                                    <option value="2026-07">Julio 2026</option>
+                                    <option value="2026-06">Junio 2026</option>
+                                    <option value="2026-05">Mayo 2026</option>
+                                    <option value="2026-04">Abril 2026</option>
+                                    <option value="2026-03">Marzo 2026</option>
+                                    <option value="2026-02">Febrero 2026</option>
+                                    <option value="2026-01">Enero 2026</option>
+                                    <option value="2025-12">Diciembre 2025</option>
+                                    <option value="2025-11">Noviembre 2025</option>
+                                    <option value="2025-10">Octubre 2025</option>
+                                    <option value="2025-09">Septiembre 2025</option>
+                                    <option value="2025-08">Agosto 2025</option>
+                                    <option value="2025-07">Julio 2025</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 2. PUNTO DE VENTA / ALCANCE -->
+                        <div class="mb-4">
+                            <label for="selectLocalExport" class="form-label fw-bold text-dark mb-2">
+                                <i class="bi bi-shop text-danger me-1"></i> 2. Punto de Venta / Local:
+                            </label>
+                            <select class="form-select rounded-3" id="selectLocalExport" name="local_id">
+                                <option value="todos" selected>Todos los Locales (Consolidado General Parque Safari)</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.id }}">{{ loc.nombre }}</option>
+                                {% empty %}
+                                <option value="1">Restaurante Central Safari</option>
+                                <option value="2">Cafetería La Selva</option>
+                                <option value="3">Barra Rápida & Kiosco Oasis</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- 3. FORMATO DE DESCARGA -->
+                        <div class="mb-2">
+                            <label class="form-label fw-bold text-dark mb-2">
+                                <i class="bi bi-file-earmark-text text-danger me-1"></i> 3. Formato de Salida:
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="formato" id="formatoExcel" value="excel" checked>
+                                    <label class="btn btn-outline-success w-100 rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center" for="formatoExcel">
+                                        <i class="bi bi-file-earmark-excel-fill fs-2 text-success mb-1"></i>
+                                        <strong class="d-block text-dark">Excel (.xlsx)</strong>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Fórmulas, tablas, KPIs y hojas de detalle</small>
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="formato" id="formatoWord" value="word">
+                                    <label class="btn btn-outline-primary w-100 rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center" for="formatoWord">
+                                        <i class="bi bi-file-earmark-word-fill fs-2 text-primary mb-1"></i>
+                                        <strong class="d-block text-dark">Word (.docx)</strong>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Informe ejecutivo, tablas y firmas de auditoría</small>
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="formato" id="formatoPdf" value="pdf">
+                                    <label class="btn btn-outline-danger w-100 rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center" for="formatoPdf">
+                                        <i class="bi bi-file-earmark-pdf-fill fs-2 text-danger mb-1"></i>
+                                        <strong class="d-block text-dark">PDF Imprimible</strong>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Formato oficial para impresión o guardado PDF</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
+                            <i class="bi bi-download"></i>
+                            <span>Descargar / Generar Reporte</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     </main>
 
@@ -536,6 +699,32 @@
                 document.getElementById('seccionTablaMeses').classList.remove('d-none');
             }
             renderizarChart(tipo);
+        }
+
+        
+        // Control dinámico de campos en el modal de exportación
+        function actualizarControlesRango() {
+            const r15 = document.getElementById('rango15Meses');
+            const rMes = document.getElementById('rangoMes');
+            const rSem = document.getElementById('rangoSemana');
+            const rDia = document.getElementById('rangoDia');
+
+            const contDia = document.getElementById('contenedorDiaSelector');
+            const contMes = document.getElementById('contenedorMesSelector');
+
+            if (rDia && rDia.checked) {
+                contDia.classList.remove('d-none');
+                contMes.classList.add('d-none');
+            } else if (rSem && rSem.checked) {
+                contDia.classList.remove('d-none');
+                contMes.classList.add('d-none');
+            } else if (rMes && rMes.checked) {
+                contDia.classList.add('d-none');
+                contMes.classList.remove('d-none');
+            } else {
+                contDia.classList.add('d-none');
+                contMes.classList.add('d-none');
+            }
         }
 
         // Inicializar gráfico al cargar la página

@@ -2,7 +2,7 @@ import datetime
 import json
 from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404, Http404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db import models, transaction
 from django.utils import timezone
@@ -1574,16 +1574,25 @@ def administrador_productos(request):
             descripcion = request.POST.get('descripcion', '').strip()
             puntos_venta_ids = request.POST.getlist('puntos_venta')
             activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+            en_oferta = request.POST.get('en_oferta') in ['on', 'true', 'True', '1']
+            precio_oferta_raw = request.POST.get('precio_oferta', '').strip()
+            precio_oferta = None
+            if en_oferta and precio_oferta_raw:
+                try:
+                    precio_oferta = max(Decimal('0'), Decimal(precio_oferta_raw.replace('.', '').replace(',', '.')))
+                except Exception:
+                    precio_oferta = None
+            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
 
             if not nombre:
                 messages.error(request, "El nombre del producto es obligatorio.")
-                return redirect('administrador_productos')
+                return redirect(request.POST.get('next') or 'administrador_productos')
 
             try:
                 precio_base = max(Decimal('0'), Decimal(precio_base_raw.replace('.', '').replace(',', '.')))
             except Exception:
                 messages.error(request, "El precio base debe ser un valor numérico válido.")
-                return redirect('administrador_productos')
+                return redirect(request.POST.get('next') or 'administrador_productos')
 
             cat_obj = get_object_or_404(Categoria, id=categoria_id)
 
@@ -1592,14 +1601,17 @@ def administrador_productos(request):
                 categoria=cat_obj,
                 precio_base=precio_base,
                 descripcion=descripcion,
-                activo=activo
+                activo=activo,
+                en_oferta=en_oferta,
+                precio_oferta=precio_oferta,
+                descripcion_oferta=descripcion_oferta
             )
             if puntos_venta_ids:
                 prod.puntos_venta.set(PuntoVenta.objects.filter(id__in=puntos_venta_ids))
 
             precio_fmt = f"${int(precio_base):,}".replace(',', '.')
             messages.success(request, f"¡Producto '{nombre}' ({precio_fmt}) creado exitosamente en categoría '{cat_obj.nombre}'!")
-            return redirect('administrador_productos')
+            return redirect(request.POST.get('next') or 'administrador_productos')
 
         elif accion == 'modificar':
             producto_id = request.POST.get('producto_id')
@@ -1611,10 +1623,19 @@ def administrador_productos(request):
             descripcion = request.POST.get('descripcion', prod.descripcion).strip()
             puntos_venta_ids = request.POST.getlist('puntos_venta')
             activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
+            en_oferta = request.POST.get('en_oferta') in ['on', 'true', 'True', '1']
+            precio_oferta_raw = request.POST.get('precio_oferta', '').strip()
+            precio_oferta = None
+            if en_oferta and precio_oferta_raw:
+                try:
+                    precio_oferta = max(Decimal('0'), Decimal(precio_oferta_raw.replace('.', '').replace(',', '.')))
+                except Exception:
+                    precio_oferta = None
+            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
 
             if not nombre:
                 messages.error(request, "El nombre del producto no puede quedar vacío.")
-                return redirect('administrador_productos')
+                return redirect(request.POST.get('next') or 'administrador_productos')
 
             try:
                 precio_base = max(Decimal('0'), Decimal(precio_base_raw.replace('.', '').replace(',', '.')))
@@ -1628,6 +1649,9 @@ def administrador_productos(request):
             prod.precio_base = precio_base
             prod.descripcion = descripcion
             prod.activo = activo
+            prod.en_oferta = en_oferta
+            prod.precio_oferta = precio_oferta
+            prod.descripcion_oferta = descripcion_oferta
             prod.save()
 
             if puntos_venta_ids:
@@ -1636,8 +1660,39 @@ def administrador_productos(request):
                 prod.puntos_venta.clear()
 
             messages.success(request, f"¡Producto '{nombre}' actualizado correctamente!")
-            return redirect('administrador_productos')
+            return redirect(request.POST.get('next') or 'administrador_productos')
 
+        elif accion == 'gestionar_oferta':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+            en_oferta = request.POST.get('en_oferta') in ['on', 'true', 'True', '1']
+            precio_oferta_raw = request.POST.get('precio_oferta', '').strip()
+            precio_oferta = None
+            if en_oferta and precio_oferta_raw:
+                try:
+                    precio_oferta = max(Decimal('0'), Decimal(precio_oferta_raw.replace('.', '').replace(',', '.')))
+                except Exception:
+                    precio_oferta = None
+            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
+
+            prod.en_oferta = en_oferta
+            prod.precio_oferta = precio_oferta
+            prod.descripcion_oferta = descripcion_oferta
+            prod.save()
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'ok',
+                    'producto_id': prod.id,
+                    'en_oferta': prod.en_oferta,
+                    'precio_base': float(prod.precio_base),
+                    'precio_oferta': float(prod.precio_oferta) if prod.precio_oferta is not None else None,
+                    'precio_actual': float(prod.precio_actual),
+                    'descripcion_oferta': prod.descripcion_oferta or '',
+                    'mensaje': f"¡Oferta para '{prod.nombre}' actualizada exitosamente en tiempo real!"
+                })
+            messages.success(request, f"¡Oferta para '{prod.nombre}' actualizada!")
+            return redirect(request.POST.get('next') or 'administrador_productos')
         elif accion == 'toggle_estado':
             producto_id = request.POST.get('producto_id')
             prod = get_object_or_404(Producto, id=producto_id)
@@ -1739,8 +1794,10 @@ def administrador_menus(request):
             activo = request.POST.get('activo') in ['on', 'true', 'True', '1']
 
             if not nombre:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'status': 'error', 'mensaje': 'El nombre del menú no puede quedar vacío.'}, status=400)
                 messages.error(request, "El nombre del menú no puede quedar vacío.")
-                return redirect('administrador_menus')
+                return redirect(request.POST.get('next') or 'administrador_menus')
 
             local_obj = PuntoVenta.objects.filter(id=punto_venta_id).first() or menu_obj.punto_venta
             menu_obj.nombre = nombre
@@ -1753,9 +1810,24 @@ def administrador_menus(request):
             else:
                 menu_obj.productos.clear()
 
-            messages.success(request, f"¡Menú '{nombre}' actualizado correctamente!")
-            return redirect('administrador_menus')
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                prods_data = [
+                    {'id': p.id, 'nombre': p.nombre, 'precio': float(p.precio_base)}
+                    for p in menu_obj.productos.all()
+                ]
+                return JsonResponse({
+                    'status': 'ok',
+                    'menu_id': menu_obj.id,
+                    'nombre': menu_obj.nombre,
+                    'local_nombre': menu_obj.punto_venta.nombre,
+                    'productos_count': menu_obj.productos.count(),
+                    'productos': prods_data,
+                    'activo': menu_obj.activo,
+                    'mensaje': f"¡Carta '{nombre}' actualizada correctamente en tiempo real!"
+                })
 
+            messages.success(request, f"¡Menú '{nombre}' actualizado correctamente!")
+            return redirect(request.POST.get('next') or 'administrador_menus')
         elif accion == 'toggle_estado':
             menu_id = request.POST.get('menu_id')
             menu_obj = get_object_or_404(Menu, id=menu_id)
@@ -2596,6 +2668,16 @@ def mesero(request):
         creado_en__date=hoy
     ).select_related('venta__mesa')
 
+    # Tarea 6: Sincronizar ofertas activas de la BD con el catálogo del mesero
+    prods_ofertas_map = {p.nombre.lower().strip(): p for p in Producto.objects.filter(activo=True, en_oferta=True)}
+    for prod_item in catalogo_productos:
+        p_match = prods_ofertas_map.get(prod_item["nombre"].lower().strip())
+        if p_match and p_match.precio_oferta is not None and p_match.precio_oferta > 0:
+            prod_item["precio_base"] = prod_item["precio"]
+            prod_item["precio"] = int(p_match.precio_oferta)
+            prod_item["en_oferta"] = True
+            prod_item["descripcion_oferta"] = p_match.descripcion_oferta or "¡OFERTA ESPECIAL!"
+
     context = {
         "local_actual": local_actual,
         "locales": locales,
@@ -2896,3 +2978,57 @@ def administrador_backup(request):
             messages.error(request, f"Error al generar la copia de seguridad: {str(e)}")
         return redirect('administrador')
     return redirect('administrador')
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def exportar_reporte_ventas(request):
+    """
+    Exportacion de Reporte de Ventas en multiples formatos:
+    - Excel (.xlsx) con openpyxl
+    - Word (.docx) con python-docx
+    - PDF / Vista imprimible oficial
+    Soporta temporalidad: Dia especifico (de los 15 meses), Semana, Mes o Comparativa 15 meses.
+    """
+    from ventas.exportador_reportes import obtener_datos_reporte, generar_excel_ventas, generar_word_ventas
+
+    tipo_rango = request.GET.get('tipo_rango', '15_meses').strip()
+    fecha_str = request.GET.get('fecha', '').strip()
+    mes_str = request.GET.get('mes', '').strip()
+    local_id = request.GET.get('local_id', 'todos').strip()
+    formato = request.GET.get('formato', 'excel').strip().lower()
+
+    datos = obtener_datos_reporte(tipo_rango=tipo_rango, fecha_str=fecha_str, mes_str=mes_str, local_id=local_id)
+    timestamp = timezone.localtime().strftime('%Y%m%d_%H%M')
+
+    if formato in ['excel', 'xlsx']:
+        archivo_io = generar_excel_ventas(datos)
+        nombre_archivo = f"Reporte_Ventas_Parque_Safari_{tipo_rango}_{timestamp}.xlsx"
+        response = HttpResponse(
+            archivo_io.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        return response
+
+    elif formato in ['word', 'docx']:
+        archivo_io = generar_word_ventas(datos)
+        nombre_archivo = f"Reporte_Ventas_Parque_Safari_{tipo_rango}_{timestamp}.docx"
+        response = HttpResponse(
+            archivo_io.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        return response
+
+    elif formato in ['pdf', 'imprimir']:
+        return render(request, 'ventas/reporte_ventas_impresion.html', {'datos': datos})
+
+    else:
+        archivo_io = generar_excel_ventas(datos)
+        nombre_archivo = f"Reporte_Ventas_Parque_Safari_{tipo_rango}_{timestamp}.xlsx"
+        response = HttpResponse(
+            archivo_io.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        return response

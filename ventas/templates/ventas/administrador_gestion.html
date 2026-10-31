@@ -138,7 +138,7 @@
                         </div>
                     </div>
 
-                    <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
+                                        <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
                     <div class="dropdown">
                         <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownLocales" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
                             <i class="bi bi-building-fill text-danger"></i>
@@ -149,14 +149,18 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador' %}"><i class="bi bi-grid-fill text-danger me-2"></i>Vista General de Locales</a></li>
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
+                            {% empty %}
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 1 %}"><i class="bi bi-shop text-danger me-2"></i>Restaurante Central Safari</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 2 %}"><i class="bi bi-cup-hot text-purple me-2" style="color: #6b21a8;"></i>Cafetería La Selva</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 3 %}"><i class="bi bi-cup-straw text-warning me-2"></i>Barra & Kiosco Oasis</a></li>
                             {% endfor %}
-                            </ul>
+                        </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
                     <div class="dropdown">
-                        <button class="btn btn-danger btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownAdminCat" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-gear-wide-connected"></i>
+                        <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownAdminCat" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
+                            <i class="bi bi-gear-wide-connected text-danger"></i>
                             <span>Administración</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-2 mt-2" aria-labelledby="dropdownAdminCat" style="min-width: 260px;">
@@ -614,8 +618,18 @@
                                     <td>
                                         <span class="badge bg-light text-dark border">{{ p.categoria.nombre }}</span>
                                     </td>
-                                    <td>
-                                        <strong class="text-danger">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                    <td id="celda_precio_{{ p.id }}">
+                                        {% if p.en_oferta and p.precio_oferta %}
+                                            <div>
+                                                <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
+                                                <strong class="text-danger fs-6">${{ p.precio_oferta|floatformat:0 }} CLP</strong>
+                                            </div>
+                                            <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA" }}
+                                            </span>
+                                        {% else %}
+                                            <strong class="text-danger">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% for pv in p.puntos_venta.all %}
@@ -632,9 +646,67 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 me-1" data-bs-toggle="modal" data-bs-target="#modalOfertaProdGestion_{{ p.id }}" title="Gestionar Oferta Promocional">
+                                            <i class="bi bi-fire text-danger"></i> Oferta
+                                        </button>
                                         <a href="{% url 'administrador_productos' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
                                             <i class="bi bi-pencil-fill me-1"></i> Modificar
                                         </a>
+
+                                        <!-- Modal Oferta Producto #{{ p.id }} (Tarea 6) -->
+                                        <div class="modal fade text-start" id="modalOfertaProdGestion_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content rounded-4 border-0 shadow">
+                                                    <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                                            <i class="bi bi-fire"></i>
+                                                            <span>Configurar Oferta: {{ p.nombre }}</span>
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form method="POST" action="{% url 'administrador_productos' %}" onsubmit="guardarOfertaGestionAjax(event, '{{ p.id }}')">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="accion" value="gestionar_oferta">
+                                                        <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                                        <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=productos">
+                                                        <div class="modal-body p-4">
+                                                            <div class="p-3 bg-light rounded-3 mb-3 border">
+                                                                <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.72rem;">Precio Base Oficial</small>
+                                                                <div class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</div>
+                                                            </div>
+
+                                                            <div class="form-check form-switch mb-3">
+                                                                <input class="form-check-input" type="checkbox" name="en_oferta" id="check_oferta_g_{{ p.id }}" {% if p.en_oferta %}checked{% endif %} onchange="toggleOfertaCamposGestion('{{ p.id }}')">
+                                                                <label class="form-check-label fw-bold text-danger" for="check_oferta_g_{{ p.id }}">
+                                                                    <i class="bi bi-fire me-1"></i> Activar Oferta / Promoción en Carta y Terminales
+                                                                </label>
+                                                            </div>
+
+                                                            <div id="campos_oferta_g_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Precio Promocional de Oferta ($ CLP):</label>
+                                                                    <input type="number" name="precio_oferta" id="input_po_g_{{ p.id }}" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                                                    <div class="form-text small" style="font-size: 0.72rem;">
+                                                                        Acepta monedas de $1 o $5 pesos para promociones (ej: "Lleva la segunda hamburguesa a $1").
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Etiqueta o Motivo Promocional:</label>
+                                                                    <input type="text" name="descripcion_oferta" id="input_desc_g_{{ p.id }}" value="{{ p.descripcion_oferta|default:'' }}" maxlength="120" class="form-control rounded-3" placeholder="Ej: ¡Segunda hamburguesa a $1 peso!">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" id="btn_guardar_oferta_g_{{ p.id }}">
+                                                                <i class="bi bi-check-circle-fill me-1"></i> Guardar Oferta
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -657,7 +729,7 @@
             <!-- ============================================================== -->
             <!-- 4. PESTAÑA CARTAS Y MENÚS -->
             <!-- ============================================================== -->
-            <div class="tab-pane fade {% if tab_activo == 'menus' %}show active{% endif %}" id="pills-menus" role="tabpanel">
+                        <div class="tab-pane fade {% if tab_activo == 'menus' %}show active{% endif %}" id="pills-menus" role="tabpanel">
                 <div class="card border-0 shadow-sm rounded-4 p-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
                     
                     <!-- Barra de Búsqueda Reactiva para Menús -->
@@ -681,16 +753,16 @@
                         </div>
 
                         <div class="col-md-3 col-lg-3 text-end">
-                            <a href="{% url 'administrador_menus' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100">
+                            <button type="button" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCrearMenuGestion">
                                 <i class="bi bi-plus-circle-fill me-1"></i> + Nueva Carta
-                            </a>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Tarjetas de Menús y Cartas -->
                     <div class="row g-4" id="contenedorMenusGestion">
                         {% for m in menus %}
-                        <div class="col-lg-6 menu-card-item" data-local="{{ m.punto_venta.nombre }}">
+                        <div class="col-lg-6 menu-card-item" data-local="{{ m.punto_venta.nombre }}" id="menu_card_col_{{ m.id }}">
                             <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="border: 1.5px solid #e2e8f0 !important; background: #ffffff;">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <div class="d-flex align-items-center gap-2">
@@ -698,21 +770,26 @@
                                             <i class="bi bi-book-half fs-5"></i>
                                         </div>
                                         <div>
-                                            <h5 class="fw-bold mb-0 text-dark">{{ m.nombre }}</h5>
-                                            <small class="text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ m.punto_venta.nombre }}</small>
+                                            <h5 class="fw-bold mb-0 text-dark" id="menu_nombre_val_{{ m.id }}">{{ m.nombre }}</h5>
+                                            <small class="text-muted" id="menu_local_val_{{ m.id }}"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ m.punto_venta.nombre }}</small>
                                         </div>
                                     </div>
-                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success" id="menu_badge_count_{{ m.id }}">
                                         {{ m.productos.count }} platos vinculados
                                     </span>
                                 </div>
 
                                 <div class="p-3 bg-light rounded-3 mb-3 border">
                                     <span class="fw-bold small text-muted d-block mb-2">Platos y Productos de esta carta:</span>
-                                    <div class="d-flex flex-wrap gap-1">
+                                    <div class="d-flex flex-wrap gap-1" id="menu_prods_list_{{ m.id }}">
                                         {% for prod in m.productos.all %}
                                         <span class="badge bg-white text-dark border small py-1 px-2">
-                                            {{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }})
+                                            {{ prod.nombre }}
+                                            {% if prod.en_oferta and prod.precio_oferta %}
+                                                <strong class="text-danger">(${{ prod.precio_oferta|floatformat:0 }} PROMO)</strong>
+                                            {% else %}
+                                                (${% if prod.precio_base %}{{ prod.precio_base|floatformat:0 }}{% else %}0{% endif %})
+                                            {% endif %}
                                         </span>
                                         {% empty %}
                                         <span class="text-muted small">Sin productos asignados a la carta</span>
@@ -722,9 +799,81 @@
 
                                 <div class="d-flex justify-content-between align-items-center mt-auto border-top pt-3">
                                     <span class="text-muted small font-monospace">Carta #{{ m.id }}</span>
-                                    <a href="{% url 'administrador_menus' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEditarMenuGestion_{{ m.id }}" title="Modificar Carta #{{ m.id }} al instante">
                                         <i class="bi bi-pencil-fill me-1"></i> Editar Carta
-                                    </a>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Inmediato Editar Carta #{{ m.id }} (Tarea 1) -->
+                        <div class="modal fade" id="modalEditarMenuGestion_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content rounded-4 border-0 shadow">
+                                    <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                            <i class="bi bi-pencil-square"></i>
+                                            <span>Modificar Carta: <span class="text-warning" id="modal_tit_menu_{{ m.id }}">{{ m.nombre }}</span></span>
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="POST" action="{% url 'administrador_menus' %}" onsubmit="guardarMenuGestionAjax(event, '{{ m.id }}')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="modificar">
+                                        <input type="hidden" name="menu_id" value="{{ m.id }}">
+                                        <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=menus">
+                                        <div class="modal-body p-4">
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-md-7">
+                                                    <label class="form-label fw-bold small text-muted">Nombre de la Carta / Menú:</label>
+                                                    <input type="text" name="nombre" value="{{ m.nombre }}" required class="form-control rounded-3" maxlength="100" id="input_nom_menu_{{ m.id }}">
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <label class="form-label fw-bold small text-muted">Punto de Venta:</label>
+                                                    <select name="punto_venta_id" class="form-select rounded-3" required id="select_pv_menu_{{ m.id }}">
+                                                        {% for loc in locales %}
+                                                        <option value="{{ loc.id }}" {% if m.punto_venta_id == loc.id %}selected{% endif %}>
+                                                            {{ loc.nombre }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <label class="form-label fw-bold small text-muted mb-2">Seleccionar Platos / Productos para esta Carta:</label>
+                                            <div class="border rounded-3 p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                                                <div class="row g-2">
+                                                    {% for p in productos %}
+                                                    <div class="col-md-6">
+                                                        <div class="form-check p-2 rounded-2 bg-white border">
+                                                            <input class="form-check-input ms-0 me-2" type="checkbox" name="productos" value="{{ p.id }}" id="edit_prod_gest_{{ m.id }}_{{ p.id }}" {% if p in m.productos.all %}checked{% endif %}>
+                                                            <label class="form-check-label w-100" for="edit_prod_gest_{{ m.id }}_{{ p.id }}">
+                                                                <strong>{{ p.nombre }}</strong>
+                                                                {% if p.en_oferta and p.precio_oferta %}
+                                                                    <span class="text-danger fw-bold">(${{ p.precio_oferta|floatformat:0 }} <small class="badge bg-danger py-0 px-1">PROMO</small>)</span>
+                                                                {% else %}
+                                                                    <span class="text-danger fw-bold">(${{ p.precio_base|floatformat:0 }})</span>
+                                                                {% endif %}
+                                                                <div class="small text-muted">{{ p.categoria.nombre }}</div>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+
+                                            <div class="form-check form-switch mt-3">
+                                                <input class="form-check-input" type="checkbox" name="activo" id="edit_activo_gest_{{ m.id }}" {% if m.activo %}checked{% endif %}>
+                                                <label class="form-check-label fw-semibold" for="edit_activo_gest_{{ m.id }}">Carta Activa en Local</label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" id="btn_guardar_menu_{{ m.id }}">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Guardar Cambios
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -739,6 +888,70 @@
                     </div>
 
                 </div>
+
+                <!-- Modal Nueva Carta -->
+                <div class="modal fade" id="modalCrearMenuGestion" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                <h5 class="modal-title fw-bold">
+                                    <i class="bi bi-plus-circle-fill me-2"></i>Nueva Carta o Menú Gastronómico
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{% url 'administrador_menus' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="crear">
+                                <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=menus">
+                                <div class="modal-body p-4">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-7">
+                                            <label class="form-label fw-bold small text-muted">Nombre de la Carta:</label>
+                                            <input type="text" name="nombre" required class="form-control rounded-3" placeholder="Ej: Carta Minutas y Almuerzos">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold small text-muted">Punto de Venta:</label>
+                                            <select name="punto_venta_id" class="form-select rounded-3" required>
+                                                {% for loc in locales %}
+                                                <option value="{{ loc.id }}">{{ loc.nombre }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <label class="form-label fw-bold small text-muted mb-2">Seleccionar Platos Iniciales:</label>
+                                    <div class="border rounded-3 p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                                        <div class="row g-2">
+                                            {% for p in productos %}
+                                            <div class="col-md-6">
+                                                <div class="form-check p-2 rounded-2 bg-white border">
+                                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="productos" value="{{ p.id }}" id="crear_menu_p_{{ p.id }}">
+                                                    <label class="form-check-label w-100" for="crear_menu_p_{{ p.id }}">
+                                                        <strong>{{ p.nombre }}</strong> <span class="text-danger fw-bold">(${{ p.precio_base|floatformat:0 }})</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" name="activo" id="crear_menu_activo" checked>
+                                        <label class="form-check-label fw-semibold" for="crear_menu_activo">Carta Activa de Inmediato</label>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Guardar Nueva Carta
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div></div>
             </div>
 
         </div>
@@ -848,5 +1061,169 @@
         });
     });
     </script>
+
+    <!-- Contenedor de Toast para notificaciones en tiempo real sin recargar -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+        <div id="toastSafariNotif" class="toast align-items-center text-white bg-success border-0 rounded-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-5"></i>
+                    <span id="toastSafariTexto">Operación completada exitosamente</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mostrarToastSafari(mensaje, tipo='success') {
+            const toastEl = document.getElementById('toastSafariNotif');
+            const textoEl = document.getElementById('toastSafariTexto');
+            if (textoEl) textoEl.textContent = mensaje;
+            if (toastEl) {
+                toastEl.className = `toast align-items-center text-white bg-${tipo} border-0 rounded-4 shadow-lg`;
+                const toastInst = bootstrap.Toast.getInstance(toastEl) || new bootstrap.Toast(toastEl, { delay: 3500 });
+                toastInst.show();
+            }
+        }
+
+        // Tarea 1 y 7: Guardado de Carta por AJAX en tiempo real sin recargar pantalla
+        function guardarMenuGestionAjax(e, menuId) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = document.getElementById(`btn_guardar_menu_${menuId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+            }
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    // Actualizar nombre y local en la tarjeta
+                    const elNom = document.getElementById(`menu_nombre_val_${menuId}`);
+                    if (elNom) elNom.textContent = data.nombre;
+
+                    const elModalTit = document.getElementById(`modal_tit_menu_${menuId}`);
+                    if (elModalTit) elModalTit.textContent = data.nombre;
+
+                    const elLoc = document.getElementById(`menu_local_val_${menuId}`);
+                    if (elLoc) elLoc.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${data.local_nombre}`;
+
+                    const elBadge = document.getElementById(`menu_badge_count_${menuId}`);
+                    if (elBadge) elBadge.textContent = `${data.productos_count} platos vinculados`;
+
+                    // Actualizar lista de productos
+                    const elLista = document.getElementById(`menu_prods_list_${menuId}`);
+                    if (elLista) {
+                        if (data.productos && data.productos.length > 0) {
+                            elLista.innerHTML = data.productos.map(p => `
+                                <span class="badge bg-white text-dark border small py-1 px-2">
+                                    ${p.nombre} ($${Math.round(p.precio).toLocaleString('es-CL')})
+                                </span>
+                            `).join('');
+                        } else {
+                            elLista.innerHTML = '<span class="text-muted small">Sin productos asignados a la carta</span>';
+                        }
+                    }
+
+                    // Cerrar modal flotante con animación suave
+                    const modalEl = document.getElementById(`modalEditarMenuGestion_${menuId}`);
+                    if (modalEl) {
+                        const modalInst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        modalInst.hide();
+                    }
+
+                    mostrarToastSafari(data.mensaje || '¡Carta actualizada en tiempo real!');
+                } else {
+                    alert(data.mensaje || 'Error al guardar la carta');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                form.submit();
+            })
+            .finally(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Guardar Cambios';
+                }
+            });
+        }
+
+        // Tarea 6 y 7: Guardado de Ofertas por AJAX en tiempo real sin recargar pantalla
+        function toggleOfertaCamposGestion(prodId) {
+            const chk = document.getElementById(`check_oferta_g_${prodId}`);
+            const div = document.getElementById(`campos_oferta_g_${prodId}`);
+            if (chk && div) {
+                if (chk.checked) {
+                    div.classList.remove('d-none');
+                } else {
+                    div.classList.add('d-none');
+                }
+            }
+        }
+
+        function guardarOfertaGestionAjax(e, prodId) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = document.getElementById(`btn_guardar_oferta_g_${prodId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+            }
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const celdaPrecio = document.getElementById(`celda_precio_${prodId}`);
+                    if (celdaPrecio) {
+                        if (data.en_oferta && data.precio_oferta) {
+                            celdaPrecio.innerHTML = `
+                                <div>
+                                    <del class="text-muted small">$${Math.round(data.precio_base).toLocaleString('es-CL')}</del>
+                                    <strong class="text-danger fs-6">$${Math.round(data.precio_oferta).toLocaleString('es-CL')} CLP</strong>
+                                </div>
+                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                    <i class="bi bi-fire me-1"></i>${data.descripcion_oferta || 'OFERTA'}
+                                </span>
+                            `;
+                        } else {
+                            celdaPrecio.innerHTML = `<strong class="text-danger">$${Math.round(data.precio_base).toLocaleString('es-CL')} CLP</strong>`;
+                        }
+                    }
+                    const modalEl = document.getElementById(`modalOfertaProdGestion_${prodId}`);
+                    if (modalEl) {
+                        const modalInst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        modalInst.hide();
+                    }
+                    mostrarToastSafari(data.mensaje || '¡Oferta actualizada en tiempo real!');
+                } else {
+                    alert(data.mensaje || 'Error al guardar la oferta');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                form.submit();
+            })
+            .finally(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Guardar Oferta';
+                }
+            });
+        }
+    </script>
+
 </body>
 </html>

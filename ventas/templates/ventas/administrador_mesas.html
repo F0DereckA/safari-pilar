@@ -87,13 +87,13 @@
                     <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
                     <div>
                         <h1 class="brand-text-main">Venta Safari</h1>
-                        <span class="brand-text-sub">Gestión de Mesas y Salones · Semana 11</span>
+                        <span class="brand-text-sub">Gestión de Mesas y Salones Gastronómicos</span>
                     </div>
                 </a>
 
                 <!-- Navegación y Accesos Rápidos -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
+                                        <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
                     <div class="dropdown">
                         <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownLocales" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
                             <i class="bi bi-building-fill text-danger"></i>
@@ -104,8 +104,12 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador' %}"><i class="bi bi-grid-fill text-danger me-2"></i>Vista General de Locales</a></li>
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
+                            {% empty %}
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 1 %}"><i class="bi bi-shop text-danger me-2"></i>Restaurante Central Safari</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 2 %}"><i class="bi bi-cup-hot text-purple me-2" style="color: #6b21a8;"></i>Cafetería La Selva</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 3 %}"><i class="bi bi-cup-straw text-warning me-2"></i>Barra & Kiosco Oasis</a></li>
                             {% endfor %}
-                            </ul>
+                        </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
@@ -141,12 +145,6 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_dashboard' %}"><i class="bi bi-bar-chart-line-fill text-warning me-2"></i>Dashboard Analítico</a></li>
                         </ul>
                     </div>
-
-                    <!-- ACCESO DESTACADO AL CENTRO DE GESTIÓN -->
-                    <a href="{% url 'administrador_gestion' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold shadow-sm d-none d-sm-inline-flex align-items-center gap-1">
-                        <i class="bi bi-sliders"></i>
-                        <span>Centro de Gestión</span>
-                    </a>
 
                     <!-- RELOJ DISCRETO DE SESIÓN -->
                     <div id="contenedorRelojSesion"></div>
@@ -516,7 +514,7 @@
     <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
         <div class="container">
             <small class="text-white-50">
-                Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Administración y Mesas (Semana 11)
+                Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Administración y Mesas
             </small>
         </div>
     </footer>

@@ -330,7 +330,17 @@
                                             <i class="bi bi-bag-check-fill"></i> {{ p.destino_badge }}
                                         </span>
                                         {% endif %}
+                                        {% if p.en_oferta %}
+                                        <span class="badge bg-danger text-white py-1 px-2" style="font-size: 0.72rem;">
+                                            <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"PROMO" }}
+                                        </span>
+                                        <span class="product-mesero-price text-danger fw-bold">
+                                            <del class="text-muted small me-1" style="font-size: 0.75rem;">${{ p.precio_base }}</del>
+                                            {{ p.precio|pesos_clp }}
+                                        </span>
+                                        {% else %}
                                         <span class="product-mesero-price">{{ p.precio|pesos_clp }}</span>
+                                        {% endif %}
                                     </div>
                                     <h6 class="product-mesero-title">{{ p.nombre }}</h6>
                                     <p class="text-muted small mb-3">{{ p.descripcion }}</p>

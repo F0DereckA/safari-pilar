@@ -69,11 +69,9 @@
 
                 <!-- Datos del Administrador y Accesos Rápidos -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge bg-danger px-3 py-2 rounded-pill fw-bold">
-                        <i class="bi bi-shield-check me-1"></i> ADMINISTRADOR
-                    </span>
+                    
 
-                                        <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
+                                                            <!-- CATEGORÍA MADRE 1: LOCALES & OPERACIONES -->
                     <div class="dropdown">
                         <button class="btn btn-safari-header btn-sm px-3 rounded-pill fw-bold dropdown-toggle d-flex align-items-center gap-1 shadow-sm" type="button" id="dropdownLocales" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #ffffff; border: 1.5px solid #a71d1d; color: #a71d1d;">
                             <i class="bi bi-building-fill text-danger"></i>
@@ -84,8 +82,12 @@
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador' %}"><i class="bi bi-grid-fill text-danger me-2"></i>Vista General de Locales</a></li>
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
+                            {% empty %}
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 1 %}"><i class="bi bi-shop text-danger me-2"></i>Restaurante Central Safari</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 2 %}"><i class="bi bi-cup-hot text-purple me-2" style="color: #6b21a8;"></i>Cafetería La Selva</a></li>
+                            <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' 3 %}"><i class="bi bi-cup-straw text-warning me-2"></i>Barra & Kiosco Oasis</a></li>
                             {% endfor %}
-                            </ul>
+                        </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
@@ -122,12 +124,6 @@
                         </ul>
                     </div>
 
-                    <!-- ACCESO DESTACADO AL CENTRO DE GESTIÓN -->
-                    <a href="{% url 'administrador_gestion' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold shadow-sm d-none d-sm-inline-flex align-items-center gap-1">
-                        <i class="bi bi-sliders"></i>
-                        <span>Centro de Gestión</span>
-                    </a>
-
                     <!-- RELOJ DISCRETO DE SESIÓN -->
                     <div id="contenedorRelojSesion"></div>
 
@@ -160,16 +156,14 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <div>
                 <h2 class="fw-bold text-dark mb-1" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
-                    <i class="bi bi-journal-text text-danger me-2"></i>BITÁCORA Y HISTORIAL DE ACCIONES (SEMANA 11)
+                    <i class="bi bi-journal-text text-danger me-2"></i>BITÁCORA Y HISTORIAL DE ACCIONES OPERATIVAS
                 </h2>
                 <p class="text-muted mb-0 small">
                     Trazabilidad unificada de operaciones gastronómicas: aperturas/cierres de jornada, cajas, traslados de personal, ventas y despachos en cocina.
                 </p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-xs">
-                    <i class="bi bi-database-check text-success me-1"></i> Trazabilidad SQLite Activa
-                </span>
+                
             </div>
         </div>
 
@@ -375,7 +369,7 @@
 
             <!-- Footer Informativo -->
             <div class="card-footer bg-light py-2 text-center text-muted small">
-                Trazabilidad oficial de Parque Safari • Registro inmutable derivado de modelos relacionales (Semana 11)
+                Trazabilidad oficial de Parque Safari • Registro inmutable de transacciones operativas
             </div>
         </div>
 

@@ -513,7 +513,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: CIERRE DE CAJA & ARQUEO DE CUADRATURA (SEMANA 12) -->
+    <!-- MODAL 3: CIERRE DE CAJA & ARQUEO DE CUADRATURA  -->
     {% if caja_activa %}
     <div class="modal fade" id="modalCerrarCaja" tabindex="-1" aria-labelledby="modalCerrarCajaLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
@@ -523,7 +523,7 @@
                         <h5 class="modal-title fw-bold" id="modalCerrarCajaLabel">
                             <i class="bi bi-safe2-fill text-warning me-2"></i> Cierre de Caja & Proceso de Cuadratura
                         </h5>
-                        <small class="text-white-50">Subproceso de Arqueo obligatorio realizado por el cajero(a) • Semana 12</small>
+                        <small class="text-white-50">Subproceso de Arqueo y Cuadratura de Fin de Turno</small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -578,9 +578,9 @@
                             <div class="d-flex align-items-start gap-2">
                                 <i class="bi bi-info-circle-fill text-danger fs-5 mt-1"></i>
                                 <div class="small">
-                                    <strong>Normativa Oficial Chilena & Pauta de Evaluación:</strong>
+                                    <strong>Normativa Oficial & Eventos Promocionales:</strong>
                                     <div class="text-muted mt-1">
-                                        • Según la <strong>Ley N° 20.956</strong> del Banco Central de Chile, las monedas de $1 y $5 salieron del cono monetario legal; sus casillas se inicializan en 0 para total cumplimiento con la pauta académica.<br>
+                                        • Según la <strong>Ley N° 20.956</strong> del Banco Central de Chile, las monedas de $1 y $5 salieron del cono monetario legal; el sistema las acepta y cuadra físicamente para eventos promocionales especiales (ej: segunda unidad a $1 peso).<br>
                                         • El efectivo recaudado ya incluye la regla de redondeo (1 al 4 hacia abajo, 5 al 9 hacia arriba) aplicada a cada venta.
                                     </div>
                                 </div>
@@ -674,19 +674,19 @@
                                         <span class="small text-muted text-end" id="sub_m_10" style="min-width: 80px;">$0</span>
                                     </div>
 
-                                    <!-- Monedas $5 (Pauta) -->
+                                    <!-- Monedas $5 (Promos/Eventos) -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_5" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
-                                            $5 <span class="badge bg-light text-muted border px-1" style="font-size: 0.65rem;">Pauta</span>:
+                                            $5 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
                                         <input type="number" min="0" step="1" name="monedas_5" id="m_5" value="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;" oninput="calcularArqueoCaja()">
                                         <span class="small text-muted text-end" id="sub_m_5" style="min-width: 80px;">$0</span>
                                     </div>
 
-                                    <!-- Monedas $1 (Pauta) -->
+                                    <!-- Monedas $1 (Promos/Eventos) -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                                         <label for="m_1" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
-                                            $1 <span class="badge bg-light text-muted border px-1" style="font-size: 0.65rem;">Pauta</span>:
+                                            $1 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
                                         <input type="number" min="0" step="1" name="monedas_1" id="m_1" value="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;" oninput="calcularArqueoCaja()">
                                         <span class="small text-muted text-end" id="sub_m_1" style="min-width: 80px;">$0</span>
@@ -1168,7 +1168,7 @@
         });
 
         // =========================================================================
-        // SEMANA 12: SUBPROCESO DE CUADRATURA Y ARQUEO DE CAJA
+        // SUBPROCESO DE CUADRATURA Y ARQUEO DE CAJA
         // =========================================================================
         const ESPERADO_EFECTIVO = {{ resumen_caja.total_efectivo_esperado|default:0 }};
 

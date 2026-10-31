@@ -1829,3 +1829,137 @@ class GestionUnificadaYFiltrosTests(TestCase):
             contenido_sesion = f.read()
         self.assertIn("reiniciarTiempoSesion", contenido_sesion)
         self.assertIn("indicadorSesionSafari", contenido_sesion)
+
+
+
+class NuevasFuncionalidadesEvaluacionTest(TestCase):
+    """
+    Tests de integración para las nuevas funcionalidades solicitadas:
+    1. Exportación de reportes de ventas (Excel, Word, PDF)
+    2. Creación y gestión de ofertas promocionales ($1 peso, 2x1)
+    3. Redondeo en efectivo para eventos promocionales ($1 y $5 pesos)
+    4. Edición de carta en tiempo real con respuesta AJAX
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.admin_user = User.objects.create_user(
+            username='admin_test_nuevas',
+            password='Password123!',
+            first_name='Admin',
+            last_name='Nuevas'
+        )
+        self.local = PuntoVenta.objects.create(
+            nombre="Restaurante Central Test",
+            tipo="RESTAURANTE",
+            activo=True
+        )
+        self.perfil = PerfilEmpleado.objects.create(
+            usuario=self.admin_user,
+            rol='ADMINISTRADOR',
+            rut='11.111.111-1',
+            punto_venta_actual=self.local,
+            activo=True
+        )
+        self.categoria = Categoria.objects.create(nombre="Comida Test", activo=True)
+        self.producto = Producto.objects.create(
+            nombre="Hamburguesa Promo Test",
+            categoria=self.categoria,
+            precio_base=Decimal('8900'),
+            activo=True
+        )
+        self.menu = Menu.objects.create(
+            nombre="Carta Test",
+            punto_venta=self.local,
+            activo=True
+        )
+        self.menu.productos.add(self.producto)
+
+    def test_exportar_reporte_excel(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.get('/administrador/dashboard/exportar/', {
+            'formato': 'excel',
+            'tipo_rango': '15_meses'
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('spreadsheetml.sheet', resp['Content-Type'])
+        self.assertTrue(len(resp.content) > 1000)
+
+    def test_exportar_reporte_word(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.get('/administrador/dashboard/exportar/', {
+            'formato': 'word',
+            'tipo_rango': 'mes',
+            'mes': '2026-09'
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('wordprocessingml.document', resp['Content-Type'])
+        self.assertTrue(len(resp.content) > 1000)
+
+    def test_exportar_reporte_pdf_vista_imprimible(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.get('/administrador/dashboard/exportar/', {
+            'formato': 'pdf',
+            'tipo_rango': 'dia',
+            'fecha': '2026-10-31'
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "PARQUE SAFARI CHILE")
+        self.assertContains(resp, "REPORTE OFICIAL DE VENTAS")
+
+    def test_crear_oferta_producto_1_peso(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.post('/administrador/productos/', {
+            'accion': 'gestionar_oferta',
+            'producto_id': self.producto.id,
+            'en_oferta': 'on',
+            'precio_oferta': '1',
+            'descripcion_oferta': '¡Segunda hamburguesa a $1 peso!'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['status'], 'ok')
+        self.assertEqual(data['precio_actual'], 1.0)
+
+        # Verificar en base de datos
+        self.producto.refresh_from_db()
+        self.assertTrue(self.producto.en_oferta)
+        self.assertEqual(self.producto.precio_oferta, Decimal('1'))
+        self.assertEqual(self.producto.precio_actual, Decimal('1'))
+
+    def test_redondeo_evento_promocional_1_peso_y_5_pesos(self):
+        from ventas.utils import calcular_redondeo_ley_20956
+        # $1 peso no se redondea a $0 (permite evento de 1 peso en efectivo)
+        final_1, ajuste_1 = calcular_redondeo_ley_20956(1, 'EFECTIVO')
+        self.assertEqual(final_1, Decimal('1'))
+        self.assertEqual(ajuste_1, Decimal('0'))
+
+        # $5 pesos no se redondea a $10
+        final_5, ajuste_5 = calcular_redondeo_ley_20956(5, 'EFECTIVO')
+        self.assertEqual(final_5, Decimal('5'))
+        self.assertEqual(ajuste_5, Decimal('0'))
+
+        # Ventas regulares aplican redondeo de ley 20.956
+        final_reg, ajuste_reg = calcular_redondeo_ley_20956(1994, 'EFECTIVO')
+        self.assertEqual(final_reg, Decimal('1990'))
+        self.assertEqual(ajuste_reg, Decimal('-4'))
+
+    def test_modificar_menu_ajax_tiempo_real(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.post('/administrador/menus/', {
+            'accion': 'modificar',
+            'menu_id': self.menu.id,
+            'nombre': 'Carta Modificada en Tiempo Real',
+            'punto_venta_id': self.local.id,
+            'productos': [self.producto.id],
+            'activo': 'on'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['status'], 'ok')
+        self.assertEqual(data['nombre'], 'Carta Modificada en Tiempo Real')
+        self.assertEqual(data['productos_count'], 1)
+
+        # Verificar en BD
+        self.menu.refresh_from_db()
+        self.assertEqual(self.menu.nombre, 'Carta Modificada en Tiempo Real')

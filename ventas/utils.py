@@ -2,7 +2,8 @@
 Utilidades y Lógica Financiera para Parque Safari (Venta_safari).
 Normativas Oficiales:
 - Ley N° 20.956 (Regla de Redondeo en Efectivo del Banco Central de Chile).
-- Subproceso de Cuadratura y Arqueo de Cajas (Semana 12).
+- Subproceso de Cuadratura y Arqueo de Cajas (Protocolo Oficial de Cierre).
+- Soporte para Eventos Promocionales con monedas de $1 y $5 pesos.
 """
 
 from decimal import Decimal
@@ -14,10 +15,14 @@ def calcular_redondeo_ley_20956(monto, metodo_pago='EFECTIVO'):
     Aplica la Regla de Redondeo para operaciones en efectivo (1 al 4 hacia abajo, 5 al 9 hacia arriba):
     - Cantidades que terminen en 1, 2, 3 o 4 se redondean hacia abajo a la decena inferior.
     - Cantidades que terminen en 5, 6, 7, 8 o 9 se redondean hacia arriba a la decena superior.
+    - Excepción de Evento Promocional: Montos especiales de $1 a $5 pesos (ej. promoción 'segunda hamburguesa a $1 peso')
+      se cobran al valor exacto de la moneda promocional para permitir su recepción física y cuadratura en caja.
     - Operaciones con tarjetas o transferencias electrónicas no se redondean (pago al peso exacto).
     
     Retorna tupla: (monto_final, ajuste_redondeo)
     Ejemplos:
+      $1 -> $1 (Evento promocional con moneda de $1 peso)
+      $5 -> $5 (Evento promocional con moneda de $5 pesos)
       $1.994 -> $1.990 (ajuste: -4)
       $1.995 -> $2.000 (ajuste: +5)
       $2.000 -> $2.000 (ajuste: 0)
@@ -27,6 +32,11 @@ def calcular_redondeo_ley_20956(monto, metodo_pago='EFECTIVO'):
         return monto_dec, Decimal('0')
 
     monto_int = int(round(float(monto_dec)))
+
+    # Excepción para eventos promocionales con monedas físicas de $1 o $5 pesos
+    if 0 < monto_int <= 5:
+        return Decimal(str(monto_int)), Decimal('0')
+
     resto = monto_int % 10
 
     if resto == 0:
