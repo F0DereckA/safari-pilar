@@ -54,16 +54,7 @@
                             {% for loc in locales %}
                             <li><a class="dropdown-item rounded-3 py-2" href="{% url 'administrador_local' loc.id %}"><i class="bi bi-shop text-danger me-2"></i>{{ loc.nombre }}</a></li>
                             {% endfor %}
-                            <li><hr class="dropdown-divider my-2"></li>
-                            <li>
-                                <form method="POST" action="{% url 'administrador_backup' %}" class="m-0 p-0">
-                                    {% csrf_token %}
-                                    <button type="submit" class="dropdown-item rounded-3 py-2 text-primary fw-bold" title="Copia de Seguridad Inmediata">
-                                        <i class="bi bi-database-down me-2"></i>Respaldo BD (Disaster Recovery)
-                                    </button>
-                                </form>
-                            </li>
-                        </ul>
+                            </ul>
                     </div>
 
                     <!-- CATEGORÍA MADRE 2: ADMINISTRACIÓN (CON SUBCLASES) -->
