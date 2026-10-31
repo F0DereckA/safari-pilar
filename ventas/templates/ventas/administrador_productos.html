@@ -310,14 +310,51 @@
                             </div>
 
                             <h5 class="fw-bold text-dark mb-1">{{ p.nombre }}</h5>
-                            {% if p.en_oferta and p.precio_oferta %}
-                            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
-                                <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
-                                <span class="fs-5 fw-bold text-danger">${{ p.precio_oferta|floatformat:0 }} CLP</span>
-                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
-                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA" }}
-                                </span>
-                            </div>
+                            {% if p.en_oferta %}
+                                {% if p.tipo_oferta == 'PRECIO_FIJO' and p.precio_oferta %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
+                                    <span class="fs-5 fw-bold text-danger">${{ p.precio_oferta|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-tag-fill me-1"></i>{{ p.descripcion_oferta|default:"PRECIO FIJO" }}
+                                    </span>
+                                </div>
+                                {% elif p.tipo_oferta == 'SEGUNDA_1' %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"¡2da unidad a $1 peso!" }}
+                                    </span>
+                                </div>
+                                {% elif p.tipo_oferta == '3X2' %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-fire me-1"></i>PROMO 3x2 (LLEVA 3, PAGA 2)
+                                    </span>
+                                </div>
+                                {% elif p.tipo_oferta == '2X1' %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-fire me-1"></i>PROMO 2x1 (LLEVA 2, PAGA 1)
+                                    </span>
+                                </div>
+                                {% elif p.tipo_oferta == 'DESCUENTO_PCT' %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-percent me-1"></i>{{ p.descuento_pct|floatformat:0 }}% DESCUENTO
+                                    </span>
+                                </div>
+                                {% else %}
+                                <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.72rem;">
+                                        <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA ESPECIAL" }}
+                                    </span>
+                                </div>
+                                {% endif %}
                             {% else %}
                             <div class="fs-5 fw-bold text-danger mb-2">
                                 {{ p.precio_base|pesos_clp }}
@@ -410,7 +447,18 @@
 
                                     <div id="sec_of_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
                                         <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Precio Promocional de Oferta ($ CLP):</label>
+                                            <label class="form-label small fw-bold text-dark">Tipo de Oferta o Promoción Especial:</label>
+                                            <select name="tipo_oferta" class="form-select rounded-3">
+                                                <option value="SEGUNDA_1" {% if p.tipo_oferta == 'SEGUNDA_1' %}selected{% endif %}>🍔 Segunda Unidad a $1 peso (o precio especial)</option>
+                                                <option value="3X2" {% if p.tipo_oferta == '3X2' %}selected{% endif %}>🎉 Lleva 3 y Paga 2 (3x2)</option>
+                                                <option value="2X1" {% if p.tipo_oferta == '2X1' %}selected{% endif %}>✨ Lleva 2 y Paga 1 (2x1)</option>
+                                                <option value="PRECIO_FIJO" {% if p.tipo_oferta == 'PRECIO_FIJO' %}selected{% endif %}>🏷️ Precio Fijo Rebajado</option>
+                                                <option value="DESCUENTO_PCT" {% if p.tipo_oferta == 'DESCUENTO_PCT' %}selected{% endif %}>📉 Descuento Porcentual (%)</option>
+                                                <option value="NINGUNA" {% if p.tipo_oferta == 'NINGUNA' %}selected{% endif %}>Sin Oferta Especial</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
                                             <input type="number" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
                                             <div class="form-text small" style="font-size: 0.72rem;">
                                                 Acepta monedas de $1 o $5 pesos para eventos especiales (ej: "Lleva la segunda hamburguesa a $1").

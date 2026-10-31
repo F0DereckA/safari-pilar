@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -182,7 +183,16 @@ class Categoria(models.Model):
 # 6. PRODUCTOS GASTRONÓMICOS
 # ==============================================================================
 class Producto(models.Model):
-    """Alimentos y bebidas disponibles en el parque con precio base y disponibilidad por local"""
+    """Alimentos y bebidas disponibles en el parque con precio base, disponibilidad por local y motor de promociones por volumen"""
+    TIPOS_OFERTA = [
+        ('NINGUNA', 'Sin Oferta'),
+        ('3X2', 'Lleva 3 y Paga 2 (3x2)'),
+        ('2X1', 'Lleva 2 y Paga 1 (2x1)'),
+        ('SEGUNDA_1', 'Segunda Unidad a $1 peso'),
+        ('PRECIO_FIJO', 'Precio de Oferta Fijo'),
+        ('DESCUENTO_PCT', 'Descuento Porcentual'),
+    ]
+
     nombre = models.CharField(max_length=150)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name='productos')
     precio_base = models.DecimalField(max_digits=10, decimal_places=2)
@@ -190,20 +200,82 @@ class Producto(models.Model):
     puntos_venta = models.ManyToManyField(PuntoVenta, blank=True, related_name='productos_disponibles')
     activo = models.BooleanField(default=True)
     en_oferta = models.BooleanField(default=False, help_text="Indica si el producto tiene promoción u oferta activa")
-    precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional (ej. $1 para 2da unidad, 2x1, oferta)")
-    descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Segunda hamburguesa a $1!, Promo 2x1, 25% OFF")
+    tipo_oferta = models.CharField(max_length=20, choices=TIPOS_OFERTA, default='NINGUNA', help_text="Tipo de promoción (3x2, 2da a $1 peso, etc.)")
+    precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional fijo o precio de la 2da unidad (ej. $1)")
+    descuento_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Porcentaje de descuento para tipo DESCUENTO_PCT")
+    descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Lleva 3 y paga 2!, ¡Segunda hamburguesa a $1!")
     creado_en = models.DateTimeField(auto_now_add=True)
 
     @property
     def precio_actual(self):
-        """Retorna el precio de oferta si está activa y definida; de lo contrario el precio base"""
-        if self.en_oferta and self.precio_oferta is not None and self.precio_oferta > 0:
+        """Retorna el precio unitario base o el precio de oferta fijo si aplica"""
+        if self.en_oferta and self.tipo_oferta in ['PRECIO_FIJO', 'NINGUNA'] and self.precio_oferta is not None and self.precio_oferta > 0:
             return self.precio_oferta
         return self.precio_base
 
+    def calcular_total_promocion(self, cantidad):
+        """
+        Calcula el total a cobrar aplicando la promoción de volumen/oferta:
+        - 3x2: Cada grupo de 3 paga 2 (1 gratis)
+        - 2x1: Cada grupo de 2 paga 1
+        - SEGUNDA_1: Cada par paga 1 precio base + 1 peso (o precio_oferta)
+        - PRECIO_FIJO: cantidad * precio_oferta
+        - DESCUENTO_PCT: cantidad * (precio_base * (1 - pct/100))
+        Retorna: (total_a_cobrar, ahorro, texto_detalle)
+        """
+        cant = max(1, int(cantidad))
+        p_base = self.precio_base
+        total_sin_promo = cant * p_base
+
+        if not self.en_oferta or self.tipo_oferta == 'NINGUNA':
+            return total_sin_promo, Decimal('0'), ""
+
+        if self.tipo_oferta == '3X2':
+            grupos_3 = cant // 3
+            resto = cant % 3
+            unidades_a_cobrar = (grupos_3 * 2) + resto
+            total = unidades_a_cobrar * p_base
+            ahorro = total_sin_promo - total
+            texto = f"Promo 3x2 aplicada ({grupos_3} gratis)" if grupos_3 > 0 else "Promo 3x2 activa"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == '2X1':
+            grupos_2 = cant // 2
+            resto = cant % 2
+            unidades_a_cobrar = grupos_2 + resto
+            total = unidades_a_cobrar * p_base
+            ahorro = total_sin_promo - total
+            texto = f"Promo 2x1 aplicada ({grupos_2} gratis)" if grupos_2 > 0 else "Promo 2x1 activa"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == 'SEGUNDA_1':
+            precio_segunda = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta > 0) else Decimal('1')
+            pares = cant // 2
+            sobrante = cant % 2
+            # Cada par paga 1 al precio base y 1 a $1 peso
+            total = (pares * (p_base + precio_segunda)) + (sobrante * p_base)
+            ahorro = total_sin_promo - total
+            texto = f"Promo 2da unidad a ${precio_segunda:,.0f} aplicada" if pares > 0 else "Lleva 2da a $1 peso"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == 'PRECIO_FIJO' and self.precio_oferta is not None and self.precio_oferta > 0:
+            total = cant * self.precio_oferta
+            ahorro = max(Decimal('0'), total_sin_promo - total)
+            texto = f"Precio Oferta: ${self.precio_oferta:,.0f}"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == 'DESCUENTO_PCT' and self.descuento_pct > 0:
+            factor = (Decimal('100') - self.descuento_pct) / Decimal('100')
+            total = cant * (p_base * factor)
+            ahorro = total_sin_promo - total
+            texto = f"{self.descuento_pct}% Descuento"
+            return total, ahorro, texto
+
+        return total_sin_promo, Decimal('0'), ""
+
     def __str__(self):
-        if self.en_oferta and self.precio_oferta is not None:
-            return f"{self.nombre} [PROMO: ${self.precio_oferta:,.0f} (Base: ${self.precio_base:,.0f})]"
+        if self.en_oferta:
+            return f"{self.nombre} [OFERTA {self.get_tipo_oferta_display()}] (${self.precio_base:,.0f})"
         return f"{self.nombre} (${self.precio_base:,.0f})"
 
     class Meta:

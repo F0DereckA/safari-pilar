@@ -1478,6 +1478,47 @@
                 actualizarEstadoCuentaMesa(mId);
             }
         });
+
+        // Tarea 1: Auto-sincronización fluida en tiempo real para meseros sin F5 y preservando el scroll
+        let sincronizandoMesas = false;
+        async function autoSincronizarMesasMesero() {
+            if (sincronizandoMesas) return;
+            // No actualizar si el mesero tiene un modal abierto o está agregando productos al carrito
+            if (document.querySelector('.modal.show') || (typeof carrito !== 'undefined' && Object.keys(carrito).length > 0)) {
+                return;
+            }
+            sincronizandoMesas = true;
+            const scrollPos = window.scrollY;
+
+            try {
+                const resp = await fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!resp.ok) {
+                    sincronizandoMesas = false;
+                    return;
+                }
+                const textoHtml = await resp.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(textoHtml, 'text/html');
+
+                const nuevoMapa = doc.querySelector('.mapa-mesas-grid');
+                const actualMapa = document.querySelector('.mapa-mesas-grid');
+                if (nuevoMapa && actualMapa && nuevoMapa.innerHTML.trim() !== actualMapa.innerHTML.trim()) {
+                    actualMapa.innerHTML = nuevoMapa.innerHTML;
+                    if (mesaSeleccionada && mesaSeleccionada.id) {
+                        const card = document.getElementById(`cardMesa_${mesaSeleccionada.id}`);
+                        if (card) card.classList.add('mesa-seleccionada');
+                    }
+                }
+                window.scrollTo(0, scrollPos);
+            } catch (err) {
+                // Silencioso ante contingencias de red (Tarea 7)
+            } finally {
+                sincronizandoMesas = false;
+            }
+        }
+        setInterval(autoSincronizarMesasMesero, 4000);
     </script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/anti_doble_envio.js' %}"></script>

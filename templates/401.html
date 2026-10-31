@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>401 - Autenticación Requerida | Parque Safari</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .error-card {
+            background: #ffffff;
+            border: none;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .error-header-strip {
+            height: 6px;
+            background: linear-gradient(90deg, #d97706, #b45309, #78350f);
+        }
+        .error-code {
+            font-family: 'Oswald', sans-serif;
+            font-size: 6.5rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -2px;
+            color: #d97706;
+            text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.15);
+        }
+        .lock-icon {
+            font-size: 4rem;
+            color: #d97706;
+            animation: pulse-lock 3s ease-in-out infinite;
+        }
+        @keyframes pulse-lock {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .btn-safari {
+            background-color: #b91c1c;
+            border-color: #b91c1c;
+            color: #ffffff;
+            font-weight: 700;
+        }
+        .btn-safari:hover {
+            background-color: #991b1b;
+            border-color: #991b1b;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="tribal-divider"></div>
+
+    <!-- Barra de Navegación Simple -->
+    <header class="safari-header py-2 shadow-sm bg-white border-bottom">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a href="{% url 'login' %}" class="d-flex align-items-center text-decoration-none gap-2" title="Volver al Acceso">
+                <img src="{% static 'img/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 48px; width: auto; object-fit: contain;">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</h5>
+                    <small class="text-muted d-block" style="font-size: 0.75rem;">Sistema Gastronómico Parque Safari</small>
+                </div>
+            </a>
+            <div>
+                <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                    <i class="bi bi-shield-lock text-warning me-1"></i> Autenticación Requerida
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container my-auto py-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="error-card p-4 p-md-5 text-center">
+                    <div class="error-header-strip mb-4"></div>
+
+                    <div class="d-flex justify-content-center align-items-center gap-3 mb-2">
+                        <i class="bi bi-key-fill lock-icon"></i>
+                        <div class="error-code">401</div>
+                    </div>
+
+                    <h2 class="fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
+                        Autenticación Requerida
+                    </h2>
+
+                    <p class="text-secondary fs-5 mb-4" style="max-width: 580px; margin: 0 auto;">
+                        Para acceder a este terminal o módulo del parque debes identificarte con tu usuario o RUT y contraseña institucional. Tu sesión previa puede haber finalizado por inactividad o seguridad.
+                    </p>
+
+                    <div class="alert alert-light border text-start p-3 mb-4 rounded-3" style="background-color: #f8fafc;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-shield-exclamation text-warning fs-5 mt-1"></i>
+                            <div>
+                                <strong class="text-dark d-block">Norma de Seguridad y Cifrado ISO/IEC 27400</strong>
+                                <span class="text-muted small">
+                                    Por motivos de seguridad, los terminales POS de Parque Safari exigen una credencial activa con hash criptográfico para operar cajas, comandas y auditorías.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{% url 'login' %}" class="btn btn-safari btn-lg px-4 rounded-pill shadow-sm">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión Ahora
+                        </a>
+                        <a href="{% url 'index' %}" class="btn btn-outline-secondary btn-lg px-4 rounded-pill">
+                            <i class="bi bi-house-door me-1"></i> Portada Principal
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-3 text-center text-muted small bg-white border-top mt-auto">
+        <div class="container">
+            Safari Pilar • Sistema de Gestión <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

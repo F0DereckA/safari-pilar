@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404, Http404
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db import models, transaction
+from django.db.models import Sum, Count, Q, F
 from django.utils import timezone
 from django.core.cache import cache
 from decimal import Decimal
@@ -462,6 +463,12 @@ def login_view(request):
             return redirect('index')
 
         # Validar autenticación
+                # Permitir inicio de sesión tanto con nombre de usuario como con RUT institucional
+        if not User.objects.filter(username__iexact=username).exists():
+            perfil_rut = PerfilEmpleado.objects.filter(rut__iexact=username).select_related('usuario').first()
+            if perfil_rut and perfil_rut.usuario:
+                username = perfil_rut.usuario.username
+
         user = authenticate(request, username=username, password=password)
         if user is not None:
             perfil = getattr(user, 'perfil', None)
@@ -582,6 +589,26 @@ def error_400_view(request, exception=None):
     return render(request, '400.html', {'rol_usuario': rol, 'path_solicitado': request.path}, status=400)
 
 
+
+def error_401_view(request, exception=None):
+    """Manejador personalizado de error HTTP 401: Autenticación Requerida"""
+    return render(request, '401.html', {'path_solicitado': request.path}, status=401)
+
+
+def error_502_view(request):
+    """Manejador personalizado de error HTTP 502: Puerta de Enlace Incorrecta (Bad Gateway)"""
+    return render(request, '502.html', {}, status=502)
+
+
+def error_503_view(request):
+    """Manejador personalizado de error HTTP 503: Servicio Temporalmente No Disponible / Mantenimiento"""
+    return render(request, '503.html', {}, status=503)
+
+
+def error_504_view(request):
+    """Manejador personalizado de error HTTP 504: Tiempo de Espera Agotado (Gateway Timeout)"""
+    return render(request, '504.html', {}, status=504)
+
 def error_500_view(request):
     """
     Manejador personalizado de error HTTP 500 (Semana 10).
@@ -593,6 +620,17 @@ def error_500_view(request):
 
 
 def index(request):
+    """Portal principal de acceso corporativo: detección automática de rol y redirección inmediata (Tarea 9)"""
+    if request.user.is_authenticated:
+        rol = obtener_rol_usuario(request.user)
+        if rol == 'ADMINISTRADOR':
+            return redirect('administrador')
+        elif rol == 'CAJERO':
+            return redirect('vendedor')
+        elif rol == 'MESERO':
+            return redirect('mesero')
+        elif rol == 'COCINERO':
+            return redirect('cocina')
     return render(request, 'ventas/index.html')
 
 
@@ -680,6 +718,51 @@ def abrir_jornada(request):
             except ValueError:
                 monto_apertura = 0.0
 
+            # Tarea 4: Al iniciar un nuevo día operativo, todas las mesas del parque quedan 100% libres y habilitadas
+            Mesa.objects.all().update(estado='HABILITADA')
+            Venta.objects.filter(estado='ABIERTA', fecha_hora__date__lt=hoy).update(estado='CANCELADA')
+
+            # Tarea 5: Detección y recuperación automática ante corte de energía / apagón sin cierre de caja
+            caja_huerfana = Caja.objects.filter(
+                estado='ABIERTA'
+            ).exclude(jornada__fecha=hoy).order_by('-fecha_hora_apertura').first()
+
+            contingencia_msg = ""
+            if caja_huerfana:
+                ventas_efectivo = Venta.objects.filter(
+                    caja=caja_huerfana,
+                    estado='PAGADA',
+                    metodo_pago='EFECTIVO'
+                ).aggregate(total=Sum('total'))['total'] or Decimal('0')
+
+                fondo_anterior = Decimal(str(caja_huerfana.monto_apertura or 0))
+                saldo_traspaso = fondo_anterior + Decimal(str(ventas_efectivo))
+
+                caja_huerfana.estado = 'CERRADA'
+                caja_huerfana.fecha_hora_cierre = timezone.now()
+                caja_huerfana.total_efectivo_declarado = saldo_traspaso
+                caja_huerfana.total_efectivo_esperado = saldo_traspaso
+                caja_huerfana.diferencia_cuadre = Decimal('0')
+                caja_huerfana.estado_cuadre = 'CUADRADA'
+                caja_huerfana.observaciones = (caja_huerfana.observaciones or '') + (
+                    f"\n[CIERRE DE CONTINGENCIA - APAGÓN/CORTE ELÉCTRICO]: Caja cerrada automáticamente "
+                    f"al iniciar la nueva jornada del {hoy.strftime('%d/%m/%Y')}. "
+                    f"Saldo en efectivo recaudado (${int(saldo_traspaso):,} CLP) traspasado como fondo de la nueva caja."
+                )
+                caja_huerfana.save()
+
+                if caja_huerfana.jornada and caja_huerfana.jornada.estado == 'ABIERTA':
+                    caja_huerfana.jornada.estado = 'CERRADA'
+                    caja_huerfana.jornada.fecha_hora_cierre = timezone.now()
+                    caja_huerfana.jornada.usuario_cierre = request.user
+                    caja_huerfana.jornada.observaciones = (caja_huerfana.jornada.observaciones or '') + "\n[Cierre automático por contingencia eléctrica]"
+                    caja_huerfana.jornada.save()
+
+                if monto_apertura == 0.0 and saldo_traspaso > 0:
+                    monto_apertura = float(saldo_traspaso)
+                    observaciones = f"Fondo traspasado por contingencia eléctrica previa: ${int(saldo_traspaso):,} CLP (Caja #{caja_huerfana.id})"
+                    contingencia_msg = f" ⚡ Contingencia por corte de energía resuelta: Se traspasó el saldo en efectivo de ${int(saldo_traspaso):,} CLP de la jornada anterior como fondo inicial."
+
             # Crear la Jornada diaria oficial de hoy
             nueva_jornada = Jornada.objects.create(
                 usuario_apertura=request.user,
@@ -705,7 +788,7 @@ def abrir_jornada(request):
             )
 
         fondo_txt = f" con fondo inicial de ${int(monto_apertura):,}" if monto_apertura > 0 else ""
-        messages.success(request, f"¡Jornada #{nueva_jornada.id} abierta con éxito! Tu {nueva_caja.nombre} quedó habilitada{fondo_txt}.")
+        messages.success(request, f"¡Jornada #{nueva_jornada.id} abierta con éxito! Tu {nueva_caja.nombre} quedó habilitada{fondo_txt}.{contingencia_msg}")
         return redirect('vendedor')
 
     return redirect('vendedor')
@@ -911,6 +994,9 @@ def cerrar_jornada(request):
         obs = request.POST.get('observaciones_cierre', '').strip()
         if obs:
             jornada.observaciones = (jornada.observaciones or '') + f"\n[Cierre Jornada por {request.user.username}]: {obs}"
+
+        # Tarea 4: Liberar todas las mesas al finalizar la jornada para el día siguiente
+        Mesa.objects.all().update(estado='HABILITADA')
 
         jornada.estado = 'CERRADA'
         jornada.fecha_hora_cierre = timezone.now()
@@ -1596,6 +1682,13 @@ def administrador_productos(request):
 
             cat_obj = get_object_or_404(Categoria, id=categoria_id)
 
+            tipo_oferta = request.POST.get('tipo_oferta', 'NINGUNA').strip()
+            descuento_pct_raw = request.POST.get('descuento_pct', '0').strip()
+            try:
+                descuento_pct = max(Decimal('0'), min(Decimal('100'), Decimal(descuento_pct_raw)))
+            except Exception:
+                descuento_pct = Decimal('0')
+
             prod = Producto.objects.create(
                 nombre=nombre,
                 categoria=cat_obj,
@@ -1603,7 +1696,9 @@ def administrador_productos(request):
                 descripcion=descripcion,
                 activo=activo,
                 en_oferta=en_oferta,
+                tipo_oferta=tipo_oferta,
                 precio_oferta=precio_oferta,
+                descuento_pct=descuento_pct,
                 descripcion_oferta=descripcion_oferta
             )
             if puntos_venta_ids:
@@ -1644,13 +1739,22 @@ def administrador_productos(request):
 
             cat_obj = Categoria.objects.filter(id=categoria_id).first() or prod.categoria
 
+            tipo_oferta = request.POST.get('tipo_oferta', prod.tipo_oferta).strip()
+            descuento_pct_raw = request.POST.get('descuento_pct', str(prod.descuento_pct)).strip()
+            try:
+                descuento_pct = max(Decimal('0'), min(Decimal('100'), Decimal(descuento_pct_raw)))
+            except Exception:
+                descuento_pct = prod.descuento_pct
+
             prod.nombre = nombre
             prod.categoria = cat_obj
             prod.precio_base = precio_base
             prod.descripcion = descripcion
             prod.activo = activo
             prod.en_oferta = en_oferta
+            prod.tipo_oferta = tipo_oferta
             prod.precio_oferta = precio_oferta
+            prod.descuento_pct = descuento_pct
             prod.descripcion_oferta = descripcion_oferta
             prod.save()
 
@@ -1675,7 +1779,16 @@ def administrador_productos(request):
                     precio_oferta = None
             descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
 
+            tipo_oferta = request.POST.get('tipo_oferta', getattr(prod, 'tipo_oferta', 'NINGUNA')).strip()
+            descuento_pct_raw = request.POST.get('descuento_pct', '0').strip()
+            try:
+                descuento_pct = max(Decimal('0'), min(Decimal('100'), Decimal(descuento_pct_raw)))
+            except Exception:
+                descuento_pct = Decimal('0')
+
             prod.en_oferta = en_oferta
+            prod.tipo_oferta = tipo_oferta
+            prod.descuento_pct = descuento_pct
             prod.precio_oferta = precio_oferta
             prod.descripcion_oferta = descripcion_oferta
             prod.save()
@@ -1685,9 +1798,12 @@ def administrador_productos(request):
                     'status': 'ok',
                     'producto_id': prod.id,
                     'en_oferta': prod.en_oferta,
+                    'tipo_oferta': prod.tipo_oferta,
+                    'tipo_oferta_display': prod.get_tipo_oferta_display(),
                     'precio_base': float(prod.precio_base),
                     'precio_oferta': float(prod.precio_oferta) if prod.precio_oferta is not None else None,
                     'precio_actual': float(prod.precio_actual),
+                    'descuento_pct': float(prod.descuento_pct),
                     'descripcion_oferta': prod.descripcion_oferta or '',
                     'mensaje': f"¡Oferta para '{prod.nombre}' actualizada exitosamente en tiempo real!"
                 })
@@ -2365,6 +2481,7 @@ def mesero(request):
                 )
 
                 cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
+                subtotal_acumulado_ronda = Decimal('0')
                 for it in items_validos:
                     p_nom = it['nombre']
                     p_precio = it['precio']
@@ -2373,19 +2490,30 @@ def mesero(request):
                         nombre=p_nom,
                         defaults={'categoria': cat_general, 'precio_base': p_precio}
                     )
+                    # Tarea 8: Motor de ofertas por volumen (3x2, 2x1, 2da a $1 peso, etc.)
+                    total_item, ahorro_item, texto_promo = prod_obj.calcular_total_promocion(p_cant)
+                    subtotal_acumulado_ronda += total_item
+
                     DetalleVenta.objects.create(
                         venta=venta,
                         producto=prod_obj,
                         cantidad=p_cant,
-                        precio_aplicado=p_precio,
-                        subtotal=p_cant * p_precio
+                        precio_aplicado=prod_obj.precio_base,
+                        subtotal=total_item
                     )
+                    nota_item = it['nota']
+                    if texto_promo:
+                        nota_item = f"{nota_item} [{texto_promo}]".strip()
                     DetallePedido.objects.create(
                         pedido=nuevo_pedido,
                         producto=prod_obj,
                         cantidad=p_cant,
-                        observaciones=it['nota']
+                        observaciones=nota_item
                     )
+                # Recalcular total real de la venta
+                if subtotal_acumulado_ronda > 0:
+                    venta.total = sum(d.subtotal for d in venta.detalles.all())
+                    venta.save()
 
                 tiene_cocina = any(it['destino'] == 'COCINA' for it in items_validos)
                 tiene_barra = any(it['destino'] == 'BARRA' for it in items_validos)

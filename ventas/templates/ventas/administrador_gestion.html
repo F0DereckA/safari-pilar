@@ -208,19 +208,32 @@
     <!-- Contenido Principal -->
     <main class="container-fluid px-lg-5 my-4 flex-grow-1">
 
-        <!-- Mensajes del Sistema (Django Messages) -->
+        <!-- Mensajes del Sistema en Toast Flotante Discreto en la Esquina (Tarea 3) -->
         {% if messages %}
-        <div class="mb-4">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
             {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger border-2 border-danger shadow-sm{% elif message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'info' %}info border-2 border-info shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-info-circle-fill fs-5"></i>
-                    <div>{{ message }}</div>
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {% endfor %}
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.toast-container .toast').forEach(function(el) {
+                    const toast = new bootstrap.Toast(el, { delay: 4000 });
+                    toast.show();
+                    setTimeout(function() {
+                        try { toast.hide(); } catch(e){}
+                    }, 4000);
+                });
+            });
+        </script>
         {% endif %}
 
         <!-- Encabezado Hero del Centro de Gestión -->
@@ -619,14 +632,51 @@
                                         <span class="badge bg-light text-dark border">{{ p.categoria.nombre }}</span>
                                     </td>
                                     <td id="celda_precio_{{ p.id }}">
-                                        {% if p.en_oferta and p.precio_oferta %}
-                                            <div>
-                                                <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
-                                                <strong class="text-danger fs-6">${{ p.precio_oferta|floatformat:0 }} CLP</strong>
-                                            </div>
-                                            <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
-                                                <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA" }}
-                                            </span>
+                                        {% if p.en_oferta %}
+                                            {% if p.tipo_oferta == 'PRECIO_FIJO' and p.precio_oferta %}
+                                                <div>
+                                                    <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
+                                                    <strong class="text-danger fs-6">${{ p.precio_oferta|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-tag-fill me-1"></i>{{ p.descripcion_oferta|default:"PRECIO FIJO" }}
+                                                </span>
+                                            {% elif p.tipo_oferta == 'SEGUNDA_1' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"¡2da unidad a $1 peso!" }}
+                                                </span>
+                                            {% elif p.tipo_oferta == '3X2' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>PROMO 3x2 (LLEVA 3, PAGA 2)
+                                                </span>
+                                            {% elif p.tipo_oferta == '2X1' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>PROMO 2x1 (LLEVA 2, PAGA 1)
+                                                </span>
+                                            {% elif p.tipo_oferta == 'DESCUENTO_PCT' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-percent me-1"></i>{{ p.descuento_pct|floatformat:0 }}% DESCUENTO
+                                                </span>
+                                            {% else %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA ACTIVA" }}
+                                                </span>
+                                            {% endif %}
                                         {% else %}
                                             <strong class="text-danger">${{ p.precio_base|floatformat:0 }} CLP</strong>
                                         {% endif %}
@@ -684,7 +734,18 @@
 
                                                             <div id="campos_oferta_g_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
                                                                 <div class="mb-3">
-                                                                    <label class="form-label small fw-bold text-dark">Precio Promocional de Oferta ($ CLP):</label>
+                                                                    <label class="form-label small fw-bold text-dark">Tipo de Oferta o Promoción Especial:</label>
+                                                                    <select name="tipo_oferta" class="form-select rounded-3">
+                                                                        <option value="SEGUNDA_1" {% if p.tipo_oferta == 'SEGUNDA_1' %}selected{% endif %}>🍔 Segunda Unidad a $1 peso (o precio especial)</option>
+                                                                        <option value="3X2" {% if p.tipo_oferta == '3X2' %}selected{% endif %}>🎉 Lleva 3 y Paga 2 (3x2)</option>
+                                                                        <option value="2X1" {% if p.tipo_oferta == '2X1' %}selected{% endif %}>✨ Lleva 2 y Paga 1 (2x1)</option>
+                                                                        <option value="PRECIO_FIJO" {% if p.tipo_oferta == 'PRECIO_FIJO' %}selected{% endif %}>🏷️ Precio Fijo Rebajado</option>
+                                                                        <option value="DESCUENTO_PCT" {% if p.tipo_oferta == 'DESCUENTO_PCT' %}selected{% endif %}>📉 Descuento Porcentual (%)</option>
+                                                                        <option value="NINGUNA" {% if p.tipo_oferta == 'NINGUNA' %}selected{% endif %}>Sin Oferta Especial</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
                                                                     <input type="number" name="precio_oferta" id="input_po_g_{{ p.id }}" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
                                                                     <div class="form-text small" style="font-size: 0.72rem;">
                                                                         Acepta monedas de $1 o $5 pesos para promociones (ej: "Lleva la segunda hamburguesa a $1").
@@ -1188,16 +1249,31 @@
                 if (data.status === 'ok') {
                     const celdaPrecio = document.getElementById(`celda_precio_${prodId}`);
                     if (celdaPrecio) {
-                        if (data.en_oferta && data.precio_oferta) {
-                            celdaPrecio.innerHTML = `
-                                <div>
-                                    <del class="text-muted small">$${Math.round(data.precio_base).toLocaleString('es-CL')}</del>
-                                    <strong class="text-danger fs-6">$${Math.round(data.precio_oferta).toLocaleString('es-CL')} CLP</strong>
-                                </div>
-                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
-                                    <i class="bi bi-fire me-1"></i>${data.descripcion_oferta || 'OFERTA'}
-                                </span>
-                            `;
+                        if (data.en_oferta) {
+                            if (data.tipo_oferta === 'PRECIO_FIJO' && data.precio_oferta) {
+                                celdaPrecio.innerHTML = `
+                                    <div>
+                                        <del class="text-muted small">$${Math.round(data.precio_base).toLocaleString('es-CL')}</del>
+                                        <strong class="text-danger fs-6">$${Math.round(data.precio_oferta).toLocaleString('es-CL')} CLP</strong>
+                                    </div>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                        <i class="bi bi-tag-fill me-1"></i>${data.descripcion_oferta || 'PRECIO FIJO'}
+                                    </span>
+                                `;
+                            } else {
+                                let bText = data.descripcion_oferta || 'OFERTA ACTIVA';
+                                if (data.tipo_oferta === '3X2') bText = 'PROMO 3x2 (LLEVA 3, PAGA 2)';
+                                else if (data.tipo_oferta === '2X1') bText = 'PROMO 2x1 (LLEVA 2, PAGA 1)';
+                                else if (data.tipo_oferta === 'SEGUNDA_1') bText = data.descripcion_oferta || '¡2da unidad a $1 peso!';
+                                celdaPrecio.innerHTML = `
+                                    <div>
+                                        <strong class="text-dark fs-6">$${Math.round(data.precio_base).toLocaleString('es-CL')} CLP</strong>
+                                    </div>
+                                    <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                        <i class="bi bi-fire me-1"></i>${bText}
+                                    </span>
+                                `;
+                            }
                         } else {
                             celdaPrecio.innerHTML = `<strong class="text-danger">$${Math.round(data.precio_base).toLocaleString('es-CL')} CLP</strong>`;
                         }

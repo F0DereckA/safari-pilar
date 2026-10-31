@@ -6,6 +6,11 @@
  * 3. Si transcurren 15 minutos continuos de 100% inactividad, se cierra de manera segura.
  */
 (function () {
+    // Tarea 2: KDS Cocina es estación de monitor táctil de producción continua; sin temporizador ni cierre por inactividad
+    if (window.location.pathname.includes('/cocina/')) {
+        return;
+    }
+
     const TIEMPO_TOTAL_SEGUNDOS = 15 * 60; // 15 minutos (900s)
     let segundosRestantes = TIEMPO_TOTAL_SEGUNDOS;
     let timerInterval = null;

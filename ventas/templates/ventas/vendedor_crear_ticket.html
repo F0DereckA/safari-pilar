@@ -284,7 +284,10 @@
                                     <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
                                     <i class="bi bi-fire text-danger fs-5"></i>
                                 </div>
-                                <h5 class="fw-bold mb-1 text-dark">Hamburguesa Safari Clásica</h5>
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                    <h5 class="fw-bold mb-0 text-dark">Hamburguesa Safari Clásica</h5>
+                                    <span class="badge bg-danger shadow-xs" style="font-size: 0.68rem;"><i class="bi bi-fire me-1"></i>2da a $1</span>
+                                </div>
                                 <p class="text-muted small mb-2">Carne 150g, lechuga, tomate y queso cheddar, acompañada de papas fritas.</p>
                             </div>
                             <div>
@@ -311,7 +314,10 @@
                                     <span class="badge-cat cat-cocinar">Comida por Cocinar</span>
                                     <i class="bi bi-fire text-danger fs-5"></i>
                                 </div>
-                                <h5 class="fw-bold mb-1 text-dark">Hamburguesa Doble Tocino</h5>
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                    <h5 class="fw-bold mb-0 text-dark">Hamburguesa Doble Tocino</h5>
+                                    <span class="badge bg-danger shadow-xs" style="font-size: 0.68rem;"><i class="bi bi-fire me-1"></i>Promo 3x2</span>
+                                </div>
                                 <p class="text-muted small mb-2">Doble carne, doble queso cheddar fundido y tocino crujiente.</p>
                             </div>
                             <div>
@@ -827,8 +833,8 @@
             4: { nombre: "Medialuna Rellena", precio: 1800, cat: "preparada" },
             5: { nombre: "Muffin de Arándanos", precio: 2200, cat: "preparada" },
             // Comida por Cocinar (Cocina Caliente / Minuta)
-            6: { nombre: "Hamburguesa Safari Clásica", precio: 7500, cat: "cocinar" },
-            7: { nombre: "Hamburguesa Doble Tocino", precio: 8900, cat: "cocinar" },
+            6: { nombre: "Hamburguesa Safari Clásica", precio: 7500, cat: "cocinar", tipo_oferta: "SEGUNDA_1", precio_oferta: 1, desc_oferta: "2da unidad a $1 peso" },
+            7: { nombre: "Hamburguesa Doble Tocino", precio: 8900, cat: "cocinar", tipo_oferta: "3X2", desc_oferta: "Lleva 3 y Paga 2 (3x2)" },
             8: { nombre: "Almuerzo Safari del Día", precio: 9500, cat: "cocinar" },
             9: { nombre: "Churrasco Italiano", precio: 7900, cat: "cocinar" },
             10: { nombre: "Papas Fritas Grandes", precio: 4000, cat: "cocinar" },
@@ -962,7 +968,37 @@
                     tieneItems = true;
                     totalItems += qty;
                     const prod = productos[id];
-                    const subtotal = prod.precio * qty;
+                    let subtotal = 0;
+                    let promoTexto = '';
+                    let ahorro = 0;
+
+                    if (prod.tipo_oferta === '3X2') {
+                        const g3 = Math.floor(qty / 3);
+                        const r3 = qty % 3;
+                        subtotal = (g3 * 2 + r3) * prod.precio;
+                        ahorro = (qty * prod.precio) - subtotal;
+                        if (g3 > 0) promoTexto = `Promo 3x2 (${g3} gratis)`;
+                    } else if (prod.tipo_oferta === '2X1') {
+                        const g2 = Math.floor(qty / 2);
+                        const r2 = qty % 2;
+                        subtotal = (g2 + r2) * prod.precio;
+                        ahorro = (qty * prod.precio) - subtotal;
+                        if (g2 > 0) promoTexto = `Promo 2x1 (${g2} gratis)`;
+                    } else if (prod.tipo_oferta === 'SEGUNDA_1') {
+                        const p2 = Number(prod.precio_oferta || 1);
+                        const pares = Math.floor(qty / 2);
+                        const resto = qty % 2;
+                        subtotal = (pares * (prod.precio + p2)) + (resto * prod.precio);
+                        ahorro = (qty * prod.precio) - subtotal;
+                        if (pares > 0) promoTexto = `Promo 2da a $${p2} aplicada`;
+                    } else if (prod.tipo_oferta === 'PRECIO_FIJO' && prod.precio_oferta) {
+                        subtotal = qty * Number(prod.precio_oferta);
+                        ahorro = (qty * prod.precio) - subtotal;
+                        promoTexto = `Precio Rebajado`;
+                    } else {
+                        subtotal = qty * prod.precio;
+                    }
+
                     total += subtotal;
 
                     const notaProd = notasProductosCajero[id] || '';
@@ -971,6 +1007,11 @@
                     row.innerHTML = `
                         <div style="max-width: 68%;">
                             <div class="fw-bold text-dark" style="font-size: 0.9rem;">${prod.nombre}</div>
+                            ${promoTexto ? `
+                                <div class="badge bg-danger text-white mb-1" style="font-size: 0.72rem;">
+                                    <i class="bi bi-fire me-1"></i>${promoTexto} (Ahorro: ${formatearMoneda(ahorro)})
+                                </div>
+                            ` : ''}
                             ${notaProd ? `
                                 <div class="order-item-nota">
                                     <strong class="text-danger">* NOTA:</strong> ${escapeHtml(notaProd)}

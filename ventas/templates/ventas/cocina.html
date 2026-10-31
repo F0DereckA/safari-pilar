@@ -210,10 +210,7 @@
                     <i class="bi bi-clock me-1"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
                 </div>
 
-                <!-- Botón de Auto-Recarga -->
-                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-2" onclick="location.reload()" title="Actualizar comanderas">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
+
 
                 <!-- Cocinero Activo -->
                 <div class="d-flex align-items-center gap-2 bg-secondary bg-opacity-25 px-3 py-1 rounded-pill border border-secondary text-white">
@@ -257,7 +254,7 @@
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Pendientes</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace">{{ total_pendientes }}</h4>
+                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="kdsBadgePendientes">{{ total_pendientes }}</h4>
                     </div>
                 </div>
             </div>
@@ -268,7 +265,7 @@
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Plancha / Barra</div>
-                        <h4 class="mb-0 fw-bold text-primary font-monospace">{{ total_en_preparacion }}</h4>
+                        <h4 class="mb-0 fw-bold text-primary font-monospace" id="kdsBadgePreparacion">{{ total_en_preparacion }}</h4>
                     </div>
                 </div>
             </div>
@@ -279,7 +276,7 @@
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Listos p/ Servir</div>
-                        <h4 class="mb-0 fw-bold text-success font-monospace">{{ total_listos }}</h4>
+                        <h4 class="mb-0 fw-bold text-success font-monospace" id="kdsBadgeListos">{{ total_listos }}</h4>
                     </div>
                 </div>
             </div>
@@ -287,7 +284,7 @@
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center justify-content-between shadow-xs">
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Cola Total Activa</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace">{{ total_cola }}</h4>
+                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="kdsBadgeCola">{{ total_cola }}</h4>
                     </div>
                     <span class="badge bg-dark rounded-pill px-3 py-2 small">
                         <i class="bi bi-wifi text-success me-1"></i> KDS En Vivo
@@ -296,7 +293,9 @@
             </div>
         </div>
 
-        <!-- Grilla de Comandas Activas (KDS Cards) -->
+        
+        <div id="contenedorKdsComandas">
+<!-- Grilla de Comandas Activas (KDS Cards) -->
         {% if pedidos %}
         <div class="row g-3">
             {% for p in pedidos %}
@@ -364,7 +363,7 @@
 
                     <!-- Footer: Botones de Acción KDS Táctil -->
                     <div class="p-2 bg-light border-top">
-                        <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100">
+                        <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100" onsubmit="enviarAccionKdsAjax(event, this)">
                             {% csrf_token %}
                             <input type="hidden" name="pedido_id" value="{{ p.id }}">
                             
@@ -406,11 +405,14 @@
             <p class="text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
                 No hay pedidos pendientes ni en preparación en este momento para {{ local_actual.nombre }}. Las nuevas comandas emitidas por meseros o cajeros aparecerán automáticamente aquí.
             </p>
-            <button type="button" class="btn btn-outline-dark rounded-pill px-4 fw-bold" onclick="location.reload()">
-                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Pantalla
-            </button>
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-success-subtle text-success small fw-semibold border border-success-subtle">
+                <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                <span>Auto-actualización en vivo activa</span>
+            </div>
         </div>
         {% endif %}
+
+        </div>
 
         <!-- Historial Colapsable de Pedidos Despachados Hoy -->
         {% if ultimos_entregados %}
@@ -465,10 +467,79 @@
         setInterval(actualizarReloj, 1000);
         actualizarReloj();
 
-        // Auto-refresco cada 15 segundos para recibir nuevos pedidos en cocina
-        setTimeout(function() {
-            location.reload();
-        }, 15000);
+        // Tarea 1: Auto-actualización fluida en segundo plano sin F5, sin recargar y conservando exactamente la posición del scroll (Scroll Lock)
+        let actualizandoKds = false;
+
+        async function autoActualizarCocina() {
+            if (actualizandoKds) return;
+            // No refrescar si hay un modal abierto para no interrumpir la lectura del cocinero
+            if (document.querySelector('.modal.show')) return;
+
+            actualizandoKds = true;
+            const scrollActual = window.scrollY;
+
+            try {
+                const resp = await fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!resp.ok) {
+                    actualizandoKds = false;
+                    return;
+                }
+                const textoHtml = await resp.text();
+                const parser = new DOMParser();
+                const nuevoDoc = parser.parseFromString(textoHtml, 'text/html');
+
+                // 1. Actualizar KPIs
+                ['kdsBadgePendientes', 'kdsBadgePreparacion', 'kdsBadgeListos', 'kdsBadgeCola'].forEach(id => {
+                    const nuevo = nuevoDoc.getElementById(id);
+                    const actual = document.getElementById(id);
+                    if (nuevo && actual && nuevo.innerText !== actual.innerText) {
+                        actual.innerText = nuevo.innerText;
+                    }
+                });
+
+                // 2. Actualizar tarjetas si hubo cambios
+                const nuevoContenedor = nuevoDoc.getElementById('contenedorKdsComandas');
+                const actualContenedor = document.getElementById('contenedorKdsComandas');
+                if (nuevoContenedor && actualContenedor) {
+                    if (nuevoContenedor.innerHTML.trim() !== actualContenedor.innerHTML.trim()) {
+                        actualContenedor.innerHTML = nuevoContenedor.innerHTML;
+                    }
+                }
+
+                // Preservar la posición del scroll exactamente donde estaba el usuario
+                window.scrollTo(0, scrollActual);
+            } catch (err) {
+                // Silencioso ante fluctuaciones de red (Tarea 7)
+            } finally {
+                actualizandoKds = false;
+            }
+        }
+
+        // Ejecutar auto-actualización silenciosa cada 3.5 segundos
+        setInterval(autoActualizarCocina, 3500);
+
+        // Envío AJAX táctil inmediato de acciones en comandas sin parpadeos ni salto arriba
+        async function enviarAccionKdsAjax(e, form) {
+            e.preventDefault();
+            const scrollPos = window.scrollY;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+            try {
+                const resp = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                await autoActualizarCocina();
+                window.scrollTo(0, scrollPos);
+            } catch (err) {
+                form.submit(); // Respaldo tradicional si falla la red
+            }
+        }
     </script>
 </body>
 </html>

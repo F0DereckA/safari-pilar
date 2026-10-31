@@ -27,9 +27,13 @@ urlpatterns = [
     path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
     path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
 
-    # Rutas de verificación para errores HTTP personalizados
+    # Rutas de verificación para errores HTTP personalizados (Tarea 6)
     path('400/', views.error_400_view, name='error_400'),
+    path('401/', views.error_401_view, name='error_401'),
     path('403/', views.error_403_view, name='error_403'),
     path('404/', views.error_404_view, name='error_404'),
     path('500/', views.error_500_view, name='error_500'),
+    path('502/', views.error_502_view, name='error_502'),
+    path('503/', views.error_503_view, name='error_503'),
+    path('504/', views.error_504_view, name='error_504'),
 ]

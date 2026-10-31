@@ -74,19 +74,32 @@
     <!-- Contenido Principal: Pantalla Intermedia - Tickets en Desarrollo -->
     <main class="container-fluid px-lg-5 my-4 flex-grow-1">
 
-        <!-- Mensajes del Sistema (Django Messages) -->
+        <!-- Mensajes del Sistema en Toast Flotante Discreto en la Esquina (Tarea 3) -->
         {% if messages %}
-        <div class="mb-4">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
             {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger border-2 border-danger shadow-sm{% elif message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'info' %}info border-2 border-info shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-info-circle-fill fs-5"></i>
-                    <div>{{ message }}</div>
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {% endfor %}
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.toast-container .toast').forEach(function(el) {
+                    const toast = new bootstrap.Toast(el, { delay: 4000 });
+                    toast.show();
+                    setTimeout(function() {
+                        try { toast.hide(); } catch(e){}
+                    }, 4000);
+                });
+            });
+        </script>
         {% endif %}
 
         <!-- ESTADO OPERATIVO DE JORNADA (RF02) Y CAJA (RF03) -->
@@ -1159,12 +1172,22 @@
             });
         }
 
-        // Inicializar al cargar
+        // Inicializar al cargar con auto-sincronización en tiempo real (Tarea 1)
         document.addEventListener('DOMContentLoaded', () => {
             renderizarTickets();
             {% if caja_activa %}
             calcularArqueoCaja();
             {% endif %}
+
+            // Escuchar cambios de comanda entre pestañas y terminales
+            window.addEventListener('storage', (e) => {
+                if (e.key === STORAGE_KEY || e.key === STORAGE_DATE_KEY) {
+                    renderizarTickets();
+                }
+            });
+
+            // Refresco suave en segundo plano sin alterar scroll
+            setInterval(renderizarTickets, 3500);
         });
 
         // =========================================================================
