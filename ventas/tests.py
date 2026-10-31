@@ -1736,3 +1736,96 @@ class ProteccionesSeguridadYResilienciaTests(TestCase):
         self.client.login(username="cajero_seguro", password="password123")
         resp = self.client.get(reverse("logout") + "?motivo=inactividad", follow=True)
         self.assertContains(resp, "inactividad")
+
+
+# ==============================================================================
+# PRUEBAS DE CENTRO DE GESTIÓN INTEGRAL (CATEGORÍAS MADRES) Y BÚSQUEDA REACTIVA
+# ==============================================================================
+class GestionUnificadaYFiltrosTests(TestCase):
+    """
+    Pruebas del Centro de Gestión Integral y Búsqueda Reactiva en Tiempo Real:
+    1. Acceso y aislamiento de roles a /administrador/gestion/
+    2. Visualización unificada de las 4 áreas: Trabajadores, Mesas, Productos y Menús
+    3. Navegación por pestañas (?tab=trabajadores, ?tab=mesas, ?tab=productos, ?tab=menus)
+    4. Disponibilidad de scripts de reloj de sesión discreto y filtro en tiempo real por tecleo
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante Central Safari", tipo="RESTAURANTE")
+        self.admin = User.objects.create_user(username="admin_gestion", password="password123")
+        PerfilEmpleado.objects.create(usuario=self.admin, rol="ADMINISTRADOR", punto_venta_actual=self.pv)
+
+        self.cajero = User.objects.create_user(username="cajero_gestion", password="password123")
+        PerfilEmpleado.objects.create(usuario=self.cajero, rol="CAJERO", punto_venta_actual=self.pv)
+
+        self.mesero = User.objects.create_user(username="mesero_gestion", password="password123")
+        PerfilEmpleado.objects.create(usuario=self.mesero, rol="MESERO", punto_venta_actual=self.pv)
+
+        self.categoria = Categoria.objects.create(nombre="Minutas y Platos", activo=True)
+        self.producto = Producto.objects.create(nombre="Cazuela Safari", categoria=self.categoria, precio_base=Decimal("7500.00"), activo=True)
+        self.producto.puntos_venta.add(self.pv)
+
+        self.mesa = Mesa.objects.create(identificador="Mesa 1", punto_venta=self.pv, capacidad=4, estado="HABILITADA")
+        self.menu = Menu.objects.create(nombre="Carta Almuerzo", punto_venta=self.pv, activo=True)
+        self.menu.productos.add(self.producto)
+
+    def test_acceso_administrador_gestion_permitido(self):
+        """Un usuario con rol ADMINISTRADOR puede acceder al Centro de Gestión Integral (200 OK)"""
+        self.client.login(username="admin_gestion", password="password123")
+        resp = self.client.get(reverse("administrador_gestion"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Centro de Gestión")
+        self.assertContains(resp, "Categoría Madre")
+
+    def test_acceso_roles_no_administrador_bloqueado(self):
+        """Meseros y Cajeros no pueden ingresar al Centro de Gestión Integral y son redirigidos"""
+        self.client.login(username="cajero_gestion", password="password123")
+        resp_cajero = self.client.get(reverse("administrador_gestion"), follow=True)
+        self.assertRedirects(resp_cajero, reverse("vendedor"))
+        self.assertContains(resp_cajero, "Acceso restringido")
+
+        self.client.login(username="mesero_gestion", password="password123")
+        resp_mesero = self.client.get(reverse("administrador_gestion"), follow=True)
+        self.assertRedirects(resp_mesero, reverse("mesero"))
+        self.assertContains(resp_mesero, "Acceso restringido")
+
+    def test_contexto_contiene_las_cuatro_areas_madres(self):
+        """La vista administrador_gestion provee en su contexto los datos de las 4 áreas administrativas"""
+        self.client.login(username="admin_gestion", password="password123")
+        resp = self.client.get(reverse("administrador_gestion"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("trabajadores", resp.context)
+        self.assertIn("mesas", resp.context)
+        self.assertIn("productos", resp.context)
+        self.assertIn("menus", resp.context)
+        self.assertIn("locales", resp.context)
+        self.assertIn("categorias", resp.context)
+
+    def test_navegacion_pestanas_parametro_tab(self):
+        """El parámetro ?tab en la URL activa la pestaña correspondiente"""
+        self.client.login(username="admin_gestion", password="password123")
+        for tab in ["trabajadores", "mesas", "productos", "menus"]:
+            resp = self.client.get(reverse("administrador_gestion") + f"?tab={tab}")
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.context["tab_activo"], tab)
+
+    def test_scripts_reloj_sesion_y_filtro_en_vivo(self):
+        """Verifica que el script de filtro por tecleo y el reloj discreto de sesión existan en static"""
+        import os
+        from django.conf import settings
+        static_dir = os.path.join(settings.BASE_DIR, "static", "js")
+        self.assertTrue(os.path.exists(os.path.join(static_dir, "filtro_tiempo_real.js")), "filtro_tiempo_real.js debe existir")
+        self.assertTrue(os.path.exists(os.path.join(static_dir, "seguridad_sesion.js")), "seguridad_sesion.js debe existir")
+
+        # Comprobar que filtro_tiempo_real.js contiene el listener de 'input' reactivo por tecleo
+        with open(os.path.join(static_dir, "filtro_tiempo_real.js"), "r", encoding="utf-8") as f:
+            contenido_filtro = f.read()
+        self.assertIn("addEventListener('input'", contenido_filtro)
+        self.assertIn("SafariFiltroEnVivo", contenido_filtro)
+
+        # Comprobar que seguridad_sesion.js contiene el reloj discreto y la renovación por actividad
+        with open(os.path.join(static_dir, "seguridad_sesion.js"), "r", encoding="utf-8") as f:
+            contenido_sesion = f.read()
+        self.assertIn("reiniciarTiempoSesion", contenido_sesion)
+        self.assertIn("indicadorSesionSafari", contenido_sesion)

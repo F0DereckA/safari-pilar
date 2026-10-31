@@ -6,7 +6,27 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Semana 12 (27/10/2026) y Blindaje de Seguridad/Resiliencia — COMPLETADOS AL 100%**.
+- tarea actual: **Centro de Gestión Unificado (Categorías Madres), Búsqueda Reactiva por Tecleo y Reloj Flexible de Sesión — COMPLETADOS AL 100%**.
+- estado académico vigente:
+  - **Reloj Discreto de Sesión y Cierre Flexible**:
+    * Reloj contador visible y discreto (`⏱️ 15:00`) que no obstruye la vista del usuario.
+    * Renovación automática inmediata ante cualquier actividad física (tecleo, movimiento de cursor, click, scroll, touch).
+    * La sesión NUNCA se cierra mientras haya movimiento o trabajo activo del colaborador, adaptándose flexiblemente a turnos extendidos.
+  - **Categorías Madres en Header de Administrador**:
+    * Reorganización de la barra superior para eliminar la saturación visual (de 10 botones horizontales desordenados a 3 Categorías Madres organizadas):
+      1. *🏢 Locales*: Vista general de locales, accesos rápidos a locales 1, 2 y 3, registro de nuevo local y Respaldo BD.
+      2. *⚙️ Administración*: Centro de Gestión Integral, Trabajadores, Mesas, Productos y Menús.
+      3. *📊 Reportes*: Historial/Bitácora y Dashboard Analítico.
+  - **Página Unificada de Administración (`/administrador/gestion/`)**:
+    * Integra en una sola pantalla con pestañas (`nav-pills`) las 4 áreas administrativas clave:
+      1. *👥 Trabajadores y Dotación*
+      2. *🪑 Mesas del Parque*
+      3. *🍽️ Catálogo de Productos*
+      4. *📋 Cartas y Menús*
+  - **Búsqueda Reactiva en Tiempo Real por Cada Tecleo (`filtro_tiempo_real.js`)**:
+    * Escucha el evento `input` en vivo ("aprietas la Z y se filtra al tiro").
+    * Sin recarga de página, normalización insensible a tildes/mayúsculas, contador de coincidencias en vivo y estado vacío elegante.
+    * Aplicado en Productos, Mesas, Menús, Trabajadores e Historial.
 - estado académico vigente:
   - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37 pruebas)**.
   - Semana 11 (20/10): **COMPLETADA AL 100% (50 pruebas)** (CRUD Usuarios, Locales, Mesas, Productos/Menús e Historial unificado).
@@ -721,6 +741,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - nuevo conteo exacto de tests registrado.
 - después de esto: realizar únicamente análisis inicial de Historial de Acciones y detener para revisión de ChatGPT/usuario.
 ## 11. historial breve
+- fecha: 2026-10-31
+  - resumen: **Implementación de Categorías Madres, Centro de Gestión Unificado y Búsqueda Reactiva por Tecleo**:
+    * Reloj discreto de cuenta regresiva de sesión (`⏱️ 15:00`) en navbar con renovación automática en caliente ante cualquier interacción física (mouse, teclado, touch, scroll) evitando cierres imprevistos durante el servicio.
+    * Rediseño del header de Administrador: eliminación de la saturación de 10 botones horizontales reemplazándolos por 3 Categorías Madres (`Locales`, `Administración`, `Reportes`).
+    * Desarrollo del Centro de Gestión Integral (`/administrador/gestion/`) reuniendo Trabajadores, Mesas, Productos y Menús en una sola pantalla con pestañas interactivas y modales directos.
+    * Módulo JavaScript `filtro_tiempo_real.js` para filtrado reactivo instantáneo por cada pulsación de tecla (`input`), permitiendo filtrar al instante al escribir cualquier letra.
+    * Suite oficial ampliada con `GestionUnificadaYFiltrosTests` aprobada al 100%.
 - fecha: 2026-10-27
   - resumen: **Semana 12 (27/10/2026) y Blindaje de Resiliencia completados**:
     * Implementación del proceso principal de ventas: ciclo de jornada (RF02), apertura/cierre de cajas con fondo de sencillo (RF03), ventas en barra vs. comandas de salón.

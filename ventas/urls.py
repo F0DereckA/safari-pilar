@@ -10,6 +10,7 @@ urlpatterns = [
     path('vendedor/abrir-caja/', views.abrir_caja, name='abrir_caja'),
     path('vendedor/cerrar-caja/', views.cerrar_caja, name='cerrar_caja'),
     path('vendedor/crear-ticket/', views.crear_ticket, name='crear_ticket'),
+    path('administrador/gestion/', views.administrador_gestion, name='administrador_gestion'),
     path('administrador/', views.administrador, name='administrador'),
     path('administrador/cerrar-jornada/', views.cerrar_jornada, name='cerrar_jornada'),
     path('administrador/local/<int:local_id>/', views.administrador_local, name='administrador_local'),

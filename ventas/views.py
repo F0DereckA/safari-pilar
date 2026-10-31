@@ -1784,6 +1784,86 @@ def administrador_menus(request):
     return render(request, 'ventas/administrador_menus.html', context)
 
 
+
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_gestion(request):
+    """
+    Centro de Gestión y Administración Integral (Categoría Madre):
+    Unifica en una única página con pestañas y búsqueda reactiva por cada tecleo ('input'):
+    1. Trabajadores y Dotación
+    2. Mesas del Parque
+    3. Catálogo de Productos
+    4. Menús y Cartas
+    """
+    tab_activo = request.GET.get('tab', 'trabajadores').strip().lower()
+    if tab_activo not in ['trabajadores', 'mesas', 'productos', 'menus']:
+        tab_activo = 'trabajadores'
+
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+    categorias = Categoria.objects.filter(activo=True).order_by('nombre')
+
+    # 1. Trabajadores
+    trabajadores = User.objects.select_related('perfil', 'perfil__punto_venta_actual').all().order_by('username')
+    total_trabajadores = trabajadores.count()
+    total_activos_trab = sum(1 for t in trabajadores if hasattr(t, 'perfil') and t.perfil.activo)
+    total_inactivos_trab = total_trabajadores - total_activos_trab
+
+    # 2. Mesas
+    mesas_qs = Mesa.objects.select_related('punto_venta').all().order_by('punto_venta__id', 'identificador')
+    total_mesas = mesas_qs.count()
+    mesas_habilitadas = sum(1 for m in mesas_qs if m.estado == 'HABILITADA')
+    mesas_ocupadas = sum(1 for m in mesas_qs if m.estado == 'OCUPADA')
+    mesas_mantenimiento = sum(1 for m in mesas_qs if m.estado == 'MANTENIMIENTO')
+
+    # 3. Productos
+    productos_qs = Producto.objects.select_related('categoria').prefetch_related('puntos_venta').all().order_by('categoria__nombre', 'nombre')
+    total_productos = productos_qs.count()
+    activos_productos = sum(1 for p in productos_qs if p.activo)
+    inactivos_productos = total_productos - activos_productos
+
+    # 4. Menús
+    menus_qs = Menu.objects.select_related('punto_venta').prefetch_related('productos').all().order_by('punto_venta__id', 'nombre')
+    total_menus = menus_qs.count()
+
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    hora_apertura = datetime.time(10, 0)
+    hora_cierre = datetime.time(18, 0)
+    en_horario = (hora_apertura <= ahora_hora < hora_cierre)
+
+    total_alertas_no_leidas = AlertaTraslado.objects.filter(leida=False).count()
+
+    context = {
+        'tab_activo': tab_activo,
+        'locales': locales,
+        'categorias': categorias,
+        # Trabajadores
+        'trabajadores': trabajadores,
+        'total_trabajadores': total_trabajadores,
+        'total_activos_trab': total_activos_trab,
+        'total_inactivos_trab': total_inactivos_trab,
+        # Mesas
+        'mesas': mesas_qs,
+        'total_mesas': total_mesas,
+        'mesas_habilitadas': mesas_habilitadas,
+        'mesas_ocupadas': mesas_ocupadas,
+        'mesas_mantenimiento': mesas_mantenimiento,
+        # Productos
+        'productos': productos_qs,
+        'total_productos': total_productos,
+        'activos_productos': activos_productos,
+        'inactivos_productos': inactivos_productos,
+        # Menús
+        'menus': menus_qs,
+        'total_menus': total_menus,
+        'productos_disponibles': productos_qs.filter(activo=True),
+        # Generales
+        'en_horario': en_horario,
+        'total_alertas_no_leidas': total_alertas_no_leidas,
+    }
+    return render(request, 'ventas/administrador_gestion.html', context)
+
+
 @requiere_rol(['ADMINISTRADOR'])
 def administrador_historial(request):
     """

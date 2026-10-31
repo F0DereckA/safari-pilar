@@ -1,141 +1,181 @@
 /**
- * Parque Safari - Control de Seguridad de Sesión por Inactividad
- * Mitiga accesos no autorizados en terminales compartidas (caja, mesero, cocina, admin)
- * al cerrar la sesión de manera segura tras 15 minutos sin interacción física.
+ * Parque Safari - Control de Seguridad y Tiempo de Sesión
+ * 1. Muestra un reloj discreto y estilizado con la cuenta regresiva en el header o flotante.
+ * 2. Cierre flexible: mientras haya actividad física (tecleo, movimiento de cursor, click, scroll, touch),
+ *    la sesión se renueva AUTOMÁTICAMENTE a 15:00 y NUNCA se cierra.
+ * 3. Si transcurren 15 minutos continuos de 100% inactividad, se cierra de manera segura.
  */
 (function () {
-    const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 minutos
-    const TIEMPO_AVISO_MS = 14 * 60 * 1000;       // Aviso a los 14 minutos (60s antes)
-    let temporizadorInactividad = null;
-    let temporizadorAviso = null;
-    let intervaloCuentaRegresiva = null;
-    let segundosRestantes = 60;
+    const TIEMPO_TOTAL_SEGUNDOS = 15 * 60; // 15 minutos (900s)
+    let segundosRestantes = TIEMPO_TOTAL_SEGUNDOS;
+    let timerInterval = null;
+    let debounceTimer = null;
 
-    // Crear dinámicamente modal de advertencia en el DOM
-    function crearModalAviso() {
-        if (document.getElementById('modalInactividadSafari')) return;
+    // Crear o vincular el elemento visual del reloj
+    function asegurarRelojEnDOM() {
+        let relojEl = document.getElementById('indicadorSesionSafari');
+        if (!relojEl) {
+            // Buscar un contenedor preferente en la barra de navegación
+            const contenedorNav = document.getElementById('contenedorRelojSesion') ||
+                                  document.querySelector('.safari-header .d-flex.align-items-center.gap-3') ||
+                                  document.querySelector('.navbar .container-fluid') ||
+                                  document.querySelector('header');
 
-        const modalHtml = `
-        <div class="modal fade" id="modalInactividadSafari" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" style="z-index: 99999;">
-            <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header bg-warning bg-opacity-10 border-0 p-4 pb-2">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle bg-warning bg-opacity-25 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                                <i class="bi bi-shield-exclamation text-warning fs-3"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold mb-0 text-dark">Alerta de Inactividad</h6>
-                                <span class="badge bg-warning text-dark small">Seguridad Institucional</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-body p-4 pt-3 text-center">
-                        <p class="text-muted mb-3">
-                            Por protección de datos y control de accesos, tu sesión en <strong>Parque Safari</strong> se cerrará automáticamente en:
-                        </p>
-                        <div class="display-5 fw-bold text-danger mb-3" id="contadorInactividadSegundos">
-                            60s
-                        </div>
-                        <p class="small text-muted mb-0">
-                            Mueve el cursor, presiona cualquier tecla o haz clic abajo para mantener tu turno activo.
-                        </p>
-                    </div>
-                    <div class="modal-footer border-0 p-4 pt-0 justify-content-center">
-                        <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold" id="btnContinuarSesion">
-                            <i class="bi bi-arrow-repeat me-1"></i> Continuar Trabajando
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const relojHtml = `
+            <div id="indicadorSesionSafari" class="d-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill shadow-sm"
+                 style="background: rgba(255, 255, 255, 0.95); border: 1.5px solid #e2e8f0; font-size: 0.85rem; font-family: system-ui, sans-serif; transition: all 0.3s ease; cursor: pointer; user-select: none;"
+                 title="Tiempo de sesión restante por inactividad. Se renueva automáticamente al mover el cursor o escribir.">
+                <i class="bi bi-clock-history text-secondary" id="iconoRelojSesion" style="font-size: 0.9rem;"></i>
+                <span class="text-muted small d-none d-sm-inline">Sesión:</span>
+                <span id="relojSesionTxt" class="fw-bold text-dark font-monospace">15:00</span>
+            </div>`;
 
-        const btnContinuar = document.getElementById('btnContinuarSesion');
-        if (btnContinuar) {
-            btnContinuar.addEventListener('click', function () {
-                reiniciarTemporizador();
-            });
-        }
-    }
-
-    function mostrarAviso() {
-        crearModalAviso();
-        const modalEl = document.getElementById('modalInactividadSafari');
-        if (!modalEl) return;
-
-        segundosRestantes = 60;
-        const contadorEl = document.getElementById('contadorInactividadSegundos');
-        if (contadorEl) contadorEl.textContent = `${segundosRestantes}s`;
-
-        // Abrir modal con Bootstrap si está disponible
-        if (window.bootstrap && window.bootstrap.Modal) {
-            const bsModal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-            bsModal.show();
-        } else {
-            modalEl.classList.add('show');
-            modalEl.style.display = 'block';
-        }
-
-        // Cuenta regresiva por segundo
-        clearInterval(intervaloCuentaRegresiva);
-        intervaloCuentaRegresiva = setInterval(function () {
-            segundosRestantes--;
-            if (contadorEl) contadorEl.textContent = `${segundosRestantes}s`;
-
-            if (segundosRestantes <= 0) {
-                clearInterval(intervaloCuentaRegresiva);
-                cerrarSesionPorInactividad();
-            }
-        }, 1000);
-    }
-
-    function ocultarAviso() {
-        clearInterval(intervaloCuentaRegresiva);
-        const modalEl = document.getElementById('modalInactividadSafari');
-        if (modalEl) {
-            if (window.bootstrap && window.bootstrap.Modal) {
-                const bsModal = window.bootstrap.Modal.getInstance(modalEl);
-                if (bsModal) bsModal.hide();
+            if (contenedorNav) {
+                // Insertar justo antes del botón de salir o al final
+                const btnSalir = contenedorNav.querySelector('a[href*="logout"]');
+                if (btnSalir) {
+                    btnSalir.insertAdjacentHTML('beforebegin', relojHtml);
+                } else {
+                    contenedorNav.insertAdjacentHTML('beforeend', relojHtml);
+                }
             } else {
-                modalEl.classList.remove('show');
-                modalEl.style.display = 'none';
+                // Flotante discreto en esquina superior derecha
+                const contenedorFlotante = document.createElement('div');
+                contenedorFlotante.style.position = 'fixed';
+                contenedorFlotante.style.top = '12px';
+                contenedorFlotante.style.right = '16px';
+                contenedorFlotante.style.zIndex = '9999';
+                contenedorFlotante.innerHTML = relojHtml;
+                document.body.appendChild(contenedorFlotante);
+            }
+            relojEl = document.getElementById('indicadorSesionSafari');
+            if (relojEl) {
+                relojEl.addEventListener('click', function () {
+                    reiniciarTiempoSesion();
+                });
             }
         }
     }
 
-    function cerrarSesionPorInactividad() {
+    // Formatear segundos a MM:SS
+    function formatearTiempo(segundos) {
+        const min = Math.floor(segundos / 60);
+        const seg = segundos % 60;
+        return `${String(min).padStart(2, '0')}:${String(seg).padStart(2, '0')}`;
+    }
+
+    // Actualizar la interfaz del reloj
+    function actualizarVisualizacion() {
+        asegurarRelojEnDOM();
+        const txtEl = document.getElementById('relojSesionTxt');
+        const iconoEl = document.getElementById('iconoRelojSesion');
+        const relojEl = document.getElementById('indicadorSesionSafari');
+
+        if (txtEl) {
+            txtEl.textContent = formatearTiempo(segundosRestantes);
+        }
+
+        if (relojEl && iconoEl) {
+            if (segundosRestantes <= 60) {
+                // Último minuto de inactividad
+                relojEl.style.borderColor = '#ef4444';
+                relojEl.style.backgroundColor = '#fef2f2';
+                iconoEl.className = 'bi bi-exclamation-triangle-fill text-danger animate-pulse';
+                if (txtEl) txtEl.className = 'fw-bold text-danger font-monospace';
+            } else if (segundosRestantes <= 180) {
+                // Últimos 3 minutos
+                relojEl.style.borderColor = '#f59e0b';
+                relojEl.style.backgroundColor = '#fffbeb';
+                iconoEl.className = 'bi bi-hourglass-split text-warning';
+                if (txtEl) txtEl.className = 'fw-bold text-warning-emphasis font-monospace';
+            } else {
+                // Estado normal y activo
+                relojEl.style.borderColor = '#cbd5e1';
+                relojEl.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                iconoEl.className = 'bi bi-clock-history text-secondary';
+                if (txtEl) txtEl.className = 'fw-bold text-dark font-monospace';
+            }
+        }
+    }
+
+    // Reiniciar temporizador ante actividad física
+    function reiniciarTiempoSesion() {
+        segundosRestantes = TIEMPO_TOTAL_SEGUNDOS;
+        actualizarVisualizacion();
+        ocultarAvisoInactividad();
+    }
+
+    function cerrarSesion() {
+        clearInterval(timerInterval);
         window.location.href = '/logout/?motivo=inactividad';
     }
 
-    function reiniciarTemporizador() {
-        ocultarAviso();
-        clearTimeout(temporizadorAviso);
-        clearTimeout(temporizadorInactividad);
-
-        temporizadorAviso = setTimeout(mostrarAviso, TIEMPO_AVISO_MS);
-        temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_INACTIVIDAD_MS);
+    // Mostrar aviso no intrusivo si quedan menos de 60 segundos
+    function mostrarAvisoInactividad() {
+        let toastEl = document.getElementById('toastInactividadSafari');
+        if (!toastEl) {
+            const toastHtml = `
+            <div id="toastInactividadSafari" class="toast align-items-center text-bg-warning border-0 position-fixed bottom-0 end-0 m-3 shadow-lg"
+                 role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 10000; min-width: 320px;">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history fs-4"></i>
+                        <div>
+                            <strong>Inactividad detectada</strong>
+                            <div class="small">Mueve el cursor o presiona cualquier tecla para continuar tu turno.</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('toastInactividadSafari').classList.remove('show');"></button>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', toastHtml);
+            toastEl = document.getElementById('toastInactividadSafari');
+        }
+        if (toastEl && !toastEl.classList.contains('show')) {
+            toastEl.classList.add('show');
+        }
     }
 
-    // Escuchar eventos físicos de actividad
-    const eventosActividad = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
-    let debounceTimer = null;
+    function ocultarAvisoInactividad() {
+        const toastEl = document.getElementById('toastInactividadSafari');
+        if (toastEl && toastEl.classList.contains('show')) {
+            toastEl.classList.remove('show');
+        }
+    }
 
+    // Escuchar eventos físicos de actividad con debounce inteligente
     function handleActividad() {
         if (debounceTimer) return;
         debounceTimer = setTimeout(function () {
             debounceTimer = null;
-            // Solo reiniciar si no estamos ya en los últimos 60 segundos de advertencia
-            if (segundosRestantes === 60) {
-                reiniciarTemporizador();
-            }
-        }, 2000);
+            // Cualquier movimiento o tecla renueva el reloj y evita el cierre
+            reiniciarTiempoSesion();
+        }, 1000); // 1 segundo de amortiguación
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        eventosActividad.forEach(function (evento) {
-            window.addEventListener(evento, handleActividad, { passive: true });
+        actualizarVisualizacion();
+
+        // Escuchar todas las interacciones posibles del usuario
+        const eventos = ['mousemove', 'mousedown', 'keydown', 'keypress', 'input', 'touchstart', 'scroll', 'click'];
+        eventos.forEach(function (ev) {
+            window.addEventListener(ev, handleActividad, { passive: true });
         });
-        reiniciarTemporizador();
+
+        // Intervalo de descuento por segundo
+        clearInterval(timerInterval);
+        timerInterval = setInterval(function () {
+            segundosRestantes--;
+
+            if (segundosRestantes === 60) {
+                mostrarAvisoInactividad();
+            }
+
+            if (segundosRestantes <= 0) {
+                cerrarSesion();
+            } else {
+                actualizarVisualizacion();
+            }
+        }, 1000);
     });
 })();
