@@ -311,6 +311,7 @@
         </div>
         {% endif %}
 
+        <div id="contenedorAdminEnVivo">
         <!-- Indicadores KPI Consolidados de la Jornada -->
         <div class="row g-3 mb-4">
             <!-- Total Dinero Vendido Hoy -->
@@ -546,6 +547,8 @@
                 </table>
             </div>
         </div>
+
+        </div><!-- fin #contenedorAdminEnVivo -->
 
     <!-- MODAL CIERRE DE JORNADA OPERATIVA  -->
     {% if jornada_activa %}
@@ -1051,6 +1054,51 @@
             }
         });
     });
+    </script>
+
+    <!-- Tarea 1: Auto-actualización fluida en tiempo real de paneles administrativos sin F5 con Scroll Lock -->
+    <script>
+    let actualizandoAdminLive = false;
+    async function autoActualizarAdminLive() {
+        if (actualizandoAdminLive) return;
+        if (document.querySelector('.modal.show')) return; // No interrumpir si hay un modal abierto
+        actualizandoAdminLive = true;
+        const scrollPos = window.scrollY;
+
+        try {
+            const resp = await fetch(window.location.href, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!resp.ok) {
+                actualizandoAdminLive = false;
+                return;
+            }
+            const html = await resp.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const nuevoCont = doc.getElementById('contenedorAdminEnVivo');
+            const actualCont = document.getElementById('contenedorAdminEnVivo');
+            if (nuevoCont && actualCont && nuevoCont.innerHTML.trim() !== actualCont.innerHTML.trim()) {
+                actualCont.innerHTML = nuevoCont.innerHTML;
+            }
+
+            // Actualizar contador de alertas
+            const nA = doc.getElementById('badgeAlertasCount');
+            const aA = document.getElementById('badgeAlertasCount');
+            if (nA && aA && nA.innerText !== aA.innerText) {
+                aA.innerText = nA.innerText;
+            }
+
+            window.scrollTo(0, scrollPos);
+        } catch(e) {
+            // Silencioso ante contingencias de red (Tarea 7)
+        } finally {
+            actualizandoAdminLive = false;
+        }
+    }
+    // Sincronizar suavemente en segundo plano cada 5 segundos
+    setInterval(autoActualizarAdminLive, 5000);
     </script>
 </body>
 </html>

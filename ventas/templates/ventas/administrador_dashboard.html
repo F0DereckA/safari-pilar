@@ -147,6 +147,7 @@
             </div>
         </div>
 
+        <div id="contenedorDashboardKPIs">
         <!-- Tarjetas de Comparativa de Ganancias (Requisito clave: Comparativa de Ganancia Meses Anteriores, Día y Año) -->
         <div class="row g-3 mb-4">
             
@@ -213,6 +214,8 @@
             </div>
 
         </div>
+
+        </div><!-- fin #contenedorDashboardKPIs -->
 
         <!-- GRÁFICO MIXTO: DIAGRAMA DE BARRAS CON LÍNEA -->
         <div class="chart-card mb-4">
@@ -730,6 +733,35 @@
         // Inicializar gráfico al cargar la página
         document.addEventListener('DOMContentLoaded', () => {
             renderizarChart('mes');
+
+        // Tarea 1: Auto-sincronización fluida en tiempo real del dashboard analítico sin F5 y con Scroll Lock
+        let sincDashboard = false;
+        async function autoSincronizarDashboard() {
+            if (sincDashboard) return;
+            if (document.querySelector('.modal.show')) return;
+            sincDashboard = true;
+            const scrollPos = window.scrollY;
+
+            try {
+                const resp = await fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!resp.ok) { sincDashboard = false; return; }
+                const html = await resp.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const nuevoKPI = doc.getElementById('contenedorDashboardKPIs');
+                const actualKPI = document.getElementById('contenedorDashboardKPIs');
+                if (nuevoKPI && actualKPI && nuevoKPI.innerHTML.trim() !== actualKPI.innerHTML.trim()) {
+                    actualKPI.innerHTML = nuevoKPI.innerHTML;
+                }
+                window.scrollTo(0, scrollPos);
+            } catch(e) {}
+            finally { sincDashboard = false; }
+        }
+        setInterval(autoSincronizarDashboard, 6000);
+
         });
     </script>
     <script src="{% static 'js/seguridad_sesion.js' %}"></script>
