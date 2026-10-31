@@ -727,6 +727,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - después de esto: realizar únicamente análisis inicial de Historial de Acciones y detener para revisión de ChatGPT/usuario.
 ## 11. historial breve
 - fecha: 2026-10-31
+  - resumen: **Cambio Forzoso de Contraseña en Primer Ingreso y Checklist Dinámico en Tiempo Real (ISO/IEC 27400)**:
+    * Atributo `debe_cambiar_clave` en `PerfilEmpleado` (migración `0011_perfilempleado_debe_cambiar_clave.py`) para obligar a cuentas recién creadas o con clave demo a configurar su contraseña personal al primer ingreso.
+    * Intercepción en `login_view`: si el empleado tiene `debe_cambiar_clave = True` o clave expirada (>180 días), se bloquea el acceso al panel operativo y se redirige a `/cambiar-clave-expirada/`.
+    * Checklist dinámico reactivo en tiempo real por pulsación (`input` event): 5 reglas visuales en tarjetas individuales (8 caracteres, mayúscula, minúscula, número, símbolo) que pasan de gris a verde esmeralda con checkmark e ícono animado conforme el usuario va escribiendo su clave.
+    * Medidor de fortaleza interactivo (0 a 100%) con gradiente semántico (rojo, amarillo, verde) y validación en vivo de coincidencia con la confirmación. Botón de guardado deshabilitado hasta cumplir el 100% de requisitos.
+    * Suite oficial de pruebas automatizadas actualizada y validada con 84 tests aprobados al 100%.
+- fecha: 2026-10-31
   - resumen: **Implementación de Categorías Madres, Centro de Gestión Unificado y Búsqueda Reactiva por Tecleo**:
     * Reloj discreto de cuenta regresiva de sesión (`⏱️ 15:00`) en navbar con renovación automática en caliente ante cualquier interacción física (mouse, teclado, touch, scroll) evitando cierres imprevistos durante el servicio.
     * Rediseño del header de Administrador: eliminación de la saturación de 10 botones horizontales reemplazándolos por 3 Categorías Madres (`Locales`, `Administración`, `Reportes`).

@@ -31,6 +31,7 @@ class PerfilEmpleado(models.Model):
     # Seguridad de Contrasenas y Defensa contra Fuerza Bruta (ISO/IEC 27400 y Tarea 1)
     fecha_cambio_clave = models.DateTimeField(default=timezone.now, help_text="Fecha de ultima actualizacion de contrasena")
     dias_expiracion_clave = models.PositiveIntegerField(default=180, help_text="Vigencia maxima de clave en dias (180 dias = 6 meses)")
+    debe_cambiar_clave = models.BooleanField(default=True, help_text="Exige cambio forzoso de contrasena en primer ingreso")
     intentos_fallidos = models.PositiveIntegerField(default=0, help_text="Contador de intentos fallidos consecutivos")
     bloqueado_hasta = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora hasta cuando el acceso esta bloqueado")
 

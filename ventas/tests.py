@@ -37,6 +37,7 @@ class SafariFase2A1Tests(TestCase):
         self.cajera2_user = User.objects.get(username='csoto')
         self.mesero_user = User.objects.get(username='dsilva')
         self.cocinero_user = User.objects.get(username='eparedes')
+        PerfilEmpleado.objects.all().update(debe_cambiar_clave=False)
 
     def tearDown(self):
         cache.clear()
@@ -2010,6 +2011,20 @@ class SafariSeguridadYConveniosTests(TestCase):
         valida, msg = validar_complejidad_clave("Safari.Pilar2026!")
         self.assertTrue(valida)
         self.assertEqual(msg, "")
+
+    def test_primer_login_fuerza_cambio_clave(self):
+        """Valida que un usuario recién creado deba configurar obligatoriamente su clave"""
+        perfil = self.cajero.perfil
+        perfil.debe_cambiar_clave = True
+        perfil.save()
+
+        resp = self.client.post(reverse('login'), {
+            'username': 'cvalenzuela',
+            'password': 'safari123'
+        }, follow=True)
+        self.assertRedirects(resp, reverse('cambiar_clave_expirada'))
+        self.assertContains(resp, "Primer inicio de sesión")
+        self.assertContains(resp, "Mínimo 8 caracteres")
 
     def test_expiracion_clave_6_meses(self):
         """Valida que claves con más de 180 días se marquen como expiradas y fuercen rotación"""

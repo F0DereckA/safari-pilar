@@ -516,14 +516,21 @@ def login_view(request):
 
             login(request, user)
 
-            # Verificar regla de cambio de contraseña obligatoria cada 6 meses (ISO/IEC 27400 - Tarea 1)
-            if perfil and perfil.clave_expirada():
+            # Verificar cambio forzoso de contraseña en primer ingreso o expiración semestral de 6 meses (ISO/IEC 27400)
+            if perfil and (perfil.debe_cambiar_clave or perfil.clave_expirada()):
                 request.session['requiere_cambio_clave'] = True
-                messages.warning(
-                    request,
-                    "Tu contraseña ha superado el ciclo obligatorio de 6 meses (180 días). "
-                    "Por seguridad institucional, debes actualizarla ahora."
-                )
+                if perfil.debe_cambiar_clave:
+                    messages.warning(
+                        request,
+                        "Primer inicio de sesión detectado: Conforme a la Norma ISO/IEC 27400, "
+                        "debes cambiar tu contraseña temporal por una segura antes de ingresar a tu terminal."
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        "Tu contraseña ha superado el ciclo obligatorio de 6 meses (180 días). "
+                        "Por seguridad institucional, debes actualizarla ahora."
+                    )
                 return redirect('cambiar_clave_expirada')
 
             rol = obtener_rol_usuario(user)
@@ -1338,7 +1345,8 @@ def administrador_trabajadores(request):
                 rut=rut,
                 telefono=telefono,
                 punto_venta_actual=local_obj,
-                activo=True
+                activo=True,
+                debe_cambiar_clave=True
             )
             local_nom = local_obj.nombre if local_obj else "Sin Puesto Asignado"
             messages.success(request, f"¡Colaborador '{nombre} {apellido}' registrado con éxito con puesto único en: {local_nom}!")
@@ -3241,9 +3249,10 @@ def cambiar_clave_expirada(request):
         request.user.save()
 
         if perfil:
+            perfil.debe_cambiar_clave = False
             perfil.fecha_cambio_clave = timezone.now()
             perfil.limpiar_intentos_fallidos()
-            perfil.save(update_fields=['fecha_cambio_clave', 'intentos_fallidos', 'bloqueado_hasta'])
+            perfil.save(update_fields=['debe_cambiar_clave', 'fecha_cambio_clave', 'intentos_fallidos', 'bloqueado_hasta'])
 
         update_session_auth_hash(request, request.user)
         request.session.pop('requiere_cambio_clave', None)

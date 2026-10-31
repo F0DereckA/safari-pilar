@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actualización Obligatoria de Contraseña | Parque Safari</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/estilos_safari.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.2">
     <style>
         body {
             background-color: #f8fafc;
@@ -16,15 +18,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Nunito', sans-serif;
         }
         .card-password {
             background: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
             border: 1px solid #e2e8f0;
             overflow: hidden;
-            max-width: 500px;
+            max-width: 520px;
             width: 100%;
         }
         .header-top {
@@ -34,24 +36,55 @@
             text-align: center;
         }
         .header-top h3 {
-            font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 1px;
-            font-size: 1.8rem;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.5px;
+            font-size: 1.85rem;
             margin: 0;
+            text-transform: uppercase;
         }
-        .rule-badge {
-            font-size: 0.8rem;
+        .rule-item {
+            font-size: 0.82rem;
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            transition: all 0.25s ease-in-out;
         }
-        .rule-badge.valid {
-            color: #16a34a;
-            font-weight: 600;
+        .rule-item.valid {
+            background-color: #ecfdf5 !important;
+            border-color: #86efac !important;
+            color: #15803d !important;
+            font-weight: 700 !important;
+            transform: translateX(3px);
         }
-        .rule-badge.invalid {
+        .rule-item.invalid {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
             color: #64748b;
+        }
+        .rule-item i {
+            font-size: 1.05rem;
+            transition: transform 0.2s ease;
+        }
+        .rule-item.valid i {
+            transform: scale(1.15);
+        }
+        .input-group-pass .input-group-text {
+            background-color: #f8fafc;
+            border-color: #cbd5e1;
+            color: #64748b;
+        }
+        .input-group-pass .form-control {
+            border-color: #cbd5e1;
+            padding: 0.65rem 0.9rem;
+        }
+        .input-group-pass .form-control:focus {
+            border-color: #b91c1c;
+            box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.15);
         }
     </style>
 </head>
@@ -60,77 +93,132 @@
 <div class="container py-4">
     <div class="card-password mx-auto">
         <div class="header-top">
-            <i class="bi bi-shield-lock-fill fs-1 d-block mb-2"></i>
+            <i class="bi bi-shield-lock-fill fs-1 d-block mb-2 text-warning"></i>
             <h3>Actualización Obligatoria de Contraseña</h3>
-            <p class="mb-0 small text-white-50">Política de Seguridad Institucional • Vigencia Semestral</p>
+            <p class="mb-0 small text-white-50">Norma ISO/IEC 27400 • Parque Safari</p>
         </div>
 
         <div class="p-4">
-            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3" role="alert" style="background-color: #fef3c7; color: #92400e;">
-                <i class="bi bi-exclamation-triangle-fill fs-5 me-2 flex-shrink-0"></i>
+            <!-- Aviso dinámico según motivo -->
+            {% if request.user.perfil.debe_cambiar_clave %}
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #92400e;">
+                <i class="bi bi-info-circle-fill fs-4 me-2 flex-shrink-0 text-warning"></i>
                 <div>
-                    Tu contraseña ha cumplido el ciclo de <strong>6 meses</strong> establecido por la norma <strong>ISO/IEC 27400</strong>. Para continuar operando en el sistema, debes configurar una nueva clave segura.
+                    <strong>Primer inicio de sesión:</strong> Has ingresado con una credencial temporal. Por seguridad obligatoria, debes configurar tu contraseña personal antes de ingresar a tu terminal.
                 </div>
             </div>
+            {% else %}
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #92400e;">
+                <i class="bi bi-shield-exclamation fs-4 me-2 flex-shrink-0 text-warning"></i>
+                <div>
+                    <strong>Rotación semestral de contraseña:</strong> Han transcurrido más de 6 meses desde tu última actualización. Debes renovar tu clave para mantener segura tu cuenta.
+                </div>
+            </div>
+            {% endif %}
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show small py-2 px-3 mb-3" role="alert">
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show small py-2 px-3 mb-3 shadow-xs" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
 
-            <form method="POST" action="{% url 'cambiar_clave_expirada' %}" id="formCambioClave">
+            <form method="POST" action="{% url 'cambiar_clave_expirada' %}" id="formCambioClave" autocomplete="off">
                 {% csrf_token %}
 
+                <!-- Contraseña Actual / Temporal -->
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-secondary">Contraseña Actual:</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
-                        <input type="password" name="clave_actual" id="claveActual" class="form-control border-start-0" required placeholder="Ingresa tu clave actual" autocomplete="current-password">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('claveActual', this)">
+                    <label class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-key-fill text-danger me-1"></i> Contraseña Actual o Temporal:
+                    </label>
+                    <div class="input-group input-group-pass">
+                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                        <input type="password" name="clave_actual" id="claveActual" class="form-control" required placeholder="Ingresa tu clave actual (ej: safari123)" autocomplete="current-password">
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('claveActual', this)" title="Mostrar u ocultar contraseña">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-secondary">Nueva Contraseña:</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock"></i></span>
-                        <input type="password" name="nueva_clave" id="nuevaClave" class="form-control border-start-0" required placeholder="Crea una contraseña segura" autocomplete="new-password">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('nuevaClave', this)">
+                <!-- Nueva Contraseña -->
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-lock-fill text-danger me-1"></i> Nueva Contraseña Segura:
+                    </label>
+                    <div class="input-group input-group-pass">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="nueva_clave" id="nuevaClave" class="form-control" required placeholder="Escribe tu nueva clave..." autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('nuevaClave', this)" title="Mostrar u ocultar contraseña">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Requisitos de Complejidad Dinámicos -->
+                <!-- Barra de Progreso de Fortaleza -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted" style="font-size: 0.72rem;">Fortaleza de la contraseña:</span>
+                        <span id="txtFortaleza" class="fw-bold" style="font-size: 0.72rem; color: #64748b;">0 / 5 cumplidos</span>
+                    </div>
+                    <div class="progress" style="height: 6px; background-color: #e2e8f0; border-radius: 10px;">
+                        <div id="barFortaleza" class="progress-bar bg-danger" role="progressbar" style="width: 0%; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+                    </div>
+                </div>
+
+                <!-- Checklist Interactivo en Tiempo Real (Requerimiento del Usuario) -->
                 <div class="bg-light p-3 rounded-3 mb-3 border">
-                    <div class="small fw-bold text-dark mb-2">Requisitos de Seguridad de la Contraseña:</div>
-                    <div id="ruleLength" class="rule-badge invalid"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
-                    <div id="ruleUpper" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos una letra mayúscula (A-Z)</div>
-                    <div id="ruleLower" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos una letra minúscula (a-z)</div>
-                    <div id="ruleNumber" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos un número (0-9)</div>
-                    <div id="ruleSymbol" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos un carácter especial (!@#$%^&* etc.)</div>
+                    <div class="small fw-bold text-dark mb-2 d-flex align-items-center gap-1">
+                        <i class="bi bi-shield-check text-primary"></i>
+                        <span>Requisitos Obligatorios de Complejidad:</span>
+                    </div>
+
+                    <div id="ruleLength" class="rule-item invalid">
+                        <i class="bi bi-circle"></i>
+                        <span>Mínimo 8 caracteres de longitud</span>
+                    </div>
+                    <div id="ruleUpper" class="rule-item invalid">
+                        <i class="bi bi-circle"></i>
+                        <span>Al menos una letra mayúscula (A - Z)</span>
+                    </div>
+                    <div id="ruleLower" class="rule-item invalid">
+                        <i class="bi bi-circle"></i>
+                        <span>Al menos una letra minúscula (a - z)</span>
+                    </div>
+                    <div id="ruleNumber" class="rule-item invalid">
+                        <i class="bi bi-circle"></i>
+                        <span>Al menos un dígito numérico (0 - 9)</span>
+                    </div>
+                    <div id="ruleSymbol" class="rule-item invalid">
+                        <i class="bi bi-circle"></i>
+                        <span>Al menos un carácter especial o símbolo (!@#$%^&* etc.)</span>
+                    </div>
                 </div>
 
+                <!-- Confirmar Nueva Contraseña -->
                 <div class="mb-4">
-                    <label class="form-label small fw-bold text-secondary">Confirmar Nueva Contraseña:</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-check2-circle"></i></span>
-                        <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control border-start-0" required placeholder="Repite la nueva contraseña" autocomplete="new-password">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('confirmarClave', this)">
+                    <label class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-check2-circle text-danger me-1"></i> Confirmar Nueva Contraseña:
+                    </label>
+                    <div class="input-group input-group-pass">
+                        <span class="input-group-text"><i class="bi bi-check-all"></i></span>
+                        <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control" required placeholder="Repite exactamente la nueva clave" autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('confirmarClave', this)" title="Mostrar u ocultar contraseña">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
-                    <div id="matchNotice" class="small mt-1 text-danger d-none">Las contraseñas no coinciden.</div>
+                    <div id="matchNotice" class="small mt-1 text-danger d-none fw-bold">
+                        <i class="bi bi-x-circle-fill me-1"></i> Las contraseñas no coinciden.
+                    </div>
+                    <div id="matchSuccess" class="small mt-1 text-success d-none fw-bold">
+                        <i class="bi bi-check-circle-fill me-1"></i> ¡Las contraseñas coinciden correctamente!
+                    </div>
                 </div>
 
-                <button type="submit" id="btnGuardarClave" class="btn btn-danger w-100 py-2 fw-bold text-uppercase shadow-sm" style="background-color: #b91c1c; border-color: #b91c1c;">
-                    <i class="bi bi-shield-check me-1"></i> Actualizar y Continuar
+                <!-- Botón de Envío (Bloqueado hasta cumplir los 5 requisitos) -->
+                <button type="submit" id="btnGuardarClave" class="btn btn-danger w-100 py-2 fw-bold text-uppercase shadow-sm" style="background-color: #b91c1c; border-color: #b91c1c;" disabled>
+                    <i class="bi bi-shield-check me-1"></i> Guardar y Continuar a mi Turno
                 </button>
             </form>
         </div>
@@ -153,40 +241,99 @@ function togglePass(inputId, btn) {
 const inputNueva = document.getElementById('nuevaClave');
 const inputConfirmar = document.getElementById('confirmarClave');
 const matchNotice = document.getElementById('matchNotice');
+const matchSuccess = document.getElementById('matchSuccess');
+const btnGuardar = document.getElementById('btnGuardarClave');
+const barFortaleza = document.getElementById('barFortaleza');
+const txtFortaleza = document.getElementById('txtFortaleza');
 
-inputNueva.addEventListener('input', function() {
-    const val = inputNueva.value;
-    updateRule('ruleLength', val.length >= 8);
-    updateRule('ruleUpper', /[A-Z]/.test(val));
-    updateRule('ruleLower', /[a-z]/.test(val));
-    updateRule('ruleNumber', /[0-9]/.test(val));
-    updateRule('ruleSymbol', /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~;]/.test(val));
-    checkMatch();
-});
-
-inputConfirmar.addEventListener('input', checkMatch);
+// Validación dinámica reactiva por cada tecleo
+inputNueva.addEventListener('input', validarFormulario);
+inputConfirmar.addEventListener('input', validarFormulario);
 
 function updateRule(elementId, isValid) {
     const el = document.getElementById(elementId);
     const icon = el.querySelector('i');
     if (isValid) {
-        el.className = 'rule-badge valid';
+        el.className = 'rule-item valid';
         icon.className = 'bi bi-check-circle-fill text-success';
     } else {
-        el.className = 'rule-badge invalid';
+        el.className = 'rule-item invalid';
         icon.className = 'bi bi-circle';
     }
 }
 
-function checkMatch() {
-    if (inputConfirmar.value.length > 0) {
-        if (inputConfirmar.value !== inputNueva.value) {
-            matchNotice.classList.remove('d-none');
-        } else {
+function validarFormulario() {
+    const val = inputNueva.value;
+    const conf = inputConfirmar.value;
+
+    const rLength = val.length >= 8;
+    const rUpper = /[A-Z]/.test(val);
+    const rLower = /[a-z]/.test(val);
+    const rNumber = /[0-9]/.test(val);
+    const rSymbol = /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~;]/.test(val);
+
+    updateRule('ruleLength', rLength);
+    updateRule('ruleUpper', rUpper);
+    updateRule('ruleLower', rLower);
+    updateRule('ruleNumber', rNumber);
+    updateRule('ruleSymbol', rSymbol);
+
+    // Conteo de requisitos cumplidos (0 a 5)
+    let cumplidos = 0;
+    if (rLength) cumplidos++;
+    if (rUpper) cumplidos++;
+    if (rLower) cumplidos++;
+    if (rNumber) cumplidos++;
+    if (rSymbol) cumplidos++;
+
+    // Actualizar barra y texto de fortaleza
+    const porcentaje = cumplidos * 20;
+    barFortaleza.style.width = porcentaje + '%';
+
+    if (cumplidos <= 1) {
+        barFortaleza.className = 'progress-bar bg-danger';
+        txtFortaleza.innerText = `${cumplidos}/5 - Muy débil`;
+        txtFortaleza.style.color = '#dc2626';
+    } else if (cumplidos <= 3) {
+        barFortaleza.className = 'progress-bar bg-warning';
+        txtFortaleza.innerText = `${cumplidos}/5 - Intermedia`;
+        txtFortaleza.style.color = '#d97706';
+    } else if (cumplidos === 4) {
+        barFortaleza.className = 'progress-bar bg-info';
+        txtFortaleza.innerText = `${cumplidos}/5 - Buena`;
+        txtFortaleza.style.color = '#0284c7';
+    } else {
+        barFortaleza.className = 'progress-bar bg-success';
+        txtFortaleza.innerText = `5/5 - ¡Robusta y Segura!`;
+        txtFortaleza.style.color = '#16a34a';
+    }
+
+    // Comprobar coincidencia
+    let coinciden = false;
+    if (conf.length > 0) {
+        if (conf === val && val.length > 0) {
+            matchSuccess.classList.remove('d-none');
             matchNotice.classList.add('d-none');
+            coinciden = true;
+        } else {
+            matchNotice.classList.remove('d-none');
+            matchSuccess.classList.add('d-none');
+            coinciden = false;
         }
     } else {
         matchNotice.classList.add('d-none');
+        matchSuccess.classList.add('d-none');
+    }
+
+    // Activar botón solo si se cumplen los 5 requisitos y las contraseñas coinciden
+    if (cumplidos === 5 && coinciden) {
+        btnGuardar.disabled = false;
+        btnGuardar.style.opacity = '1';
+        btnGuardar.classList.add('shadow');
+    } else {
+        btnGuardar.disabled = true;
+        btnGuardar.style.opacity = '0.65';
+        btnGuardar.classList.remove('shadow');
     }
 }
 </script>
