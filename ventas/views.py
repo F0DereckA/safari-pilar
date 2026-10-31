@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from .validators import validar_complejidad_clave
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa
 
 
 def get_locales_data():
@@ -2294,6 +2294,25 @@ def administrador_historial(request):
             'estado': 'ENTREGADO',
         })
 
+    # 6. Eventos de Reasignación de Mesas (RF05)
+    reasignaciones_qs = ReasignacionMesa.objects.select_related('venta', 'mesa_origen', 'mesa_destino', 'mesero', 'mesa_origen__punto_venta').all()
+    for r in reasignaciones_qs:
+        eventos.append({
+            'id_ref': f"TRASM-{r.id}",
+            'tipo': 'MESAS',
+            'subtipo': 'Reasignación de Mesa',
+            'badge_clase': 'badge-status-warning',
+            'icono': 'bi-arrow-left-right text-primary',
+            'titulo': f"Reasignación {r.mesa_origen.identificador} -> {r.mesa_destino.identificador}",
+            'descripcion': f"Traslado de cuenta abierta (Venta #{r.venta.id}, ${int(r.venta.total):,} CLP). Motivo: {r.motivo or 'Cambio por comensal'}",
+            'usuario': r.mesero.get_full_name() or r.mesero.username,
+            'local': r.mesa_origen.punto_venta.nombre,
+            'local_id': str(r.mesa_origen.punto_venta.id),
+            'fecha_hora': r.fecha_hora,
+            'monto': r.venta.total,
+            'estado': 'TRASLADADA',
+        })
+
     # Ordenar cronológicamente descendente (lo más reciente primero)
     eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
 
@@ -2442,6 +2461,114 @@ def mesero(request):
                     mesa_obj.estado = 'HABILITADA'
                     mesa_obj.save()
                     messages.info(request, f"Mesa {mesa_obj.identificador} liberada.")
+
+            return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+        elif accion == 'reasignar_mesa':
+            mesa_origen_id = request.POST.get('mesa_origen_id') or mesa_id
+            mesa_destino_id = request.POST.get('mesa_destino_id')
+            motivo = request.POST.get('motivo', '').strip()[:200]
+
+            if not mesa_origen_id:
+                messages.error(request, "Debe especificar la mesa de origen para realizar la reasignación.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+            if not mesa_destino_id:
+                messages.error(request, "Debe seleccionar una mesa de destino válida para trasladar la atención.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+            try:
+                mesa_origen_id = int(mesa_origen_id)
+                mesa_destino_id = int(mesa_destino_id)
+            except (ValueError, TypeError):
+                messages.error(request, "Los identificadores de mesa deben ser valores numéricos válidos.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+            if mesa_origen_id == mesa_destino_id:
+                messages.warning(request, "La mesa de destino no puede ser la misma mesa de origen.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+            with transaction.atomic():
+                mesa_origen = Mesa.objects.select_for_update().filter(id=mesa_origen_id).first()
+                mesa_destino = Mesa.objects.select_for_update().filter(id=mesa_destino_id).first()
+
+                if not mesa_origen:
+                    messages.error(request, "La mesa de origen no existe en el sistema.")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                if not mesa_destino:
+                    messages.error(request, "La mesa de destino no existe en el sistema.")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                # Validación de aislamiento: no permitir traslados entre Puntos de Venta distintos
+                if mesa_origen.punto_venta_id != local_actual.id or mesa_destino.punto_venta_id != local_actual.id:
+                    messages.error(request, "Operación denegada: No se permite reasignar cuentas entre mesas de distintos Puntos de Venta o locales.")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                # Buscar la venta abierta en la mesa de origen
+                venta_abierta = Venta.objects.select_for_update().filter(
+                    mesa=mesa_origen,
+                    punto_venta=local_actual,
+                    estado='ABIERTA'
+                ).first()
+
+                if not venta_abierta:
+                    messages.error(request, f"La {mesa_origen.identificador} no posee una cuenta abierta para trasladar (la mesa pudo haber sido cerrada o liberada por otro colaborador).")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                # Validar estado inactivo de la mesa destino
+                if mesa_destino.estado == 'INACTIVA':
+                    messages.error(request, f"No es posible reasignar a {mesa_destino.identificador} porque se encuentra deshabilitada o en mantenimiento.")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                # Validar si mesa destino ya está ocupada o tiene cuenta abierta
+                cuenta_destino_abierta = Venta.objects.filter(
+                    mesa=mesa_destino,
+                    punto_venta=local_actual,
+                    estado='ABIERTA'
+                ).exists()
+
+                if mesa_destino.estado == 'OCUPADA' or cuenta_destino_abierta:
+                    messages.error(request, f"No es posible el traslado: {mesa_destino.identificador} ya se encuentra ocupada con otra atención activa.")
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                # Reasignar la venta a la mesa destino (manteniendo intactos pedidos, rondas, productos y tickets)
+                venta_abierta.mesa = mesa_destino
+                venta_abierta.save()
+
+                # Actualizar estado de mesa destino a OCUPADA
+                mesa_destino.estado = 'OCUPADA'
+                mesa_destino.save()
+
+                # Liberar mesa origen si no posee otras cuentas abiertas
+                otras_abiertas_origen = Venta.objects.filter(
+                    mesa=mesa_origen,
+                    punto_venta=local_actual,
+                    estado='ABIERTA'
+                ).exclude(id=venta_abierta.id).exists()
+
+                if not otras_abiertas_origen:
+                    mesa_origen.estado = 'HABILITADA'
+                    mesa_origen.save()
+
+                # Registrar auditoría histórica permanente (RF05)
+                motivo_limpio = motivo or "Solicitud de cambio de mesa por comensal"
+                ReasignacionMesa.objects.create(
+                    venta=venta_abierta,
+                    mesa_origen=mesa_origen,
+                    mesa_destino=mesa_destino,
+                    mesero=request.user,
+                    motivo=motivo_limpio
+                )
+
+                rondas_count = venta_abierta.pedidos.count()
+                total_fmt = f"${int(venta_abierta.total):,}".replace(",", ".")
+                messages.success(
+                    request,
+                    f"¡Mesa reasignada exitosamente (RF05)! La cuenta de {mesa_origen.identificador} "
+                    f"({total_fmt} en {rondas_count} {'ronda' if rondas_count == 1 else 'rondas'}) "
+                    f"fue trasladada a {mesa_destino.identificador}. {mesa_origen.identificador} ha quedado libre."
+                )
 
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 

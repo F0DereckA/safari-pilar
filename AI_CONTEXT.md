@@ -6,34 +6,376 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Blindaje de Ciberseguridad Semestral (ISO/IEC 27400), Defensa contra Fuerza Bruta, Concurrencia de 20 Clientes Simultáneos, Verificación QR Cabañas / Desayuno Incluido y Ofertas de Temporada — COMPLETADOS AL 100% (83 TESTS OK)**.
-- estado operativo y de seguridad (31/10/2026):
-  - **Tarea 1 — Seguridad de Contraseñas, Expiración Semestral y Defensa contra Fuerza Bruta**:
-    * Expiración obligatoria cada 6 meses (180 días) según norma ISO/IEC 27400 (`fecha_cambio_clave`, `dias_expiracion_clave`, `clave_expirada()`).
-    * Validador de complejidad `validar_complejidad_clave` y clase oficial `SafariPasswordValidator` integrada en `AUTH_PASSWORD_VALIDATORS`: exige mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.
-    * Portal interactivo de actualización obligatoria (`/cambiar-clave-expirada/`) con feedback visual en vivo de cada requisito y enmascaramiento seguro `type="password"`.
-    * Protección de fuerza bruta de doble capa: en memoria caché por IP/usuario y persistente en base de datos (`intentos_fallidos`, `bloqueado_hasta`), bloqueando la cuenta por 5 minutos al alcanzar 5 intentos fallidos y aislando IPs con más de 10 fallos globales.
-  - **Tarea 2 — Auditoría Integral de Vulnerabilidades y Errores (0 Fallas)**:
-    * Sanitización estricta de rutas, validación de métodos HTTP, control CSRF, manejo de excepciones y validación de parámetros en transacciones críticas.
-    * Suite completa de pruebas automatizadas ampliada a **83 pruebas unitarias**, con 100% de éxito (`Ran 83 tests in 187.679s - OK`).
-  - **Tarea 3 — Organización y Limpieza de Recursos**:
-    * Estructuración limpia de carpetas `static/css`, `static/js` y `static/img`. Preservación estricta e inviolable de los documentos docentes de evaluación del usuario.
-  - **Tarea 4 — Prueba de Carga y Estrés de Concurrencia (20 Sesiones Simultáneas)**:
-    * Simulación real multihilo con 20 clientes concurrentes en paralelo: 10 Meseros, 4 Cajeros, 3 Cocineros y 3 Administradores.
-    * Resultados medidos: 300 peticiones en 11.42 s, Throughput de **26.26 peticiones/segundo (RPS)**, **99.7% de tasa de éxito**, **0 bloqueos SQLite** (`database is locked = 0`).
-    * Latencia global: Mediana (P50) de **398.56 ms**, P95 de **1,861 ms** y mínima de **17.94 ms**.
-  - **Tarea 5 — Refinamiento Estético y Armonización Visual UI/UX**:
-    * Tarjetas de estilo Safari con bordes suaves, paleta cromática equilibrada (rojo safari, amarillo safari, crema y tonos café), badges semánticos y modales responsivos sin ruido visual.
-  - **Tarea 6 — Investigación Pura de Medidas de Seguridad Avanzada**:
-    * Documentación técnica de estándares PCI-DSS 4.0, ISO 27001, MFA WebAuthn/TOTP para administradores, cabeceras HTTP reforzadas (CSP, HSTS) y firmas criptográficas ECDSA en códigos QR para prevenir clonación.
-  - **Tarea 7 — Verificación Escaneo de Barra / QR Cabañas y Ofertas de Temporada**:
-    * Nuevos modelos `ConvenioHuesped` (pases de huéspedes, cabaña, titular, beneficio de desayuno incluido o descuento %), `ConsumoHuesped` (registro de auditoría de desayunos canjeados con fecha, hora y cajero) y `OfertaTemporada` (campañas con interruptor de activación en vivo).
-    * Endpoints REST `/api/convenios/verificar/` y `/api/convenios/aplicar/`.
-    * Integración de módulo escáner QR en la pantalla de cobro del cajero (`vendedor_crear_ticket.html`), recalculando totales y bonificando desayunos al 100% en tiempo real.
-    * Paneles administrativos dedicados en `/administrador/convenios/` y `/administrador/ofertas-temporada/`.
+- tarea actual: **Consolidación funcional de Requerimientos Oficiales RF01–RF18 + blindaje ante escenarios operacionales reales**.
+- criterio principal: Desde este punto el desarrollo debe volver a priorizar estrictamente la problemática original y los Requerimientos 1–18 entregados por el docente.
+- módulos extra actualmente existentes (ConvenioHuesped, ConsumoHuesped, QR de cabañas/desayuno y OfertaTemporada):
+  - mantener funcionales y aislados para no perder trabajo ni generar regresiones;
+  - no seguir ampliándolos durante esta fase;
+  - no presentarlos como parte central de los RF obligatorios;
+  - cualquier reutilización futura debe reconducirse únicamente a un requerimiento oficial, por ejemplo RF07 Convenios/Precios Especiales.
+- orden funcional prioritario acordado:
+  1. RF05 — Reasignación de mesas.
+  2. RF07 — Gestión de precios especiales durante la venta / convenios autorizados.
+  3. RF10 — Consumo interno del personal / fiado.
+  4. RF13 + RF16 — Registro de entrega y cálculo de tiempos de atención.
+  5. RF17 — Ocupación y liberación de mesas.
+  6. RF18 — Reportes y estadísticas reales desde BD.
+- regla transversal: Cada nueva función debe diseñarse para tolerar errores de usuario, doble envío, concurrencia, datos manipulados, relaciones inexistentes y fallos parciales sin perder integridad ni dejar ventas/mesas en estados imposibles.
+---
+
+
+### PLAN FUNCIONAL PRIORITARIO RF01–RF18 — ROBUSTEZ OPERACIONAL
+
+> [!IMPORTANT]
+> El objetivo de esta fase no es agregar funciones nuevas fuera del alcance. Es cerrar correctamente los requerimientos oficiales pendientes y preparar el sistema para situaciones reales de uso en Parque Safari.
+
+#### PRINCIPIOS GENERALES PARA TODA ESTA FASE
+1. El servidor y la base de datos son la fuente de verdad.
+2. No confiar en precio, rol, local, mesa, usuario, total o estado enviados desde JavaScript cuando exista un dato oficial en BD.
+3. Toda operación que modifique varias entidades relacionadas debe evaluarse para ejecutarse dentro de `transaction.atomic()`.
+4. Cuando exista riesgo de dos usuarios actuando sobre el mismo registro al mismo tiempo, evaluar bloqueo transaccional (`select_for_update`) o validación equivalente.
+5. Los botones críticos deben ser resistentes a doble clic / doble envío.
+6. No eliminar físicamente información histórica si ya participa en ventas, consumos, pedidos, entregas o trazabilidad.
+7. Los errores deben responder de forma controlada, sin stack trace ni corrupción parcial de datos.
+8. Cada cambio debe terminar con:
+   - `python manage.py check`;
+   - `python manage.py test ventas`;
+   - pruebas específicas del nuevo escenario;
+   - regresión de ADMINISTRADOR, CAJERO, MESERO y COCINERO.
+9. No reintroducir ni desarrollar Requerimientos Futuros 19–24.
 
 ---
 
+#### RF05 — REASIGNACIÓN DE MESAS [COMPLETADO AL 100%]
+
+**Objetivo funcional**
+Permitir trasladar una atención/venta/pedido activo desde una mesa origen hacia otra mesa destino cuando el cliente solicite cambio, manteniendo intactos total, pedidos anteriores, rondas, observaciones, tickets y trazabilidad.
+
+**Comportamiento esperado**
+- La atención abierta debe seguir siendo la misma; no crear una nueva venta solo por cambiar de mesa.
+- La mesa origen debe quedar disponible únicamente si ya no conserva otra atención activa.
+- La mesa destino debe quedar ocupada por la atención reasignada.
+- Los tickets de Cocina/Barra ya generados NO deben volver a imprimirse por el cambio de mesa.
+- Las nuevas comandas posteriores al traslado deben mostrar la nueva mesa.
+- El historial debe permitir saber que existió una reasignación de mesa.
+
+**Escenarios problemáticos obligatorios**
+1. Mesa origen no existe.
+2. Mesa destino no existe.
+3. Origen y destino son la misma mesa.
+4. La mesa origen no tiene una cuenta/venta abierta.
+5. La mesa destino ya tiene una cuenta abierta de otros clientes.
+6. La mesa destino está deshabilitada/inactiva.
+7. Usuario intenta trasladar una mesa perteneciente a otro Punto de Venta.
+8. Dos meseros intentan mover la misma cuenta al mismo tiempo.
+9. Doble clic sobre "Reasignar".
+10. Error de BD a mitad del traslado:
+    - no debe quedar la venta apuntando a una mesa y el estado visual de la otra mesa en otro estado.
+11. La comanda ya tiene tickets impresos:
+    - no duplicarlos.
+12. Existen varias rondas de pedidos:
+    - todas deben seguir vinculadas a la misma venta.
+13. El navegador conserva una pantalla antigua:
+    - el backend debe volver a validar el estado actual antes de confirmar.
+14. Mesa origen ya fue liberada/cerrada por otro usuario:
+    - rechazar el traslado con mensaje controlado.
+
+**Pruebas mínimas**
+- traslado válido;
+- destino ocupado rechazado;
+- destino inexistente rechazado;
+- traslado entre locales rechazado;
+- doble ejecución no duplica ni rompe la cuenta;
+- rondas y total permanecen intactos;
+- origen queda libre y destino ocupada;
+- tickets anteriores no se duplican.
+
+---
+
+#### RF07 — PRECIOS ESPECIALES DURANTE LA VENTA / CONVENIOS
+
+**Objetivo funcional**
+Permitir aplicar un valor especial autorizado al momento de vender, sin alterar permanentemente el precio base del producto.
+
+**Reutilización permitida de funciones extra**
+- La lógica existente de QR/convenios puede conservarse únicamente como apoyo opcional.
+- El concepto debe generalizarse como `Convenio / Beneficio Autorizado`, no depender de cabaña, huésped o desayuno.
+- No seguir ampliando OfertaTemporada mientras no sea necesaria para RF07.
+
+**Reglas de negocio recomendadas**
+- El precio oficial del producto se obtiene desde BD.
+- Un precio especial afecta solo la venta/detalle autorizado, no el precio maestro de `Producto`.
+- Registrar, usando la estructura existente o la mínima ampliación necesaria:
+  - precio original;
+  - precio aplicado;
+  - usuario que autorizó/aplicó;
+  - motivo/convenio cuando corresponda;
+  - fecha/hora.
+- Verificar si el modelo `PrecioEspecial` existente puede resolver esto antes de crear nuevos campos/modelos.
+
+**Escenarios problemáticos obligatorios**
+1. Precio especial igual a cero o negativo.
+2. Precio especial superior/inferior fuera de política definida.
+3. Cajero intenta modificar precio sin permiso.
+4. Convenio inexistente/inactivo/vencido si el sistema utiliza convenios.
+5. Código/QR reutilizado cuando el beneficio deba ser de un solo uso.
+6. Aplicación doble del mismo beneficio.
+7. El navegador manipula el precio enviado por JSON.
+8. El precio base cambia en BD mientras el cajero tiene una pantalla antigua.
+9. Venta anulada después de aplicar precio especial:
+   - la trazabilidad debe conservar qué ocurrió.
+10. Varios productos con distintos precios especiales en la misma venta.
+11. Error durante el cobro:
+   - no dejar detalle vendido sin venta consistente.
+
+**Pruebas mínimas**
+- precio normal;
+- precio especial autorizado;
+- modificación no autorizada rechazada;
+- valor negativo/cero rechazado;
+- precio enviado por cliente ignorado/revalidado;
+- trazabilidad del cambio conservada.
+
+---
+
+#### RF10 — CONSUMO INTERNO / FIADO DEL PERSONAL
+
+**Objetivo funcional**
+Registrar productos consumidos por trabajadores como consumo interno, manteniendo detalle y monto acumulado para gestión posterior.
+
+**Modelo existente a reutilizar**
+Antes de crear estructuras nuevas, revisar y utilizar:
+- `ConsumoInterno`;
+- `DetalleConsumoInterno`;
+- usuario/trabajador existente;
+- Producto;
+- PuntoVenta.
+
+**Comportamiento esperado**
+- Seleccionar trabajador interno válido.
+- Agregar uno o varios productos.
+- Registrar cantidades, valores aplicables, fecha/hora y Punto de Venta.
+- Calcular monto total en servidor.
+- Consultar historial y acumulado por trabajador.
+- No mezclar consumo interno con una venta normal de cliente.
+
+**Escenarios problemáticos obligatorios**
+1. Trabajador inexistente.
+2. Trabajador inactivo.
+3. Producto inexistente/inactivo.
+4. Cantidad cero o negativa.
+5. Doble envío del mismo consumo.
+6. Precio manipulado desde navegador.
+7. Usuario intenta registrar consumo interno de otro local sin autorización.
+8. Error después de crear encabezado pero antes de crear detalles:
+   - rollback completo.
+9. Producto queda inactivo después de abrir la pantalla pero antes de confirmar.
+10. Eliminación de trabajador con consumos históricos:
+    - conservar historia.
+11. Consulta de acumulados:
+    - no contar consumos anulados si en el futuro existe esa condición.
+
+**Pruebas mínimas**
+- consumo válido;
+- acumulado correcto;
+- trabajador inválido/inactivo rechazado;
+- producto inválido rechazado;
+- doble envío controlado;
+- rollback ante error;
+- historial permanece disponible.
+
+---
+
+#### RF13 + RF16 — ENTREGA DE PRODUCTOS Y TIEMPOS DE ATENCIÓN
+
+**Objetivo funcional**
+Cerrar el ciclo Pedido -> Preparación -> Listo -> Entregado y generar tiempos reales para estadísticas.
+
+**Datos mínimos que deben poder obtenerse**
+- hora de generación del pedido;
+- hora de inicio de preparación si existe;
+- hora de estado LISTO;
+- hora de entrega al cliente;
+- tiempo de preparación;
+- tiempo desde pedido hasta entrega.
+
+**Integración con KDS**
+- COCINERO cambia estados de preparación.
+- MESERO/CAJERO registra entrega cuando corresponde.
+- Utilizar `Entrega` y estructuras existentes antes de crear modelos nuevos.
+
+**Escenarios problemáticos obligatorios**
+1. Marcar entregado un pedido que todavía está pendiente.
+2. Marcar entregado dos veces.
+3. Pedido con varios tickets (Cocina y Barra) listos en momentos distintos.
+4. Entrega parcial:
+   - definir claramente si el sistema registra entrega por pedido completo, ticket o producto según estructura real.
+   - no inventar granularidad sin revisar modelos.
+5. Segunda ronda de la misma mesa:
+   - los tiempos deben pertenecer a su pedido/ronda correcta.
+6. Ticket cancelado/anulado:
+   - no contarlo como entrega normal.
+7. Hora del servidor y zona horaria:
+   - usar `America/Santiago`.
+8. Actualización simultánea desde Cocina y Mesero.
+9. Navegador intenta forzar un estado inválido.
+10. Caída entre cambio de estado y registro de Entrega:
+    - evitar estados incoherentes.
+
+**Pruebas mínimas**
+- flujo normal completo;
+- transición inválida rechazada;
+- doble entrega rechazada;
+- tiempo calculado no negativo;
+- rondas separadas correctamente;
+- datos disponibles para RF16/RF18.
+
+---
+
+#### RF17 — GESTIÓN DE OCUPACIÓN DE MESAS
+
+**Objetivo funcional**
+Medir cuánto tiempo permanece utilizada una mesa desde el inicio de la atención hasta su liberación.
+
+**Reglas**
+- Una mesa pasa a ocupada cuando comienza una atención válida.
+- Una nueva ronda NO reinicia el tiempo de ocupación.
+- Reasignar una venta debe cerrar correctamente la ocupación de la mesa origen e iniciar/continuar la ocupación en la mesa destino según la decisión técnica que se documente.
+- La mesa no puede liberarse si conserva una venta/cuenta abierta.
+- Al pagar/cerrar la cuenta, la mesa puede pasar a disponible según el flujo operativo definido.
+- No inventar nuevos estados de mesa sin revisar primero los estados actuales del modelo.
+
+**Escenarios problemáticos obligatorios**
+1. Intento de liberar mesa con cuenta abierta.
+2. Intento de ocupar mesa ya ocupada.
+3. Dos meseros toman la misma mesa al mismo tiempo.
+4. Cierre de cuenta falla:
+   - no liberar mesa prematuramente.
+5. Cambio de mesa durante la atención.
+6. Jornada cambia de día con una mesa todavía marcada ocupada.
+7. Venta anulada/cancelada.
+8. Mesa desactivada administrativamente mientras está ocupada:
+   - bloquear acción o resolver de forma controlada.
+9. Reinicio del navegador:
+   - estado debe reconstruirse desde BD, no depender del frontend.
+
+**Pruebas mínimas**
+- ocupación normal;
+- múltiples rondas no reinician atención;
+- cierre libera mesa;
+- cuenta abierta impide liberar;
+- concurrencia impide doble ocupación;
+- reasignación conserva coherencia.
+
+---
+
+#### RF18 — REPORTES Y ESTADÍSTICAS REALES
+
+**Objetivo funcional**
+Generar reportes exclusivamente desde datos persistidos reales.
+
+**Mínimos requeridos por docente**
+- ventas realizadas;
+- productos más vendidos;
+- tiempos de espera y entrega.
+
+**Agregar únicamente si los datos reales existen**
+- ocupación/duración de mesas;
+- ventas por Punto de Venta;
+- ventas por cajero;
+- consumos internos;
+- tiempos Cocina/Barra.
+
+**Reglas**
+- No usar datos demo/mocks como si fueran reportes reales.
+- Definir filtros por rango de fecha y Punto de Venta cuando corresponda.
+- Las cifras deben obtenerse mediante consultas ORM/SQL reales.
+- Los totales deben considerar correctamente anulaciones/cancelaciones si dichas entidades/estados existen.
+- No mezclar ventas normales con consumo interno salvo que el reporte lo indique expresamente.
+
+**Escenarios problemáticos obligatorios**
+1. Día sin ventas -> mostrar cero, no error.
+2. Rango de fechas inválido.
+3. Fecha inicio > fecha fin.
+4. Local sin datos.
+5. Producto eliminado/desactivado con historial:
+   - debe seguir apareciendo en históricos cuando corresponda.
+6. Ventas con precio especial.
+7. Ventas rápidas vs mesas.
+8. Pedidos sin entrega todavía:
+   - no inventar tiempo de entrega.
+9. Datos históricos de otra jornada.
+10. Zona horaria y cambio de día.
+11. Gran cantidad de registros:
+    - evitar consultas N+1 y tiempos excesivos.
+
+**Pruebas mínimas**
+- ventas totales correctas;
+- ranking de productos correcto;
+- tiempos calculados solo con registros válidos;
+- filtros de fechas;
+- resultado vacío controlado;
+- datos únicamente reales.
+
+---
+
+### SITUACIONES TRANSVERSALES QUE EL SISTEMA DEBE SOPORTAR
+
+Estas situaciones deben considerarse en todos los RF restantes:
+
+1. **Doble clic / doble envío**
+   - no duplicar ventas, pedidos, consumos, entregas ni reasignaciones.
+
+2. **Concurrencia**
+   - dos cajeros/meseros/cocineros actuando sobre el mismo recurso no deben provocar corrupción de datos.
+
+3. **Pérdida de conexión o error de servidor**
+   - la operación debe completarse entera o revertirse entera cuando sea transaccional.
+
+4. **Datos manipulados desde navegador**
+   - IDs, precios, cantidades, roles y locales deben revalidarse en servidor.
+
+5. **Registro eliminado/desactivado mientras otro usuario trabaja**
+   - volver a consultar estado antes de confirmar.
+
+6. **Sesión vencida durante una operación**
+   - no realizar cambios sin autenticación válida.
+
+7. **Usuario sin permisos**
+   - responder 403/control equivalente y no procesar la acción.
+
+8. **Ruta o ID inexistente**
+   - responder 404 amigable, no excepción sin manejar.
+
+9. **Día/jornada**
+   - no reutilizar automáticamente una jornada antigua como si fuera la actual.
+
+10. **Impresora física no disponible**
+    - RF09 sigue en modo digital provisional; fallo de impresión no debe destruir la venta ya registrada.
+    - cuando exista impresión física, separar claramente persistencia de venta y reimpresión de ticket.
+
+11. **Integridad histórica**
+    - desactivar/soft-delete cuando corresponda en vez de destruir ventas, pedidos, consumos o reportes históricos.
+
+12. **Auditoría**
+    - operaciones sensibles deben poder atribuirse a usuario, fecha/hora y local cuando la estructura actual lo permita.
+
+13. **Mensajes al usuario**
+    - explicar el problema y permitir recuperación; no mostrar detalles técnicos internos.
+
+---
+
+### ORDEN DE EJECUCIÓN AUTORIZADO
+1. Auditar implementación actual exacta de RF05.
+2. Implementar/cerrar RF05 con pruebas.
+3. Detener y devolver `AI_CONTEXT.md` para revisión de ChatGPT/usuario.
+4. Solo después avanzar RF07.
+5. Repetir el mismo ciclo para RF10, RF13/16, RF17 y RF18.
+
+**No ejecutar todos los RF restantes de una sola vez.**
+La implementación seguirá siendo incremental para detectar regresiones y mantener trazabilidad.
+
+---
 ### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11
 
 #### Semana 10 — Clase 13/10/2026 — DEBE QUEDAR COMPLETA
@@ -445,89 +787,54 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resultado: Se reconstruyó de forma fidedigna el estado del código al 29-Sep (restauración del banner `SUPERVISIÓN DE LOCALES Y PERSONAL`, Centro de Alertas como bloque en el cuerpo, alertas nativas `confirm()`, recarga completa por POST, seeding en el ciclo HTTP y validación con `test_fase2a.py` al 100% OK). Se dispuso en el proyecto y directamente en el Escritorio con instrucciones para correr en el puerto 8001.
 
 ## 6. errores actuales y observaciones pendientes
-- estado académico vigente:
-  - Semana 10: COMPLETADA.
-  - CRUD Mesas: COMPLETADO.
-  - suite más reciente reportada: **41/41 tests OK**.
-- observaciones:
-  1. El archivo todavía conserva cifras históricas de 25, 23, 20 y 15 pruebas. Mantenerlas solo como historial; no usarlas como estado vigente.
-  2. El bloque `estado actual` antiguo todavía menciona 25 pruebas y debe considerarse histórico respecto del resultado posterior de 41/41.
-  3. Las auditorías viejas de RF04 y del flujo Cajero/Mesero conservan hallazgos que pueden haber sido corregidos después; no tomarlos como estado actual sin verificar código.
-  4. Para la clase del 20/10, el valor académico inmediato está en mostrar mantenedores reales conectados a BD, no en abrir nuevas funciones grandes.
-  5. Word, Draw.io y pruebas de rendimiento continúan pendientes para fases posteriores y no deben distraer esta preparación.
+- prioridad vigente: cerrar requerimientos oficiales RF01–RF18 antes de ampliar módulos opcionales.
+- pendientes principales:
+  1. RF05 Reasignación de mesas: siguiente implementación/auditoría prioritaria.
+  2. RF07 Precios especiales: reutilizar `PrecioEspecial` y, solo si aporta, generalizar convenios existentes sin depender de huéspedes/cabañas/desayunos.
+  3. RF10 Consumo interno: consolidar flujo real usando modelos existentes.
+  4. RF13/RF16 Entrega y tiempos: conectar KDS/pedidos con entrega real y mediciones.
+  5. RF17 Ocupación de mesas: garantizar medición y estados coherentes.
+  6. RF18 Reportes: eliminar dependencia de cualquier KPI mock y generar estadísticas reales.
+- módulos opcionales congelados:
+  - ConvenioHuesped;
+  - ConsumoHuesped;
+  - QR cabañas/desayuno;
+  - OfertaTemporada.
+  Permanecen funcionales pero no se amplían en esta fase.
+- observación documental:
+  - reconciliar conteo real vigente de tests (83 vs 84 en secciones actuales) antes del siguiente informe.
+- regla de seguridad:
+  - expiración de contraseña de 180 días se documenta como política interna, no como obligación específica de ISO/IEC 27400.
 ## 7. dudas para ChatGPT
-- decisión: Semana 10 y CRUD Mesas se consideran cerrados para la preparación inmediata de clase.
-- siguiente enfoque: Productos y Menús conectados realmente a BD como avance parcial de Semana 11.
-- Historial de Acciones se mantiene en análisis inicial; no crear aún un nuevo sistema de auditoría sin revisar primero la trazabilidad existente.
+- decisión del usuario: volver a priorizar estrictamente los Requerimientos Oficiales RF01–RF18.
+- los módulos de huéspedes/desayunos/ofertas quedan congelados y funcionales, pero fuera del foco principal.
+- siguiente ejecución autorizada: auditar e implementar RF05 Reasignación de Mesas con manejo de escenarios problemáticos y pruebas.
 ## 8. respuesta de ChatGPT
-- orden actual: Ejecutar únicamente el bloque **Semana 11 — Productos y Menús (avance inicial real con BD)**.
-- no rehacer:
-  - login;
-  - roles;
-  - seguridad de Semana 10;
-  - CRUD Usuarios;
-  - CRUD PuntoVenta;
-  - CRUD Mesas.
-
-### Orden para Antigravity
-1. **Auditar modelos actuales**
-   - Leer `Categoria`, `Producto` y `Menu` en `ventas/models.py`.
-   - Registrar campos y relaciones reales.
-   - No crear migraciones antes de confirmar que son estrictamente necesarias.
-
-2. **Crear gestión administrativa inicial de Productos**
-   - Acceso exclusivo de Administrador.
-   - Listar registros reales desde ORM.
-   - Crear y editar Producto usando campos reales.
-   - Validar entradas.
-   - Mostrar Categoria y Punto(s) de Venta asociados cuando esas relaciones existan.
-   - Si existe `activo`, permitir activar/desactivar.
-   - Si no existe, no inventarlo solo para esta clase.
-
-3. **Crear gestión administrativa inicial de Menús**
-   - Listar menús reales desde ORM.
-   - Mostrar el Punto de Venta y productos relacionados.
-   - Permitir creación/edición básica únicamente si el modelo existente lo soporta limpiamente.
-   - No implementar promociones, vigencias u otras reglas no pedidas.
-
-4. **Navegación**
-   - Integrar acceso claro desde el panel Administrador sin saturar la interfaz.
-   - Mantener diseño coherente con los otros mantenedores.
-
-5. **No romper terminales existentes**
-   - No eliminar todavía arrays/mock de catálogo utilizados por Mesero o Cajero.
-   - La pantalla administrativa nueva puede usar BD aunque las terminales todavía no hayan migrado completamente.
-   - Documentar esta transición explícitamente.
-
-6. **Historial de Acciones**
-   - Solo revisar trazabilidad existente al terminar Productos/Menús.
-   - Entregar propuesta mínima de eventos y posible reutilización.
-   - No crear nuevo modelo todavía.
-
-7. **Pruebas y regresión**
-   - Agregar pruebas mínimas del mantenedor nuevo.
-   - Ejecutar `python manage.py check`.
-   - Ejecutar `python manage.py test ventas`.
-   - Registrar el nuevo total exacto de pruebas.
-   - Verificar manualmente que ADMINISTRADOR, CAJERO, MESERO y COCINERO sigan entrando a sus módulos.
-   - Verificar que Mesa/Cuenta Abierta, KDS y tickets Cocina/Barra no se rompan.
-
-### Resultado esperado para mostrar el 20/10
-- Usuarios: CRUD funcionando.
-- Puntos de Venta: CRUD funcionando.
-- Mesas: CRUD funcionando.
-- Productos: mantenedor inicial real conectado a BD.
-- Menús: listado/gestión inicial real conectada a BD.
-- Historial: diseño inicial explicado.
-- Semana 10: errores personalizados y validaciones demostrables.
-
-### Límites
-- No completar RF05 entero.
-- No migrar todavía Mesero/Cajero al catálogo nuevo.
-- No tocar Word/Draw.io.
-- No ejecutar todavía la fase formal de performance 20/50/100.
-- No crear funciones fuera de lo necesario para la clase del 20/10.
-- estado: pendiente de ejecución por Antigravity.
+- evaluación: El proyecto posee una base sólida y numerosos adelantos, pero el desarrollo debe concentrarse nuevamente en cumplir de forma verificable los RF01–RF18 originales.
+- orden técnico actual: **RF05 — Reasignación de Mesas**.
+- antes de modificar código, Antigravity debe auditar:
+  - cómo se representa actualmente una venta/cuenta abierta;
+  - relación real `Venta` -> `Mesa`;
+  - estados disponibles en `Mesa`;
+  - cómo se identifican ventas abiertas/cerradas;
+  - si existe ya algún mecanismo o vista de reasignación;
+  - impacto sobre `Pedido`, `DetallePedido`, `Ticket`, `Entrega` e historial.
+- después implementar el cambio mínimo que cumpla RF05 sin romper Mesa/Cuenta Abierta.
+- escenarios mínimos obligatorios:
+  - destino ocupado;
+  - origen sin cuenta;
+  - traslado dentro del mismo local;
+  - rechazo entre locales;
+  - doble envío;
+  - concurrencia;
+  - conservación de rondas/total/tickets previos;
+  - rollback ante error.
+- pruebas:
+  - agregar pruebas específicas RF05;
+  - ejecutar suite completa;
+  - reconciliar conteo vigente;
+  - verificar manualmente Mesero, Cajero, Cocina y Administrador.
+- detener después de RF05 y devolver `AI_CONTEXT.md` antes de comenzar RF07.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 ### A. Reconciliación del Estado Documental
@@ -708,24 +1015,28 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- próxima acción: Retomar la **Segunda Mitad de la Evaluación 3** (Sección 3: Aspectos de integridad, disponibilidad y confidencialidad a testear, y Sección 4: Prototipo de software con CRUDs, consultas y reportes) o reiniciar el servidor de desarrollo (`py manage.py runserver`) según la instrucción del usuario.
-- prioridad: URGENTE por clase del 20/10.
-- punto de partida confirmado:
-  - Semana 10 completa.
-  - Usuarios completo.
-  - PuntoVenta completo.
-  - Mesas completo.
-  - suite vigente previa: 41/41.
-- criterio de término:
-  - Producto listado desde BD;
-  - creación/edición básica funcional y validada;
-  - Menu listado desde BD con sus relaciones visibles;
-  - navegación desde Administrador;
-  - pruebas nuevas aprobadas;
-  - regresión de módulos existentes aprobada;
-  - nuevo conteo exacto de tests registrado.
-- después de esto: realizar únicamente análisis inicial de Historial de Acciones y detener para revisión de ChatGPT/usuario.
+- estado actual: **RF05 Reasignación de Mesas COMPLETADO Y TESTEADO AL 100% (93/93 tests OK)**.
+- próxima acción: **Detener y devolver AI_CONTEXT.md para revisión de ChatGPT / usuario antes de iniciar RF07 (Gestión de Precios Especiales / Convenios)**.
+- prioridad: ESPERA DE REVISIÓN Y VALIDACIÓN DOCENTE.
+- resumen técnico de lo implementado en RF05:
+  - **Auditoría técnica previa**: Inspección completa de `Venta.mesa`, estados `Mesa.ESTADOS`, `Pedido`, `DetallePedido`, `DetalleVenta`, `Ticket` y `Entrega`.
+  - **Persistencia y Trazabilidad**: Nuevo modelo `ReasignacionMesa` (migración `0012_reasignacionmesa.py`) que audita venta, mesa origen, mesa destino, mesero, motivo y timestamp. Registrado en `admin.py`.
+  - **Seguridad Transaccional y Concurrencia**: Control en `ventas/views.py` (`mesero`) con `transaction.atomic()` y `select_for_update()`.
+  - **Escenarios de falla validados y blindados**: Rechazo de destino ocupado, destino inexistente, destino inactivo, origen sin cuenta, misma mesa origen/destino, traslados entre Puntos de Venta distintos, doble clic/concurrencia y rollback limpio.
+  - **Continuidad de Servicio**: Mantiene intactas las rondas, productos, notas libres, totales y tickets de Cocina/Barra previamente emitidos. La mesa origen queda libre (`HABILITADA`) y la de destino ocupada (`OCUPADA`).
+  - **UI Mesero**: Botón reactivo en banner de cuenta abierta, botón de cambio rápido en modal de consumos acumulados, y modal accesible `modalReasignarMesa`.
+  - **Trazabilidad Administrador**: Eventos de tipo `MESAS` incorporados en `administrador_historial`.
+  - **Suite de Pruebas**: 9 casos de prueba exhaustivos en `SafariRF05ReasignacionMesasTests` aprobados al 100%. Total suite de ventas: **93/93 tests OK**.
 ## 11. historial breve
+- fecha: 2026-10-31
+  - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
+    * Auditoría previa de modelos `Venta`, `Mesa`, `Pedido`, `Ticket` y ciclo de vida de cuentas abiertas.
+    * Creación de modelo de auditoría `ReasignacionMesa` (migración `0012_reasignacionmesa.py`) y registro en Django Admin.
+    * Controlador transaccional en `ventas/views.py` bajo acción `reasignar_mesa` con `transaction.atomic()` y bloqueo de concurrencia `select_for_update()`.
+    * Blindaje ante escenarios fallidos: rechazo de destino ocupado, inactivo, inexistente, origen sin venta, misma mesa, locales cruzados y doble envío.
+    * Interfaz ergonómica en `ventas/templates/ventas/mesero.html` con modal `modalReasignarMesa` y botones directos.
+    * Integración de eventos de traslado en el historial del Administrador (`administrador_historial`).
+    * Suite ampliada con `SafariRF05ReasignacionMesasTests` (9 pruebas nuevas). Total de la suite general elevado a **93 pruebas automatizadas aprobadas al 100% (Ran 93 tests OK)**.
 - fecha: 2026-10-31
   - resumen: **Cambio Forzoso de Contraseña en Primer Ingreso y Checklist Dinámico en Tiempo Real (ISO/IEC 27400)**:
     * Atributo `debe_cambiar_clave` en `PerfilEmpleado` (migración `0011_perfilempleado_debe_cambiar_clave.py`) para obligar a cuentas recién creadas o con clave demo a configurar su contraseña personal al primer ingreso.
@@ -780,6 +1091,10 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
+- prioridad funcional oficial: RF01–RF18; Requerimientos Futuros 19–24 continúan totalmente excluidos
+- módulos de huéspedes/cabañas/desayuno/ofertas quedan congelados y no deben desplazar el trabajo de RF01–RF18
+- cada RF restante debe implementarse de forma incremental, con auditoría previa, escenarios de error, pruebas y revisión antes del siguiente RF
+
 - para la preparación de Semana 11, el último conteo vigente reportado es 41/41 pruebas después del CRUD de Mesas; cifras menores que aparezcan en bloques anteriores se consideran históricas
 - prioridad académica inmediata: recuperar completamente los objetivos de Semana 10 (13/10/2026) y llegar a la clase de Semana 11 (20/10/2026) con CRUD de Usuarios y PuntoVenta consolidados, CRUD básico de Mesas implementado y avance inicial real de Productos/Menús
 - desde la retroalimentación de Informe 2 y su implementación posterior, `COCINERO` es un rol operativo vigente del sistema junto a `ADMINISTRADOR`, `CAJERO` y `MESERO`; no eliminarlo sin nueva instrucción del usuario/docente

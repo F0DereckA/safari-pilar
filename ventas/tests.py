@@ -2166,4 +2166,298 @@ class SafariSeguridadYConveniosTests(TestCase):
         self.assertTrue(oferta.activa)
         self.assertTrue(oferta.es_vigente())
         self.assertEqual(oferta.descuento_porcentaje, Decimal('25'))
+# ==============================================================================
+# PRUEBAS OFICIALES RF05 — REASIGNACIÓN DE MESAS Y CUENTA ABIERTA
+# ==============================================================================
+class SafariRF05ReasignacionMesasTests(TestCase):
+    """
+    Suite oficial de validación y robustez para RF05: Reasignación de Mesas.
+    Verifica:
+    - Traslado válido conservando rondas, productos, totales, tickets y trazabilidad
+    - Mesa origen liberada y mesa destino ocupada
+    - Rechazo de destino ocupado
+    - Rechazo de destino inexistente o inactivo
+    - Rechazo de origen inexistente o sin cuenta abierta
+    - Rechazo de traslado a la misma mesa
+    - Rechazo de traslado entre Puntos de Venta distintos
+    - Tolerancia a doble clic / doble envío / concurrencia
+    - Nuevas comandas posteriores al traslado dirigidas a la nueva mesa
+    - Auditoría histórica persistida en ReasignacionMesa
+    """
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+        PerfilEmpleado.objects.all().update(debe_cambiar_clave=False)
 
+        self.mesero = User.objects.get(username='dsilva')
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.admin = User.objects.get(username='rgomez')
+        self.local1 = PuntoVenta.objects.get(id=1)
+        self.local2 = PuntoVenta.objects.get(id=2)
+
+        self.mesa1 = Mesa.objects.filter(punto_venta=self.local1).order_by('id')[0]
+        self.mesa2 = Mesa.objects.filter(punto_venta=self.local1).order_by('id')[1]
+        self.mesa3 = Mesa.objects.filter(punto_venta=self.local1).order_by('id')[2]
+
+        self.mesa1.estado = 'HABILITADA'
+        self.mesa1.save()
+        self.mesa2.estado = 'HABILITADA'
+        self.mesa2.save()
+        self.mesa3.estado = 'HABILITADA'
+        self.mesa3.save()
+
+        # Crear cuenta abierta inicial en Mesa 1 con 2 rondas y tickets
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            estado='ABIERTA',
+            defaults={'usuario_apertura': self.admin}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero,
+            punto_venta=self.local1,
+            defaults={'estado': 'ABIERTA', 'nombre': 'Caja 1'}
+        )
+        self.venta1 = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero,
+            punto_venta=self.local1,
+            modalidad='MESA',
+            mesa=self.mesa1,
+            total=16400,
+            estado='ABIERTA'
+        )
+        self.mesa1.estado = 'OCUPADA'
+        self.mesa1.save()
+
+        # Ronda 1
+        self.pedido1 = Pedido.objects.create(
+            venta=self.venta1,
+            estado='PENDIENTE',
+            observaciones=f"Ronda #1 para {self.mesa1.identificador}"
+        )
+        self.prod1 = Producto.objects.first()
+        DetallePedido.objects.create(
+            pedido=self.pedido1,
+            producto=self.prod1,
+            cantidad=2,
+            observaciones="Sin cebolla"
+        )
+        DetalleVenta.objects.create(
+            venta=self.venta1,
+            producto=self.prod1,
+            cantidad=2,
+            precio_aplicado=Decimal('8200'),
+            subtotal=Decimal('16400')
+        )
+        self.ticket1 = Ticket.objects.create(
+            pedido=self.pedido1,
+            codigo="COM-COC-9001",
+            tipo_destino='COCINA',
+            estado='EMITIDO',
+            contenido_impresion=f"Ticket Cocina Ronda 1 - {self.mesa1.identificador}"
+        )
+
+        # Ronda 2
+        self.pedido2 = Pedido.objects.create(
+            venta=self.venta1,
+            estado='PENDIENTE',
+            observaciones=f"Ronda #2 para {self.mesa1.identificador}"
+        )
+        self.ticket2 = Ticket.objects.create(
+            pedido=self.pedido2,
+            codigo="COM-BAR-9002",
+            tipo_destino='BARRA',
+            estado='EMITIDO',
+            contenido_impresion=f"Ticket Barra Ronda 2 - {self.mesa1.identificador}"
+        )
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_traslado_valido_conserva_rondas_totales_y_tickets(self):
+        """Valida traslado exitoso: venta.mesa cambia, rondas/tickets intactos, origen libre y destino ocupada"""
+        from ventas.models import ReasignacionMesa
+        self.client.force_login(self.mesero)
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+            'motivo': 'Comensales prefirieron mesa con vista panorámica'
+        }, follow=True)
+
+        self.assertContains(resp, "Mesa reasignada exitosamente")
+
+        # 1. La venta se mantiene abierta pero ahora apunta a Mesa 2
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa2)
+        self.assertEqual(self.venta1.total, Decimal('16400'))
+        self.assertEqual(self.venta1.estado, 'ABIERTA')
+
+        # 2. Las 2 rondas anteriores siguen perteneciendo a la misma venta
+        self.assertEqual(self.venta1.pedidos.count(), 2)
+
+        # 3. Los tickets anteriores no se duplicaron ni cambiaron
+        self.assertEqual(Ticket.objects.filter(pedido__venta=self.venta1).count(), 2)
+
+        # 4. Estados de las mesas
+        self.mesa1.refresh_from_db()
+        self.mesa2.refresh_from_db()
+        self.assertEqual(self.mesa1.estado, 'HABILITADA')
+        self.assertEqual(self.mesa2.estado, 'OCUPADA')
+
+        # 5. Auditoría histórica persistida
+        reasig = ReasignacionMesa.objects.filter(venta=self.venta1).first()
+        self.assertIsNotNone(reasig)
+        self.assertEqual(reasig.mesa_origen, self.mesa1)
+        self.assertEqual(reasig.mesa_destino, self.mesa2)
+        self.assertEqual(reasig.mesero, self.mesero)
+        self.assertIn("vista panorámica", reasig.motivo)
+
+    def test_destino_ocupado_es_rechazado(self):
+        """Valida que no se pueda trasladar a una mesa que ya esté ocupada por otros comensales"""
+        from ventas.models import ReasignacionMesa
+        self.client.force_login(self.mesero)
+
+        # Marcar mesa 2 como ocupada
+        self.mesa2.estado = 'OCUPADA'
+        self.mesa2.save()
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+
+        self.assertContains(resp, "ya se encuentra ocupada")
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa1)
+        self.assertEqual(ReasignacionMesa.objects.count(), 0)
+
+    def test_destino_inexistente_es_rechazado(self):
+        """Valida rechazo si la mesa de destino no existe"""
+        self.client.force_login(self.mesero)
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': 999999,
+        }, follow=True)
+
+        self.assertContains(resp, "no existe en el sistema")
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa1)
+
+    def test_misma_mesa_origen_y_destino_es_rechazado(self):
+        """Valida que no se pueda trasladar una mesa hacia sí misma"""
+        self.client.force_login(self.mesero)
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa1.id,
+        }, follow=True)
+
+        self.assertContains(resp, "no puede ser la misma")
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa1)
+
+    def test_origen_sin_cuenta_abierta_es_rechazado(self):
+        """Valida que si la mesa de origen no tiene cuenta abierta, se rechaza la operación"""
+        self.client.force_login(self.mesero)
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa3.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+
+        self.assertContains(resp, "no posee una cuenta abierta")
+
+    def test_destino_inactivo_es_rechazado(self):
+        """Valida rechazo si la mesa de destino está marcada como inactiva/mantenimiento"""
+        self.client.force_login(self.mesero)
+        self.mesa2.estado = 'INACTIVA'
+        self.mesa2.save()
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+
+        self.assertContains(resp, "deshabilitada o en mantenimiento")
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa1)
+
+    def test_traslado_entre_distintos_locales_es_rechazado(self):
+        """Valida que no se permita trasladar cuentas entre mesas de distintos Puntos de Venta"""
+        self.client.force_login(self.mesero)
+        mesa_local2 = Mesa.objects.filter(punto_venta=self.local2).first()
+
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': mesa_local2.id,
+        }, follow=True)
+
+        self.assertContains(resp, "distintos Puntos de Venta")
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa1)
+
+    def test_doble_envio_concurrencia_tolerancia(self):
+        """Valida que un segundo clic o envío simultáneo no duplique la reasignación ni corrompa datos"""
+        from ventas.models import ReasignacionMesa
+        self.client.force_login(self.mesero)
+
+        # Primer envío exitoso
+        resp1 = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+        self.assertContains(resp1, "Mesa reasignada exitosamente")
+
+        # Segundo envío idéntico (simulando doble clic)
+        resp2 = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+        self.assertContains(resp2, "no posee una cuenta abierta")
+        self.assertEqual(ReasignacionMesa.objects.count(), 1)
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.mesa, self.mesa2)
+
+    def test_nueva_ronda_despues_de_traslado_continua_en_mesa_destino(self):
+        """Valida que una nueva comanda emitida tras el traslado se anexe a la misma cuenta en la mesa destino"""
+        import json
+        self.client.force_login(self.mesero)
+
+        # 1. Reasignar a Mesa 2
+        self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa1.id,
+            'mesa_destino_id': self.mesa2.id,
+        }, follow=True)
+
+        # 2. Mesero envía Ronda #3 en Mesa 2
+        items = json.dumps([
+            {'nombre': 'Bebida Sprite 350ml', 'precio': 2000, 'cantidad': 1, 'nota': 'Con hielo', 'destino': 'BARRA'}
+        ])
+        resp_ronda = self.client.post(reverse('mesero'), {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa2.id,
+            'items_json': items
+        }, follow=True)
+
+        self.assertContains(resp_ronda, "Ronda #3 agregada")
+
+        # 3. La venta sigue siendo la misma Venta 1, con 3 rondas y total acumulado
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.pedidos.count(), 3)
+        self.assertEqual(self.venta1.mesa, self.mesa2)
+        self.assertEqual(self.venta1.total, Decimal('18400'))

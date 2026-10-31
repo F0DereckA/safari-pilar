@@ -3,7 +3,7 @@ from .models import (
     PerfilEmpleado, Jornada, PuntoVenta, Caja, Categoria, Producto,
     Menu, PrecioEspecial, Mesa, Venta, DetalleVenta, Pedido,
     DetallePedido, Ticket, Entrega, ConsumoInterno, DetalleConsumoInterno,
-    AlertaTraslado
+    AlertaTraslado, ReasignacionMesa
 )
 
 @admin.register(PerfilEmpleado)
@@ -121,4 +121,11 @@ class AlertaTrasladoAdmin(admin.ModelAdmin):
     list_display = ('id', 'empleado', 'punto_venta_origen', 'punto_venta_destino', 'motivo', 'fecha_hora', 'leida')
     list_filter = ('punto_venta_origen', 'punto_venta_destino', 'leida')
     search_fields = ('empleado__username', 'empleado__first_name', 'empleado__last_name', 'motivo')
+
+@admin.register(ReasignacionMesa)
+class ReasignacionMesaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'venta', 'mesa_origen', 'mesa_destino', 'mesero', 'motivo', 'fecha_hora')
+    list_filter = ('mesa_origen__punto_venta', 'fecha_hora')
+    search_fields = ('venta__id', 'mesa_origen__identificador', 'mesa_destino__identificador', 'mesero__username')
+
 

@@ -424,6 +424,27 @@ class Venta(models.Model):
 
 
 # ==============================================================================
+# 10.1 REASIGNACIÓN DE MESAS (RF05 - Reasignación y Trazabilidad de Cuentas)
+# ==============================================================================
+class ReasignacionMesa(models.Model):
+    """Auditoría histórica de traslados de comensales y cuentas abiertas entre mesas (RF05)"""
+    venta = models.ForeignKey('Venta', on_delete=models.CASCADE, related_name='reasignaciones_mesa')
+    mesa_origen = models.ForeignKey(Mesa, on_delete=models.PROTECT, related_name='traslados_origen')
+    mesa_destino = models.ForeignKey(Mesa, on_delete=models.PROTECT, related_name='traslados_destino')
+    mesero = models.ForeignKey(User, on_delete=models.PROTECT, related_name='reasignaciones_realizadas')
+    motivo = models.CharField(max_length=200, blank=True, null=True, default="Solicitud de cambio de mesa por comensal")
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Traslado Venta #{self.venta.id}: {self.mesa_origen.identificador} -> {self.mesa_destino.identificador} ({self.mesero.username})"
+
+    class Meta:
+        verbose_name = "Reasignación de Mesa"
+        verbose_name_plural = "Reasignaciones de Mesas"
+        ordering = ['-fecha_hora']
+
+
+# ==============================================================================
 # 11. DETALLE DE VENTA
 # ==============================================================================
 class DetalleVenta(models.Model):
