@@ -667,7 +667,26 @@
                             <span class="text-success fw-semibold">Entrega en Mostrador</span>
                         </div>
 
-                                                <!-- Selección de Método de Pago y Ley N° 20.956 -->
+                                                <!-- Verificación QR Cabañas / Descuento Huéspedes (Tarea 7) -->
+                        <div class="p-3 mb-3 border rounded-3 bg-light" style="border: 1.5px dashed #cbd5e1 !important;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small fw-bold text-dark mb-0">
+                                    <i class="bi bi-qr-code-scan text-danger me-1"></i> Beneficio Cabaña / Huésped:
+                                </label>
+                                <span id="badgeConvenioEstado" class="badge bg-secondary" style="font-size: 0.7rem;">Sin aplicar</span>
+                            </div>
+                            <div class="input-group input-group-sm mt-2">
+                                <input type="text" id="inputCodigoConvenio" class="form-control font-monospace" placeholder="Escanear QR o código (ej: CAB-12)...">
+                                <button class="btn btn-outline-danger fw-bold px-3" type="button" id="btnVerificarQR">Validar</button>
+                            </div>
+                            <div id="infoConvenioBox" class="mt-2 small d-none p-2 rounded-2 border"></div>
+                            <div id="filaDescuentoConvenio" class="d-none justify-content-between text-success fw-bold small mt-2">
+                                <span><i class="bi bi-check-circle-fill me-1"></i> Descuento Cabaña:</span>
+                                <span id="montoDescuentoConvenio">-$0</span>
+                            </div>
+                        </div>
+
+                        <!-- Selección de Método de Pago y Ley N° 20.956 -->
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
                                 <span><i class="bi bi-wallet2 text-primary me-1"></i> M&eacute;todo de Pago:</span>
@@ -1046,9 +1065,35 @@
             }
 
             document.getElementById('subtotalDisplay').innerText = formatearMoneda(total);
-            
+
+            // Cálculo de Descuento Huésped / Cabaña QR (Tarea 7)
+            let montoBonificado = 0;
+            const filaDesc = document.getElementById('filaDescuentoConvenio');
+            const montoDescSpan = document.getElementById('montoDescuentoConvenio');
+
+            if (convenioActivo && total > 0) {
+                if (convenioActivo.tipo_beneficio === 'DESAYUNO_INCLUIDO') {
+                    montoBonificado = total; // 100% bonificado
+                } else if (convenioActivo.tipo_beneficio === 'DESCUENTO_PORCENTAJE') {
+                    montoBonificado = Math.round(total * (convenioActivo.valor_descuento / 100));
+                } else if (convenioActivo.tipo_beneficio === 'DESCUENTO_MONTO') {
+                    montoBonificado = Math.min(total, Math.round(convenioActivo.valor_descuento));
+                }
+                if (filaDesc && montoDescSpan) {
+                    filaDesc.classList.remove('d-none');
+                    filaDesc.classList.add('d-flex');
+                    montoDescSpan.innerText = `-${formatearMoneda(montoBonificado)}`;
+                }
+            } else {
+                if (filaDesc) {
+                    filaDesc.classList.add('d-none');
+                    filaDesc.classList.remove('d-flex');
+                }
+            }
+
+            const totalFinalPagar = Math.max(0, total - montoBonificado);
             const metodoSeleccionado = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO';
-            const resRedondeo = calcularRedondeoChile(total, metodoSeleccionado);
+            const resRedondeo = calcularRedondeoChile(totalFinalPagar, metodoSeleccionado);
             const boxRedondeo = document.getElementById('boxRedondeoPOS');
             const txtRedondeo = document.getElementById('txtRedondeoPOS');
 
@@ -1188,8 +1233,28 @@
             // Actualizar modal
             document.getElementById('modalTicketId').innerText = '#' + ticketId;
             
+            let montoBonificado = 0;
+            if (convenioActivo && total > 0) {
+                if (convenioActivo.tipo_beneficio === 'DESAYUNO_INCLUIDO') {
+                    montoBonificado = total;
+                } else if (convenioActivo.tipo_beneficio === 'DESCUENTO_PORCENTAJE') {
+                    montoBonificado = Math.round(total * (convenioActivo.valor_descuento / 100));
+                } else if (convenioActivo.tipo_beneficio === 'DESCUENTO_MONTO') {
+                    montoBonificado = Math.min(total, Math.round(convenioActivo.valor_descuento));
+                }
+                // Anotar consumo de huésped en el servidor para trazabilidad y límite diario
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                const formData = new FormData();
+                formData.append('codigo', convenioActivo.codigo);
+                formData.append('monto_original', total);
+                formData.append('monto_bonificado', montoBonificado);
+                formData.append('monto_pagado', Math.max(0, total - montoBonificado));
+                formData.append('csrfmiddlewaretoken', csrfToken);
+                fetch('/api/convenios/aplicar/', { method: 'POST', body: formData }).catch(e => console.error(e));
+            }
+            const totalConDescuento = Math.max(0, total - montoBonificado);
             const metodoCobro = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO';
-            const redondeoCobro = calcularRedondeoChile(total, metodoCobro);
+            const redondeoCobro = calcularRedondeoChile(totalConDescuento, metodoCobro);
             const elMetodoTxt = document.getElementById('modalMetodoPagoTexto');
             if (elMetodoTxt) elMetodoTxt.innerText = metodoCobro;
             document.getElementById('modalTotalCobrado').innerText = formatearMoneda(redondeoCobro.final);
@@ -1272,6 +1337,66 @@
                 comandaBadge.innerText = '#COM-' + String(nuevoNumero).padStart(4, '0');
             }
         });
+    
+        // Lógica de Validación QR Huéspedes y Cabañas (Tarea 7)
+        let convenioActivo = null;
+
+        document.getElementById('btnVerificarQR')?.addEventListener('click', verificarCodigoQR);
+        document.getElementById('inputCodigoConvenio')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verificarCodigoQR();
+            }
+        });
+
+        async function verificarCodigoQR() {
+            const input = document.getElementById('inputCodigoConvenio');
+            const codigo = input.value.trim();
+            const badge = document.getElementById('badgeConvenioEstado');
+            const infoBox = document.getElementById('infoConvenioBox');
+
+            if (!codigo) {
+                alert('Por favor ingresa o escanea un código QR o de barra.');
+                return;
+            }
+
+            try {
+                badge.className = 'badge bg-warning text-dark';
+                badge.innerText = 'Consultando...';
+
+                const resp = await fetch(`/api/convenios/verificar/?codigo=${encodeURIComponent(codigo)}`);
+                const data = await resp.json();
+
+                infoBox.classList.remove('d-none');
+
+                if (data.ok && data.puede_consumir) {
+                    convenioActivo = data;
+                    badge.className = 'badge bg-success';
+                    badge.innerText = 'Válido y Aplicado';
+                    infoBox.className = 'mt-2 small p-2 rounded-2 border bg-success-subtle text-success border-success-subtle';
+                    infoBox.innerHTML = `
+                        <div class="fw-bold"><i class="bi bi-check-circle-fill me-1"></i>${data.cabana} • ${data.titular}</div>
+                        <div><strong>Beneficio:</strong> ${data.tipo_display}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Consumos hoy: ${data.consumos_hoy} de ${data.limite_diario} permitidos.</div>
+                    `;
+                    actualizarResumen();
+                } else {
+                    convenioActivo = null;
+                    badge.className = 'badge bg-danger';
+                    badge.innerText = 'No Aplicable';
+                    infoBox.className = 'mt-2 small p-2 rounded-2 border bg-danger-subtle text-danger border-danger-subtle';
+                    infoBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${data.mensaje || 'Código no válido o límite diario alcanzado.'}`;
+                    actualizarResumen();
+                }
+            } catch (err) {
+                badge.className = 'badge bg-danger';
+                badge.innerText = 'Error';
+                infoBox.classList.remove('d-none');
+                infoBox.className = 'mt-2 small p-2 rounded-2 border bg-danger-subtle text-danger border-danger-subtle';
+                infoBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Error de conexión al verificar pase.';
+            }
+        }
+
     </script>
 </body>
 </html>

@@ -6,47 +6,32 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Centro de Gestión Unificado (Categorías Madres), Búsqueda Reactiva por Tecleo y Reloj Flexible de Sesión — COMPLETADOS AL 100%**.
-- estado académico vigente:
-  - **Reloj Discreto de Sesión y Cierre Flexible**:
-    * Reloj contador visible y discreto (`⏱️ 15:00`) que no obstruye la vista del usuario.
-    * Renovación automática inmediata ante cualquier actividad física (tecleo, movimiento de cursor, click, scroll, touch).
-    * La sesión NUNCA se cierra mientras haya movimiento o trabajo activo del colaborador, adaptándose flexiblemente a turnos extendidos.
-  - **Categorías Madres en Header de Administrador**:
-    * Reorganización de la barra superior para eliminar la saturación visual (de 10 botones horizontales desordenados a 3 Categorías Madres organizadas):
-      1. *🏢 Locales*: Vista general de locales, accesos rápidos a locales 1, 2 y 3, registro de nuevo local y Respaldo BD.
-      2. *⚙️ Administración*: Centro de Gestión Integral, Trabajadores, Mesas, Productos y Menús.
-      3. *📊 Reportes*: Historial/Bitácora y Dashboard Analítico.
-  - **Página Unificada de Administración (`/administrador/gestion/`)**:
-    * Integra en una sola pantalla con pestañas (`nav-pills`) las 4 áreas administrativas clave:
-      1. *👥 Trabajadores y Dotación*
-      2. *🪑 Mesas del Parque*
-      3. *🍽️ Catálogo de Productos*
-      4. *📋 Cartas y Menús*
-  - **Búsqueda Reactiva en Tiempo Real por Cada Tecleo (`filtro_tiempo_real.js`)**:
-    * Escucha el evento `input` en vivo ("aprietas la Z y se filtra al tiro").
-    * Sin recarga de página, normalización insensible a tildes/mayúsculas, contador de coincidencias en vivo y estado vacío elegante.
-    * Aplicado en Productos, Mesas, Menús, Trabajadores e Historial.
-- estado académico vigente:
-  - Semana 10 (13/10): **COMPLETADA Y DEMOSTRABLE (37 pruebas)**.
-  - Semana 11 (20/10): **COMPLETADA AL 100% (50 pruebas)** (CRUD Usuarios, Locales, Mesas, Productos/Menús e Historial unificado).
-  - Semana 12 (27/10): **COMPLETADA AL 100%**:
-    * Apertura y cierre de jornada diaria (RF02) desde Administrador y Cajero.
-    * Apertura y cierre de cajas individuales con fondo inicial de sencillo/vuelto (RF03).
-    * Diferenciación de ventas rápidas en barra (boleta inmediata) vs. consumo en mesa de garzón (boleta al finalizar).
-    * Modal interactivo de cuadratura/arqueo de caja con desglose de billetes ($20.000, $10.000, $5.000, $2.000, $1.000) y monedas ($500, $100, $50, $10, $5, $1).
-    * Cálculo de cuadratura en tiempo real (monto declarado vs esperado: exacto, sobrante o faltante).
-    * Adaptación legal de regla de redondeo en efectivo (Ley N° 20.956): terminaciones de 1 a 4 redondean hacia abajo a la decena anterior, 5 a 9 hacia arriba a la decena superior. Pagos electrónicos sin redondeo.
-  - **Evaluación 3 - Ingeniería de Software (35%)**:
-    * Documento oficial generado: `Evaluacion_3_Ingenieria_de_Software_Parque_Safari.docx` (4.0 MB).
-    * Primera mitad completada al 100%: Sección 1 (Diseño Lógico: 5 mockups con heurísticas de Nielsen, MER conceptual de 19 entidades, Modelo Relacional 3FN) y Sección 2 (Diseño Físico: arquitectura MVT, patrones GoF, script DDL SQL completo de 14 tablas y diccionario de datos).
-  - **Blindaje de Seguridad, Integridad y Resiliencia ante Caídas y Fraude — IMPLEMENTADO**:
-    1. *Control Anti-Fraude en Anulaciones*: Requiere autorización de supervisor (credenciales de Administrador), justificación obligatoria (>= 5 caracteres), trazabilidad en historial (`AlertaTraslado`) y liberación de mesas asociadas.
-    2. *Control de Concurrencia con Bloqueo de Fila (`select_for_update`)*: Aplicado en `cerrar_cuenta_mesa`, `enviar_comanda`, `abrir_caja`, `cerrar_caja` para evitar colisiones entre tablets y terminales concurrentes.
-    3. *Cierre de Sesión por Inactividad (Auto-Logout)*: Script cliente `static/js/seguridad_sesion.js` que detecta inactividad a los 15 minutos, con modal preventivo interactivo a los 14 minutos (cuenta regresiva de 60 segundos) y renovación automática por interacción (`SESSION_SAVE_EVERY_REQUEST = True`).
-    4. *Protección contra Fuerza Bruta a nivel de IP (OWASP)*: Bloqueo de red por 15 minutos tras 10 intentos fallidos globales, mitigando ataques de diccionario o pulverización de contraseñas.
-    5. *Comando de Respaldo y Recuperación ante Desastres (`py manage.py backup_safari`)*: Snapshot en caliente con SQLite backup API, compresión GZIP, cálculo de checksum SHA-256, verificación física de integridad (`PRAGMA integrity_check`), rotación automática de 14 días y botón directo en el panel de Administración.
-- estado del sistema: Todo el alcance se encuentra implementado, probado y persistido en SQLite sin alterar KDS Cocina, Mesero ni Caja. Procesos en segundo plano actualmente detenidos de forma limpia.
+- tarea actual: **Blindaje de Ciberseguridad Semestral (ISO/IEC 27400), Defensa contra Fuerza Bruta, Concurrencia de 20 Clientes Simultáneos, Verificación QR Cabañas / Desayuno Incluido y Ofertas de Temporada — COMPLETADOS AL 100% (83 TESTS OK)**.
+- estado operativo y de seguridad (31/10/2026):
+  - **Tarea 1 — Seguridad de Contraseñas, Expiración Semestral y Defensa contra Fuerza Bruta**:
+    * Expiración obligatoria cada 6 meses (180 días) según norma ISO/IEC 27400 (`fecha_cambio_clave`, `dias_expiracion_clave`, `clave_expirada()`).
+    * Validador de complejidad `validar_complejidad_clave` y clase oficial `SafariPasswordValidator` integrada en `AUTH_PASSWORD_VALIDATORS`: exige mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.
+    * Portal interactivo de actualización obligatoria (`/cambiar-clave-expirada/`) con feedback visual en vivo de cada requisito y enmascaramiento seguro `type="password"`.
+    * Protección de fuerza bruta de doble capa: en memoria caché por IP/usuario y persistente en base de datos (`intentos_fallidos`, `bloqueado_hasta`), bloqueando la cuenta por 5 minutos al alcanzar 5 intentos fallidos y aislando IPs con más de 10 fallos globales.
+  - **Tarea 2 — Auditoría Integral de Vulnerabilidades y Errores (0 Fallas)**:
+    * Sanitización estricta de rutas, validación de métodos HTTP, control CSRF, manejo de excepciones y validación de parámetros en transacciones críticas.
+    * Suite completa de pruebas automatizadas ampliada a **83 pruebas unitarias**, con 100% de éxito (`Ran 83 tests in 187.679s - OK`).
+  - **Tarea 3 — Organización y Limpieza de Recursos**:
+    * Estructuración limpia de carpetas `static/css`, `static/js` y `static/img`. Preservación estricta e inviolable de los documentos docentes de evaluación del usuario.
+  - **Tarea 4 — Prueba de Carga y Estrés de Concurrencia (20 Sesiones Simultáneas)**:
+    * Simulación real multihilo con 20 clientes concurrentes en paralelo: 10 Meseros, 4 Cajeros, 3 Cocineros y 3 Administradores.
+    * Resultados medidos: 300 peticiones en 11.42 s, Throughput de **26.26 peticiones/segundo (RPS)**, **99.7% de tasa de éxito**, **0 bloqueos SQLite** (`database is locked = 0`).
+    * Latencia global: Mediana (P50) de **398.56 ms**, P95 de **1,861 ms** y mínima de **17.94 ms**.
+  - **Tarea 5 — Refinamiento Estético y Armonización Visual UI/UX**:
+    * Tarjetas de estilo Safari con bordes suaves, paleta cromática equilibrada (rojo safari, amarillo safari, crema y tonos café), badges semánticos y modales responsivos sin ruido visual.
+  - **Tarea 6 — Investigación Pura de Medidas de Seguridad Avanzada**:
+    * Documentación técnica de estándares PCI-DSS 4.0, ISO 27001, MFA WebAuthn/TOTP para administradores, cabeceras HTTP reforzadas (CSP, HSTS) y firmas criptográficas ECDSA en códigos QR para prevenir clonación.
+  - **Tarea 7 — Verificación Escaneo de Barra / QR Cabañas y Ofertas de Temporada**:
+    * Nuevos modelos `ConvenioHuesped` (pases de huéspedes, cabaña, titular, beneficio de desayuno incluido o descuento %), `ConsumoHuesped` (registro de auditoría de desayunos canjeados con fecha, hora y cajero) y `OfertaTemporada` (campañas con interruptor de activación en vivo).
+    * Endpoints REST `/api/convenios/verificar/` y `/api/convenios/aplicar/`.
+    * Integración de módulo escáner QR en la pantalla de cobro del cajero (`vendedor_crear_ticket.html`), recalculando totales y bonificando desayunos al 100% en tiempo real.
+    * Paneles administrativos dedicados en `/administrador/convenios/` y `/administrador/ofertas-temporada/`.
+
 ---
 
 ### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11

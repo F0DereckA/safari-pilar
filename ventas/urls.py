@@ -27,6 +27,15 @@ urlpatterns = [
     path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
     path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
 
+    # Seguridad de Contrasenas y Expiracion Semestral (Tarea 1)
+    path('cambiar-clave-expirada/', views.cambiar_clave_expirada, name='cambiar_clave_expirada'),
+
+    # Verificacion QR, Cabanas y Descuentos Huespedes (Tarea 7)
+    path('api/convenios/verificar/', views.api_verificar_convenio_qr, name='api_verificar_convenio_qr'),
+    path('api/convenios/aplicar/', views.api_aplicar_consumo_convenio, name='api_aplicar_consumo_convenio'),
+    path('administrador/convenios/', views.administrador_convenios, name='administrador_convenios'),
+    path('administrador/ofertas-temporada/', views.administrador_ofertas_temporada, name='administrador_ofertas_temporada'),
+
     # Rutas de verificación para errores HTTP personalizados (Tarea 6)
     path('400/', views.error_400_view, name='error_400'),
     path('401/', views.error_401_view, name='error_401'),

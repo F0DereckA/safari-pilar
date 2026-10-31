@@ -10,9 +10,10 @@ from django.utils import timezone
 from django.core.cache import cache
 from decimal import Decimal
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from .validators import validar_complejidad_clave
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada
 
 
 def get_locales_data():
@@ -462,12 +463,23 @@ def login_view(request):
             )
             return redirect('index')
 
-        # Validar autenticación
-                # Permitir inicio de sesión tanto con nombre de usuario como con RUT institucional
-        if not User.objects.filter(username__iexact=username).exists():
+        # Permitir inicio de sesión tanto con nombre de usuario como con RUT institucional
+        user_candidate = User.objects.filter(username__iexact=username).first()
+        if not user_candidate:
             perfil_rut = PerfilEmpleado.objects.filter(rut__iexact=username).select_related('usuario').first()
             if perfil_rut and perfil_rut.usuario:
-                username = perfil_rut.usuario.username
+                user_candidate = perfil_rut.usuario
+                username = user_candidate.username
+
+        # Validación a nivel de Base de Datos para bloqueo persistente por fuerza bruta (Tarea 1)
+        if user_candidate and hasattr(user_candidate, 'perfil') and user_candidate.perfil.esta_bloqueado():
+            minutos_restantes = max(1, int((user_candidate.perfil.bloqueado_hasta - timezone.now()).total_seconds() // 60) + 1)
+            messages.error(
+                request,
+                f"Cuenta bloqueada temporalmente por superar {MAX_INTENTOS_LOGIN} intentos fallidos. "
+                f"Por seguridad institucional, espera {minutos_restantes} minuto(s) antes de volver a intentar."
+            )
+            return redirect('index')
 
         user = authenticate(request, username=username, password=password)
         if user is not None:
@@ -476,15 +488,27 @@ def login_view(request):
                 messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador.")
                 return redirect('index')
 
-            # Autenticación exitosa: Limpiar contadores de intentos fallidos
+            # Autenticación exitosa: Limpiar contadores de intentos fallidos en caché y BD
             cache.delete(key_bloqueo)
             cache.delete(key_intentos)
             cache.delete(key_ip_bloqueo)
             cache.delete(key_ip_intentos)
+            if perfil:
+                perfil.limpiar_intentos_fallidos()
 
             login(request, user)
-            rol = obtener_rol_usuario(user)
 
+            # Verificar regla de cambio de contraseña obligatoria cada 6 meses (ISO/IEC 27400 - Tarea 1)
+            if perfil and perfil.clave_expirada():
+                request.session['requiere_cambio_clave'] = True
+                messages.warning(
+                    request,
+                    "Tu contraseña ha superado el ciclo obligatorio de 6 meses (180 días). "
+                    "Por seguridad institucional, debes actualizarla ahora."
+                )
+                return redirect('cambiar_clave_expirada')
+
+            rol = obtener_rol_usuario(user)
             if rol == 'ADMINISTRADOR':
                 messages.success(request, f"Bienvenido(a) Administrador(a) {user.get_full_name() or user.username}.")
                 return redirect('administrador')
@@ -501,8 +525,10 @@ def login_view(request):
                 messages.warning(request, "Usuario autenticado sin rol asignado en el sistema.")
                 return redirect('index')
         else:
-            # Comprobar si el usuario existe y su contraseña coincide pero la cuenta está inactiva
-            # (El backend estándar de Django retorna None en authenticate() si is_active es False)
+            # Registrar intento fallido tanto en BD como en caché (Tarea 1)
+            if user_candidate and hasattr(user_candidate, 'perfil'):
+                user_candidate.perfil.registrar_intento_fallido(max_intentos=MAX_INTENTOS_LOGIN, minutos_bloqueo=5)
+
             existing_user = User.objects.filter(username=username).first()
             if existing_user and existing_user.check_password(password):
                 perfil = getattr(existing_user, 'perfil', None)
@@ -510,11 +536,9 @@ def login_view(request):
                     messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador.")
                     return redirect('index')
 
-            # Registro de intento fallido para prevención de fuerza bruta
             intentos_previos = cache.get(key_intentos, 0)
             intentos_actuales = intentos_previos + 1
 
-            # Registro de intentos fallidos a nivel de IP global (máx 10 por IP)
             intentos_ip = cache.get(key_ip_intentos, 0) + 1
             if intentos_ip >= 10:
                 cache.set(key_ip_bloqueo, True, timeout=900)  # Bloqueo de 15 minutos
@@ -3160,3 +3184,262 @@ def exportar_reporte_ventas(request):
         )
         response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
         return response
+
+# ==============================================================================
+# CAMBIO OBLIGATORIO DE CONTRASEÑA CADA 6 MESES (ISO/IEC 27400 - Tarea 1)
+# ==============================================================================
+def cambiar_clave_expirada(request):
+    """Permite renovar una contraseña expirada o forzar rotación semestral de clave"""
+    if not request.user.is_authenticated:
+        messages.error(request, "Debes iniciar sesión para actualizar tu contraseña.")
+        return redirect('index')
+
+    perfil = getattr(request.user, 'perfil', None)
+
+    if request.method == 'POST':
+        clave_actual = request.POST.get('clave_actual', '')
+        nueva_clave = request.POST.get('nueva_clave', '')
+        confirmar_clave = request.POST.get('confirmar_clave', '')
+
+        if not request.user.check_password(clave_actual):
+            messages.error(request, "La contraseña actual ingresada es incorrecta.")
+            return render(request, 'ventas/cambiar_clave_expirada.html')
+
+        if nueva_clave != confirmar_clave:
+            messages.error(request, "La nueva contraseña y la confirmación no coinciden.")
+            return render(request, 'ventas/cambiar_clave_expirada.html')
+
+        if clave_actual == nueva_clave:
+            messages.error(request, "La nueva contraseña no puede ser idéntica a la actual.")
+            return render(request, 'ventas/cambiar_clave_expirada.html')
+
+        es_valida, mensaje_err = validar_complejidad_clave(nueva_clave)
+        if not es_valida:
+            messages.error(request, mensaje_err)
+            return render(request, 'ventas/cambiar_clave_expirada.html')
+
+        # Cifrar/hashear inmediatamente con PBKDF2/SHA-256 (Norma ISO/IEC 27400)
+        request.user.set_password(nueva_clave)
+        request.user.save()
+
+        if perfil:
+            perfil.fecha_cambio_clave = timezone.now()
+            perfil.limpiar_intentos_fallidos()
+            perfil.save(update_fields=['fecha_cambio_clave', 'intentos_fallidos', 'bloqueado_hasta'])
+
+        update_session_auth_hash(request, request.user)
+        request.session.pop('requiere_cambio_clave', None)
+
+        messages.success(request, "¡Contraseña actualizada exitosamente! Tu cuenta cumple con la política de seguridad semestral.")
+        rol = obtener_rol_usuario(request.user)
+        if rol == 'ADMINISTRADOR':
+            return redirect('administrador')
+        elif rol == 'CAJERO':
+            return redirect('vendedor')
+        elif rol == 'MESERO':
+            return redirect('mesero')
+        elif rol == 'COCINERO':
+            return redirect('cocina')
+        return redirect('index')
+
+    return render(request, 'ventas/cambiar_clave_expirada.html')
+
+
+# ==============================================================================
+# API VERIFICACIÓN QR Y CONVENIOS CABAÑAS (RF13 - Tarea 7)
+# ==============================================================================
+def api_verificar_convenio_qr(request):
+    """Verifica código QR o de barras de huéspedes de cabañas para desayuno incluido o descuentos"""
+    codigo = request.GET.get('codigo', '').strip()
+    if not codigo:
+        return JsonResponse({'ok': False, 'mensaje': 'Por favor ingresa o escanea un código QR o de barra.'}, status=400)
+
+    convenio = ConvenioHuesped.objects.filter(codigo_qr__iexact=codigo).first()
+    if not convenio:
+        return JsonResponse({
+            'ok': False,
+            'encontrado': False,
+            'mensaje': f'El código "{codigo}" no corresponde a ningún huésped o convenio registrado.'
+        }, status=404)
+
+    valido_hoy = convenio.es_valido_hoy()
+    consumos_hoy = convenio.consumos_hoy_count()
+    puede_consumir = convenio.puede_consumir_hoy()
+
+    mensaje = "Pase válido y activo."
+    if not convenio.activo:
+        mensaje = "El convenio se encuentra desactivado administrativamente."
+    elif not valido_hoy:
+        mensaje = f"El pase no está vigente hoy (Estadía: {convenio.fecha_checkin.strftime('%d/%m/%Y')} al {convenio.fecha_checkout.strftime('%d/%m/%Y')})."
+    elif not puede_consumir:
+        mensaje = f"Límite diario alcanzado: ya se han utilizado {consumos_hoy} de {convenio.limite_diario} consumos permitidos hoy."
+
+    return JsonResponse({
+        'ok': True,
+        'encontrado': True,
+        'valido_hoy': valido_hoy,
+        'puede_consumir': puede_consumir,
+        'codigo': convenio.codigo_qr,
+        'cabana': convenio.numero_cabana,
+        'titular': convenio.nombre_titular,
+        'tipo_beneficio': convenio.tipo_beneficio,
+        'tipo_display': convenio.get_tipo_beneficio_display(),
+        'valor_descuento': float(convenio.valor_descuento),
+        'limite_diario': convenio.limite_diario,
+        'consumos_hoy': consumos_hoy,
+        'mensaje': mensaje
+    })
+
+
+def api_aplicar_consumo_convenio(request):
+    """Registra el consumo del beneficio (desayuno o descuento) asociado a un huésped de cabaña"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'mensaje': 'Método no permitido'}, status=405)
+
+    codigo = request.POST.get('codigo', '').strip()
+    ticket_id = request.POST.get('ticket_id')
+    monto_original = request.POST.get('monto_original', '0')
+    monto_bonificado = request.POST.get('monto_bonificado', '0')
+    monto_pagado = request.POST.get('monto_pagado', '0')
+
+    convenio = ConvenioHuesped.objects.filter(codigo_qr__iexact=codigo).first()
+    if not convenio:
+        return JsonResponse({'ok': False, 'mensaje': 'Convenio no encontrado.'}, status=404)
+
+    if not convenio.puede_consumir_hoy():
+        return JsonResponse({'ok': False, 'mensaje': 'El huésped ya alcanzó su límite de consumos de hoy.'}, status=400)
+
+    ticket = Ticket.objects.filter(id=ticket_id).first() if ticket_id else None
+
+    consumo = ConsumoHuesped.objects.create(
+        convenio=convenio,
+        ticket=ticket,
+        monto_original=Decimal(str(monto_original)),
+        monto_bonificado=Decimal(str(monto_bonificado)),
+        monto_pagado=Decimal(str(monto_pagado)),
+        registrado_por=request.user if request.user.is_authenticated else User.objects.first(),
+        observaciones=f"Descuento aplicado en local: {convenio.get_tipo_beneficio_display()}"
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'mensaje': f"Beneficio aplicado exitosamente para {convenio.numero_cabana} ({convenio.nombre_titular}).",
+        'consumos_hoy': convenio.consumos_hoy_count()
+    })
+
+
+# ==============================================================================
+# GESTIÓN ADMINISTRATIVA DE CONVENIOS CABAÑAS (Tarea 7)
+# ==============================================================================
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_convenios(request):
+    """Panel de administración para dar de alta pases de cabañas y auditar desayunos consumidos"""
+    rol = obtener_rol_usuario(request.user)
+    if rol != 'ADMINISTRADOR':
+        messages.error(request, "Acceso restringido al personal de Administración.")
+        return redirect('index')
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'crear':
+            numero_cabana = request.POST.get('numero_cabana', '').strip()
+            nombre_titular = request.POST.get('nombre_titular', '').strip()
+            rut_titular = request.POST.get('rut_titular', '').strip()
+            tipo_beneficio = request.POST.get('tipo_beneficio', 'DESAYUNO_INCLUIDO')
+            valor_descuento = request.POST.get('valor_descuento', '100')
+            limite_diario = int(request.POST.get('limite_diario', 1))
+            fecha_checkin = request.POST.get('fecha_checkin')
+            fecha_checkout = request.POST.get('fecha_checkout')
+            codigo_qr = request.POST.get('codigo_qr', '').strip()
+
+            if not codigo_qr:
+                # Generar código automático si no se ingresó uno personalizado
+                import random
+                codigo_qr = f"CAB-{numero_cabana.replace(' ', '')}-{random.randint(1000, 9999)}"
+
+            ConvenioHuesped.objects.create(
+                codigo_qr=codigo_qr,
+                numero_cabana=numero_cabana,
+                nombre_titular=nombre_titular,
+                rut_titular=rut_titular,
+                tipo_beneficio=tipo_beneficio,
+                valor_descuento=Decimal(str(valor_descuento)),
+                limite_diario=limite_diario,
+                fecha_checkin=fecha_checkin or timezone.now().date(),
+                fecha_checkout=fecha_checkout,
+                activo=True
+            )
+            messages.success(request, f"Pase para {numero_cabana} ({nombre_titular}) creado con éxito. Código QR: {codigo_qr}")
+            return redirect('administrador_convenios')
+
+        elif accion == 'toggle':
+            convenio_id = request.POST.get('convenio_id')
+            c = get_object_or_404(ConvenioHuesped, id=convenio_id)
+            c.activo = not c.activo
+            c.save(update_fields=['activo'])
+            estado_txt = "activado" if c.activo else "desactivado"
+            messages.success(request, f"Pase de {c.numero_cabana} {estado_txt} correctamente.")
+            return redirect('administrador_convenios')
+
+    convenios = ConvenioHuesped.objects.all().order_by('-creado_en')
+    consumos_hoy = ConsumoHuesped.objects.filter(fecha_hora__date=timezone.now().date()).select_related('convenio', 'registrado_por').order_by('-fecha_hora')
+
+    context = {
+        'convenios': convenios,
+        'consumos_hoy': consumos_hoy,
+        'total_convenios': convenios.count(),
+        'activos_count': convenios.filter(activo=True).count(),
+        'consumos_count': consumos_hoy.count()
+    }
+    return render(request, 'ventas/administrador_convenios.html', context)
+
+
+# ==============================================================================
+# GESTIÓN DE OFERTAS DE TEMPORADA (Tarea 7)
+# ==============================================================================
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_ofertas_temporada(request):
+    """Panel para que el Administrador active o desactive ofertas de temporada en vivo"""
+    rol = obtener_rol_usuario(request.user)
+    if rol != 'ADMINISTRADOR':
+        messages.error(request, "Acceso restringido al personal de Administración.")
+        return redirect('index')
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'crear':
+            nombre = request.POST.get('nombre', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', '0'))
+            fecha_inicio = request.POST.get('fecha_inicio') or timezone.now().date()
+            fecha_fin = request.POST.get('fecha_fin')
+            activa = request.POST.get('activa') == 'on'
+
+            OfertaTemporada.objects.create(
+                nombre=nombre,
+                descripcion=descripcion,
+                descuento_porcentaje=descuento_porcentaje,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                activa=activa
+            )
+            messages.success(request, f"Oferta de temporada '{nombre}' configurada exitosamente.")
+            return redirect('administrador_ofertas_temporada')
+
+        elif accion == 'toggle':
+            oferta_id = request.POST.get('oferta_id')
+            o = get_object_or_404(OfertaTemporada, id=oferta_id)
+            o.activa = not o.activa
+            o.save(update_fields=['activa'])
+            estado = "activada" if o.activa else "desactivada"
+            messages.success(request, f"Oferta '{o.nombre}' {estado} correctamente.")
+            return redirect('administrador_ofertas_temporada')
+
+    ofertas = OfertaTemporada.objects.all().order_by('-fecha_inicio')
+    context = {
+        'ofertas': ofertas,
+        'activas_count': ofertas.filter(activa=True).count(),
+        'categorias': Categoria.objects.filter(activo=True)
+    }
+    return render(request, 'ventas/administrador_ofertas_temporada.html', context)
+

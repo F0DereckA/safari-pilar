@@ -1,0 +1,186 @@
+{% load static %}
+{% load safari_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Ofertas de Temporada</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.2">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.2">
+
+    <style>
+        .card-safari {
+            border-radius: 1rem;
+            border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
+            background: #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-safari:hover {
+            box-shadow: 0 8px 24px rgba(92, 66, 48, 0.08);
+        }
+        .form-check-input:checked {
+            background-color: #16a34a;
+            border-color: #16a34a;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Barra de Navegación del Administrador -->
+    <header class="bg-white border-bottom shadow-sm sticky-top">
+        <div class="container-fluid px-4 py-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <a href="{% url 'administrador' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-arrow-left me-1"></i> Panel Principal
+                </a>
+                <span class="fs-4 fw-bold text-danger font-oswald text-uppercase">
+                    <i class="bi bi-tags-fill me-1"></i> Gestión de Ofertas de Temporada
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'administrador_convenios' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-qr-code-scan me-1"></i> Pases Cabañas QR
+                </a>
+                <button class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaOferta">
+                    <i class="bi bi-plus-circle me-1"></i> Nueva Oferta de Temporada
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container-fluid px-4 py-4 flex-grow-1">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="row g-4">
+            {% for o in ofertas %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-safari p-4 h-100 position-relative {% if not o.activa %}opacity-75 bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge {% if o.activa and o.es_vigente %}bg-success{% elif o.activa %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6 px-3 py-1">
+                            {% if o.activa and o.es_vigente %}En Vivo{% elif o.activa %}Programada{% else %}Desactivada{% endif %}
+                        </span>
+                        <div class="fs-4 fw-bold text-danger font-oswald">
+                            {{ o.descuento_porcentaje|floatformat:0 }}% OFF
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mt-2 mb-1">{{ o.nombre }}</h5>
+                    <p class="text-secondary small mb-3 flex-grow-1">{{ o.descripcion|default:"Sin descripción detallada." }}</p>
+
+                    <div class="small text-secondary mb-3 border-top pt-2">
+                        <i class="bi bi-calendar-event me-1"></i>Vigencia: {{ o.fecha_inicio|date:"d/m/Y" }} al {{ o.fecha_fin|date:"d/m/Y" }}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                        <span class="small fw-bold text-muted">Interruptor Maestro:</span>
+                        <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="toggle">
+                            <input type="hidden" name="oferta_id" value="{{ o.id }}">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input fs-5" type="checkbox" role="switch" onchange="this.form.submit()" {% if o.activa %}checked{% endif %}>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="card card-safari p-5 text-center text-secondary">
+                    <i class="bi bi-tag fs-1 text-danger opacity-50 mb-3 d-block"></i>
+                    <h4>No hay ofertas de temporada configuradas</h4>
+                    <p>Crea campañas para fechas festivas, vacaciones o promociones especiales del parque.</p>
+                    <div>
+                        <button class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaOferta">
+                            <i class="bi bi-plus-circle me-1"></i> Crear Primera Oferta
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Modal Crear Oferta de Temporada -->
+    <div class="modal fade" id="modalNuevaOferta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content card-safari overflow-hidden border-0">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-tag-fill me-2"></i>Nueva Oferta de Temporada</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="crear">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Nombre de la Campaña u Oferta:</label>
+                            <input type="text" name="nombre" class="form-control" required placeholder="Ej: Temporada de Invierno, Promo Primavera">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Descripción para el Equipo:</label>
+                            <textarea name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación de la oferta..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Porcentaje de Descuento (%):</label>
+                            <div class="input-group">
+                                <input type="number" name="descuento_porcentaje" class="form-control" required min="1" max="100" value="15">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
+                                <input type="date" name="fecha_inicio" class="form-control" required value="{% now 'Y-m-d' %}">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
+                                <input type="date" name="fecha_fin" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" name="activa" id="checkActiva" checked>
+                            <label class="form-check-label fw-bold text-dark" for="checkActiva">Activar de inmediato en el sistema</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Guardar Oferta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

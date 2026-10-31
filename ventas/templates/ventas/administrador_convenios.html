@@ -1,0 +1,319 @@
+{% load static %}
+{% load safari_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Cabañas y Beneficios Huéspedes QR</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.2">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=3.2">
+
+    <style>
+        .card-safari {
+            border-radius: 1rem;
+            border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
+            background: #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-safari:hover {
+            box-shadow: 0 8px 24px rgba(92, 66, 48, 0.08);
+        }
+        .qr-code-pill {
+            font-family: monospace;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: 1px dashed #cbd5e1;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Barra de Navegación del Administrador -->
+    <header class="bg-white border-bottom shadow-sm sticky-top">
+        <div class="container-fluid px-4 py-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <a href="{% url 'administrador' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-arrow-left me-1"></i> Panel Principal
+                </a>
+                <span class="fs-4 fw-bold text-danger font-oswald text-uppercase">
+                    <i class="bi bi-qr-code-scan me-1"></i> Cabañas & Pases Huéspedes (Desayunos QR)
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'administrador_ofertas_temporada' %}" class="btn btn-outline-warning btn-sm text-dark rounded-pill px-3 fw-bold">
+                    <i class="bi bi-tag-fill me-1 text-danger"></i> Ofertas Temporada
+                </a>
+                <button class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPase">
+                    <i class="bi bi-plus-circle me-1"></i> Nuevo Pase Huésped
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container-fluid px-4 py-4 flex-grow-1">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- KPIs Resumen -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 fs-3">
+                        <i class="bi bi-house-door-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-secondary small fw-bold text-uppercase">Pases Registrados</div>
+                        <div class="fs-3 fw-bold">{{ total_convenios }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
+                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-3 fs-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-secondary small fw-bold text-uppercase">Pases Activos Hoy</div>
+                        <div class="fs-3 fw-bold">{{ activos_count }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-circle p-3 fs-3">
+                        <i class="bi bi-cup-hot-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-secondary small fw-bold text-uppercase">Desayunos / Consumos Hoy</div>
+                        <div class="fs-3 fw-bold">{{ consumos_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buscador en tiempo real -->
+        <div class="card card-safari p-3 mb-4">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-secondary"></i></span>
+                <input type="text" id="buscadorConvenios" class="form-control border-start-0 ps-0" placeholder="Buscar por código QR, número de cabaña o nombre del huésped...">
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Listado de Pases y Cabañas -->
+            <div class="col-lg-8">
+                <div class="card card-safari p-4">
+                    <h5 class="fw-bold font-oswald text-uppercase text-danger mb-3">
+                        <i class="bi bi-card-checklist me-1"></i> Pases y Cabañas con Beneficio
+                    </h5>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tablaConvenios">
+                            <thead class="table-light text-secondary small text-uppercase">
+                                <tr>
+                                    <th>Cabaña</th>
+                                    <th>Titular</th>
+                                    <th>Código QR / Barra</th>
+                                    <th>Beneficio</th>
+                                    <th>Estadía</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in convenios %}
+                                <tr class="fila-convenio">
+                                    <td class="fw-bold">{{ c.numero_cabana }}</td>
+                                    <td>{{ c.nombre_titular }}</td>
+                                    <td><span class="qr-code-pill"><i class="bi bi-qr-code me-1"></i>{{ c.codigo_qr }}</span></td>
+                                    <td>
+                                        <span class="badge {% if c.tipo_beneficio == 'DESAYUNO_INCLUIDO' %}bg-success{% else %}bg-primary{% endif %}">
+                                            {{ c.get_tipo_beneficio_display }}
+                                        </span>
+                                    </td>
+                                    <td class="small">{{ c.fecha_checkin|date:"d/m" }} al {{ c.fecha_checkout|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if c.activo and c.es_valido_hoy %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Vigente</span>
+                                        {% elif not c.activo %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% else %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Expirado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <form method="POST" action="{% url 'administrador_convenios' %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="accion" value="toggle">
+                                            <input type="hidden" name="convenio_id" value="{{ c.id }}">
+                                            <button type="submit" class="btn btn-sm {% if c.activo %}btn-outline-secondary{% else %}btn-outline-success{% endif %} rounded-pill px-2">
+                                                {% if c.activo %}<i class="bi bi-pause-circle"></i> Pausar{% else %}<i class="bi bi-play-circle"></i> Activar{% endif %}
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-secondary">
+                                        No hay convenios ni cabañas registradas aún. Haz clic en "Nuevo Pase Huésped" para agregar el primero.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registro de Consumos de Hoy (Auditoría Tarea 7) -->
+            <div class="col-lg-4">
+                <div class="card card-safari p-4">
+                    <h5 class="fw-bold font-oswald text-uppercase text-danger mb-3">
+                        <i class="bi bi-journal-text me-1"></i> Desayunos Canjeados Hoy
+                    </h5>
+
+                    <div class="list-group list-group-flush">
+                        {% for con in consumos_hoy %}
+                        <div class="list-group-item px-0 py-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark">{{ con.convenio.numero_cabana }}</span>
+                                <span class="badge bg-success-subtle text-success">${{ con.monto_bonificado|floatformat:0 }} Bonificado</span>
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <i class="bi bi-person me-1"></i>{{ con.convenio.nombre_titular }}
+                            </div>
+                            <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem;">
+                                <span><i class="bi bi-clock me-1"></i>{{ con.fecha_hora|date:"H:i" }} hrs</span>
+                                <span>Cajero: {{ con.registrado_por.get_short_name|default:con.registrado_por.username }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-secondary small">
+                            <i class="bi bi-cup-straw fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                            Aún no se han registrado canjes de desayuno en esta jornada.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Crear Pase Huésped -->
+    <div class="modal fade" id="modalNuevoPase" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content card-safari overflow-hidden border-0">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-qr-code me-2"></i>Crear Pase Huésped Cabaña</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_convenios' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="crear">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Número o Nombre de Cabaña:</label>
+                            <input type="text" name="numero_cabana" class="form-control" required placeholder="Ej: Cabaña 12, Suite Los Pumas">
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-8">
+                                <label class="form-label small fw-bold text-secondary">Nombre del Huésped / Titular:</label>
+                                <input type="text" name="nombre_titular" class="form-control" required placeholder="Ej: Marcela Soto">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-secondary">RUT / Pasaporte:</label>
+                                <input type="text" name="rut_titular" class="form-control" placeholder="12.345.678-9">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Tipo de Beneficio:</label>
+                            <select name="tipo_beneficio" class="form-select" id="selectTipoBeneficio">
+                                <option value="DESAYUNO_INCLUIDO" selected>Desayuno Incluido (100% Bonificado)</option>
+                                <option value="DESCUENTO_PORCENTAJE">Descuento Porcentual (%)</option>
+                                <option value="DESCUENTO_MONTO">Descuento Monto Fijo ($)</option>
+                            </select>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Valor / Porcentaje:</label>
+                                <input type="number" name="valor_descuento" class="form-control" value="100" min="1" step="1">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Límite Canjes por Día:</label>
+                                <input type="number" name="limite_diario" class="form-control" value="1" min="1" max="10">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Check-in:</label>
+                                <input type="date" name="fecha_checkin" class="form-control" required value="{% now 'Y-m-d' %}">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">Check-out:</label>
+                                <input type="date" name="fecha_checkout" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Código QR o Barra (Opcional, se autogenera si se deja vacío):</label>
+                            <input type="text" name="codigo_qr" class="form-control font-monospace" placeholder="Ej: CAB-12-2026">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Guardar Pase</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Filtro en Tiempo Real -->
+    <script>
+        const buscador = document.getElementById('buscadorConvenios');
+        buscador.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const filas = document.querySelectorAll('.fila-convenio');
+            filas.forEach(fila => {
+                const texto = fila.textContent.toLowerCase();
+                fila.style.display = texto.includes(query) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

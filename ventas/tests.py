@@ -395,7 +395,7 @@ class SafariFase2A1Tests(TestCase):
             'rol': 'CAJERO',
             'telefono': '+56987654321',
             'local_id': nuevo_local.id,
-            'password': 'password123'
+            'password': 'safari123'
         }, follow=True)
 
         self.assertContains(resp_asig, "registrado con éxito")
@@ -1963,3 +1963,192 @@ class NuevasFuncionalidadesEvaluacionTest(TestCase):
         # Verificar en BD
         self.menu.refresh_from_db()
         self.assertEqual(self.menu.nombre, 'Carta Modificada en Tiempo Real')
+
+class SafariSeguridadYConveniosTests(TestCase):
+    """
+    Suite oficial para pruebas de Seguridad, Fuerza Bruta, Expiración Semestral y Convenios Cabañas QR (Tareas 1 y 7)
+    """
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.admin = User.objects.get(username='rgomez')
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_politica_complejidad_clave(self):
+        """Valida que la política exija longitud, mayúscula, minúscula, número y símbolo"""
+        from ventas.validators import validar_complejidad_clave
+        # Clave muy corta
+        valida, msg = validar_complejidad_clave("Ab1!")
+        self.assertFalse(valida)
+        self.assertIn("mínimo de 8 caracteres", msg)
+
+        # Sin mayúscula
+        valida, msg = validar_complejidad_clave("password123!")
+        self.assertFalse(valida)
+        self.assertIn("mayúscula", msg)
+
+        # Sin minúscula
+        valida, msg = validar_complejidad_clave("PASSWORD123!")
+        self.assertFalse(valida)
+        self.assertIn("minúscula", msg)
+
+        # Sin número
+        valida, msg = validar_complejidad_clave("Password!@#")
+        self.assertFalse(valida)
+        self.assertIn("dígito numérico", msg)
+
+        # Sin símbolo
+        valida, msg = validar_complejidad_clave("Password123")
+        self.assertFalse(valida)
+        self.assertIn("símbolo o carácter especial", msg)
+
+        # Contraseña robusta válida
+        valida, msg = validar_complejidad_clave("Safari.Pilar2026!")
+        self.assertTrue(valida)
+        self.assertEqual(msg, "")
+
+    def test_expiracion_clave_6_meses(self):
+        """Valida que claves con más de 180 días se marquen como expiradas y fuercen rotación"""
+        perfil = self.cajero.perfil
+        perfil.fecha_cambio_clave = timezone.now() - timedelta(days=181)
+        perfil.save()
+
+        self.assertTrue(perfil.clave_expirada())
+
+        # Al iniciar sesión, debe redirigir a cambio obligatorio de clave
+        resp = self.client.post(reverse('login'), {
+            'username': 'cvalenzuela',
+            'password': 'safari123'
+        }, follow=True)
+        self.assertRedirects(resp, reverse('cambiar_clave_expirada'))
+        self.assertContains(resp, "Actualización Obligatoria de Contraseña")
+
+    def test_defensa_fuerza_bruta_bloqueo(self):
+        """Prueba de testeo de fuerza bruta: 5 intentos fallidos bloquean la cuenta"""
+        perfil = self.cajero.perfil
+        perfil.limpiar_intentos_fallidos()
+
+        # Simular 4 intentos fallidos
+        for i in range(1, 5):
+            resp = self.client.post(reverse('login'), {
+                'username': 'cvalenzuela',
+                'password': f'clave_erronea_{i}'
+            }, follow=True)
+            self.assertContains(resp, "Credenciales incorrectas")
+
+        # 5to intento fallido debe activar el bloqueo
+        resp5 = self.client.post(reverse('login'), {
+            'username': 'cvalenzuela',
+            'password': 'clave_erronea_5'
+        }, follow=True)
+        self.assertContains(resp5, "bloqueado temporalmente")
+
+        # Verificar en base de datos
+        perfil.refresh_from_db()
+        self.assertTrue(perfil.esta_bloqueado())
+
+        # Un 6to intento, incluso con clave correcta, debe ser rechazado por bloqueo activo
+        resp6 = self.client.post(reverse('login'), {
+            'username': 'cvalenzuela',
+            'password': 'safari123'
+        }, follow=True)
+        self.assertContains(resp6, "temporalmente bloqueado")
+
+    def test_cambio_clave_expirada_exitoso(self):
+        """Permite a un usuario autenticado actualizar su contraseña expirada con validación estricta"""
+        self.client.force_login(self.cajero)
+        perfil = self.cajero.perfil
+        perfil.fecha_cambio_clave = timezone.now() - timedelta(days=190)
+        perfil.save()
+
+        resp = self.client.post(reverse('cambiar_clave_expirada'), {
+            'clave_actual': 'safari123',
+            'nueva_clave': 'Safari.NuevoPass2026!',
+            'confirmar_clave': 'Safari.NuevoPass2026!'
+        }, follow=True)
+
+        self.assertContains(resp, "Contraseña actualizada exitosamente")
+        perfil.refresh_from_db()
+        self.assertFalse(perfil.clave_expirada())
+        self.cajero.refresh_from_db()
+        self.assertTrue(self.cajero.check_password('Safari.NuevoPass2026!'))
+
+    def test_verificacion_qr_convenio_cabana(self):
+        """Valida detección y respuesta de API para huéspedes de cabañas con desayuno incluido"""
+        from ventas.models import ConvenioHuesped
+        convenio = ConvenioHuesped.objects.create(
+            codigo_qr='CAB-TEST-101',
+            numero_cabana='Cabaña 101',
+            nombre_titular='Familia González',
+            tipo_beneficio='DESAYUNO_INCLUIDO',
+            valor_descuento=Decimal('100.00'),
+            limite_diario=1,
+            fecha_checkin=timezone.now().date() - timedelta(days=1),
+            fecha_checkout=timezone.now().date() + timedelta(days=2),
+            activo=True
+        )
+
+        resp = self.client.get(f"/api/convenios/verificar/?codigo=CAB-TEST-101")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['puede_consumir'])
+        self.assertEqual(data['cabana'], 'Cabaña 101')
+        self.assertEqual(data['tipo_beneficio'], 'DESAYUNO_INCLUIDO')
+
+    def test_limite_diario_consumo_convenio(self):
+        """Valida que el huésped no pueda exceder su límite diario de desayunos"""
+        from ventas.models import ConvenioHuesped, ConsumoHuesped
+        convenio = ConvenioHuesped.objects.create(
+            codigo_qr='CAB-TEST-202',
+            numero_cabana='Cabaña 202',
+            nombre_titular='Pedro Picapiedra',
+            tipo_beneficio='DESAYUNO_INCLUIDO',
+            limite_diario=1,
+            fecha_checkin=timezone.now().date(),
+            fecha_checkout=timezone.now().date() + timedelta(days=1),
+            activo=True
+        )
+
+        # Registrar consumo de hoy
+        ConsumoHuesped.objects.create(
+            convenio=convenio,
+            monto_original=Decimal('8900'),
+            monto_bonificado=Decimal('8900'),
+            monto_pagado=Decimal('0'),
+            registrado_por=self.cajero
+        )
+
+        self.assertFalse(convenio.puede_consumir_hoy())
+
+        # API debe informar que el límite fue alcanzado
+        resp = self.client.get(f"/api/convenios/verificar/?codigo=CAB-TEST-202")
+        data = resp.json()
+        self.assertFalse(data['puede_consumir'])
+        self.assertIn("Límite diario alcanzado", data['mensaje'])
+
+    def test_ofertas_temporada_administrador(self):
+        """Valida creación y activación de ofertas de temporada por el Administrador"""
+        from ventas.models import OfertaTemporada
+        self.client.force_login(self.admin)
+
+        resp = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'crear',
+            'nombre': 'Descuento Primavera Cabañas',
+            'descripcion': '25% descuento en desayunos campestres',
+            'descuento_porcentaje': '25',
+            'fecha_inicio': timezone.now().date(),
+            'fecha_fin': timezone.now().date() + timedelta(days=30),
+            'activa': 'on'
+        }, follow=True)
+
+        self.assertContains(resp, "configurada exitosamente")
+        oferta = OfertaTemporada.objects.get(nombre='Descuento Primavera Cabañas')
+        self.assertTrue(oferta.activa)
+        self.assertTrue(oferta.es_vigente())
+        self.assertEqual(oferta.descuento_porcentaje, Decimal('25'))
+

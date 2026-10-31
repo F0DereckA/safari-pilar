@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualización Obligatoria de Contraseña | Parque Safari</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/estilos_safari.css' %}">
+    <style>
+        body {
+            background-color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .card-password {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        .header-top {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+            color: #ffffff;
+            padding: 24px 30px;
+            text-align: center;
+        }
+        .header-top h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 1px;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+        .rule-badge {
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .rule-badge.valid {
+            color: #16a34a;
+            font-weight: 600;
+        }
+        .rule-badge.invalid {
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <div class="card-password mx-auto">
+        <div class="header-top">
+            <i class="bi bi-shield-lock-fill fs-1 d-block mb-2"></i>
+            <h3>Actualización Obligatoria de Contraseña</h3>
+            <p class="mb-0 small text-white-50">Política de Seguridad Institucional • Vigencia Semestral</p>
+        </div>
+
+        <div class="p-4">
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3" role="alert" style="background-color: #fef3c7; color: #92400e;">
+                <i class="bi bi-exclamation-triangle-fill fs-5 me-2 flex-shrink-0"></i>
+                <div>
+                    Tu contraseña ha cumplido el ciclo de <strong>6 meses</strong> establecido por la norma <strong>ISO/IEC 27400</strong>. Para continuar operando en el sistema, debes configurar una nueva clave segura.
+                </div>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show small py-2 px-3 mb-3" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" action="{% url 'cambiar_clave_expirada' %}" id="formCambioClave">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Contraseña Actual:</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-key"></i></span>
+                        <input type="password" name="clave_actual" id="claveActual" class="form-control border-start-0" required placeholder="Ingresa tu clave actual" autocomplete="current-password">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('claveActual', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Nueva Contraseña:</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="nueva_clave" id="nuevaClave" class="form-control border-start-0" required placeholder="Crea una contraseña segura" autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('nuevaClave', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Requisitos de Complejidad Dinámicos -->
+                <div class="bg-light p-3 rounded-3 mb-3 border">
+                    <div class="small fw-bold text-dark mb-2">Requisitos de Seguridad de la Contraseña:</div>
+                    <div id="ruleLength" class="rule-badge invalid"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+                    <div id="ruleUpper" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos una letra mayúscula (A-Z)</div>
+                    <div id="ruleLower" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos una letra minúscula (a-z)</div>
+                    <div id="ruleNumber" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos un número (0-9)</div>
+                    <div id="ruleSymbol" class="rule-badge invalid"><i class="bi bi-circle"></i> Al menos un carácter especial (!@#$%^&* etc.)</div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-secondary">Confirmar Nueva Contraseña:</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-check2-circle"></i></span>
+                        <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control border-start-0" required placeholder="Repite la nueva contraseña" autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePass('confirmarClave', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div id="matchNotice" class="small mt-1 text-danger d-none">Las contraseñas no coinciden.</div>
+                </div>
+
+                <button type="submit" id="btnGuardarClave" class="btn btn-danger w-100 py-2 fw-bold text-uppercase shadow-sm" style="background-color: #b91c1c; border-color: #b91c1c;">
+                    <i class="bi bi-shield-check me-1"></i> Actualizar y Continuar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePass(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
+const inputNueva = document.getElementById('nuevaClave');
+const inputConfirmar = document.getElementById('confirmarClave');
+const matchNotice = document.getElementById('matchNotice');
+
+inputNueva.addEventListener('input', function() {
+    const val = inputNueva.value;
+    updateRule('ruleLength', val.length >= 8);
+    updateRule('ruleUpper', /[A-Z]/.test(val));
+    updateRule('ruleLower', /[a-z]/.test(val));
+    updateRule('ruleNumber', /[0-9]/.test(val));
+    updateRule('ruleSymbol', /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~;]/.test(val));
+    checkMatch();
+});
+
+inputConfirmar.addEventListener('input', checkMatch);
+
+function updateRule(elementId, isValid) {
+    const el = document.getElementById(elementId);
+    const icon = el.querySelector('i');
+    if (isValid) {
+        el.className = 'rule-badge valid';
+        icon.className = 'bi bi-check-circle-fill text-success';
+    } else {
+        el.className = 'rule-badge invalid';
+        icon.className = 'bi bi-circle';
+    }
+}
+
+function checkMatch() {
+    if (inputConfirmar.value.length > 0) {
+        if (inputConfirmar.value !== inputNueva.value) {
+            matchNotice.classList.remove('d-none');
+        } else {
+            matchNotice.classList.add('d-none');
+        }
+    } else {
+        matchNotice.classList.add('d-none');
+    }
+}
+</script>
+</body>
+</html>

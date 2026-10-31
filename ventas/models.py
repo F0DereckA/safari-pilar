@@ -1,4 +1,6 @@
+from datetime import timedelta
 from decimal import Decimal
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -26,6 +28,38 @@ class PerfilEmpleado(models.Model):
         help_text="Punto de venta o local actual asignado (solo uno por trabajador)"
     )
     activo = models.BooleanField(default=True)
+    # Seguridad de Contrasenas y Defensa contra Fuerza Bruta (ISO/IEC 27400 y Tarea 1)
+    fecha_cambio_clave = models.DateTimeField(default=timezone.now, help_text="Fecha de ultima actualizacion de contrasena")
+    dias_expiracion_clave = models.PositiveIntegerField(default=180, help_text="Vigencia maxima de clave en dias (180 dias = 6 meses)")
+    intentos_fallidos = models.PositiveIntegerField(default=0, help_text="Contador de intentos fallidos consecutivos")
+    bloqueado_hasta = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora hasta cuando el acceso esta bloqueado")
+
+    def clave_expirada(self):
+        """Verifica si han transcurrido 6 meses (180 dias) desde el ultimo cambio de contrasena"""
+        if not self.fecha_cambio_clave:
+            return False
+        return (timezone.now() - self.fecha_cambio_clave).days >= self.dias_expiracion_clave
+
+    def esta_bloqueado(self):
+        """Determina si la cuenta esta temporalmente bloqueada por acumulacion de intentos fallidos"""
+        if self.bloqueado_hasta and self.bloqueado_hasta > timezone.now():
+            return True
+        return False
+
+    def registrar_intento_fallido(self, max_intentos=5, minutos_bloqueo=5):
+        """Registra un intento fallido y bloquea la cuenta si supera el umbral"""
+        self.intentos_fallidos += 1
+        if self.intentos_fallidos >= max_intentos:
+            self.bloqueado_hasta = timezone.now() + timedelta(minutes=minutos_bloqueo)
+            self.intentos_fallidos = 0
+        self.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
+
+    def limpiar_intentos_fallidos(self):
+        """Restaura los intentos fallidos tras un login exitoso"""
+        if self.intentos_fallidos > 0 or self.bloqueado_hasta is not None:
+            self.intentos_fallidos = 0
+            self.bloqueado_hasta = None
+            self.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
 
     def __str__(self):
         nombre = self.usuario.get_full_name() or self.usuario.username
@@ -571,4 +605,100 @@ class AlertaTraslado(models.Model):
         verbose_name = "Alerta de Traslado"
         verbose_name_plural = "Alertas de Traslado"
         ordering = ['-fecha_hora']
+
+# ==============================================================================
+# 19. CONVENIOS Y PASES HUESPEDES (CABANAS, DESAYUNO INCLUIDO Y DESCUENTOS QR)
+# ==============================================================================
+class ConvenioHuesped(models.Model):
+    """Pases y convenios para visitantes y huespedes de cabanas de Parque Safari (RF13 / Tarea 7)"""
+    TIPOS_BENEFICIO = [
+        ('DESAYUNO_INCLUIDO', 'Desayuno Incluido (100% Bonificado)'),
+        ('DESCUENTO_PORCENTAJE', 'Descuento Porcentual'),
+        ('DESCUENTO_MONTO', 'Descuento Monto Fijo ($)'),
+    ]
+    codigo_qr = models.CharField(max_length=64, unique=True, db_index=True, help_text="Codigo unico de barra o QR")
+    numero_cabana = models.CharField(max_length=50, help_text="Ej: Cabana 12, Suite Los Leones")
+    nombre_titular = models.CharField(max_length=150, help_text="Nombre del huesped o titular de la reserva")
+    rut_titular = models.CharField(max_length=15, blank=True, null=True, help_text="RUT o pasaporte")
+    tipo_beneficio = models.CharField(max_length=30, choices=TIPOS_BENEFICIO, default='DESAYUNO_INCLUIDO')
+    valor_descuento = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('100.00'), help_text="100 para desayuno total, % descuento o monto en pesos")
+    limite_diario = models.PositiveIntegerField(default=1, help_text="Numero maximo de consumos bonificados por dia")
+    fecha_checkin = models.DateField(default=timezone.now)
+    fecha_checkout = models.DateField()
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def es_valido_hoy(self):
+        """Verifica que el pase este activo y dentro de las fechas de estadia"""
+        hoy = timezone.now().date()
+        return self.activo and (self.fecha_checkin <= hoy <= self.fecha_checkout)
+
+    def consumos_hoy_count(self):
+        """Calcula cuantas veces ha utilizado el beneficio durante la jornada de hoy"""
+        hoy = timezone.now().date()
+        return self.consumos.filter(fecha_hora__date=hoy).count()
+
+    def puede_consumir_hoy(self):
+        """Valida si aun le quedan consumos disponibles hoy"""
+        return self.es_valido_hoy() and (self.consumos_hoy_count() < self.limite_diario)
+
+    def __str__(self):
+        return f"{self.numero_cabana} - {self.nombre_titular} [{self.codigo_qr}] ({self.get_tipo_beneficio_display()})"
+
+    class Meta:
+        verbose_name = "Convenio / Pase Huesped"
+        verbose_name_plural = "Convenios / Pases Huespedes"
+        ordering = ['-creado_en']
+
+
+# ==============================================================================
+# 20. REGISTRO DE CONSUMOS DE HUESPEDES (Auditoria y Trazabilidad)
+# ==============================================================================
+class ConsumoHuesped(models.Model):
+    """Anotacion detallada de consumos de desayunos y descuentos aplicados a huespedes de cabanas"""
+    convenio = models.ForeignKey(ConvenioHuesped, on_delete=models.CASCADE, related_name='consumos')
+    ticket = models.ForeignKey('Ticket', on_delete=models.SET_NULL, null=True, blank=True, related_name='consumos_huesped')
+    venta = models.ForeignKey('Venta', on_delete=models.SET_NULL, null=True, blank=True, related_name='consumos_huesped')
+    monto_original = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    monto_bonificado = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    monto_pagado = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='consumos_huesped_registrados')
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"Consumo {self.convenio.numero_cabana} - Bonificado: ${self.monto_bonificado:,.0f} ({self.fecha_hora.strftime('%d/%m/%Y %H:%M')})"
+
+    class Meta:
+        verbose_name = "Consumo de Huesped"
+        verbose_name_plural = "Consumos de Huespedes"
+        ordering = ['-fecha_hora']
+
+
+# ==============================================================================
+# 21. OFERTAS DE TEMPORADA (Activacion / Desactivacion por Administrador)
+# ==============================================================================
+class OfertaTemporada(models.Model):
+    """Campanas y ofertas de temporada gestionadas por el Administrador"""
+    nombre = models.CharField(max_length=120)
+    descripcion = models.TextField(blank=True, null=True)
+    descuento_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Porcentaje de descuento global (0 - 100)")
+    fecha_inicio = models.DateField(default=timezone.now)
+    fecha_fin = models.DateField()
+    activa = models.BooleanField(default=False, help_text="Interruptor maestro de activacion")
+    categoria_aplicable = models.ForeignKey('Categoria', on_delete=models.SET_NULL, null=True, blank=True, related_name='ofertas_temporada', help_text="Categoria especifica o en blanco para toda la carta")
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    def es_vigente(self):
+        hoy = timezone.now().date()
+        return self.activa and (self.fecha_inicio <= hoy <= self.fecha_fin)
+
+    def __str__(self):
+        estado = "ACTIVA" if self.activa else "INACTIVA"
+        return f"{self.nombre} ({self.descuento_porcentaje}%) [{estado}]"
+
+    class Meta:
+        verbose_name = "Oferta de Temporada"
+        verbose_name_plural = "Ofertas de Temporada"
+        ordering = ['-fecha_inicio']
 
