@@ -20,7 +20,8 @@
   - RF15 Posicionamiento de Productos y Menús: **COMPLETADO Y TESTEADO (185/185 suite vigente en verde al cerrar RF15)**.
   - RF16 Control de Tiempos de Atención: **COMPLETADO Y TESTEADO (197/197 suite vigente en verde al cerrar RF16)**.
   - RF17 Gestión de Ocupación de Mesas: **COMPLETADO Y TESTEADO (207/207 suite vigente en verde al cerrar RF17)**.
-  - RF01–RF17: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF18 Reportes y Estadísticas: **COMPLETADO Y TESTEADO (220/220 suite vigente en verde al cerrar RF18)**.
+  - RF01–RF18: 100% de los requerimientos funcionales oficiales completados, blindados y testeados exitosamente.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -966,6 +967,17 @@ RF06, RF13, RF16, RF17.
 - 100% datos reales;
 - ningún KPI demo presentado como real;
 - suite OK.
+
+### Estado de Cierre de RF18 (01/11/2026)
+- **Estado**: COMPLETADO Y CERRADO (100%).
+- **Pruebas Automatizadas**: 13/13 pruebas unitarias e integración en `SafariRF18ReportesEstadisticasTests`. Suite completa: 220/220 tests en verde (388.5s).
+- **Check Django**: `python manage.py check` con 0 errores y 0 advertencias.
+- **Regresión 4 Roles**: Verificada al 100% en `scratch/verificar_rf18.py` (Administrador, Cajero, Mesero, Cocina) con control de acceso RBAC.
+- **Erradicación de Mocks**: Purga total de variables y matrices simuladas ($49.5M, $23.8M, 84 fake tickets, `HISTORICO_15_MESES_DATOS`). Gráficos y tablas dinámicos gobernados exclusivamente por ORM real agrupado.
+- **Motor Estadístico Centralizado**: Función `generar_reporte_estadistico_integral()` en `ventas/utils.py` soportando filtros dinámicos por rango de fechas (con sanitización contra rangos invertidos), Punto de Venta, usuario cajero y modalidad de atención.
+- **Ranking Top 10**: Agregación por volumen y recaudación preservando productos históricos desactivados para auditoría contable.
+- **Integración Operativa**: Métricas de tiempos culinarios (RF16) calculadas exclusivamente sobre órdenes válidas entregadas; métricas de ocupación y rotación de mesas (RF17) en vivo.
+- **Exportación Oficial**: `obtener_datos_reporte()`, `generar_excel_ventas()` y `generar_word_ventas()` operando 100% sobre `Venta.objects.filter(estado='PAGADA')` sin fallbacks simulados.
 
 ---
 

@@ -147,68 +147,104 @@
             </div>
         </div>
 
+        <!-- FORMULARIO DE FILTROS EN TIEMPO REAL (RF18.2) -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-3 bg-white rounded-4">
+                <form method="GET" action="{% url 'administrador_dashboard' %}" class="row g-2 align-items-end">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_inicio_str }}">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_fin_str }}">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-shop me-1"></i>Punto de Venta / Local</label>
+                        <select name="local_id" class="form-select form-select-sm rounded-3">
+                            <option value="">Todos los Locales (Consolidado)</option>
+                            {% for loc in locales %}
+                            <option value="{{ loc.id }}" {% if filtros.punto_venta_id == loc.id %}selected{% endif %}>{{ loc.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-person me-1"></i>Colaborador</label>
+                        <select name="usuario_id" class="form-select form-select-sm rounded-3">
+                            <option value="">Todos los Colaboradores</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.id }}" {% if filtros.usuario_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1 col-12 d-flex gap-1">
+                        <button type="submit" class="btn btn-danger btn-sm rounded-3 w-100 fw-bold" title="Aplicar filtros en vivo">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                        <a href="{% url 'administrador_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-3" title="Restablecer">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="contenedorDashboardKPIs">
-        <!-- Tarjetas de Comparativa de Ganancias (Requisito clave: Comparativa de Ganancia Meses Anteriores, Día y Año) -->
+        <!-- TARJETAS DE KPIS FINANCIEROS Y OPERATIVOS 100% REALES (RF18.3) -->
         <div class="row g-3 mb-4">
             
-            <!-- Comparativa Ganancia vs Mes Anterior -->
+            <!-- Ventas Totales Reales -->
             <div class="col-sm-6 col-xl-3">
-                <div class="comparison-card">
+                <div class="comparison-card border-start border-4 border-danger">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ganancia vs Mes Anterior</span>
-                        <span class="badge-growth-up">
-                            <i class="bi bi-arrow-up-right"></i> +38.4%
-                        </span>
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ventas Totales</span>
+                        <span class="badge bg-danger text-white fw-bold">{{ ventas.cantidad_ventas }} tickets</span>
                     </div>
-                    <div class="comparison-val text-success" id="cardCompMes">$23.800.000</div>
+                    <div class="comparison-val text-danger" id="cardCompMes">{{ ventas.total_recaudado|pesos_clp }}</div>
                     <div class="text-muted small mt-1">
-                        Septiembre 2026 vs Agosto 2026 ($17.200.000)
+                        Recaudación en período seleccionado
                     </div>
                 </div>
             </div>
 
-            <!-- Comparativa Ganancia vs Mismo Día Semana Anterior -->
+            <!-- Ticket Promedio Real -->
             <div class="col-sm-6 col-xl-3">
-                <div class="comparison-card">
+                <div class="comparison-card border-start border-4 border-warning">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ganancia vs Día Anterior</span>
-                        <span class="badge-growth-up">
-                            <i class="bi bi-arrow-up-right"></i> +8.5%
-                        </span>
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ticket Promedio</span>
+                        <span class="badge bg-warning text-dark fw-bold">Por Venta</span>
                     </div>
-                    <div class="comparison-val text-dark" id="cardCompDia">$885.600</div>
+                    <div class="comparison-val text-dark" id="cardCompDia">{{ ventas.ticket_promedio|pesos_clp }}</div>
                     <div class="text-muted small mt-1">
-                        Ganancia de hoy martes vs martes semana previa
+                        Consumo promedio por boleta/comprobante
                     </div>
                 </div>
             </div>
 
-            <!-- Comparativa Ganancia Interanual (Año Anterior) -->
+            <!-- Tiempo de Espera Comensal Real (RF18.5) -->
             <div class="col-sm-6 col-xl-3">
-                <div class="comparison-card">
+                <div class="comparison-card border-start border-4 border-info">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Comparativa Interanual (Año)</span>
-                        <span class="badge-growth-up">
-                            <i class="bi bi-arrow-up-right"></i> +19.6%
-                        </span>
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Tiempo Espera Total</span>
+                        <span class="badge bg-info text-white fw-bold">{{ tiempos.total_entregados }} entregas</span>
                     </div>
-                    <div class="comparison-val text-danger" id="cardCompAno">+ $3.900.000</div>
+                    <div class="comparison-val text-info" id="cardCompAno">{{ tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
                     <div class="text-muted small mt-1">
-                        Ganancia Sep 2026 ($23.8M) vs Sep 2025 ($19.9M)
+                        Promedio desde comanda a entrega en mesa
                     </div>
                 </div>
             </div>
 
-            <!-- Margen de Ganancia Promedio -->
+            <!-- Tasa de Ocupación de Mesas Real (RF18.6) -->
             <div class="col-sm-6 col-xl-3">
-                <div class="comparison-card">
+                <div class="comparison-card border-start border-4 border-success">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Margen de Ganancia</span>
-                        <span class="badge bg-warning text-dark fw-bold">48.1%</span>
+                        <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Ocupación Mesas</span>
+                        <span class="badge bg-success text-white fw-bold">{{ ocupacion.mesas_ocupadas }}/{{ ocupacion.total_mesas }} activas</span>
                     </div>
-                    <div class="comparison-val text-primary" id="cardMargen">48.1% Neto</div>
+                    <div class="comparison-val text-success" id="cardMargen">{{ ocupacion.tasa_ocupacion_porcentaje|default:"0.0" }}%</div>
                     <div class="text-muted small mt-1">
-                        Ventas: $49.500.000 • Ganancia: $23.800.000
+                        Mesas libres: {{ ocupacion.mesas_libres }} • Duración prom: {{ ocupacion.promedio_duracion_ocupacion_minutos|default:"0.0" }} min
                     </div>
                 </div>
             </div>
@@ -250,12 +286,12 @@
             <div class="detail-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-clock-history text-warning me-2"></i>Historial Almacenado de 15 Meses (Julio 2025 - Septiembre 2026)
+                        <i class="bi bi-clock-history text-warning me-2"></i>Historial Mensual de Rendimiento Oficial ({{ historico_15_meses|length }} meses registrados)
                     </h5>
-                    <small class="text-white-50">Comparativa mensual de ganancia neta, volumen de ventas y variación porcentual</small>
+                    <small class="text-white-50">Comparativa mensual de ganancia neta, volumen de ventas y variación porcentual basada 100% en datos reales</small>
                 </div>
                 <span class="badge bg-warning text-dark fw-bold">
-                    15 Meses Almacenados
+                    {{ historico_15_meses|length }} Meses en BD
                 </span>
             </div>
 
@@ -303,11 +339,135 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-2 d-block mb-1"></i>
+                                No se registran ventas históricas en el período seleccionado.
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
+    <!-- SECCIONES DE INTELIGENCIA DE NEGOCIO: RANKING DE PRODUCTOS Y AUDITORÍA DE TIEMPOS (RF18.4 y RF18.5) -->
+    <div class="row g-4 mb-4">
+        
+        <!-- Ranking de Productos Más Vendidos (RF18.4) -->
+        <div class="col-lg-7">
+            <div class="detail-table-card h-100 shadow-sm border-0 rounded-4">
+                <div class="detail-table-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-trophy-fill text-warning me-2"></i>Ranking de Productos Más Vendidos (RF18.4)
+                        </h5>
+                        <small class="text-white-50">Basado en volumen real de consumo en Parque Safari</small>
+                    </div>
+                    <span class="badge bg-warning text-dark fw-bold">Top 10</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table detail-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 50px;">#</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th class="text-center">Unidades</th>
+                                <th class="text-end">Total Recaudado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in ranking_productos %}
+                            <tr>
+                                <td class="text-center fw-bold text-muted">{{ forloop.counter }}</td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ p.nombre }}</div>
+                                    {% if not p.activo %}
+                                    <span class="badge bg-secondary text-white" style="font-size: 0.68rem;">Histórico / Desactivado</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ p.categoria }}</span></td>
+                                <td class="text-center fw-bold text-danger">{{ p.total_unidades }}</td>
+                                <td class="text-end fw-bold" style="font-family: 'Oswald', sans-serif;">{{ p.total_recaudado|pesos_clp }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-2 d-block mb-1"></i>
+                                    No se registraron ventas de productos en el rango de fechas seleccionado.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desglose de Medios de Pago y Tiempos de Servicio (RF18.3 y RF18.5) -->
+        <div class="col-lg-5">
+            <div class="detail-table-card h-100 shadow-sm border-0 rounded-4">
+                <div class="detail-table-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-stopwatch-fill text-warning me-2"></i>Tiempos de Servicio y Medios de Pago
+                        </h5>
+                        <small class="text-white-50">Despacho KDS y distribución de ingresos</small>
+                    </div>
+                </div>
+                <div class="p-4 bg-white">
+                    <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-fire text-danger me-1"></i>Tiempos Operativos de Cocina / KDS</h6>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-light text-center">
+                                <small class="text-muted d-block">Espera Total</small>
+                                <span class="fw-bold text-danger fs-5">{{ tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-light text-center">
+                                <small class="text-muted d-block">Prep. Cocina</small>
+                                <span class="fw-bold text-warning fs-5">{{ tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-light text-center">
+                                <small class="text-muted d-block">En Cola</small>
+                                <span class="fw-bold text-primary fs-5">{{ tiempos.promedio_tiempo_cola_minutos|default:"0.0" }} min</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-light text-center">
+                                <small class="text-muted d-block">Despacho</small>
+                                <span class="fw-bold text-success fs-5">{{ tiempos.promedio_tiempo_despacho_minutos|default:"0.0" }} min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-muted small text-uppercase mb-2"><i class="bi bi-credit-card text-primary me-1"></i>Medios de Pago Utilizados</h6>
+                    <div class="list-group list-group-flush">
+                        {% for mp in ventas.ventas_por_metodo %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <div>
+                                <span class="fw-semibold text-dark">{{ mp.nombre }}</span>
+                                <small class="text-muted d-block">{{ mp.cantidad }} transacciones</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold text-dark">{{ mp.total|pesos_clp }}</span>
+                                <span class="badge bg-light text-muted border ms-1">{{ mp.porcentaje }}%</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center text-muted py-2 small">Sin transacciones registradas</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 
     
     <!-- Modal Oficial de Exportación de Reportes de Ventas (Excel, Word, PDF) -->
@@ -482,65 +642,39 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script id="chartDataJson" type="application/json">{{ chart_data_json|safe }}</script>
 
     <!-- Lógica del Diagrama Mixto (Barras + Línea) en Chart.js -->
     <script>
-        // Datos para los 15 Meses Almacenados
+        // Carga de datos 100% reales desde el servidor Django (RF18 - Cero Mocks)
+        const chartDataRaw = document.getElementById('chartDataJson');
+        const chartDataServer = chartDataRaw ? JSON.parse(chartDataRaw.textContent) : { meses: {}, dias: {}, horas: {} };
+
         const data15Meses = {
-            labels: [
-                "Jul 2025", "Ago 2025", "Sep 2025", "Oct 2025", "Nov 2025", "Dic 2025",
-                "Ene 2026", "Feb 2026", "Mar 2026", "Abr 2026", "May 2026", "Jun 2026",
-                "Jul 2026", "Ago 2026", "Sep 2026"
-            ],
-            ventas: [
-                28.5, 31.2, 42.8, 34.1, 36.5, 48.9,
-                58.4, 62.1, 39.8, 33.4, 30.5, 27.9,
-                33.8, 36.9, 49.5
-            ], // en Millones CLP
-            ganancias: [
-                12.8, 14.1, 19.9, 15.4, 16.7, 23.2,
-                28.6, 30.8, 18.1, 14.9, 13.6, 12.2,
-                15.6, 17.2, 23.8
-            ], // en Millones CLP
-            unidad: "Millones CLP"
+            labels: (chartDataServer.meses && chartDataServer.meses.labels && chartDataServer.meses.labels.length) ? chartDataServer.meses.labels : ["Sin datos"],
+            ventas: (chartDataServer.meses && chartDataServer.meses.ventas && chartDataServer.meses.ventas.length) ? chartDataServer.meses.ventas : [0],
+            ganancias: (chartDataServer.meses && chartDataServer.meses.ganancias && chartDataServer.meses.ganancias.length) ? chartDataServer.meses.ganancias : [0],
+            unidad: "CLP"
         };
 
-        // Datos Por Día (Mes actual: Septiembre 2026)
         const dataPorDia = {
-            labels: Array.from({length: 29}, (_, i) => `Día ${i + 1}`),
-            ventas: [
-                1.4, 1.5, 1.8, 2.3, 2.7, 1.2, 1.3, 1.5, 1.7, 2.1, 2.6, 2.9, 1.4, 1.5, 1.6,
-                2.2, 3.1, 3.4, 1.5, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 1.5, 1.7, 1.8, 1.84
-            ],
-            ganancias: [
-                0.67, 0.72, 0.86, 1.10, 1.30, 0.58, 0.62, 0.72, 0.82, 1.01, 1.25, 1.39, 0.67, 0.72, 0.77,
-                1.05, 1.49, 1.63, 0.72, 0.77, 0.86, 0.96, 1.15, 1.34, 1.54, 0.72, 0.82, 0.86, 0.88
-            ],
-            unidad: "Millones CLP"
+            labels: (chartDataServer.dias && chartDataServer.dias.labels && chartDataServer.dias.labels.length) ? chartDataServer.dias.labels : ["Sin datos"],
+            ventas: (chartDataServer.dias && chartDataServer.dias.ventas && chartDataServer.dias.ventas.length) ? chartDataServer.dias.ventas : [0],
+            ganancias: (chartDataServer.dias && chartDataServer.dias.ganancias && chartDataServer.dias.ganancias.length) ? chartDataServer.dias.ganancias : [0],
+            unidad: "CLP"
         };
 
-        // Datos Por Hora (Jornada de hoy: 09:00 a 19:00 hrs)
         const dataPorHora = {
-            labels: [
-                "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
-                "15:00", "16:00", "17:00", "18:00", "19:00"
-            ],
-            ventas: [
-                65, 110, 180, 290, 385, 340,
-                210, 140, 115, 75, 45
-            ], // en Miles CLP
-            ganancias: [
-                31, 53, 86, 139, 185, 163,
-                101, 67, 55, 36, 22
-            ], // en Miles CLP
-            unidad: "Miles CLP"
+            labels: (chartDataServer.horas && chartDataServer.horas.labels && chartDataServer.horas.labels.length) ? chartDataServer.horas.labels : ["Sin datos"],
+            ventas: (chartDataServer.horas && chartDataServer.horas.ventas && chartDataServer.horas.ventas.length) ? chartDataServer.horas.ventas : [0],
+            ganancias: (chartDataServer.horas && chartDataServer.horas.ganancias && chartDataServer.horas.ganancias.length) ? chartDataServer.horas.ganancias : [0],
+            unidad: "CLP"
         };
 
         let currentChart = null;
 
         function formatearMoneda(val, unidad) {
-            let totalPesos = (unidad === "Millones CLP") ? Math.round(val * 1000000) : Math.round(val * 1000);
-            return '$' + totalPesos.toLocaleString('es-CL');
+            return '$' + Math.round(val).toLocaleString('es-CL');
         }
 
         function renderizarChart(tipo) {
@@ -549,34 +683,22 @@
 
             if (tipo === 'hora') {
                 dataSelected = dataPorHora;
-                labelVentas = 'Ventas por Hora (Miles CLP)';
-                labelGanancias = 'Ganancia por Hora (Miles CLP)';
-                tituloText = 'DISTRIBUCIÓN HORARIA DE HOY: VENTAS Y GANANCIAS EN VIVO';
-                subtituloText = 'Curva de flujo por hora entre 09:00 y 19:00 hrs • Hora punta registrada: 13:00 a 14:00 hrs';
-                document.getElementById('cardCompMes').innerText = '$385.000';
-                document.getElementById('cardCompDia').innerText = '$885.600';
-                document.getElementById('cardCompAno').innerText = '13:00 - 15:00';
-                document.getElementById('cardMargen').innerText = '48.0%';
+                labelVentas = 'Ventas por Hora ($ CLP)';
+                labelGanancias = 'Ganancia por Hora ($ CLP)';
+                tituloText = 'DISTRIBUCIÓN HORARIA REAL: VENTAS Y GANANCIAS EN VIVO';
+                subtituloText = 'Curva de flujo por hora según transacciones reales registradas en Parque Safari';
             } else if (tipo === 'dia') {
                 dataSelected = dataPorDia;
-                labelVentas = 'Ventas Diarias (Millones CLP)';
-                labelGanancias = 'Ganancia Diaria (Millones CLP)';
-                tituloText = 'EVOLUCIÓN DIARIA DEL MES (SEPTIEMBRE 2026): VENTAS Y GANANCIA';
-                subtituloText = 'Registro diario de ingresos y utilidades de la jornada • Fines de semana y feriados destacados';
-                document.getElementById('cardCompMes').innerText = '$23.800.000';
-                document.getElementById('cardCompDia').innerText = '+8.5% Hoy';
-                document.getElementById('cardCompAno').innerText = '$1.845.000';
-                document.getElementById('cardMargen').innerText = '48.1%';
+                labelVentas = 'Ventas Diarias ($ CLP)';
+                labelGanancias = 'Ganancia Diaria ($ CLP)';
+                tituloText = 'EVOLUCIÓN DIARIA DEL PERÍODO: VENTAS Y GANANCIAS REALES';
+                subtituloText = 'Registro diario de ingresos reales en la base de datos oficial';
             } else {
                 dataSelected = data15Meses;
-                labelVentas = 'Ventas Totales (Millones CLP)';
-                labelGanancias = 'Ganancia Neta (Millones CLP)';
-                tituloText = 'EVOLUCIÓN MENSUAL HISTÓRICA: VENTAS TOTALES Y COMPARATIVA DE GANANCIAS (15 MESES)';
-                subtituloText = 'Historial completo desde Julio 2025 hasta Septiembre 2026 • Comparativa interanual y estacional';
-                document.getElementById('cardCompMes').innerText = '$23.800.000';
-                document.getElementById('cardCompDia').innerText = '$885.600';
-                document.getElementById('cardCompAno').innerText = '+ $3.900.000';
-                document.getElementById('cardMargen').innerText = '48.1%';
+                labelVentas = 'Ventas Mensuales ($ CLP)';
+                labelGanancias = 'Ganancia Mensual ($ CLP)';
+                tituloText = 'EVOLUCIÓN MENSUAL HISTÓRICA: VENTAS TOTALES Y COMPARATIVA REAL';
+                subtituloText = 'Historial de meses registrados en base de datos • Auditoría 100% verificada';
             }
 
             document.getElementById('chartTitulo').innerText = tituloText;

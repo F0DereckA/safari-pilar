@@ -6457,3 +6457,442 @@ class SafariRF17GestionOcupacionMesasTests(TestCase):
         self.assertAlmostEqual(metricas['tasa_ocupacion_porcentaje'], 33.3, places=1)
         self.assertAlmostEqual(metricas['promedio_duracion_ocupacion_minutos'], 20.0, places=0)
 
+
+
+class SafariRF18ReportesEstadisticasTests(TestCase):
+    """
+    Pruebas unitarias y de integración de alta fidelidad para RF18 (Reportes y Estadísticas):
+    - RF18.1: Cero mocks: erradicación de datos inventados ($49.5M, 84 fake tickets, etc.), 100% ORM real.
+    - RF18.2: Filtros dinámicos por rango de fechas (inicio/fin) con sanitización de rangos invertidos.
+    - RF18.3: Filtro por Punto de Venta / Local gastronómico y aislamiento estricto de métricas.
+    - RF18.4: Filtro por Colaborador / Usuario cajero.
+    - RF18.5: Exclusión estricta de ventas anuladas en la recaudación financiera y auditoría de anulación.
+    - RF18.6: Desglose financiero por método de pago y modalidad de atención (Mesa, Venta Rápida, Mostrador).
+    - RF18.7: Contabilidad de precios especiales, convenios y cálculo de ahorro para comensales.
+    - RF18.8: Ranking Top 10 de productos más vendidos con inclusión de productos históricos desactivados.
+    - RF18.9: Integración de métricas de tiempos de atención (espera, cola y preparación en cocina) con RF16.
+    - RF18.10: Integración de métricas de ocupación y rotación de mesas con RF17.
+    - RF18.11: Exportación oficial de reportes (Excel y Word) con datos 100% reales sin simulación mock.
+    - RF18.12: Acceso y renderizado completo del Dashboard de Administrador (HTTP 200).
+    - RF18.13: Control de acceso y blindaje RBAC: rechazo a roles no autorizados (Mesero, Cajero).
+    """
+
+    def setUp(self):
+        import datetime
+        from decimal import Decimal
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from ventas.models import (
+            PuntoVenta, PerfilEmpleado, Mesa, Producto, Categoria,
+            Venta, DetalleVenta, Pedido, Entrega, Jornada, Caja
+        )
+
+        self.pv_central = PuntoVenta.objects.create(nombre="Restaurante Central T18", activo=True)
+        self.pv_selva = PuntoVenta.objects.create(nombre="Cafeteria La Selva T18", activo=True)
+
+        self.admin_user = User.objects.create_superuser('admin_rf18', 'admin18@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv_central)
+
+        self.cajero_1 = User.objects.create_user('cajero1_rf18', 'c1_18@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_1, rol='CAJERO', punto_venta_actual=self.pv_central)
+
+        self.cajero_2 = User.objects.create_user('cajero2_rf18', 'c2_18@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_2, rol='CAJERO', punto_venta_actual=self.pv_selva)
+
+        self.mesero_user = User.objects.create_user('mesero_rf18', 'm18@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv_central)
+
+        self.mesa_1 = Mesa.objects.create(identificador="M1-RF18", capacidad=4, punto_venta=self.pv_central, estado='HABILITADA')
+        self.mesa_2 = Mesa.objects.create(identificador="M2-RF18", capacidad=4, punto_venta=self.pv_central, estado='HABILITADA')
+
+        self.cat_platos = Categoria.objects.create(nombre="Platos T18")
+        self.cat_bebidas = Categoria.objects.create(nombre="Bebidas T18")
+
+        self.prod_activo = Producto.objects.create(
+            nombre="Lomo Saltado Safari",
+            categoria=self.cat_platos,
+            precio_base=Decimal('8500'),
+            activo=True
+        )
+        self.prod_activo.puntos_venta.add(self.pv_central)
+
+        self.prod_desactivado = Producto.objects.create(
+            nombre="Jugo Natural Mango Antiguo",
+            categoria=self.cat_bebidas,
+            precio_base=Decimal('3000'),
+            activo=False
+        )
+        self.prod_desactivado.puntos_venta.add(self.pv_central)
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin_user, 'estado': 'ABIERTA'}
+        )
+        self.caja_1, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_1,
+            punto_venta=self.pv_central,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+        self.caja_2, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_2,
+            punto_venta=self.pv_selva,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf18_1_cero_mocks_datos_100_reales(self):
+        """RF18.1: Base de datos limpia retorna 0 en recaudación y tickets, erradicando mocks de $49.5M y 84 tickets"""
+        from ventas.utils import generar_reporte_estadistico_integral
+        from ventas.exportador_reportes import obtener_datos_reporte
+
+        reporte = generar_reporte_estadistico_integral()
+        self.assertEqual(reporte['ventas']['total_recaudado'], 0)
+        self.assertEqual(reporte['ventas']['cantidad_ventas'], 0)
+        self.assertEqual(reporte['ventas']['ticket_promedio'], 0.0)
+        self.assertEqual(len(reporte['ranking_productos']), 0)
+        self.assertEqual(reporte['tiempos_atencion']['total_entregados'], 0)
+
+        datos_rep = obtener_datos_reporte(tipo_rango='dia')
+        self.assertEqual(datos_rep['total_ventas'], 0)
+        self.assertEqual(datos_rep['total_tickets'], 0)
+        self.assertEqual(len(datos_rep['filas_detalle']), 0)
+        self.assertNotEqual(datos_rep['total_tickets'], 84)
+
+    def test_rf18_2_filtro_rango_fechas_y_sanitizacion_invertida(self):
+        """RF18.2: Filtro por rango de fechas aísla ventas y auto-corrige fechas invertidas sin error"""
+        import datetime
+        from decimal import Decimal
+        from django.utils import timezone
+        from ventas.models import Venta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        hoy = timezone.localdate()
+        dia_ayer = hoy - datetime.timedelta(days=1)
+        dia_antier = hoy - datetime.timedelta(days=2)
+        dia_viejo = hoy - datetime.timedelta(days=10)
+
+        t_ayer = timezone.now() - datetime.timedelta(days=1)
+        t_antier = timezone.now() - datetime.timedelta(days=2)
+        t_viejo = timezone.now() - datetime.timedelta(days=10)
+
+        v1 = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('10000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.filter(id=v1.id).update(fecha_hora=t_viejo)
+
+        v2 = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('25000'), estado='PAGADA', metodo_pago='TARJETA_DEBITO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.filter(id=v2.id).update(fecha_hora=t_antier)
+
+        v3 = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('40000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.filter(id=v3.id).update(fecha_hora=t_ayer)
+
+        # Filtro entre antier y ayer
+        rep = generar_reporte_estadistico_integral(fecha_inicio=dia_antier, fecha_fin=dia_ayer)
+        self.assertEqual(rep['ventas']['cantidad_ventas'], 2)
+        self.assertEqual(rep['ventas']['total_recaudado'], 65000)
+
+        # Rango invertido: fecha_inicio ayer, fecha_fin antier -> Debe auto-corregir sin error
+        rep_inv = generar_reporte_estadistico_integral(fecha_inicio=dia_ayer, fecha_fin=dia_antier)
+        self.assertEqual(rep_inv['ventas']['cantidad_ventas'], 2)
+        self.assertEqual(rep_inv['ventas']['total_recaudado'], 65000)
+
+    def test_rf18_3_filtro_por_punto_de_venta(self):
+        """RF18.3: Filtro por Punto de Venta aísla exclusivamente las transacciones de dicho local"""
+        from decimal import Decimal
+        from ventas.models import Venta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('35000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.create(
+            caja=self.caja_2, punto_venta=self.pv_selva, cajero=self.cajero_2,
+            total=Decimal('15000'), estado='PAGADA', metodo_pago='TARJETA_DEBITO', modalidad='VENTA_RAPIDA'
+        )
+
+        rep_central = generar_reporte_estadistico_integral(punto_venta=self.pv_central.id)
+        self.assertEqual(rep_central['ventas']['cantidad_ventas'], 1)
+        self.assertEqual(rep_central['ventas']['total_recaudado'], 35000)
+
+        rep_selva = generar_reporte_estadistico_integral(punto_venta=self.pv_selva.id)
+        self.assertEqual(rep_selva['ventas']['cantidad_ventas'], 1)
+        self.assertEqual(rep_selva['ventas']['total_recaudado'], 15000)
+
+        # Consolidado general
+        rep_todos = generar_reporte_estadistico_integral()
+        self.assertEqual(rep_todos['ventas']['cantidad_ventas'], 2)
+        self.assertEqual(rep_todos['ventas']['total_recaudado'], 50000)
+
+    def test_rf18_4_filtro_por_usuario_colaborador(self):
+        """RF18.4: Filtro por colaborador aísla las ventas recaudadas por dicho cajero"""
+        from decimal import Decimal
+        from ventas.models import Venta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('18000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.create(
+            caja=self.caja_2, punto_venta=self.pv_selva, cajero=self.cajero_2,
+            total=Decimal('22000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+
+        rep_u1 = generar_reporte_estadistico_integral(usuario=self.cajero_1.id)
+        self.assertEqual(rep_u1['ventas']['cantidad_ventas'], 1)
+        self.assertEqual(rep_u1['ventas']['total_recaudado'], 18000)
+
+        rep_u2 = generar_reporte_estadistico_integral(usuario=self.cajero_2.id)
+        self.assertEqual(rep_u2['ventas']['cantidad_ventas'], 1)
+        self.assertEqual(rep_u2['ventas']['total_recaudado'], 22000)
+
+    def test_rf18_5_ventas_excluye_estrictamente_anuladas(self):
+        """RF18.5: Exclusión estricta de ventas anuladas de los totales recaudados"""
+        from decimal import Decimal
+        from ventas.models import Venta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('60000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('40000'), estado='ANULADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+
+        rep = generar_reporte_estadistico_integral()
+        self.assertEqual(rep['ventas']['total_recaudado'], 60000)
+        self.assertEqual(rep['ventas']['cantidad_ventas'], 1)
+        self.assertEqual(rep['ventas']['cantidad_anuladas'], 1)
+
+    def test_rf18_6_desglose_medios_pago_y_modalidad(self):
+        """RF18.6: Desglose exacto por método de pago y modalidad de servicio (Mesa vs Venta Rápida)"""
+        from decimal import Decimal
+        from ventas.models import Venta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        # Venta 1: Efectivo, Mesa ($30.000)
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('30000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='MESA', mesa=self.mesa_1
+        )
+        # Venta 2: Débito, Venta Rápida ($70.000)
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('70000'), estado='PAGADA', metodo_pago='TARJETA_DEBITO', modalidad='VENTA_RAPIDA'
+        )
+
+        rep = generar_reporte_estadistico_integral()
+        self.assertEqual(rep['ventas']['total_recaudado'], 100000)
+
+        # Métodos de pago
+        metodos = {m['metodo_pago']: m for m in rep['ventas']['ventas_por_metodo']}
+        self.assertEqual(metodos['TARJETA_DEBITO']['total'], 70000)
+        self.assertEqual(metodos['TARJETA_DEBITO']['porcentaje'], 70.0)
+        self.assertEqual(metodos['EFECTIVO']['total'], 30000)
+        self.assertEqual(metodos['EFECTIVO']['porcentaje'], 30.0)
+
+        # Modalidades
+        modalidades = {m['modalidad']: m for m in rep['ventas']['ventas_por_modalidad']}
+        self.assertEqual(modalidades['VENTA_RAPIDA']['total'], 70000)
+        self.assertEqual(modalidades['VENTA_RAPIDA']['porcentaje'], 70.0)
+        self.assertEqual(modalidades['MESA']['total'], 30000)
+        self.assertEqual(modalidades['MESA']['porcentaje'], 30.0)
+
+    def test_rf18_7_precios_especiales_convenios_ahorro(self):
+        """RF18.7: Auditoría de ítems con precio especial o convenio y cálculo de ahorro comensal"""
+        from decimal import Decimal
+        from ventas.models import Venta, DetalleVenta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        v = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('14000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        # 2 unidades a $7.000 cada una (precio original $10.000). Ahorro = (10000 - 7000) * 2 = 6000
+        DetalleVenta.objects.create(
+            venta=v,
+            producto=self.prod_activo,
+            cantidad=2,
+            precio_aplicado=Decimal('7000'),
+            subtotal=Decimal('14000'),
+            es_precio_especial=True,
+            precio_original=Decimal('10000'),
+            motivo_precio_especial='CONVENIO'
+        )
+
+        rep = generar_reporte_estadistico_integral()
+        self.assertEqual(rep['ventas']['total_items_precio_especial'], 1)
+        self.assertEqual(rep['ventas']['ahorro_descuentos'], 6000)
+
+    def test_rf18_8_ranking_productos_incluye_historicos_desactivados(self):
+        """RF18.8: Ranking Top 10 agrega unidades y montos, conservando productos históricos ya desactivados"""
+        from decimal import Decimal
+        from ventas.models import Venta, DetalleVenta
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        v1 = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('42500'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        # 5 unidades de producto activo
+        DetalleVenta.objects.create(
+            venta=v1, producto=self.prod_activo, cantidad=5,
+            precio_aplicado=Decimal('8500'), subtotal=Decimal('42500')
+        )
+
+        v2 = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('60000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        # 20 unidades del producto histórico desactivado
+        DetalleVenta.objects.create(
+            venta=v2, producto=self.prod_desactivado, cantidad=20,
+            precio_aplicado=Decimal('3000'), subtotal=Decimal('60000')
+        )
+
+        rep = generar_reporte_estadistico_integral()
+        ranking = rep['ranking_productos']
+        self.assertEqual(len(ranking), 2)
+
+        # Primero: el producto desactivado por tener mayor volumen (20 unidades)
+        self.assertEqual(ranking[0]['nombre'], self.prod_desactivado.nombre)
+        self.assertEqual(ranking[0]['total_unidades'], 20)
+        self.assertEqual(ranking[0]['total_recaudado'], 60000)
+        self.assertFalse(ranking[0]['activo'])
+
+        # Segundo: el producto activo (5 unidades)
+        self.assertEqual(ranking[1]['nombre'], self.prod_activo.nombre)
+        self.assertEqual(ranking[1]['total_unidades'], 5)
+        self.assertEqual(ranking[1]['total_recaudado'], 42500)
+        self.assertTrue(ranking[1]['activo'])
+
+    def test_rf18_9_metricas_tiempos_atencion_en_reporte(self):
+        """RF18.9: Integración de métricas de tiempos (RF16) en el reporte analítico"""
+        import datetime
+        from decimal import Decimal
+        from django.utils import timezone
+        from ventas.models import Venta, Pedido, Entrega
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        now = timezone.now()
+        base = now - datetime.timedelta(minutes=20)
+
+        v = Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('10000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+        p = Pedido.objects.create(venta=v, estado='LISTO')
+        Pedido.objects.filter(id=p.id).update(
+            creado_en=base,
+            fecha_inicio_preparacion=base + datetime.timedelta(minutes=5),
+            fecha_listo=base + datetime.timedelta(minutes=15),
+            estado='ENTREGADO'
+        )
+        p.refresh_from_db()
+        e = Entrega.objects.create(pedido=p, usuario_entrega=self.mesero_user)
+        Entrega.objects.filter(id=e.id).update(fecha_hora_entrega=base + datetime.timedelta(minutes=20))
+        e.refresh_from_db()
+
+        rep = generar_reporte_estadistico_integral()
+        tiempos = rep['tiempos_atencion']
+        self.assertEqual(tiempos['total_entregados'], 1)
+        self.assertAlmostEqual(tiempos['promedio_tiempo_espera_total_minutos'], 20.0, places=0)
+        self.assertAlmostEqual(tiempos['promedio_tiempo_cola_minutos'], 5.0, places=0)
+        self.assertAlmostEqual(tiempos['promedio_tiempo_preparacion_minutos'], 10.0, places=0)
+        self.assertAlmostEqual(tiempos['promedio_tiempo_despacho_minutos'], 5.0, places=0)
+
+    def test_rf18_10_metricas_ocupacion_mesas_en_reporte(self):
+        """RF18.10: Integración de métricas de ocupación de mesas (RF17) en el reporte analítico"""
+        import datetime
+        from django.utils import timezone
+        from ventas.utils import generar_reporte_estadistico_integral
+
+        # Ocupamos mesa_1 hace 30 minutos
+        self.mesa_1.ocupar(timestamp=timezone.now() - datetime.timedelta(minutes=30))
+
+        rep = generar_reporte_estadistico_integral(punto_venta=self.pv_central.id)
+        ocup = rep['ocupacion_mesas']
+        self.assertEqual(ocup['total_mesas'], 2)
+        self.assertEqual(ocup['mesas_ocupadas'], 1)
+        self.assertEqual(ocup['mesas_libres'], 1)
+        self.assertAlmostEqual(ocup['tasa_ocupacion_porcentaje'], 50.0, places=1)
+        self.assertAlmostEqual(ocup['promedio_duracion_ocupacion_minutos'], 30.0, places=0)
+
+    def test_rf18_11_exportacion_reporte_sin_mocks(self):
+        """RF18.11: Exportación en Excel y Word con datos 100% reales sin simulación mock"""
+        from decimal import Decimal
+        from ventas.models import Venta
+        from ventas.exportador_reportes import obtener_datos_reporte, generar_excel_ventas, generar_word_ventas
+
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('50000'), estado='PAGADA', metodo_pago='TARJETA_DEBITO', modalidad='VENTA_RAPIDA'
+        )
+
+        datos = obtener_datos_reporte(tipo_rango='15_meses')
+        self.assertEqual(datos['total_ventas'], 50000)
+        self.assertEqual(datos['total_tickets'], 1)
+        self.assertNotEqual(datos['total_tickets'], 84)
+
+        # Generación de Excel
+        excel_io = generar_excel_ventas(datos)
+        self.assertGreater(excel_io.getbuffer().nbytes, 1000)
+
+        # Generación de Word
+        word_io = generar_word_ventas(datos)
+        self.assertGreater(word_io.getbuffer().nbytes, 1000)
+
+    def test_rf18_12_dashboard_admin_acceso_y_render_completo(self):
+        """RF18.12: Acceso exitoso al Dashboard de Administrador (HTTP 200) y render de métricas reales"""
+        from decimal import Decimal
+        from django.urls import reverse
+        from ventas.models import Venta
+
+        Venta.objects.create(
+            caja=self.caja_1, punto_venta=self.pv_central, cajero=self.cajero_1,
+            total=Decimal('90000'), estado='PAGADA', metodo_pago='EFECTIVO', modalidad='VENTA_RAPIDA'
+        )
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse('administrador_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+        # Contexto del dashboard
+        self.assertIn('reporte', response.context)
+        self.assertIn('ranking_productos', response.context)
+        self.assertIn('tiempos', response.context)
+        self.assertIn('ocupacion', response.context)
+        self.assertIn('chart_data_json', response.context)
+
+        # Contenido HTML renderizado
+        content = response.content.decode('utf-8')
+        self.assertIn('Ranking de Productos Más Vendidos', content)
+        self.assertIn('Tiempo Espera Total', content)
+        self.assertIn('Ocupación Mesas', content)
+        self.assertIn('formExportarVentas', content)
+
+    def test_rf18_13_dashboard_bloqueo_roles_no_autorizados(self):
+        """RF18.13: Blindaje RBAC: Meseros y Cajeros no pueden acceder al Dashboard de Administrador"""
+        from django.urls import reverse
+
+        # Mesero no autorizado
+        self.client.force_login(self.mesero_user)
+        response_mesero = self.client.get(reverse('administrador_dashboard'))
+        self.assertIn(response_mesero.status_code, [302, 403])
+
+        # Cajero no autorizado
+        self.client.force_login(self.cajero_1)
+        response_cajero = self.client.get(reverse('administrador_dashboard'))
+        self.assertIn(response_cajero.status_code, [302, 403])
