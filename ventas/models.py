@@ -344,10 +344,24 @@ class PrecioEspecial(models.Model):
     """Precios diferenciados para productos (ej. funcionarios, convenios institucionales o descuentos)"""
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='precios_especiales')
     nombre_condicion = models.CharField(max_length=100, help_text="Motivo o convenio")
+    codigo_convenio = models.CharField(max_length=50, blank=True, null=True, db_index=True, help_text="Código alfanumérico o QR de convenio institucional (RF07)")
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_fin = models.DateField(null=True, blank=True)
     activo = models.BooleanField(default=True)
+
+    def es_vigente(self, fecha=None):
+        """Valida si el convenio o precio especial se encuentra activo y dentro del rango de fechas (RF07)"""
+        if not self.activo:
+            return False
+        if not fecha:
+            from django.utils import timezone
+            fecha = timezone.localdate()
+        if self.fecha_inicio and fecha < self.fecha_inicio:
+            return False
+        if self.fecha_fin and fecha > self.fecha_fin:
+            return False
+        return True
 
     def __str__(self):
         return f"{self.producto.nombre} - ${self.precio:,.0f} ({self.nombre_condicion})"
@@ -454,6 +468,11 @@ class DetalleVenta(models.Model):
     cantidad = models.PositiveIntegerField(default=1)
     precio_aplicado = models.DecimalField(max_digits=10, decimal_places=2)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    # Campos RF07 - Trazabilidad de Precios Especiales y Convenios
+    precio_original = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio base oficial de Producto en BD")
+    es_precio_especial = models.BooleanField(default=False, help_text="Indica si se aplicó precio especial o convenio (RF07)")
+    motivo_precio_especial = models.CharField(max_length=200, blank=True, null=True, help_text="Motivo o convenio comercial (RF07)")
+    autorizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='precios_especiales_autorizados')
 
     def __str__(self):
         return f"{self.cantidad}x {self.producto.nombre} en Venta #{self.venta.id}"
@@ -462,6 +481,31 @@ class DetalleVenta(models.Model):
         verbose_name = "Detalle de Venta"
         verbose_name_plural = "Detalles de Venta"
 
+
+# ==============================================================================
+# 11.1 REGISTRO DE PRECIOS ESPECIALES Y CONVENIOS (RF07 - Trazabilidad de Precios)
+# ==============================================================================
+class RegistroPrecioEspecial(models.Model):
+    """Auditoría de precios especiales, convenios y descuentos autorizados durante la venta (RF07)"""
+    venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='registros_precios_especiales')
+    detalle_venta = models.ForeignKey(DetalleVenta, on_delete=models.CASCADE, related_name='registros_precio_especial', null=True, blank=True)
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='historial_precios_especiales')
+    precio_original = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio base del producto al momento de la venta")
+    precio_aplicado = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio especial efectivamente cobrado")
+    descuento_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Diferencia unitaria entre precio base y precio aplicado")
+    cantidad = models.PositiveIntegerField(default=1)
+    usuario = models.ForeignKey(User, on_delete=models.PROTECT, related_name='precios_especiales_aplicados', help_text="Usuario que aplicó o autorizó la modificación")
+    motivo = models.CharField(max_length=200, help_text="Motivo comercial, convenio o condición autorizada")
+    convenio_origen = models.ForeignKey(PrecioEspecial, on_delete=models.SET_NULL, null=True, blank=True, related_name='aplicaciones', help_text="Convenio institucional si proviene de PrecioEspecial")
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"RF07 Venta #{self.venta.id} - {self.producto.nombre}: ${self.precio_original:,.0f} -> ${self.precio_aplicado:,.0f} ({self.motivo})"
+
+    class Meta:
+        verbose_name = "Registro de Precio Especial"
+        verbose_name_plural = "Registros de Precios Especiales"
+        ordering = ['-fecha_hora']
 
 # ==============================================================================
 # 12. PEDIDOS / COMANDAS OPERATIVAS (RF09 - Derivación a Cocina y Barra)
@@ -652,12 +696,12 @@ class ConvenioHuesped(models.Model):
 
     def es_valido_hoy(self):
         """Verifica que el pase este activo y dentro de las fechas de estadia"""
-        hoy = timezone.now().date()
+        hoy = timezone.localdate()
         return self.activo and (self.fecha_checkin <= hoy <= self.fecha_checkout)
 
     def consumos_hoy_count(self):
         """Calcula cuantas veces ha utilizado el beneficio durante la jornada de hoy"""
-        hoy = timezone.now().date()
+        hoy = timezone.localdate()
         return self.consumos.filter(fecha_hora__date=hoy).count()
 
     def puede_consumir_hoy(self):

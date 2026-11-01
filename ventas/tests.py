@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import datetime
 from datetime import timedelta
 from decimal import Decimal
 from django.conf import settings
@@ -10,7 +11,11 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.cache import cache
-from ventas.models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Jornada, Caja, Mesa, Venta, DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu
+from ventas.models import (
+    PuntoVenta, PerfilEmpleado, AlertaTraslado, Jornada, Caja, Mesa, Venta,
+    DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu,
+    PrecioEspecial, RegistroPrecioEspecial, ReasignacionMesa
+)
 
 
 class SafariFase2A1Tests(TestCase):
@@ -2102,8 +2107,8 @@ class SafariSeguridadYConveniosTests(TestCase):
             tipo_beneficio='DESAYUNO_INCLUIDO',
             valor_descuento=Decimal('100.00'),
             limite_diario=1,
-            fecha_checkin=timezone.now().date() - timedelta(days=1),
-            fecha_checkout=timezone.now().date() + timedelta(days=2),
+            fecha_checkin=timezone.localdate() - timedelta(days=1),
+            fecha_checkout=timezone.localdate() + timedelta(days=2),
             activo=True
         )
 
@@ -2124,8 +2129,8 @@ class SafariSeguridadYConveniosTests(TestCase):
             nombre_titular='Pedro Picapiedra',
             tipo_beneficio='DESAYUNO_INCLUIDO',
             limite_diario=1,
-            fecha_checkin=timezone.now().date(),
-            fecha_checkout=timezone.now().date() + timedelta(days=1),
+            fecha_checkin=timezone.localdate(),
+            fecha_checkout=timezone.localdate() + timedelta(days=1),
             activo=True
         )
 
@@ -2461,3 +2466,366 @@ class SafariRF05ReasignacionMesasTests(TestCase):
         self.assertEqual(self.venta1.pedidos.count(), 3)
         self.assertEqual(self.venta1.mesa, self.mesa2)
         self.assertEqual(self.venta1.total, Decimal('18400'))
+
+
+# ==============================================================================
+# RF07 — SUITE DE PRUEBAS: GESTIÓN DE PRECIOS DURANTE LA VENTA (CONVENIOS / AUTORIZACIONES)
+# ==============================================================================
+class SafariRF07GestionPreciosTests(TestCase):
+    """
+    Pruebas exhaustivas para RF07:
+    - Inmutabilidad de Producto.precio_base en BD (RF07.1).
+    - Aplicación de precio especial exclusivamente al DetalleVenta de la transacción (RF07.2).
+    - Control estricto de autorización por rol y motivo comercial obligatorio (RF07.3).
+    - Trazabilidad total mediante DetalleVenta y RegistroPrecioEspecial (RF07.4).
+    - Soporte y validación de convenios comerciales activos y vigentes (RF07.5).
+    - Blindaje contra fallos: precio <= 0, no numérico, convenio vencido, producto inactivo,
+      manipulación de cliente/navegador y consistencia transaccional.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.hoy = timezone.localdate()
+
+        self.admin_user = User.objects.create_user(
+            username='admin_rf07', password='Password123!', first_name='Admin', last_name='Test'
+        )
+        self.cajero_user = User.objects.create_user(
+            username='cajero_rf07', password='Password123!', first_name='Cajero', last_name='Test'
+        )
+        self.mesero_user = User.objects.create_user(
+            username='mesero_rf07', password='Password123!', first_name='Mesero', last_name='Test'
+        )
+
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante RF07 Test", tipo="RESTAURANTE", activo=True)
+
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv)
+        PerfilEmpleado.objects.create(usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv)
+        PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv)
+
+        self.categoria = Categoria.objects.create(nombre="Gastronomía RF07", activo=True)
+        self.producto = Producto.objects.create(
+            nombre="Hamburguesa Premium Safari",
+            categoria=self.categoria,
+            precio_base=Decimal('9000.00'),
+            activo=True
+        )
+
+        self.jornada = Jornada.objects.create(
+            fecha=self.hoy, estado='ABIERTA', usuario_apertura=self.admin_user
+        )
+        self.caja = Caja.objects.create(
+            nombre="Caja POS RF07",
+            jornada=self.jornada,
+            punto_venta=self.pv,
+            cajero=self.cajero_user,
+            monto_apertura=Decimal('100000.00'),
+            estado='ABIERTA'
+        )
+        self.mesa = Mesa.objects.create(
+            identificador="Mesa 70", punto_venta=self.pv, capacidad=4, estado='HABILITADA'
+        )
+
+    # 1. Inmutabilidad de Producto.precio_base en BD (RF07.1)
+    def test_rf07_1_precio_base_oficial_inmutable_en_bd(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        precio_inicial = self.producto.precio_base
+
+        calc = validar_y_calcular_precio_linea(
+            producto=self.producto,
+            cantidad=2,
+            precio_solicitado=Decimal('5000.00'),
+            usuario=self.cajero_user,
+            motivo="Descuento Autorizado Vecino",
+            permite_manual=True
+        )
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.precio_base, precio_inicial)
+        self.assertEqual(calc['precio_original'], precio_inicial)
+        self.assertEqual(calc['precio_aplicado'], Decimal('5000.00'))
+
+    # 2. Precio especial exclusivo de la transacción (RF07.2)
+    def test_rf07_2_precio_especial_por_operacion_detalle_venta(self):
+        from ventas.utils import validar_y_calcular_precio_linea, registrar_precio_especial_auditoria
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero_user, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='EFECTIVO', total=Decimal('6000.00'), estado='PAGADA'
+        )
+
+        calc = validar_y_calcular_precio_linea(
+            producto=self.producto,
+            cantidad=1,
+            precio_solicitado=Decimal('6000.00'),
+            usuario=self.cajero_user,
+            motivo="Convenio Convenio Vecino Rancagua"
+        )
+        det = DetalleVenta.objects.create(
+            venta=venta, producto=self.producto, cantidad=1,
+            precio_aplicado=calc['precio_aplicado'], subtotal=calc['subtotal']
+        )
+        registrar_precio_especial_auditoria(venta, det, calc)
+
+        det.refresh_from_db()
+        self.assertTrue(det.es_precio_especial)
+        self.assertEqual(det.precio_original, Decimal('9000.00'))
+        self.assertEqual(det.precio_aplicado, Decimal('6000.00'))
+        self.assertEqual(det.autorizado_por, self.cajero_user)
+
+        # Verificar que el catálogo permanece con precio normal
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.precio_base, Decimal('9000.00'))
+
+    # 3. Rechazo de modificación de precio por usuario sin rol autorizado (RF07.3)
+    def test_rf07_3_rechazo_usuario_no_autorizado_para_precio_manual(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_y_calcular_precio_linea(
+                producto=self.producto,
+                cantidad=1,
+                precio_solicitado=Decimal('4000.00'),
+                usuario=self.mesero_user, # Mesero no tiene permiso para inventar precios
+                motivo="Amigo personal",
+                permite_manual=True
+            )
+        self.assertIn("No tienes autorización", str(ctx.exception))
+
+    # 4. Exigencia de motivo justificado para precio manual (RF07.3)
+    def test_rf07_3_exigencia_de_motivo_justificado(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_y_calcular_precio_linea(
+                producto=self.producto,
+                cantidad=1,
+                precio_solicitado=Decimal('5000.00'),
+                usuario=self.cajero_user,
+                motivo="   ", # Motivo vacío o puros espacios
+                permite_manual=True
+            )
+        self.assertIn("Debe ingresar un motivo o justificación", str(ctx.exception))
+
+    # 5. Trazabilidad total de auditoría en RegistroPrecioEspecial (RF07.4)
+    def test_rf07_4_trazabilidad_auditoria_completa_registro_precio_especial(self):
+        from ventas.utils import validar_y_calcular_precio_linea, registrar_precio_especial_auditoria
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero_user, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='EFECTIVO', total=Decimal('7000.00'), estado='PAGADA'
+        )
+
+        calc = validar_y_calcular_precio_linea(
+            producto=self.producto,
+            cantidad=1,
+            precio_solicitado=Decimal('7000.00'),
+            usuario=self.admin_user,
+            motivo="Descuento Institucional INACAP"
+        )
+        det = DetalleVenta.objects.create(
+            venta=venta, producto=self.producto, cantidad=1,
+            precio_aplicado=calc['precio_aplicado'], subtotal=calc['subtotal']
+        )
+        reg = registrar_precio_especial_auditoria(venta, det, calc)
+
+        self.assertIsNotNone(reg)
+        self.assertEqual(reg.venta, venta)
+        self.assertEqual(reg.producto, self.producto)
+        self.assertEqual(reg.precio_original, Decimal('9000.00'))
+        self.assertEqual(reg.precio_aplicado, Decimal('7000.00'))
+        self.assertEqual(reg.descuento_unitario, Decimal('2000.00'))
+        self.assertEqual(reg.usuario, self.admin_user)
+        self.assertEqual(reg.motivo, "Descuento Institucional INACAP")
+
+    # 6. Aplicación de convenio comercial institucional activo y vigente (RF07.5)
+    def test_rf07_5_convenio_institucional_valido_y_vigente(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        convenio = PrecioEspecial.objects.create(
+            producto=self.producto,
+            nombre_condicion="Tarifa Funcionario Safari",
+            codigo_convenio="CONV-FUNC-01",
+            precio=Decimal('4500.00'),
+            fecha_inicio=self.hoy - datetime.timedelta(days=10),
+            fecha_fin=self.hoy + datetime.timedelta(days=10),
+            activo=True
+        )
+
+        calc = validar_y_calcular_precio_linea(
+            producto=self.producto,
+            cantidad=3,
+            convenio_id=convenio.id,
+            usuario=self.cajero_user
+        )
+        self.assertTrue(calc['es_precio_especial'])
+        self.assertEqual(calc['precio_aplicado'], Decimal('4500.00'))
+        self.assertEqual(calc['descuento_unitario'], Decimal('4500.00'))
+        self.assertEqual(calc['subtotal'], Decimal('13500.00'))
+        self.assertEqual(calc['convenio_obj'], convenio)
+
+    # 7. Rechazo estricto de precio especial <= 0 (Problemas 1 y 2)
+    def test_rf07_problemas_1_y_2_rechazo_precio_cero_o_negativo(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        for p_invalido in [Decimal('0.00'), Decimal('-500.00')]:
+            with self.assertRaises(ValidationError) as ctx:
+                validar_y_calcular_precio_linea(
+                    producto=self.producto,
+                    cantidad=1,
+                    precio_solicitado=p_invalido,
+                    usuario=self.admin_user,
+                    motivo="Precio Invalido"
+                )
+            self.assertIn("mayor a $0", str(ctx.exception))
+
+    # 8. Rechazo de valor no numérico (Problema 3)
+    def test_rf07_problema_3_rechazo_valor_no_numerico(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_y_calcular_precio_linea(
+                producto=self.producto,
+                cantidad=1,
+                precio_solicitado="precio_gratis",
+                usuario=self.admin_user,
+                motivo="Ataque no numérico"
+            )
+        self.assertIn("formato no numérico inválido", str(ctx.exception))
+
+    # 9. Rechazo de producto inactivo (Problema 5)
+    def test_rf07_problema_5_rechazo_producto_inactivo(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        self.producto.activo = False
+        self.producto.save()
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_y_calcular_precio_linea(
+                producto=self.producto,
+                cantidad=1,
+                usuario=self.cajero_user
+            )
+        self.assertIn("se encuentra inactivo", str(ctx.exception))
+
+    # 10. Rechazo de convenio expirado o inactivo (Problemas 7 y 8)
+    def test_rf07_problemas_7_y_8_rechazo_convenio_inactivo_o_expirado(self):
+        from ventas.utils import validar_y_calcular_precio_linea
+        from django.core.exceptions import ValidationError
+
+        conv_expirado = PrecioEspecial.objects.create(
+            producto=self.producto,
+            nombre_condicion="Convenio Pasado",
+            precio=Decimal('5000.00'),
+            fecha_inicio=self.hoy - datetime.timedelta(days=30),
+            fecha_fin=self.hoy - datetime.timedelta(days=1), # Venció ayer
+            activo=True
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_y_calcular_precio_linea(
+                producto=self.producto,
+                cantidad=1,
+                convenio_id=conv_expirado.id,
+                usuario=self.cajero_user
+            )
+        self.assertIn("no se encuentra vigente", str(ctx.exception))
+
+    # 11. El servidor ignora precios manipulados en cliente por usuario no autorizado (Problema 10)
+    def test_rf07_problema_10_servidor_ignora_precio_manipulado_por_navegador(self):
+        self.client.force_login(self.mesero_user)
+
+        # El navegador de un mesero envía comanda con precio manipulado a $100 CLP
+        payload = [
+            {"nombre": self.producto.nombre, "cantidad": 1, "precio": 100, "destino": "COCINA", "nota": "Manipulado"}
+        ]
+        resp = self.client.post(reverse('mesero') + f"?local_id={self.pv.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa.id,
+            'items_json': json.dumps(payload)
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        # El servidor ignoró el precio de $100 y cobró los $9.000 oficiales de la BD
+        venta = Venta.objects.filter(mesa=self.mesa, estado='ABIERTA').first()
+        self.assertIsNotNone(venta)
+        det = venta.detalles.first()
+        self.assertEqual(det.precio_aplicado, Decimal('9000.00'))
+        self.assertEqual(venta.total, Decimal('9000.00'))
+        self.assertFalse(det.es_precio_especial)
+
+    # 12. API de verificación QR de convenios comerciales institucionales (RF07.5)
+    def test_rf07_api_verificar_convenio_qr(self):
+        convenio = PrecioEspecial.objects.create(
+            producto=self.producto,
+            nombre_condicion="Convenio Club Leones",
+            codigo_convenio="QR-LEONES-2026",
+            precio=Decimal('6500.00'),
+            activo=True
+        )
+
+        self.client.force_login(self.cajero_user)
+        resp = self.client.get(reverse('api_verificar_convenio_qr'), {'codigo': 'QR-LEONES-2026'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['encontrado'])
+        self.assertEqual(data['tipo'], 'CONVENIO_INSTITUCIONAL')
+        self.assertEqual(data['precio_convenio'], 6500.0)
+        self.assertEqual(data['ahorro_unitario'], 2500.0)
+
+    # 13. Terminal POS Venta Rápida con registro de precio especial auditado
+    def test_rf07_pos_venta_rapida_con_precio_especial_y_arqueo(self):
+        self.client.force_login(self.cajero_user)
+        payload = [
+            {
+                "producto_id": self.producto.id,
+                "cantidad": 2,
+                "precio_especial": 7000,
+                "motivo": "Convenio Vecino Machalí",
+                "nota": "Sin cebolla"
+            }
+        ]
+
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        venta_id = data['venta_id']
+
+        venta = Venta.objects.get(id=venta_id)
+        self.assertEqual(venta.total, Decimal('14000.00'))
+        self.assertEqual(venta.detalles.count(), 1)
+        det = venta.detalles.first()
+        self.assertTrue(det.es_precio_especial)
+        self.assertEqual(det.precio_original, Decimal('9000.00'))
+        self.assertEqual(det.precio_aplicado, Decimal('7000.00'))
+
+        reg = RegistroPrecioEspecial.objects.filter(venta=venta).first()
+        self.assertIsNotNone(reg)
+        self.assertEqual(reg.descuento_unitario, Decimal('2000.00'))
+        self.assertEqual(reg.motivo, "Convenio Vecino Machalí")
+
+    # 14. Historial de supervisión consolida eventos de precios especiales
+    def test_rf07_historial_supervision_incluye_precios_especiales(self):
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero_user, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='EFECTIVO', total=Decimal('5000.00'), estado='PAGADA'
+        )
+        RegistroPrecioEspecial.objects.create(
+            venta=venta, producto=self.producto, precio_original=Decimal('9000.00'),
+            precio_aplicado=Decimal('5000.00'), descuento_unitario=Decimal('4000.00'),
+            cantidad=1, usuario=self.admin_user, motivo="Promoción Supervisor"
+        )
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('administrador_historial') + "?tipo=PRECIOS")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Promoción Supervisor")
+        self.assertContains(resp, "Precio Especial:")
+

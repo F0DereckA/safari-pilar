@@ -3,7 +3,7 @@ from .models import (
     PerfilEmpleado, Jornada, PuntoVenta, Caja, Categoria, Producto,
     Menu, PrecioEspecial, Mesa, Venta, DetalleVenta, Pedido,
     DetallePedido, Ticket, Entrega, ConsumoInterno, DetalleConsumoInterno,
-    AlertaTraslado, ReasignacionMesa
+    AlertaTraslado, ReasignacionMesa, RegistroPrecioEspecial
 )
 
 @admin.register(PerfilEmpleado)
@@ -127,5 +127,12 @@ class ReasignacionMesaAdmin(admin.ModelAdmin):
     list_display = ('id', 'venta', 'mesa_origen', 'mesa_destino', 'mesero', 'motivo', 'fecha_hora')
     list_filter = ('mesa_origen__punto_venta', 'fecha_hora')
     search_fields = ('venta__id', 'mesa_origen__identificador', 'mesa_destino__identificador', 'mesero__username')
+
+@admin.register(RegistroPrecioEspecial)
+class RegistroPrecioEspecialAdmin(admin.ModelAdmin):
+    list_display = ('id', 'venta', 'producto', 'precio_original', 'precio_aplicado', 'descuento_unitario', 'cantidad', 'usuario', 'motivo', 'fecha_hora')
+    list_filter = ('motivo', 'fecha_hora', 'convenio_origen')
+    search_fields = ('venta__id', 'producto__nombre', 'usuario__username', 'motivo')
+
 
 

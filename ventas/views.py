@@ -13,7 +13,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from .validators import validar_complejidad_clave
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial
+from .utils import validar_y_calcular_precio_linea, registrar_precio_especial_auditoria, calcular_redondeo_ley_20956
 
 
 def get_locales_data():
@@ -1063,7 +1064,7 @@ def cerrar_jornada(request):
 
 @requiere_rol(['CAJERO'])
 def crear_ticket(request):
-    """Terminal POS de venta rápida y cobro (requiere jornada del día y caja activa)"""
+    """Terminal POS de venta rápida y cobro con soporte para Precios Especiales y Convenios (RF07)"""
     hoy = timezone.localdate()
     ahora_dt = timezone.localtime()
     ahora_hora = ahora_dt.time()
@@ -1081,11 +1082,187 @@ def crear_ticket(request):
         ).first()
 
     if not jornada_activa or not caja_activa:
+        if request.method == 'POST' and (request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', '')):
+            return JsonResponse({'ok': False, 'error': 'Debes tener jornada y caja individual abierta antes de emitir tickets.'}, status=400)
         messages.warning(request, "Debes tener tu jornada del día y caja individual abierta antes de emitir tickets.")
         return redirect('vendedor')
 
     perfil = getattr(request.user, 'perfil', None)
     punto_venta = perfil.punto_venta_actual if perfil else None
+
+    # Procesar Venta POS real (RF07)
+    if request.method == 'POST':
+        items_raw = request.POST.get('items_json', '[]')
+        metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO').upper()
+        if metodo_pago not in ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA']:
+            metodo_pago = 'EFECTIVO'
+
+        try:
+            items_lista = json.loads(items_raw)
+        except Exception:
+            items_lista = []
+
+        if not items_lista:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'ok': False, 'error': 'El pedido no contiene ítems para procesar.'}, status=400)
+            messages.warning(request, "El pedido no contiene ítems para procesar.")
+            return redirect('crear_ticket')
+
+        with transaction.atomic():
+            caja = Caja.objects.select_for_update().filter(id=caja_activa.id).first()
+            if not caja or caja.estado != 'ABIERTA':
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'ok': False, 'error': 'La caja individual no se encuentra abierta.'}, status=400)
+                messages.error(request, "Tu caja individual no se encuentra abierta.")
+                return redirect('vendedor')
+
+            lineas_calculadas = []
+            subtotal_bruto = Decimal('0')
+
+            for it in items_lista:
+                p_id = it.get('producto_id') or it.get('id')
+                p_nom = it.get('nombre')
+                p_cant = it.get('cantidad', 1)
+                p_precio_solicitado = it.get('precio_especial') or it.get('precio')
+                p_conv_id = it.get('convenio_id')
+                p_motivo = it.get('motivo_precio_especial') or it.get('motivo')
+
+                prod = None
+                if p_id:
+                    prod = Producto.objects.select_for_update().filter(id=p_id).first()
+                if not prod and p_nom:
+                    prod = Producto.objects.select_for_update().filter(nombre=p_nom).first()
+
+                if not prod:
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                        return JsonResponse({'ok': False, 'error': f"El producto '{p_nom or p_id}' no existe en la base de datos."}, status=400)
+                    messages.error(request, f"El producto '{p_nom or p_id}' no existe en el catálogo.")
+                    return redirect('crear_ticket')
+
+                precio_req_val = None
+                if p_precio_solicitado is not None:
+                    try:
+                        p_dec = Decimal(str(p_precio_solicitado))
+                        if p_dec != prod.precio_base:
+                            precio_req_val = p_dec
+                    except Exception:
+                        pass
+
+                try:
+                    calc = validar_y_calcular_precio_linea(
+                        producto=prod,
+                        cantidad=p_cant,
+                        precio_solicitado=precio_req_val,
+                        convenio_id=p_conv_id,
+                        usuario=request.user,
+                        motivo=p_motivo or "Condición comercial autorizada",
+                        permite_manual=True
+                    )
+                except Exception as ve:
+                    err_msg = ve.message if hasattr(ve, 'message') else str(ve)
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                        return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+                    messages.error(request, f"Error en precio: {err_msg}")
+                    return redirect('crear_ticket')
+
+                subtotal_bruto += calc['subtotal']
+                lineas_calculadas.append((prod, calc, it.get('nota', '')))
+
+            monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(subtotal_bruto, metodo_pago)
+
+            venta = Venta.objects.create(
+                caja=caja,
+                cajero=request.user,
+                punto_venta=caja.punto_venta,
+                modalidad='MOSTRADOR',
+                metodo_pago=metodo_pago,
+                total=monto_final,
+                total_sin_redondeo=subtotal_bruto,
+                redondeo_ley_20956=ajuste_redondeo,
+                estado='PAGADA'
+            )
+
+            pedido = Pedido.objects.create(
+                venta=venta,
+                estado='PENDIENTE',
+                observaciones=f"Venta rápida POS #{venta.id} atendida por {request.user.get_full_name() or request.user.username}"
+            )
+
+            tiene_cocina = False
+            tiene_barra = False
+
+            for prod, calc, nota in lineas_calculadas:
+                det = DetalleVenta.objects.create(
+                    venta=venta,
+                    producto=prod,
+                    cantidad=calc['cantidad'],
+                    precio_aplicado=calc['precio_aplicado'],
+                    subtotal=calc['subtotal'],
+                    precio_original=calc['precio_original'],
+                    es_precio_especial=calc['es_precio_especial'],
+                    motivo_precio_especial=calc['motivo'],
+                    autorizado_por=calc['autorizado_por']
+                )
+                if calc['es_precio_especial']:
+                    registrar_precio_especial_auditoria(venta, det, calc)
+
+                nota_pedido = nota
+                if calc['es_precio_especial']:
+                    nota_pedido = f"{nota_pedido} [{calc['motivo']}]".strip()
+
+                DetallePedido.objects.create(
+                    pedido=pedido,
+                    producto=prod,
+                    cantidad=calc['cantidad'],
+                    observaciones=nota_pedido
+                )
+
+                cat_nombre = (prod.categoria.nombre if prod.categoria else '').lower()
+                if any(k in cat_nombre for k in ['cocina', 'minuta', 'hamburguesa', 'plato', 'preparada']):
+                    tiene_cocina = True
+                elif any(k in cat_nombre for k in ['cafeter', 'barra', 'jugo', 'bebida', 'snack']):
+                    tiene_barra = True
+
+            if not tiene_cocina and not tiene_barra:
+                tiene_cocina = True
+
+            tickets_generados = []
+            if tiene_cocina:
+                t_coc = Ticket.objects.create(
+                    pedido=pedido,
+                    codigo=f"POS-COC-{pedido.id:04d}",
+                    tipo_destino='COCINA',
+                    estado='EMITIDO',
+                    contenido_impresion=f"Comanda POS Cocina - Venta #{venta.id}"
+                )
+                tickets_generados.append(t_coc.codigo)
+
+            if tiene_barra:
+                t_bar = Ticket.objects.create(
+                    pedido=pedido,
+                    codigo=f"POS-BAR-{pedido.id:04d}",
+                    tipo_destino='BARRA',
+                    estado='EMITIDO',
+                    contenido_impresion=f"Comanda POS Barra - Venta #{venta.id}"
+                )
+                tickets_generados.append(t_bar.codigo)
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({
+                    'ok': True,
+                    'venta_id': venta.id,
+                    'total': float(venta.total),
+                    'total_sin_redondeo': float(venta.total_sin_redondeo or venta.total),
+                    'redondeo': float(venta.redondeo_ley_20956 or 0),
+                    'tickets': tickets_generados,
+                    'mensaje': f"¡Venta POS #{venta.id} registrada exitosamente por ${int(venta.total):,} CLP!"
+                })
+
+            messages.success(request, f"¡Venta #{venta.id} emitida exitosamente por ${int(venta.total):,} CLP! Comanda derivada a cocina/barra.")
+            return redirect('crear_ticket')
+
+    productos_activos = Producto.objects.filter(activo=True).select_related('categoria').prefetch_related('precios_especiales')
+    convenios_activos = PrecioEspecial.objects.filter(activo=True).select_related('producto')
 
     context = {
         "jornada_activa": jornada_activa,
@@ -1096,6 +1273,8 @@ def crear_ticket(request):
         "ahora_hora_str": ahora_dt.strftime("%H:%M"),
         "en_horario": en_horario,
         "horario_oficial": "10:00 a 18:00",
+        "productos_activos": productos_activos,
+        "convenios_activos": convenios_activos,
     }
     return render(request, 'ventas/vendedor_crear_ticket.html', context)
 
@@ -2313,6 +2492,26 @@ def administrador_historial(request):
             'estado': 'TRASLADADA',
         })
 
+    # 7. Eventos de Precios Especiales y Convenios Autorizados (RF07)
+    precios_esp_qs = RegistroPrecioEspecial.objects.select_related('venta', 'producto', 'usuario', 'convenio_origen', 'venta__punto_venta').all()
+    for pe in precios_esp_qs:
+        local_p = pe.venta.punto_venta if (pe.venta and pe.venta.punto_venta) else None
+        eventos.append({
+            'id_ref': f"PRESP-{pe.id}",
+            'tipo': 'PRECIOS',
+            'subtipo': 'Precio Especial Autorizado',
+            'badge_clase': 'badge-status-info',
+            'icono': 'bi-tags-fill text-info',
+            'titulo': f"Precio Especial: {pe.producto.nombre}",
+            'descripcion': f"${int(pe.precio_original):,} -> ${int(pe.precio_aplicado):,} (Ahorro unit: ${int(pe.descuento_unitario):,}). Motivo: {pe.motivo} (Venta #{pe.venta.id})",
+            'usuario': pe.usuario.get_full_name() or pe.usuario.username,
+            'local': local_p.nombre if local_p else "Parque Safari General",
+            'local_id': str(local_p.id) if local_p else None,
+            'fecha_hora': pe.fecha_hora,
+            'monto': pe.precio_aplicado * pe.cantidad,
+            'estado': 'APLICADO',
+        })
+
     # Ordenar cronológicamente descendente (lo más reciente primero)
     eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
 
@@ -2663,21 +2862,76 @@ def mesero(request):
                     p_nom = it['nombre']
                     p_precio = it['precio']
                     p_cant = it['cantidad']
+                    p_conv_id = it.get('convenio_id')
+                    p_motivo = it.get('motivo_precio_especial') or it.get('motivo')
+
                     prod_obj, _ = Producto.objects.get_or_create(
                         nombre=p_nom,
                         defaults={'categoria': cat_general, 'precio_base': p_precio}
                     )
-                    # Tarea 8: Motor de ofertas por volumen (3x2, 2x1, 2da a $1 peso, etc.)
-                    total_item, ahorro_item, texto_promo = prod_obj.calcular_total_promocion(p_cant)
+
+                    # RF07: Validación y cálculo blindado de precios con auditoría
+                    # Si el usuario es MESERO y no hay convenio ni autorización de supervisor,
+                    # el servidor ignora el precio manipulado en el frontend y usa el precio base oficial de BD (RF07.1 / Problema 10)
+                    es_autorizado_precio = (
+                        request.user.is_superuser or request.user.is_staff or
+                        (hasattr(request.user, 'perfil') and request.user.perfil.rol in ['ADMINISTRADOR', 'CAJERO'])
+                    )
+
+                    precio_req = None
+                    if es_autorizado_precio and p_precio is not None:
+                        try:
+                            p_dec = Decimal(str(p_precio))
+                            if p_dec != prod_obj.precio_base:
+                                precio_req = p_dec
+                        except Exception:
+                            precio_req = None
+
+                    try:
+                        calc = validar_y_calcular_precio_linea(
+                            producto=prod_obj,
+                            cantidad=p_cant,
+                            precio_solicitado=precio_req,
+                            convenio_id=p_conv_id,
+                            usuario=request.user,
+                            motivo=p_motivo or "Condición comercial autorizada",
+                            permite_manual=es_autorizado_precio
+                        )
+                    except ValidationError as ve:
+                        # Si hay un error de validación en precio manipulado, fallback seguro a precio base de BD
+                        calc = validar_y_calcular_precio_linea(
+                            producto=prod_obj,
+                            cantidad=p_cant,
+                            precio_solicitado=None,
+                            convenio_id=None,
+                            usuario=request.user,
+                            permite_manual=False
+                        )
+
+                    if calc['es_precio_especial']:
+                        total_item = calc['subtotal']
+                        texto_promo = calc['motivo']
+                    else:
+                        # Motor de ofertas por volumen (3x2, 2x1, 2da a $1 peso)
+                        total_item, ahorro_item, texto_promo = prod_obj.calcular_total_promocion(p_cant)
+
                     subtotal_acumulado_ronda += total_item
 
-                    DetalleVenta.objects.create(
+                    det = DetalleVenta.objects.create(
                         venta=venta,
                         producto=prod_obj,
                         cantidad=p_cant,
-                        precio_aplicado=prod_obj.precio_base,
-                        subtotal=total_item
+                        precio_aplicado=calc['precio_aplicado'],
+                        subtotal=total_item,
+                        precio_original=calc['precio_original'],
+                        es_precio_especial=calc['es_precio_especial'],
+                        motivo_precio_especial=calc['motivo'],
+                        autorizado_por=calc['autorizado_por']
                     )
+
+                    if calc['es_precio_especial']:
+                        registrar_precio_especial_auditoria(venta, det, calc)
+
                     nota_item = it['nota']
                     if texto_promo:
                         nota_item = f"{nota_item} [{texto_promo}]".strip()
@@ -3403,10 +3657,36 @@ def cambiar_clave_expirada(request):
 # API VERIFICACIÓN QR Y CONVENIOS CABAÑAS (RF13 - Tarea 7)
 # ==============================================================================
 def api_verificar_convenio_qr(request):
-    """Verifica código QR o de barras de huéspedes de cabañas para desayuno incluido o descuentos"""
+    """Verifica código QR o de barras para convenios comerciales (RF07.5) o huéspedes de cabañas"""
     codigo = request.GET.get('codigo', '').strip()
     if not codigo:
         return JsonResponse({'ok': False, 'mensaje': 'Por favor ingresa o escanea un código QR o de barra.'}, status=400)
+
+    # 1. Búsqueda prioritaria en Convenios Comerciales y Precios Especiales (RF07.5)
+    conv_especial = PrecioEspecial.objects.filter(
+        Q(codigo_convenio__iexact=codigo) | Q(nombre_condicion__iexact=codigo),
+        activo=True
+    ).select_related('producto').first()
+
+    if conv_especial:
+        hoy = timezone.localdate()
+        vigente = conv_especial.es_vigente(hoy)
+        return JsonResponse({
+            'ok': True,
+            'encontrado': True,
+            'valido_hoy': vigente,
+            'puede_consumir': vigente,
+            'tipo': 'CONVENIO_INSTITUCIONAL',
+            'codigo': conv_especial.codigo_convenio or str(conv_especial.id),
+            'convenio_id': conv_especial.id,
+            'nombre_condicion': conv_especial.nombre_condicion,
+            'producto_id': conv_especial.producto.id,
+            'producto_nombre': conv_especial.producto.nombre,
+            'precio_base': float(conv_especial.producto.precio_base),
+            'precio_convenio': float(conv_especial.precio),
+            'ahorro_unitario': float(max(Decimal('0'), conv_especial.producto.precio_base - conv_especial.precio)),
+            'mensaje': f"Convenio comercial '{conv_especial.nombre_condicion}' verificado para {conv_especial.producto.nombre}: ${conv_especial.precio:,.0f} CLP." if vigente else f"Convenio '{conv_especial.nombre_condicion}' fuera de vigencia."
+        })
 
     convenio = ConvenioHuesped.objects.filter(codigo_qr__iexact=codigo).first()
     if not convenio:

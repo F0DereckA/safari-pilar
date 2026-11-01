@@ -6,25 +6,788 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **Consolidación funcional de Requerimientos Oficiales RF01–RF18 + blindaje ante escenarios operacionales reales**.
-- criterio principal: Desde este punto el desarrollo debe volver a priorizar estrictamente la problemática original y los Requerimientos 1–18 entregados por el docente.
-- módulos extra actualmente existentes (ConvenioHuesped, ConsumoHuesped, QR de cabañas/desayuno y OfertaTemporada):
-  - mantener funcionales y aislados para no perder trabajo ni generar regresiones;
-  - no seguir ampliándolos durante esta fase;
-  - no presentarlos como parte central de los RF obligatorios;
-  - cualquier reutilización futura debe reconducirse únicamente a un requerimiento oficial, por ejemplo RF07 Convenios/Precios Especiales.
-- orden funcional prioritario acordado:
-  1. RF05 — Reasignación de mesas.
-  2. RF07 — Gestión de precios especiales durante la venta / convenios autorizados.
-  3. RF10 — Consumo interno del personal / fiado.
-  4. RF13 + RF16 — Registro de entrega y cálculo de tiempos de atención.
-  5. RF17 — Ocupación y liberación de mesas.
-  6. RF18 — Reportes y estadísticas reales desde BD.
-- regla transversal: Cada nueva función debe diseñarse para tolerar errores de usuario, doble envío, concurrencia, datos manipulados, relaciones inexistentes y fallos parciales sin perder integridad ni dejar ventas/mesas en estados imposibles.
+- tarea actual: **PLAN MAESTRO DE IMPLEMENTACIÓN RF07–RF18 — cierre integral de requerimientos oficiales, robustez operacional y pruebas de aceptación**.
+- punto de partida confirmado:
+  - RF05 Reasignación de Mesas: **COMPLETADO Y TESTEADO (93/93 suite vigente)**.
+  - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
+  - RF01–RF07: implementaciones estables y blindadas; no modificar sin auditoría previa.
+- objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
+- método obligatorio para cada RF:
+  1. auditar estado real;
+  2. identificar qué ya existe y qué falta;
+  3. implementar el cambio mínimo necesario;
+  4. blindar errores y concurrencia;
+  5. ejecutar pruebas unitarias/integración;
+  6. ejecutar `python manage.py check`;
+  7. ejecutar suite completa;
+  8. hacer regresión manual de los 4 roles;
+  9. documentar resultado exacto;
+  10. detener antes de pasar al siguiente RF.
+- módulos extra de huéspedes/cabañas/desayuno/ofertas:
+  - mantener funcionales y congelados;
+  - no ampliarlos;
+  - solo reutilizar lógica si encaja de forma directa con un RF oficial.
+- prohibido durante este plan:
+  - desarrollar RF19–RF24;
+  - agregar funcionalidades no solicitadas;
+  - presentar mocks como datos reales;
+  - cambiar el modelo masivamente sin auditoría previa;
+  - continuar al RF siguiente si la suite actual falla.
 ---
 
 
-### PLAN FUNCIONAL PRIORITARIO RF01–RF18 — ROBUSTEZ OPERACIONAL
+
+### PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN
+
+> [!IMPORTANT]
+> Este bloque reemplaza cualquier “siguiente paso” parcial anterior. Antigravity debe trabajar RF por RF, en el orden indicado. No ejecutar todo de una sola vez. Cada RF se considera cerrado solo cuando cumple su criterio de aceptación y la suite completa continúa en verde.
+
+---
+
+## ETAPA 0 — PREPARACIÓN Y LÍNEA BASE ANTES DE RF07
+
+### Objetivo
+Congelar una línea base estable después de RF05 para detectar cualquier regresión futura.
+
+### Tareas
+1. Ejecutar:
+   - `python manage.py check`
+   - `python manage.py test ventas`
+   - `python manage.py showmigrations`
+2. Registrar:
+   - número exacto de tests vigentes;
+   - migraciones aplicadas;
+   - motor de BD realmente activo;
+   - fecha/hora de la línea base.
+3. Verificar manualmente:
+   - ADMINISTRADOR inicia sesión y abre panel.
+   - CAJERO inicia sesión, ve jornada/caja.
+   - MESERO ve mesas y cuenta abierta.
+   - COCINERO ve KDS.
+4. Confirmar que RF05 sigue funcional:
+   - reasignación válida;
+   - destino ocupado rechazado;
+   - no duplica tickets.
+5. No modificar aún lógica funcional.
+
+### Criterio de aceptación
+- `check` limpio.
+- suite completa OK.
+- cuatro roles accesibles.
+- RF05 sin regresiones.
+
+---
+
+# RF07 — GESTIÓN DE PRECIOS DURANTE LA VENTA — [ESTADO: COMPLETADO Y CERRADO (107/107 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF07)
+- **Fecha de Cierre:** 2026-10-31 / 2026-11-01
+- **Migraciones Aplicadas:** `0013_detalleventa_autorizado_por_and_more.py` y `0014_precioespecial_codigo_convenio.py`.
+- **Modelos Actualizados:**
+  * `DetalleVenta`: campos de trazabilidad `precio_original`, `es_precio_especial`, `motivo_precio_especial`, `autorizado_por`.
+  * `RegistroPrecioEspecial`: modelo inmutable de auditoría con `venta`, `detalle_venta`, `producto`, `precio_original`, `precio_aplicado`, `descuento_unitario`, `cantidad`, `usuario`, `motivo`, `convenio_origen`, `fecha_hora`.
+  * `PrecioEspecial`: campo `codigo_convenio` (QR/alfanumérico) y método `es_vigente(fecha=None)`.
+- **Lógica Financiera y Blindaje (`ventas/utils.py`):**
+  * `validar_y_calcular_precio_linea()`: precio base siempre tomado de `Producto.precio_base` en BD; rechazo de precios <= 0 y no numéricos; control estricto de roles autorizados (`ADMINISTRADOR`, `CAJERO`); validación de vigencia de convenios; inmutabilidad garantizada de `Producto.precio_base`.
+  * `registrar_precio_especial_auditoria()`: persistencia inmutable en tabla de auditoría y DetalleVenta.
+- **Vistas Integradas (`ventas/views.py`):**
+  * `mesero` (`enviar_comanda`): validación servidor, protección contra alteración de precios desde cliente (el servidor ignora precios manipulados por mesero/navegador y aplica el oficial de BD).
+  * `crear_ticket`: soporte POST POS venta rápida con validación atómica, cálculo de Ley 20.956 de redondeo y auditoría RF07.
+  * `api_verificar_convenio_qr`: soporte de QR/códigos para convenios institucionales comerciales (RF07.5) preservando compatibilidad con huéspedes.
+  * `administrador_historial`: panel consolidado de auditoría que incluye eventos tipo `PRECIOS` con ahorros y motivos.
+- **Resultados de Pruebas Automatizadas:**
+  * Tests específicos RF07 (`SafariRF07GestionPreciosTests`): 14/14 tests OK.
+  * Suite completa (`python manage.py test ventas`): **107/107 tests pasados exitosamente en 207.6s (0 fallos, 0 errores)**.
+  * `python manage.py check`: 0 issues.
+- **Verificación de 4 Roles:**
+  * ADMINISTRADOR (`rgomez`): 200 OK.
+  * CAJERO (`cvalenzuela`): 200 OK.
+  * MESERO (`dsilva`): 200 OK.
+  * COCINERO (`eparedes`): 200 OK.
+  * RF05 (Reasignación de Mesas): intacto y verificado.
+
+## Objetivo oficial
+Permitir modificar, cuando corresponda, el precio de un producto al generar una venta para valores especiales asociados a convenios u otras condiciones comerciales autorizadas.
+
+## Auditoría previa obligatoria
+1. Revisar `Producto`, `PrecioEspecial`, `DetalleVenta`, `Venta`.
+2. Revisar cómo se obtiene actualmente el precio en:
+   - Mesero.
+   - Cajero.
+   - venta rápida.
+3. Verificar si el precio actual se toma desde cliente/JavaScript o desde BD.
+4. Revisar si ya existe autorización por rol o supervisor.
+5. Revisar si la lógica antigua de convenios/QR puede reutilizarse sin depender de huéspedes/cabañas/desayuno.
+
+## Tareas funcionales
+### RF07.1 Precio base
+- El precio base siempre se consulta desde `Producto` en BD.
+- Nunca confiar en precio recibido desde frontend.
+
+### RF07.2 Precio especial por operación
+- Aplicar precio especial solo al detalle de venta actual.
+- NO modificar permanentemente `Producto.precio`.
+
+### RF07.3 Autorización
+- Definir según estructura existente quién puede:
+  - aplicar precio especial;
+  - autorizarlo;
+  - modificarlo.
+- Si Cajero puede hacerlo directamente por requerimiento, registrar quién lo aplicó.
+- Si existe autorización de supervisor ya implementada, reutilizarla solo si no contradice RF07.
+
+### RF07.4 Trazabilidad
+Registrar como mínimo:
+- producto;
+- precio original;
+- precio aplicado;
+- usuario;
+- motivo/convenio;
+- fecha/hora;
+- venta relacionada.
+
+### RF07.5 Convenios
+- Generalizar a `Convenio / Beneficio Autorizado`.
+- QR puede ser una forma opcional de identificar convenio.
+- No depender de cabaña, huésped ni desayuno.
+
+## Problemas que debe soportar
+1. precio especial = 0;
+2. precio negativo;
+3. valor no numérico;
+4. usuario sin permiso;
+5. producto inactivo;
+6. producto eliminado;
+7. convenio inexistente;
+8. convenio inactivo/vencido;
+9. beneficio aplicado dos veces;
+10. navegador manipula precio;
+11. precio base cambió mientras la pantalla estaba abierta;
+12. venta anulada después del precio especial;
+13. doble clic;
+14. dos usuarios modifican simultáneamente la misma venta;
+15. error de BD a mitad del cobro.
+
+## Pruebas mínimas
+- precio normal;
+- precio especial válido;
+- rechazo de precio 0/negativo;
+- rechazo de no autorizado;
+- revalidación servidor;
+- trazabilidad;
+- convenio válido/inválido si se usa;
+- rollback ante error;
+- doble envío no duplica.
+
+## Criterio de aceptación RF07
+- precio base intacto;
+- detalle de venta conserva precio aplicado;
+- trazabilidad completa;
+- no se puede manipular precio desde cliente;
+- suite completa OK.
+
+## Detener
+Actualizar `AI_CONTEXT.md` y no iniciar RF08 hasta revisión.
+
+---
+
+# RF08 — GENERACIÓN DE TICKETS
+
+## Objetivo oficial
+Generar tickets según operación:
+- Cocina: elaboración propia.
+- Barra: productos terminados/bebidas/snacks/tickets de juegos.
+- Comprobante de venta.
+
+## Auditoría previa
+1. Revisar modelos `Ticket`, `Pedido`, `DetallePedido`, `DetalleVenta`.
+2. Revisar destinos actuales `COCINA`, `BARRA`.
+3. Verificar cómo se genera comprobante de venta.
+4. Revisar reglas de productos por categoría/tipo/destino.
+5. Verificar si venta rápida y mesa usan el mismo origen de datos.
+
+## Tareas
+### RF08.1 Clasificación por destino
+- definir desde BD el destino operativo;
+- evitar reglas duplicadas en JS.
+
+### RF08.2 Ticket Cocina
+Debe incluir, si existe:
+- número/código;
+- mesa o venta rápida;
+- hora;
+- productos de elaboración;
+- cantidad;
+- observaciones RF12;
+- ronda/pedido.
+
+### RF08.3 Ticket Barra
+- productos terminados;
+- bebidas;
+- snacks;
+- tickets/juegos cuando corresponda.
+
+### RF08.4 Comprobante de venta
+- total;
+- detalles;
+- precios aplicados;
+- modalidad;
+- usuario/caja;
+- fecha/hora.
+
+### RF08.5 Incrementalidad
+- segunda ronda genera solo tickets nuevos;
+- nunca reimprimir productos anteriores salvo reimpresión explícita.
+
+### RF08.6 Reimpresión
+- reimpresión debe ser trazable;
+- no crear una venta nueva;
+- no duplicar detalles.
+
+## Problemas
+1. pedido sin productos;
+2. producto sin destino;
+3. producto mal clasificado;
+4. ticket vacío;
+5. doble generación;
+6. segunda ronda reimprime ronda anterior;
+7. venta rápida genera ticket de mesa incorrecto;
+8. error entre persistencia de venta y ticket;
+9. reimpresión crea duplicado lógico;
+10. ticket de cocina incluye producto de barra;
+11. ticket de barra incluye elaboración;
+12. caracteres especiales/observaciones largas.
+
+## Pruebas
+- Cocina;
+- Barra;
+- comprobante;
+- pedido mixto;
+- segunda ronda;
+- reimpresión;
+- pedido vacío;
+- clasificación correcta;
+- trazabilidad.
+
+## Criterio RF08
+- todos los destinos correctos;
+- cero tickets vacíos;
+- no duplicación;
+- suite completa OK.
+
+---
+
+# RF09 — GESTIÓN DE IMPRESIÓN
+
+## Objetivo oficial
+Considerar tres puntos de impresión físicos en restaurante; provisionalmente digital.
+
+## Auditoría
+1. Identificar las tres salidas lógicas actuales.
+2. Revisar si existe configuración de impresora o solo render digital.
+3. Confirmar que ticket y persistencia están desacoplados.
+
+## Tareas
+### RF09.1 Capa de impresión
+- crear/usar servicio lógico de impresión;
+- separar:
+  - generación del ticket;
+  - persistencia;
+  - envío a impresora.
+
+### RF09.2 Tres puntos
+Definir como mínimo:
+- Cocina.
+- Barra.
+- Comprobante/venta.
+
+### RF09.3 Modo digital provisional
+- mantener previsualización/impresión digital funcional;
+- dejar preparado punto de integración física sin exigir hardware.
+
+### RF09.4 Reintento
+- si impresión falla, venta no debe perderse;
+- permitir reimpresión.
+
+## Problemas
+1. impresora desconectada;
+2. impresora sin papel;
+3. timeout;
+4. impresora equivocada;
+5. doble clic;
+6. venta registrada pero impresión falló;
+7. reimpresión;
+8. impresión parcial Cocina sí/Barra no;
+9. reinicio del navegador;
+10. impresora configurada para otro local.
+
+## Pruebas
+- enrutamiento;
+- fallo simulado de impresión;
+- reimpresión;
+- venta persiste aunque falle impresión;
+- local correcto.
+
+## Criterio RF09
+- lógica de 3 destinos documentada;
+- fallo de impresión no destruye operación;
+- reimpresión segura;
+- suite OK.
+
+---
+
+# RF10 — CONSUMO INTERNO DEL PERSONAL / FIADO
+
+## Auditoría
+Revisar:
+- `ConsumoInterno`;
+- `DetalleConsumoInterno`;
+- trabajadores;
+- Producto;
+- PuntoVenta;
+- historial existente.
+
+## Tareas
+### RF10.1 Selección de trabajador
+- solo trabajadores válidos;
+- mostrar estado activo.
+
+### RF10.2 Registro
+- productos;
+- cantidades;
+- precios oficiales;
+- local;
+- fecha/hora;
+- usuario que registra.
+
+### RF10.3 Acumulado
+- total por trabajador;
+- historial detallado;
+- filtros por fecha/local.
+
+### RF10.4 Separación contable
+- no mezclar con venta de cliente;
+- no sumar a caja como venta normal salvo que política futura lo indique.
+
+### RF10.5 Integridad
+- operación atómica encabezado + detalles.
+
+## Problemas
+- trabajador inexistente/inactivo;
+- producto inválido;
+- precio manipulado;
+- cantidad <=0;
+- doble envío;
+- otro local;
+- eliminación de trabajador con historial;
+- rollback;
+- producto desactivado durante operación.
+
+## Pruebas
+- consumo válido;
+- acumulado;
+- rechazo trabajador/producto;
+- doble envío;
+- rollback;
+- historial.
+
+## Criterio
+- fiado correcto;
+- acumulado real;
+- historial íntegro;
+- suite OK.
+
+---
+
+# RF11 — ASIGNACIÓN DE MESA O VENTA RÁPIDA
+
+## Objetivo oficial
+Cuando hay elaboración propia, indicar si va a mesa o retiro rápido.
+
+## Auditoría
+1. Revisar modalidad actual de `Venta`.
+2. Revisar valores existentes para mesa/venta rápida.
+3. Revisar cómo se comporta Cocina/Barra.
+
+## Tareas
+### RF11.1 Modalidad
+- `MESA` requiere mesa válida.
+- `VENTA_RAPIDA` no requiere mesa.
+
+### RF11.2 Flujo Mesa
+- cuenta abierta;
+- múltiples rondas;
+- cierre posterior.
+
+### RF11.3 Flujo Venta rápida
+- una sola operación;
+- retiro en barra;
+- no ocupar mesa.
+
+### RF11.4 Validación
+- impedir modalidad inconsistente.
+
+## Problemas
+- mesa no seleccionada;
+- mesa ocupada por otro;
+- venta rápida con mesa;
+- cambio de modalidad a mitad;
+- doble envío;
+- producto elaborado en venta rápida;
+- error tras generar pedido.
+
+## Pruebas
+- mesa;
+- rápida;
+- mesa requerida;
+- no ocupar mesa en rápida;
+- tickets correctos.
+
+## Criterio
+- ambas modalidades separadas y consistentes;
+- suite OK.
+
+---
+
+# RF12 — COMENTARIOS ASOCIADOS A PRODUCTOS
+
+## Auditoría
+Revisar `DetallePedido.observaciones` y UI actual.
+
+## Tareas
+- comentario por producto;
+- texto libre;
+- conservar por ronda;
+- mostrar en ticket Cocina/Barra cuando aplique;
+- escapar HTML;
+- límite razonable de longitud.
+
+## Problemas
+- XSS;
+- texto vacío;
+- texto excesivo;
+- caracteres especiales;
+- comentario del producto A aparece en B;
+- segunda ronda hereda comentario viejo;
+- reimpresión pierde comentario.
+
+## Pruebas
+- persistencia;
+- separación por producto;
+- escaping;
+- segunda ronda;
+- ticket.
+
+## Criterio
+- observaciones exactas y seguras;
+- suite OK.
+
+---
+
+# RF13 — REGISTRO DE ENTREGA DE PRODUCTOS
+
+## Auditoría
+Revisar `Entrega`, `Pedido`, `Ticket` y estados KDS.
+
+## Tareas
+### RF13.1 Flujo
+PENDIENTE -> EN PREPARACIÓN -> LISTO -> ENTREGADO.
+
+### RF13.2 Registro
+- fecha/hora;
+- usuario que entrega;
+- pedido/ticket;
+- local;
+- mesa/venta rápida.
+
+### RF13.3 Granularidad
+- determinar según modelo real si entrega es por pedido, ticket o ítem;
+- no inventar estructura sin auditoría.
+
+### RF13.4 Doble entrega
+- impedir duplicados.
+
+## Problemas
+- entregar antes de listo;
+- entregar dos veces;
+- pedido cancelado;
+- Cocina y Barra terminan distinto;
+- ronda equivocada;
+- concurrencia Cocina/Mesero;
+- error de BD.
+
+## Pruebas
+- flujo válido;
+- transición inválida;
+- doble entrega;
+- ronda correcta;
+- registro usuario/hora.
+
+## Criterio
+- entrega real y trazable;
+- suite OK.
+
+---
+
+# RF14 — GESTIÓN DE PUNTOS DE VENTA
+
+## Auditoría
+Ya existe CRUD; verificar cumplimiento oficial.
+
+## Tareas
+- crear;
+- modificar;
+- activar/desactivar;
+- proteger históricos;
+- asignar trabajadores;
+- asociar mesas/productos/menús;
+- impedir duplicados de nombre si aplica.
+
+## Problemas
+- eliminar con historial;
+- desactivar con jornada/venta abierta;
+- reasignación de trabajadores;
+- local inexistente;
+- datos duplicados;
+- acceso no Admin.
+
+## Pruebas
+- CRUD;
+- soft-delete;
+- histórico;
+- permisos.
+
+## Criterio
+- RF14 confirmado, no necesariamente reescrito.
+
+---
+
+# RF15 — POSICIONAMIENTO DE PRODUCTOS Y MENÚS
+
+## Objetivo
+Definir qué productos ofrece cada Punto de Venta.
+
+## Auditoría
+Revisar relaciones actuales Producto/PuntoVenta/Menu.
+
+## Tareas
+- menú por local;
+- productos habilitados por local;
+- evitar que Cajero/Mesero venda producto no disponible en ese local;
+- fuente de verdad BD;
+- eliminar mocks/hardcodes progresivamente.
+
+## Problemas
+- producto en local incorrecto;
+- producto desactivado;
+- menú vacío;
+- producto retirado del menú con ventas históricas;
+- terminal antigua conserva producto ya deshabilitado.
+
+## Pruebas
+- producto disponible;
+- producto no disponible rechazado;
+- menú por local;
+- actualización dinámica.
+
+## Criterio
+- terminales consultan catálogo real o backend valida siempre disponibilidad;
+- suite OK.
+
+---
+
+# RF16 — CONTROL DE TIEMPOS DE ATENCIÓN
+
+## Dependencia
+RF13 debe estar cerrado.
+
+## Tareas
+Calcular:
+- creación pedido;
+- inicio preparación;
+- listo;
+- entregado;
+- tiempo preparación;
+- espera total.
+
+## Problemas
+- timestamps faltantes;
+- orden temporal inválido;
+- pedido no entregado;
+- cambio de día;
+- zona horaria;
+- ronda separada.
+
+## Pruebas
+- tiempos normales;
+- no negativos;
+- incompletos no inventados;
+- Chile timezone.
+
+## Criterio
+- tiempos reales disponibles para reportes.
+
+---
+
+# RF17 — GESTIÓN DE OCUPACIÓN DE MESAS
+
+## Dependencias
+RF05 y Mesa/Cuenta Abierta.
+
+## Tareas
+- inicio ocupación;
+- duración;
+- liberación;
+- estado actual;
+- reasignación;
+- nueva ronda no reinicia tiempo.
+
+## Problemas
+- doble ocupación;
+- liberar con cuenta abierta;
+- cierre falla;
+- mesa desactivada ocupada;
+- jornada cambia;
+- navegador se reinicia.
+
+## Pruebas
+- ocupación;
+- múltiples rondas;
+- reasignación;
+- cierre;
+- concurrencia.
+
+## Criterio
+- estado reconstruible 100% desde BD;
+- suite OK.
+
+---
+
+# RF18 — REPORTES Y ESTADÍSTICAS
+
+## Dependencias
+RF06, RF13, RF16, RF17.
+
+## Mínimos oficiales
+- ventas realizadas;
+- productos más vendidos;
+- tiempos de espera y entrega.
+
+## Tareas
+### RF18.1 Eliminar mocks
+- identificar KPIs hardcodeados;
+- sustituir por ORM real.
+
+### RF18.2 Filtros
+- fecha inicio/fin;
+- PuntoVenta;
+- usuario cuando corresponda.
+
+### RF18.3 Ventas
+- totales;
+- cantidad;
+- modalidad;
+- precios especiales.
+
+### RF18.4 Productos
+- ranking por cantidad;
+- considerar históricos.
+
+### RF18.5 Tiempos
+- promedio;
+- mínimo/máximo si corresponde;
+- solo entregas válidas.
+
+### RF18.6 Ocupación
+- solo si RF17 produce datos reales.
+
+## Problemas
+- día sin ventas;
+- rango inválido;
+- local sin datos;
+- producto desactivado;
+- venta anulada;
+- precio especial;
+- pedido sin entrega;
+- N+1;
+- volumen alto.
+
+## Pruebas
+- totales;
+- ranking;
+- tiempos;
+- filtros;
+- vacío;
+- rendimiento básico.
+
+## Criterio
+- 100% datos reales;
+- ningún KPI demo presentado como real;
+- suite OK.
+
+---
+
+# ETAPA FINAL — AUDITORÍA INTEGRAL RF01–RF18
+
+## Objetivo
+Confirmar que todos los requerimientos oficiales están cubiertos sin contradicciones.
+
+## Checklist funcional
+- RF01 Usuarios.
+- RF02 Jornada.
+- RF03 Caja individual.
+- RF04 Mesas.
+- RF05 Reasignación.
+- RF06 Ventas.
+- RF07 Precios especiales.
+- RF08 Tickets.
+- RF09 Impresión.
+- RF10 Consumo interno.
+- RF11 Mesa / venta rápida.
+- RF12 Comentarios.
+- RF13 Entrega.
+- RF14 Puntos de Venta.
+- RF15 Productos/Menús por local.
+- RF16 Tiempos.
+- RF17 Ocupación.
+- RF18 Reportes.
+
+## Auditoría técnica final
+1. `manage.py check`.
+2. suite completa.
+3. migraciones.
+4. revisión de permisos.
+5. revisión de concurrencia.
+6. revisión de doble envío.
+7. revisión de soft-delete/históricos.
+8. revisión de mocks restantes.
+9. revisión de secretos/configuración.
+10. revisión de errores 400/403/404/500.
+11. revisión manual en pantalla táctil y móvil Mesero.
+12. revisión de impresión digital provisional.
+
+## Auditoría documental final
+- actualizar modelo lógico 1:1 con `models.py`;
+- actualizar modelo físico;
+- incluir Azure DevOps;
+- redacción impersonal;
+- plantilla de pares;
+- pruebas unitarias/integración/rendimiento;
+- evidencias por RF;
+- no mencionar RF19–RF24.
+
+## Regla final
+No declarar un RF como “COMPLETADO” únicamente porque exista una vista. Debe existir:
+- persistencia real;
+- validación;
+- seguridad;
+- manejo de fallos;
+- prueba automatizada o evidencia reproducible;
+- regresión completa.
+
+---
+
+### PLAN FUNCIONAL PRIORITARIO RF01–RF18 — ROBUSTEZ OPERACIONAL (HISTÓRICO / REFERENCIA)
 
 > [!IMPORTANT]
 > El objetivo de esta fase no es agregar funciones nuevas fuera del alcance. Es cerrar correctamente los requerimientos oficiales pendientes y preparar el sistema para situaciones reales de uso en Parque Safari.
@@ -806,35 +1569,22 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - regla de seguridad:
   - expiración de contraseña de 180 días se documenta como política interna, no como obligación específica de ISO/IEC 27400.
 ## 7. dudas para ChatGPT
-- decisión del usuario: volver a priorizar estrictamente los Requerimientos Oficiales RF01–RF18.
-- los módulos de huéspedes/desayunos/ofertas quedan congelados y funcionales, pero fuera del foco principal.
-- siguiente ejecución autorizada: auditar e implementar RF05 Reasignación de Mesas con manejo de escenarios problemáticos y pruebas.
+- decisión del usuario: Entregar a Antigravity un plan completo de inicio a fin para cerrar RF07–RF18 sin omitir escenarios problemáticos.
+- RF05 ya está cerrado.
+- siguiente bloque real de ejecución: RF07.
+- el resto de RF queda planificado en detalle, pero NO debe ejecutarse en paralelo.
 ## 8. respuesta de ChatGPT
-- evaluación: El proyecto posee una base sólida y numerosos adelantos, pero el desarrollo debe concentrarse nuevamente en cumplir de forma verificable los RF01–RF18 originales.
-- orden técnico actual: **RF05 — Reasignación de Mesas**.
-- antes de modificar código, Antigravity debe auditar:
-  - cómo se representa actualmente una venta/cuenta abierta;
-  - relación real `Venta` -> `Mesa`;
-  - estados disponibles en `Mesa`;
-  - cómo se identifican ventas abiertas/cerradas;
-  - si existe ya algún mecanismo o vista de reasignación;
-  - impacto sobre `Pedido`, `DetallePedido`, `Ticket`, `Entrega` e historial.
-- después implementar el cambio mínimo que cumpla RF05 sin romper Mesa/Cuenta Abierta.
-- escenarios mínimos obligatorios:
-  - destino ocupado;
-  - origen sin cuenta;
-  - traslado dentro del mismo local;
-  - rechazo entre locales;
-  - doble envío;
-  - concurrencia;
-  - conservación de rondas/total/tickets previos;
-  - rollback ante error.
-- pruebas:
-  - agregar pruebas específicas RF05;
-  - ejecutar suite completa;
-  - reconciliar conteo vigente;
-  - verificar manualmente Mesero, Cajero, Cocina y Administrador.
-- detener después de RF05 y devolver `AI_CONTEXT.md` antes de comenzar RF07.
+- orden maestra aprobada: seguir exactamente el **PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN** registrado al comienzo del archivo.
+- regla operativa:
+  - ejecutar un RF a la vez;
+  - auditar primero;
+  - implementar solo lo faltante;
+  - blindar fallos;
+  - probar;
+  - actualizar este archivo;
+  - detener para revisión antes del siguiente RF.
+- RF actual autorizado: **RF07 Gestión de Precios durante la Venta**.
+- no iniciar RF08 hasta cerrar RF07 con criterio de aceptación y suite completa.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 ### A. Reconciliación del Estado Documental
@@ -1015,18 +1765,19 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- estado actual: **RF05 Reasignación de Mesas COMPLETADO Y TESTEADO AL 100% (93/93 tests OK)**.
-- próxima acción: **Detener y devolver AI_CONTEXT.md para revisión de ChatGPT / usuario antes de iniciar RF07 (Gestión de Precios Especiales / Convenios)**.
-- prioridad: ESPERA DE REVISIÓN Y VALIDACIÓN DOCENTE.
-- resumen técnico de lo implementado en RF05:
-  - **Auditoría técnica previa**: Inspección completa de `Venta.mesa`, estados `Mesa.ESTADOS`, `Pedido`, `DetallePedido`, `DetalleVenta`, `Ticket` y `Entrega`.
-  - **Persistencia y Trazabilidad**: Nuevo modelo `ReasignacionMesa` (migración `0012_reasignacionmesa.py`) que audita venta, mesa origen, mesa destino, mesero, motivo y timestamp. Registrado en `admin.py`.
-  - **Seguridad Transaccional y Concurrencia**: Control en `ventas/views.py` (`mesero`) con `transaction.atomic()` y `select_for_update()`.
-  - **Escenarios de falla validados y blindados**: Rechazo de destino ocupado, destino inexistente, destino inactivo, origen sin cuenta, misma mesa origen/destino, traslados entre Puntos de Venta distintos, doble clic/concurrencia y rollback limpio.
-  - **Continuidad de Servicio**: Mantiene intactas las rondas, productos, notas libres, totales y tickets de Cocina/Barra previamente emitidos. La mesa origen queda libre (`HABILITADA`) y la de destino ocupada (`OCUPADA`).
-  - **UI Mesero**: Botón reactivo en banner de cuenta abierta, botón de cambio rápido en modal de consumos acumulados, y modal accesible `modalReasignarMesa`.
-  - **Trazabilidad Administrador**: Eventos de tipo `MESAS` incorporados en `administrador_historial`.
-  - **Suite de Pruebas**: 9 casos de prueba exhaustivos en `SafariRF05ReasignacionMesasTests` aprobados al 100%. Total suite de ventas: **93/93 tests OK**.
+- estado actual: **RF05 COMPLETADO (93/93 suite reportada al cierre de RF05)**.
+- próxima acción: **ETAPA 0 + RF07** del Plan Maestro.
+- orden exacto:
+  1. ejecutar línea base (`check`, suite, migraciones, roles);
+  2. auditar `Producto`, `PrecioEspecial`, `DetalleVenta`, `Venta` y flujo de precios en Cajero/Mesero;
+  3. documentar qué ya existe;
+  4. implementar RF07 de forma mínima y segura;
+  5. agregar pruebas RF07;
+  6. ejecutar suite completa;
+  7. verificar regresión manual;
+  8. actualizar `AI_CONTEXT.md` con resultados exactos;
+  9. detener.
+- no iniciar RF08 todavía.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
@@ -1091,6 +1842,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
+- desde este punto, Antigravity debe seguir el Plan Maestro RF07–RF18 registrado en este archivo, un RF a la vez y sin saltarse auditoría, escenarios de falla, pruebas, regresión y revisión
 - prioridad funcional oficial: RF01–RF18; Requerimientos Futuros 19–24 continúan totalmente excluidos
 - módulos de huéspedes/cabañas/desayuno/ofertas quedan congelados y no deben desplazar el trabajo de RF01–RF18
 - cada RF restante debe implementarse de forma incremental, con auditoría previa, escenarios de error, pruebas y revisión antes del siguiente RF
