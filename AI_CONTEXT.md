@@ -207,7 +207,145 @@ Después de eso:
 
 ---
 
-# ORDEN VIGENTE FINAL PARA ANTIGRAVITY — LIMPIEZA PRE-REVISIÓN Y STOP DE DESARROLLO
+# ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL
+
+> [!IMPORTANT]
+> Esta es la **única orden vigente**. No modificar código funcional. No tocar modelos, vistas, templates, migraciones, base de datos ni lógica de negocio. La tarea consiste exclusivamente en eliminar las últimas contradicciones textuales de `AI_CONTEXT.md` y dejar el proyecto congelado para revisión y retroalimentación.
+
+## TAREA 1 — CORREGIR `## 8. respuesta de ChatGPT`
+
+Reemplazar cualquier referencia a una orden antigua, especialmente:
+
+`PREPARAR PROYECTO PARA REVISIÓN Y RETROALIMENTACIÓN`
+
+por una formulación vigente:
+
+- **orden vigente: ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL**;
+- no ejecutar órdenes históricas;
+- no desarrollar nuevas funciones;
+- no modificar documentos académicos todavía;
+- después de esta limpieza: **STOP DESARROLLO**.
+
+## TAREA 2 — CORREGIR EL BLOQUE HISTÓRICO DE PREPARACIÓN
+
+El bloque:
+
+`# HISTÓRICO — ORDEN DE PREPARACIÓN PARA REVISIÓN YA EJECUTADA / NO VIGENTE`
+
+debe conservarse por trazabilidad, pero dentro de él todavía aparece una frase que dice:
+
+`Esta es la orden vigente.`
+
+Cambiarla por:
+
+`Esta fue una orden vigente en una fase anterior. Se conserva únicamente como trazabilidad histórica y NO debe ejecutarse.`
+
+No eliminar el resto del bloque.
+
+## TAREA 3 — BLINDAR EL PLAN MAESTRO HISTÓRICO
+
+Debajo del encabezado:
+
+`### PLAN MAESTRO RF07–RF18 — HISTÓRICO / PLAN YA EJECUTADO`
+
+agregar inmediatamente:
+
+> [!CAUTION]
+> Todo texto imperativo, secuencia de implementación, “detener”, “no iniciar RF siguiente” o instrucción contenida en este bloque corresponde únicamente al historial de desarrollo. **NO constituye una orden activa.**
+
+No borrar el detalle histórico de RF07–RF18.
+
+## TAREA 4 — BLINDAR OTROS BLOQUES HISTÓRICOS
+
+Aplicar la misma regla a:
+- Plan Funcional Prioritario RF01–RF18;
+- Mapa de Convergencia 06-Oct;
+- Semana 10 / Semana 11;
+- órdenes antiguas de RF05/RF07/etc.;
+- cualquier bloque que incluya “siguiente paso”, “pendiente”, “implementar” o “detener” pero que ya esté resuelto.
+
+No es necesario reescribir todo el historial. Basta con que el encabezado o una advertencia deje inequívoco que:
+- es histórico;
+- no es una instrucción vigente;
+- el estado actual prevalece.
+
+## TAREA 5 — DEJAR UNA SOLA FUENTE DE VERDAD
+
+Verificar que el estado vigente final sea solamente:
+
+- RF01–RF18: **100% COMPLETADOS**.
+- Suite: **220/220 pruebas aprobadas**.
+- `python manage.py check`: **0 incidencias**.
+- Migraciones `ventas`: **20 aplicadas**.
+- Motor actual: **SQLite**.
+- Modelos/tablas `ventas`: **25**.
+- Roles: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
+- Mocks evaluables: **0%**.
+- `.env`: protegido.
+- `db.sqlite3`: fuera de Git y conservado localmente.
+- Benchmark vigente:
+  - 20 usuarios;
+  - 100 peticiones;
+  - 100% éxito;
+  - 166.59 RPS;
+  - 70.84 ms promedio;
+  - P95 524.29 ms.
+- Bloqueantes funcionales: **ninguno conocido**.
+- Siguiente tarea de desarrollo: **NINGUNA**.
+
+## TAREA 6 — CHECKLIST FINAL
+
+Confirmar que `## CHECKLIST FINAL PRE-REVISIÓN` permanezca con todos sus ítems comprobados.
+
+Agregar dos ítems si todavía no existen:
+
+- [x] **Una sola orden vigente**: todas las órdenes anteriores están marcadas como históricas/no vigentes.
+- [x] **STOP desarrollo**: no existe ninguna tarea funcional pendiente autorizada.
+
+## TAREA 7 — VERIFICACIÓN DOCUMENTAL FINAL
+
+Buscar en todo `AI_CONTEXT.md` las expresiones:
+
+- `Esta es la orden vigente`
+- `siguiente paso RF07`
+- `no iniciar RF08`
+- `RF05 pendiente`
+- `cada RF restante`
+- `DEBE QUEDAR COMPLETA`
+- `AVANZAR PARCIALMENTE`
+- `siguiente paso recomendado`
+
+Para cada coincidencia:
+- si pertenece a historial, mantenerla solo dentro de un bloque claramente marcado como histórico;
+- si aparece como instrucción vigente, corregirla;
+- no borrar evidencia histórica.
+
+## CRITERIO DE CIERRE DEFINITIVO
+
+La tarea termina cuando:
+
+1. existe una sola orden vigente;
+2. no hay contradicciones entre la orden vigente y los bloques históricos;
+3. `## 8. respuesta de ChatGPT` apunta a esta orden definitiva;
+4. la antigua orden de preparación ya no dice “Esta es la orden vigente”;
+5. el Plan Maestro RF07–RF18 contiene advertencia de historial;
+6. el checklist confirma una sola orden vigente y STOP desarrollo;
+7. no se modificó ningún archivo funcional del sistema;
+8. no se modificó Word, Draw.io ni informe;
+9. no se agregaron RF ni funcionalidades;
+10. `AI_CONTEXT.md` queda guardado y devuelto para revisión.
+
+### DESPUÉS DE CUMPLIR TODO LO ANTERIOR
+
+**STOP DESARROLLO TOTAL.**
+
+No realizar ningún cambio adicional hasta:
+- nueva instrucción expresa del usuario; o
+- retroalimentación/revisión que identifique un problema reproducible.
+
+---
+
+# HISTÓRICO — ORDEN FINAL PRE-REVISIÓN YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
 > Esta es la única orden vigente desde este punto. No desarrollar nuevas funciones. No reabrir RF cerrados. El objetivo es dejar `AI_CONTEXT.md` totalmente coherente y el proyecto congelado en un estado estable para revisión y retroalimentación.
@@ -443,7 +581,7 @@ salvo nueva instrucción del usuario o regresión reproducible.
 # HISTÓRICO — ORDEN DE PREPARACIÓN PARA REVISIÓN YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
-> Esta es la orden vigente. El objetivo es dejar el proyecto lo más limpio, estable, consistente y presentable posible para una revisión técnica. No agregar funciones nuevas ni trabajar todavía el informe académico.
+> Esta fue una orden vigente en una fase anterior. Se conserva únicamente como trazabilidad histórica y NO debe ejecutarse. Su objetivo fue dejar el proyecto limpio, estable y preparado para revisión.
 
 ## FASE 1 — LIMPIEZA Y COHERENCIA DEL AI_CONTEXT
 
@@ -815,8 +953,8 @@ Ejecutadas con `scratch/benchmark_rendimiento.py` sobre el servidor de desarroll
 
 ### PLAN MAESTRO RF07–RF18 — HISTÓRICO / PLAN YA EJECUTADO
 
-> [!IMPORTANT]
-> Este bloque reemplaza cualquier “siguiente paso” parcial anterior. Antigravity debe trabajar RF por RF, en el orden indicado. No ejecutar todo de una sola vez. Cada RF se considera cerrado solo cuando cumple su criterio de aceptación y la suite completa continúa en verde.
+> [!CAUTION]
+> Todo texto imperativo, secuencia de implementación, “detener”, “no iniciar RF siguiente” o instrucción contenida en este bloque corresponde únicamente al historial de desarrollo. **NO constituye una orden activa.**
 
 ---
 
@@ -1808,6 +1946,9 @@ No declarar un RF como “COMPLETADO” únicamente porque exista una vista. Deb
 
 ### PLAN FUNCIONAL PRIORITARIO RF01–RF18 — ROBUSTEZ OPERACIONAL (HISTÓRICO / REFERENCIA)
 
+> [!CAUTION]
+> Este bloque se conserva exclusivamente como referencia histórica de diseño y robustez. Las instrucciones internas ya fueron ejecutadas o superadas y **NO son tareas vigentes**.
+
 > [!IMPORTANT]
 > El objetivo de esta fase no es agregar funciones nuevas fuera del alcance. Es cerrar correctamente los requerimientos oficiales pendientes y preparar el sistema para situaciones reales de uso en Parque Safari.
 
@@ -2570,6 +2711,8 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - [x] **Mocks**: 0% datos simulados en flujos evaluables; KPIs, reportes y gráficos operan exclusivamente sobre ORM real.
 - [x] **Rendimiento**: Benchmark reproducible de 20 usuarios concurrentes validado empíricamente (166.59 RPS, 70.84 ms prom, 100% éxito).
 - [x] **Pendientes Críticos**: Ningún bloqueante funcional. Los recordatorios de evaluación e informe quedan conservados para la fase documental posterior del usuario.
+- [x] **Una sola orden vigente**: todas las órdenes anteriores están marcadas como históricas/no vigentes.
+- [x] **STOP desarrollo**: no existe ninguna tarea funcional pendiente autorizada.
 
 ---
 
@@ -2586,12 +2729,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - la prioridad definida por el usuario es dejar el proyecto en su mejor estado posible para revisión y retroalimentación.
 - recordatorios académicos/evaluación se mantienen, pero serán tratados posteriormente por el usuario.
 ## 8. respuesta de ChatGPT
-- ejecutar únicamente la orden **PREPARAR PROYECTO PARA REVISIÓN Y RETROALIMENTACIÓN** registrada al inicio.
-- corregir inconsistencias, higiene de repositorio, seguridad, regresión y claridad del contexto.
-- no agregar funciones.
-- no migrar de motor BD por obligación académica en esta fase.
-- no modificar Word, Draw.io ni documentos de evaluación.
+- orden vigente: **ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL**.
+- no ejecutar órdenes históricas.
+- no desarrollar nuevas funcionalidades.
+- no modificar código funcional, modelos, vistas, templates, migraciones ni base de datos.
+- no modificar Word, Draw.io ni documentos académicos en esta fase.
 - conservar los recordatorios académicos como referencia futura.
+- una vez terminada esta limpieza textual: **STOP DESARROLLO TOTAL** hasta nueva instrucción del usuario o retroalimentación reproducible.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 > [!NOTE]
@@ -2777,11 +2921,12 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ## 10. siguiente tarea
 - **Siguiente tarea de desarrollo: NINGUNA.**
 - proyecto congelado para revisión y retroalimentación.
-- esperar nueva instrucción del usuario o feedback del docente/equipo.
-- no modificar código funcional sin:
+- desarrollo funcional en **STOP TOTAL**.
+- esperar nueva instrucción expresa del usuario o feedback del docente/equipo.
+- no modificar código, modelos, vistas, templates, migraciones ni base de datos sin:
   1. error reproducible;
-  2. nueva instrucción expresa del usuario.
-- recordatorios académicos y fase documental permanecen pendientes, pero no son prioridad actual.
+  2. nueva autorización expresa del usuario.
+- recordatorios académicos y fase documental permanecen conservados para una etapa futura.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
