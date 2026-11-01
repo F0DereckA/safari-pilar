@@ -1151,3 +1151,106 @@ def calcular_tiempos_promedio_local(punto_venta=None, fecha=None, pedidos_qs=Non
         'max_tiempo_espera_total_minutos': max(esperas) if esperas else 0.0,
     }
 
+# ==============================================================================
+# GESTIÓN DE OCUPACIÓN DE MESAS (RF17)
+# ==============================================================================
+
+def validar_ocupacion_mesa(mesa, permitir_si_misma_venta=None):
+    """
+    RF17: Valida que la mesa se encuentre apta para ser ocupada o recibir comanda.
+    Lanza ValidationError si:
+    - La mesa está INACTIVA o en mantenimiento.
+    - La mesa ya se encuentra ocupada por otra atención activa (doble ocupación).
+    - La mesa tiene una cuenta abierta distinta a permitir_si_misma_venta.
+    """
+    from django.core.exceptions import ValidationError
+    if not mesa:
+        raise ValidationError("La mesa especificada no existe.")
+
+    if mesa.estado == 'INACTIVA':
+        raise ValidationError(f"La mesa '{mesa.identificador}' está inactiva o en mantenimiento y no puede ser ocupada (RF17).")
+
+    venta_activa = mesa.get_venta_activa()
+    if venta_activa:
+        if permitir_si_misma_venta and venta_activa.pk == getattr(permitir_si_misma_venta, 'pk', permitir_si_misma_venta):
+            return True
+        raise ValidationError(
+            f"La mesa '{mesa.identificador}' ya tiene una cuenta abierta activa (#{venta_activa.id}) y no puede ser ocupada nuevamente (RF17)."
+        )
+
+    if mesa.estado == 'OCUPADA' and not venta_activa:
+        raise ValidationError(f"La mesa '{mesa.identificador}' ya se encuentra marcada como ocupada (RF17).")
+
+    return True
+
+
+def liberar_mesa_operativa(mesa, usuario=None, forzar=False):
+    """
+    RF17: Servicio centralizado para liberar una mesa operativa.
+    Garantiza:
+    - Rechazo si mantiene una cuenta abierta con consumos pendientes (blindaje contra liberar con cuenta abierta).
+    - Reseteo atómico de estado a 'HABILITADA' y fecha_ocupacion a None.
+    - Retorna tupla: (exito, mensaje).
+    """
+    if not mesa:
+        return False, "Mesa inválida o inexistente."
+
+    from django.db import transaction
+    with transaction.atomic():
+        from ventas.models import Mesa
+        mesa_lock = Mesa.objects.select_for_update().get(pk=mesa.pk)
+
+        if not forzar:
+            va = mesa_lock.get_venta_activa()
+            if va is not None:
+                return False, f"No se puede liberar la mesa '{mesa_lock.identificador}' porque mantiene la cuenta abierta #{va.id} con consumos pendientes de cobro (RF17)."
+
+        mesa_lock.estado = 'HABILITADA'
+        mesa_lock.fecha_ocupacion = None
+        mesa_lock.save(update_fields=['estado', 'fecha_ocupacion'])
+
+        return True, f"Mesa '{mesa_lock.identificador}' liberada exitosamente para nuevos comensales."
+
+
+def calcular_metricas_ocupacion_local(punto_venta=None):
+    """
+    RF17: Retorna estadísticas de ocupación y rotación de mesas en un local o parque general.
+    """
+    from ventas.models import Mesa
+    qs = Mesa.objects.all()
+    if punto_venta:
+        qs = qs.filter(punto_venta=punto_venta)
+
+    total_mesas = qs.count()
+    mesas_libres = 0
+    mesas_ocupadas = 0
+    mesas_inactivas = 0
+    mesas_reservadas = 0
+    duraciones_min = []
+
+    for m in qs:
+        if m.estado == 'INACTIVA':
+            mesas_inactivas += 1
+        elif m.estado == 'RESERVADA':
+            mesas_reservadas += 1
+        elif m.esta_ocupada():
+            mesas_ocupadas += 1
+            dur = m.get_duracion_ocupacion_minutos()
+            if dur is not None:
+                duraciones_min.append(dur)
+        else:
+            mesas_libres += 1
+
+    tasa_ocupacion = round((mesas_ocupadas / total_mesas * 100), 1) if total_mesas > 0 else 0.0
+    prom_duracion = round(sum(duraciones_min) / len(duraciones_min), 1) if duraciones_min else 0.0
+
+    return {
+        'total_mesas': total_mesas,
+        'mesas_libres': mesas_libres,
+        'mesas_ocupadas': mesas_ocupadas,
+        'mesas_inactivas': mesas_inactivas,
+        'mesas_reservadas': mesas_reservadas,
+        'tasa_ocupacion_porcentaje': tasa_ocupacion,
+        'promedio_duracion_ocupacion_minutos': prom_duracion,
+    }
+

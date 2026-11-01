@@ -2795,14 +2795,32 @@ def mesero(request):
         mesa_id = request.POST.get('mesa_id')
 
         if accion == 'liberar_mesa':
-            Mesa.objects.filter(id=mesa_id).update(estado='HABILITADA')
-            messages.success(request, "Mesa liberada correctamente para nuevos comensales.")
-            return redirect(f"/mesero/?local_id={local_actual.id}")
+            from ventas.utils import liberar_mesa_operativa
+            mesa_obj = Mesa.objects.filter(id=mesa_id, punto_venta=local_actual).first()
+            if not mesa_obj:
+                messages.error(request, "La mesa solicitada no existe o no pertenece a este local.")
+            else:
+                exito, msg = liberar_mesa_operativa(mesa_obj, usuario=request.user, forzar=False)
+                if exito:
+                    messages.success(request, msg)
+                else:
+                    messages.error(request, msg)
+            return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
         elif accion == 'ocupar_mesa':
-            Mesa.objects.filter(id=mesa_id).update(estado='OCUPADA')
-            messages.info(request, "Mesa asignada y marcada como ocupada.")
-            return redirect(f"/mesero/?local_id={local_actual.id}")
+            from ventas.utils import validar_ocupacion_mesa
+            with transaction.atomic():
+                mesa_obj = Mesa.objects.select_for_update().filter(id=mesa_id, punto_venta=local_actual).first()
+                if not mesa_obj:
+                    messages.error(request, "La mesa solicitada no existe o no pertenece a este local.")
+                else:
+                    try:
+                        validar_ocupacion_mesa(mesa_obj)
+                        mesa_obj.ocupar()
+                        messages.success(request, f"Mesa {mesa_obj.identificador} asignada y marcada como ocupada (RF17).")
+                    except ValidationError as e:
+                        messages.error(request, e.message if hasattr(e, 'message') else str(e))
+            return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
         elif accion == 'cerrar_cuenta_mesa':
             metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO')
@@ -2829,15 +2847,13 @@ def mesero(request):
                     # RF08.4: Emisión de comprobante de venta de comensal
                     emitir_comprobante_venta(venta_abierta, usuario_emisor=request.user)
 
-                    mesa_obj.estado = 'HABILITADA'
-                    mesa_obj.save()
+                    mesa_obj.liberar(forzar=True)
 
                     total_formateado = f"${int(venta_abierta.total):,}".replace(",", ".")
                     txt_redondeo = f" (Ajuste Ley 20.956 en efectivo: {'+' if ajuste_redondeo > 0 else ''}${int(ajuste_redondeo):,} CLP)" if ajuste_redondeo != 0 else ""
                     messages.success(request, f"¡Cuenta de {mesa_obj.identificador} pagada y cerrada exitosamente con {metodo_pago}! Total recaudado: {total_formateado}{txt_redondeo}. La mesa ha quedado libre para nuevos comensales.")
                 else:
-                    mesa_obj.estado = 'HABILITADA'
-                    mesa_obj.save()
+                    mesa_obj.liberar(forzar=True)
                     messages.info(request, f"Mesa {mesa_obj.identificador} liberada.")
 
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
@@ -2914,11 +2930,12 @@ def mesero(request):
                 venta_abierta.mesa = mesa_destino
                 venta_abierta.save()
 
-                # Actualizar estado de mesa destino a OCUPADA
+                # Actualizar estado de mesa destino a OCUPADA conservando timestamp de inicio (RF17)
+                mesa_destino.fecha_ocupacion = mesa_origen.fecha_ocupacion or venta_abierta.fecha_hora
                 mesa_destino.estado = 'OCUPADA'
-                mesa_destino.save()
+                mesa_destino.save(update_fields=['estado', 'fecha_ocupacion'])
 
-                # Liberar mesa origen si no posee otras cuentas abiertas
+                # Liberar mesa origen si no posee otras cuentas abiertas (RF17)
                 otras_abiertas_origen = Venta.objects.filter(
                     mesa=mesa_origen,
                     punto_venta=local_actual,
@@ -2926,8 +2943,7 @@ def mesero(request):
                 ).exclude(id=venta_abierta.id).exists()
 
                 if not otras_abiertas_origen:
-                    mesa_origen.estado = 'HABILITADA'
-                    mesa_origen.save()
+                    mesa_origen.liberar(forzar=True)
 
                 # Registrar auditoría histórica permanente (RF05)
                 motivo_limpio = motivo or "Solicitud de cambio de mesa por comensal"
@@ -2958,6 +2974,10 @@ def mesero(request):
             mesa_obj = Mesa.objects.filter(id=mesa_id).first()
             if not mesa_obj or mesa_obj.punto_venta_id != local_actual.id:
                 messages.error(request, "La mesa seleccionada no existe o no pertenece al local gastronómico actual.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+            if mesa_obj.estado == 'INACTIVA':
+                messages.error(request, f"No es posible emitir pedidos en la mesa {mesa_obj.identificador} porque se encuentra inactiva o en mantenimiento (RF17).")
                 return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
             items_raw = request.POST.get('items_json', '[]')
@@ -3037,8 +3057,12 @@ def mesero(request):
                     es_ronda_adicional = False
 
                 if mesa_obj:
-                    mesa_obj.estado = 'OCUPADA'
-                    mesa_obj.save()
+                    if not es_ronda_adicional:
+                        mesa_obj.ocupar()
+                    else:
+                        if mesa_obj.estado != 'OCUPADA':
+                            mesa_obj.estado = 'OCUPADA'
+                            mesa_obj.save(update_fields=['estado'])
 
                 num_ronda = venta.pedidos.count() + 1
                 nuevo_pedido = Pedido.objects.create(
@@ -3232,6 +3256,7 @@ def mesero(request):
             'total': int(va.total),
             'rondas': rondas_count,
             'hora_apertura': timezone.localtime(va.fecha_hora).strftime('%H:%M'),
+            'duracion_minutos': va.mesa.get_duracion_ocupacion_minutos() if va.mesa else 0.0,
             'items': detalles_list
         }
 

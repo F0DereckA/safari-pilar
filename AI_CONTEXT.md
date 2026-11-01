@@ -19,7 +19,8 @@
   - RF14 Gestión de Puntos de Venta: **COMPLETADO Y TESTEADO (172/172 suite vigente en verde al cerrar RF14)**.
   - RF15 Posicionamiento de Productos y Menús: **COMPLETADO Y TESTEADO (185/185 suite vigente en verde al cerrar RF15)**.
   - RF16 Control de Tiempos de Atención: **COMPLETADO Y TESTEADO (197/197 suite vigente en verde al cerrar RF16)**.
-  - RF01–RF16: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF17 Gestión de Ocupación de Mesas: **COMPLETADO Y TESTEADO (207/207 suite vigente en verde al cerrar RF17)**.
+  - RF01–RF17: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -841,7 +842,36 @@ Calcular:
 
 ---
 
-# RF17 — GESTIÓN DE OCUPACIÓN DE MESAS
+# RF17 — GESTIÓN DE OCUPACIÓN DE MESAS — [ESTADO: COMPLETADO Y CERRADO (207/207 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF17)
+- **Fecha de Cierre:** 2026-11-01
+- **Migración Aplicada:** `0020_mesa_fecha_ocupacion.py` agregando campo `fecha_ocupacion` a `Mesa`.
+- **Modelos y Métodos Operativos (`ventas/models.py`):**
+  * `Mesa.fecha_ocupacion`: Timestamp persistente de inicio de la ocupación actual de la mesa física.
+  * `Mesa.get_venta_activa()`: Localiza la cuenta abierta en consumo vinculada a la mesa (`ventas.filter(estado='ABIERTA').first()`).
+  * `Mesa.get_inicio_ocupacion()`: Prioriza `fecha_ocupacion` explícita o la infiere de `venta_activa.fecha_hora`, permitiendo reconstruir el 100% del estado tras reinicios o recargas.
+  * `Mesa.esta_ocupada()` y `Mesa.esta_disponible()`: Verificadores exactos de disponibilidad operativa.
+  * `Mesa.get_duracion_ocupacion_minutos(ahora=None)` y `get_duracion_ocupacion_segundos(ahora=None)`: Cálculo no negativo de duración en curso.
+  * `Mesa.ocupar(timestamp=None, guardar=True)`: Marca la mesa como ocupada; blindado contra mesas `INACTIVA` y doble ocupación concurrente con `ValidationError`.
+  * `Mesa.liberar(forzar=False, guardar=True)`: Blindaje estricto que rechaza la liberación si la mesa mantiene una cuenta abierta con consumos pendientes de cobro (`ValidationError`).
+  * `Mesa.get_resumen_ocupacion()`: Diccionario estructurado con estado, timestamps, duración, venta activa y cantidad de rondas.
+- **Servicios Centralizados y Lógica de Negocio (`ventas/utils.py`):**
+  * `validar_ocupacion_mesa(mesa, permitir_si_misma_venta=None)`: Validador server-side de aptitud operativa ante mesas inactivas o doblemente ocupadas.
+  * `liberar_mesa_operativa(mesa, usuario=None, forzar=False)`: Servicio atómico seguro con control de integridad de cuentas abiertas.
+  * `calcular_metricas_ocupacion_local(punto_venta)`: Agregador de tasas de ocupación, mesas libres/ocupadas/inactivas y duración promedio por local.
+- **Control de Terminales y Vistas (`ventas/views.py`):**
+  * `mesero` (`liberar_mesa`): Invoca `liberar_mesa_operativa()`, impidiendo liberar mesas con cuentas abiertas en consumo.
+  * `mesero` (`ocupar_mesa`): Ejecutado en transacción atómica con `select_for_update()`, bloqueando doble ocupación concurrente.
+  * `mesero` (`cerrar_cuenta_mesa`): Libera la mesa y resetea `fecha_ocupacion` atómicamente al confirmarse el pago.
+  * `mesero` (`reasignar_mesa`): Transfiere el timestamp original de ocupación a la mesa destino y libera la mesa origen.
+  * `mesero` (`enviar_comanda`): Rechaza pedidos en mesas inactivas; al añadir rondas adicionales (Ronda 2, 3...) preserva intacto el timestamp de inicio ("nueva ronda no reinicia tiempo").
+  * `cuentas_abiertas_json`: Incluye duración de ocupación calculada en vivo desde la base de datos.
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF17 (`SafariRF17GestionOcupacionMesasTests`): 10/10 tests OK.
+  * Suite completa del sistema: 207/207 tests pasados exitosamente en 409.8s (0 fallos, 0 errores, 100% verde).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado (`scratch/verificar_rf17.py`).
 
 ## Dependencias
 RF05 y Mesa/Cuenta Abierta.

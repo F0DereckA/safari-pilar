@@ -6067,3 +6067,393 @@ class SafariRF16ControlTiemposAtencionTests(TestCase):
         self.assertIn("Espera Total Promedio", contenido)
         self.assertIn("Prep. Cocina Promedio", contenido)
 
+# ==============================================================================
+# RF17: PRUEBAS DE GESTIÓN DE OCUPACIÓN DE MESAS
+# ==============================================================================
+class SafariRF17GestionOcupacionMesasTests(TestCase):
+    """
+    Pruebas unitarias e integración de alta fidelidad para RF17:
+    - RF17.1: Inicio de ocupación y cálculo de duración (minutos/segundos).
+    - RF17.2: Blindaje contra doble ocupación concurrente.
+    - RF17.3: Blindaje contra liberación de mesa con cuenta abierta activa.
+    - RF17.4: Liberación limpia sin cuenta abierta o forzada tras anulación.
+    - RF17.5: Cierre atómico de cuenta de mesa y liberación de mesa.
+    - RF17.6: Rechazo estricto de ocupación y comandas en mesas inactivas o en mantenimiento.
+    - RF17.7: Envío de múltiples rondas no reinicia el tiempo de ocupación comensal.
+    - RF17.8: Reasignación de mesa transfiere el tiempo de inicio y libera mesa origen.
+    - RF17.9: Estado de ocupación 100% reconstruible desde la base de datos tras reinicio de navegador.
+    - RF17.10: Servicio de métricas agregadas de ocupación y rotación por local (calcular_metricas_ocupacion_local).
+    """
+
+    def setUp(self):
+        from decimal import Decimal
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Producto, Categoria, Venta, Jornada, Caja
+
+        self.pv_central = PuntoVenta.objects.create(nombre="Restaurante Central Safari T17", activo=True)
+
+        self.admin_user = User.objects.create_superuser('admin_rf17', 'admin@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv_central)
+
+        self.mesero_user = User.objects.create_user('mesero_rf17', 'mesero@safari.cl', 'safari123')
+        self.perfil_mesero = PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv_central)
+
+        self.cajero_user = User.objects.create_user('cajero_rf17', 'cajero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv_central)
+
+        self.mesa_1 = Mesa.objects.create(identificador="M1-RF17", capacidad=4, punto_venta=self.pv_central, estado='HABILITADA')
+        self.mesa_2 = Mesa.objects.create(identificador="M2-RF17", capacidad=6, punto_venta=self.pv_central, estado='HABILITADA')
+        self.mesa_inactiva = Mesa.objects.create(identificador="M-INACTIVA", capacidad=2, punto_venta=self.pv_central, estado='INACTIVA')
+
+        self.cat_fondo = Categoria.objects.create(nombre="Platos Fondo T17")
+        self.prod_churrasco = Producto.objects.create(
+            nombre="Churrasco Safari T17",
+            categoria=self.cat_fondo,
+            precio_base=Decimal('7900'),
+            activo=True
+        )
+        self.prod_churrasco.puntos_venta.add(self.pv_central)
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin_user, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf17_1_inicio_ocupacion_y_duracion_calculada(self):
+        """RF17.1: Inicio de ocupación y cálculo dinámico de duración en minutos y segundos"""
+        import datetime
+        from django.utils import timezone
+
+        t_inicio = timezone.now() - datetime.timedelta(minutes=25)
+        self.mesa_1.ocupar(timestamp=t_inicio)
+        self.mesa_1.refresh_from_db()
+
+        self.assertEqual(self.mesa_1.estado, 'OCUPADA')
+        self.assertTrue(self.mesa_1.esta_ocupada())
+        self.assertFalse(self.mesa_1.esta_disponible())
+        self.assertEqual(self.mesa_1.get_inicio_ocupacion(), t_inicio)
+
+        duracion_min = self.mesa_1.get_duracion_ocupacion_minutos()
+        self.assertIsNotNone(duracion_min)
+        self.assertAlmostEqual(duracion_min, 25.0, places=0)
+
+        duracion_seg = self.mesa_1.get_duracion_ocupacion_segundos()
+        self.assertIsNotNone(duracion_seg)
+        self.assertGreaterEqual(duracion_seg, 1490)
+
+    def test_rf17_2_doble_ocupacion_rechazada_concurrencia(self):
+        """RF17.2: Blindaje contra doble ocupación concurrente (ORM y vista mesero)"""
+        from django.core.exceptions import ValidationError
+        from django.urls import reverse
+
+        # 1. ORM
+        self.mesa_1.ocupar()
+        with self.assertRaises(ValidationError):
+            self.mesa_1.ocupar()
+
+        # 2. Vista Mesero POST ocupar_mesa sobre mesa ya ocupada
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'ocupar_mesa',
+            'mesa_id': self.mesa_1.id
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        # La mesa debe seguir ocupada sin duplicidad
+        self.mesa_1.refresh_from_db()
+        self.assertEqual(self.mesa_1.estado, 'OCUPADA')
+
+    def test_rf17_3_liberacion_con_cuenta_abierta_rechazada(self):
+        """RF17.3: Blindaje estricto: no se permite liberar una mesa que mantiene una cuenta abierta con consumos"""
+        from decimal import Decimal
+        from django.core.exceptions import ValidationError
+        from django.urls import reverse
+        from ventas.models import Venta
+        from ventas.utils import liberar_mesa_operativa
+
+        # Crear cuenta abierta en mesa_1
+        venta_abierta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_1,
+            total=Decimal('15800'),
+            estado='ABIERTA'
+        )
+        self.mesa_1.ocupar()
+        self.mesa_1.refresh_from_db()
+
+        # 1. Intento directo vía método liberar() del modelo
+        with self.assertRaises(ValidationError):
+            self.mesa_1.liberar(forzar=False)
+
+        # 2. Intento vía servicio de negocio
+        exito, msg = liberar_mesa_operativa(self.mesa_1, forzar=False)
+        self.assertFalse(exito)
+        self.assertIn("cuenta abierta", msg.lower())
+
+        # 3. Intento vía POST en módulo mesero
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'liberar_mesa',
+            'mesa_id': self.mesa_1.id
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        self.mesa_1.refresh_from_db()
+        self.assertEqual(self.mesa_1.estado, 'OCUPADA')
+        self.assertTrue(self.mesa_1.esta_ocupada())
+
+    def test_rf17_4_liberacion_exitosa_sin_cuenta_o_forzada(self):
+        """RF17.4: Liberación limpia sin cuenta abierta o forzada por supervisión"""
+        from django.urls import reverse
+
+        # Mesa ocupada sin cuenta abierta
+        self.mesa_1.ocupar()
+        self.mesa_1.refresh_from_db()
+        self.assertTrue(self.mesa_1.esta_ocupada())
+
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'liberar_mesa',
+            'mesa_id': self.mesa_1.id
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        self.mesa_1.refresh_from_db()
+        self.assertEqual(self.mesa_1.estado, 'HABILITADA')
+        self.assertIsNone(self.mesa_1.fecha_ocupacion)
+        self.assertTrue(self.mesa_1.esta_disponible())
+        self.assertIsNone(self.mesa_1.get_duracion_ocupacion_minutos())
+
+    def test_rf17_5_cierre_cuenta_mesa_libera_atomicamente(self):
+        """RF17.5: Cierre y pago de cuenta abierta libera atómicamente la mesa y limpia ocupación"""
+        from decimal import Decimal
+        from django.urls import reverse
+        from ventas.models import Venta
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_1,
+            total=Decimal('10000'),
+            estado='ABIERTA'
+        )
+        self.mesa_1.ocupar()
+
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'cerrar_cuenta_mesa',
+            'mesa_id': self.mesa_1.id,
+            'metodo_pago': 'EFECTIVO'
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        venta.refresh_from_db()
+        self.mesa_1.refresh_from_db()
+
+        self.assertEqual(venta.estado, 'PAGADA')
+        self.assertEqual(self.mesa_1.estado, 'HABILITADA')
+        self.assertIsNone(self.mesa_1.fecha_ocupacion)
+        self.assertTrue(self.mesa_1.esta_disponible())
+
+    def test_rf17_6_mesa_inactiva_rechaza_ocupacion_y_comandas(self):
+        """RF17.6: Mesa inactiva o en mantenimiento rechaza ocupación directa y emisión de comandas"""
+        import json
+        from django.core.exceptions import ValidationError
+        from django.urls import reverse
+
+        # 1. ORM
+        with self.assertRaises(ValidationError):
+            self.mesa_inactiva.ocupar()
+
+        # 2. POST ocupar_mesa
+        self.client.force_login(self.mesero_user)
+        resp_ocupar = self.client.post(reverse('mesero'), {
+            'accion': 'ocupar_mesa',
+            'mesa_id': self.mesa_inactiva.id
+        })
+        self.assertEqual(resp_ocupar.status_code, 302)
+        self.mesa_inactiva.refresh_from_db()
+        self.assertEqual(self.mesa_inactiva.estado, 'INACTIVA')
+
+        # 3. POST enviar_comanda
+        items_payload = json.dumps([{
+            'id': self.prod_churrasco.id,
+            'nombre': self.prod_churrasco.nombre,
+            'precio': int(self.prod_churrasco.precio_base),
+            'cantidad': 1,
+            'nota': ''
+        }])
+        resp_comanda = self.client.post(reverse('mesero'), {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_inactiva.id,
+            'items_json': items_payload
+        })
+        self.assertEqual(resp_comanda.status_code, 302)
+        self.mesa_inactiva.refresh_from_db()
+        self.assertEqual(self.mesa_inactiva.estado, 'INACTIVA')
+        self.assertEqual(self.mesa_inactiva.ventas.count(), 0)
+
+    def test_rf17_7_nueva_ronda_no_reinicia_tiempo_ocupacion(self):
+        """RF17.7: Emisión de rondas sucesivas (Ronda 2, 3...) NO reinicia el tiempo de inicio de ocupación"""
+        import json
+        import datetime
+        from django.utils import timezone
+        from django.urls import reverse
+        from ventas.models import Venta
+
+        t_inicio = timezone.now() - datetime.timedelta(minutes=45)
+
+        # Crear venta abierta inicial simulando apertura hace 45 minutos
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_1,
+            total=self.prod_churrasco.precio_base,
+            estado='ABIERTA'
+        )
+        Venta.objects.filter(id=venta.id).update(fecha_hora=t_inicio)
+        self.mesa_1.ocupar(timestamp=t_inicio)
+        self.mesa_1.refresh_from_db()
+        venta.refresh_from_db()
+
+        self.assertEqual(self.mesa_1.get_inicio_ocupacion(), t_inicio)
+
+        # Enviar Ronda 2 vía POST enviar_comanda
+        self.client.force_login(self.mesero_user)
+        items_ronda2 = json.dumps([{
+            'id': self.prod_churrasco.id,
+            'nombre': self.prod_churrasco.nombre,
+            'precio': int(self.prod_churrasco.precio_base),
+            'cantidad': 2,
+            'nota': 'Ronda adicional'
+        }])
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_1.id,
+            'items_json': items_ronda2
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        self.mesa_1.refresh_from_db()
+        # El timestamp de ocupación DEBE ser el original de hace 45 min
+        self.assertEqual(self.mesa_1.fecha_ocupacion, t_inicio)
+        self.assertEqual(self.mesa_1.get_inicio_ocupacion(), t_inicio)
+        duracion = self.mesa_1.get_duracion_ocupacion_minutos()
+        self.assertGreaterEqual(duracion, 44.9)
+
+    def test_rf17_8_reasignacion_mesa_transfiere_tiempo_y_libera_origen(self):
+        """RF17.8: Reasignación de mesa traslada el timestamp de ocupación y libera la mesa origen"""
+        import datetime
+        from django.utils import timezone
+        from django.urls import reverse
+        from ventas.models import Venta
+
+        t_inicio = timezone.now() - datetime.timedelta(minutes=30)
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_1,
+            total=self.prod_churrasco.precio_base,
+            estado='ABIERTA'
+        )
+        Venta.objects.filter(id=venta.id).update(fecha_hora=t_inicio)
+        self.mesa_1.ocupar(timestamp=t_inicio)
+        self.mesa_1.refresh_from_db()
+
+        # Reasignar de mesa_1 a mesa_2
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('mesero'), {
+            'accion': 'reasignar_mesa',
+            'mesa_origen_id': self.mesa_1.id,
+            'mesa_destino_id': self.mesa_2.id,
+            'motivo': 'Comensales prefieren sombra'
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        self.mesa_1.refresh_from_db()
+        self.mesa_2.refresh_from_db()
+
+        # Mesa origen libre
+        self.assertEqual(self.mesa_1.estado, 'HABILITADA')
+        self.assertIsNone(self.mesa_1.fecha_ocupacion)
+        self.assertTrue(self.mesa_1.esta_disponible())
+
+        # Mesa destino ocupada con el tiempo preservado
+        self.assertEqual(self.mesa_2.estado, 'OCUPADA')
+        self.assertEqual(self.mesa_2.fecha_ocupacion, t_inicio)
+        duracion_destino = self.mesa_2.get_duracion_ocupacion_minutos()
+        self.assertGreaterEqual(duracion_destino, 29.9)
+
+    def test_rf17_9_estado_reconstruible_100_por_ciento_desde_bd(self):
+        """RF17.9: Reconstrucción total del estado y resumen de ocupación tras reinicio o recarga"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Mesa, Venta
+
+        t_inicio = timezone.now() - datetime.timedelta(minutes=18)
+        self.mesa_1.ocupar(timestamp=t_inicio)
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.mesero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_1,
+            total=Decimal('15000'),
+            estado='ABIERTA'
+        )
+
+        # Simular nueva instancia obtenida de la BD (como tras reinicio de navegador)
+        mesa_recargada = Mesa.objects.get(id=self.mesa_1.id)
+        resumen = mesa_recargada.get_resumen_ocupacion()
+
+        self.assertEqual(resumen['identificador'], "M1-RF17")
+        self.assertEqual(resumen['estado'], "OCUPADA")
+        self.assertTrue(resumen['esta_ocupada'])
+        self.assertFalse(resumen['esta_disponible'])
+        self.assertTrue(resumen['tiene_cuenta_abierta'])
+        self.assertEqual(resumen['venta_abierta_id'], venta.id)
+        self.assertEqual(resumen['total_cuenta_abierta'], 15000)
+        self.assertAlmostEqual(resumen['duracion_ocupacion_minutos'], 18.0, places=0)
+        self.assertIsNotNone(resumen['inicio_ocupacion_chile'])
+
+    def test_rf17_10_servicio_metricas_ocupacion_local(self):
+        """RF17.10: calcular_metricas_ocupacion_local calcula tasas y promedios reales de ocupación"""
+        import datetime
+        from django.utils import timezone
+        from ventas.utils import calcular_metricas_ocupacion_local
+
+        # mesa_1 ocupada hace 20 min
+        self.mesa_1.ocupar(timestamp=timezone.now() - datetime.timedelta(minutes=20))
+        # mesa_2 libre
+        self.mesa_2.estado = 'HABILITADA'
+        self.mesa_2.fecha_ocupacion = None
+        self.mesa_2.save()
+        # mesa_inactiva INACTIVA
+
+        metricas = calcular_metricas_ocupacion_local(punto_venta=self.pv_central)
+
+        self.assertEqual(metricas['total_mesas'], 3)
+        self.assertEqual(metricas['mesas_libres'], 1)
+        self.assertEqual(metricas['mesas_ocupadas'], 1)
+        self.assertEqual(metricas['mesas_inactivas'], 1)
+        self.assertAlmostEqual(metricas['tasa_ocupacion_porcentaje'], 33.3, places=1)
+        self.assertAlmostEqual(metricas['promedio_duracion_ocupacion_minutos'], 20.0, places=0)
+

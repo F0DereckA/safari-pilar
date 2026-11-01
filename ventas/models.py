@@ -509,6 +509,115 @@ class Mesa(models.Model):
     punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.PROTECT, related_name='mesas')
     capacidad = models.PositiveIntegerField(default=4)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='HABILITADA')
+    fecha_ocupacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de ocupación actual de la mesa (RF17)")
+
+    def get_venta_activa(self):
+        """Retorna la cuenta abierta activa en esta mesa o None (RF17)"""
+        if not self.pk:
+            return None
+        return self.ventas.filter(estado='ABIERTA').first()
+
+    def get_inicio_ocupacion(self):
+        """
+        Retorna el timestamp de inicio de ocupación de la mesa (RF17).
+        Prioriza fecha_ocupacion explícita; si no está definida pero existe cuenta abierta,
+        utiliza fecha_hora de la Venta abierta (100% reconstruible desde BD).
+        """
+        if self.fecha_ocupacion:
+            return self.fecha_ocupacion
+        va = self.get_venta_activa()
+        if va and va.fecha_hora:
+            return va.fecha_hora
+        return None
+
+    def esta_ocupada(self):
+        """Indica si la mesa está actualmente ocupada o con comanda/cuenta abierta (RF17)"""
+        return self.estado == 'OCUPADA' or self.get_venta_activa() is not None
+
+    def esta_disponible(self):
+        """Indica si la mesa está formalmente habilitada y libre para nuevos comensales (RF17)"""
+        return self.estado == 'HABILITADA' and not self.esta_ocupada()
+
+    def get_duracion_ocupacion_minutos(self, ahora=None):
+        """
+        Retorna los minutos transcurridos desde el inicio de ocupación hasta ahora (RF17).
+        Retorna None si la mesa no está ocupada. Nunca retorna valores negativos.
+        """
+        if not self.esta_ocupada():
+            return None
+        inicio = self.get_inicio_ocupacion()
+        if not inicio:
+            return None
+        ahora = ahora or timezone.now()
+        if timezone.is_naive(ahora) and timezone.is_aware(inicio):
+            ahora = timezone.make_aware(ahora, timezone.get_current_timezone())
+        elif timezone.is_aware(ahora) and timezone.is_naive(inicio):
+            inicio = timezone.make_aware(inicio, timezone.get_current_timezone())
+        delta = ahora - inicio
+        return max(0.0, round(delta.total_seconds() / 60.0, 1))
+
+    def get_duracion_ocupacion_segundos(self, ahora=None):
+        """Retorna los segundos transcurridos de ocupación actual (RF17)"""
+        minutos = self.get_duracion_ocupacion_minutos(ahora=ahora)
+        return int(minutos * 60) if minutos is not None else None
+
+    def ocupar(self, timestamp=None, guardar=True):
+        """
+        Marca la mesa como ocupada registrando el inicio de ocupación (RF17).
+        Lanza ValidationError si la mesa está INACTIVA o ya se encuentra ocupada.
+        """
+        from django.core.exceptions import ValidationError
+        if self.estado == 'INACTIVA':
+            raise ValidationError(f"La mesa {self.identificador} está inactiva o en mantenimiento y no puede ser ocupada (RF17).")
+        if self.estado == 'OCUPADA' and self.fecha_ocupacion is not None:
+            raise ValidationError(f"La mesa {self.identificador} ya se encuentra ocupada.")
+        self.estado = 'OCUPADA'
+        self.fecha_ocupacion = timestamp or timezone.now()
+        if guardar and self.pk:
+            self.save(update_fields=['estado', 'fecha_ocupacion'])
+        return self
+
+    def liberar(self, forzar=False, guardar=True):
+        """
+        Libera la mesa marcándola como HABILITADA y reseteando fecha_ocupacion (RF17).
+        Si forzar=False y existe una cuenta abierta pendiente, lanza ValidationError (blindaje contra liberar con cuenta abierta).
+        """
+        from django.core.exceptions import ValidationError
+        if not forzar:
+            va = self.get_venta_activa()
+            if va is not None:
+                raise ValidationError(
+                    f"No se puede liberar la mesa {self.identificador} porque tiene la cuenta abierta #{va.id} pendiente de cobro (RF17)."
+                )
+        self.estado = 'HABILITADA'
+        self.fecha_ocupacion = None
+        if guardar and self.pk:
+            self.save(update_fields=['estado', 'fecha_ocupacion'])
+        return self
+
+    def get_resumen_ocupacion(self):
+        """Retorna un diccionario completo con las métricas de estado y ocupación de la mesa (RF17)"""
+        from ventas.utils import formatear_fecha_hora_chile
+        va = self.get_venta_activa()
+        inicio = self.get_inicio_ocupacion()
+        return {
+            'mesa_id': self.id,
+            'identificador': self.identificador,
+            'punto_venta_id': self.punto_venta_id,
+            'punto_venta_nombre': self.punto_venta.nombre if self.punto_venta else None,
+            'capacidad': self.capacidad,
+            'estado': self.estado,
+            'esta_ocupada': self.esta_ocupada(),
+            'esta_disponible': self.esta_disponible(),
+            'inicio_ocupacion': inicio,
+            'inicio_ocupacion_chile': formatear_fecha_hora_chile(inicio),
+            'duracion_ocupacion_minutos': self.get_duracion_ocupacion_minutos(),
+            'duracion_ocupacion_segundos': self.get_duracion_ocupacion_segundos(),
+            'tiene_cuenta_abierta': va is not None,
+            'venta_abierta_id': va.id if va else None,
+            'total_cuenta_abierta': int(va.total) if va else 0,
+            'rondas_comanda': va.pedidos.count() if va else 0,
+        }
 
     def __str__(self):
         return f"{self.identificador} ({self.punto_venta.nombre}) - {self.get_estado_display()}"
