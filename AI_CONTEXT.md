@@ -38,7 +38,7 @@
 
 
 
-### ORDEN ACTUAL PARA ANTIGRAVITY — CONSOLIDACIÓN FINAL
+### HISTÓRICO — ORDEN DE CONSOLIDACIÓN FINAL YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
 > Los RF01–RF18 ya se consideran funcionalmente cerrados. Esta orden NO autoriza desarrollo de nuevas funciones. El trabajo actual es auditar, limpiar, comprobar y preparar evidencia.
@@ -207,7 +207,240 @@ Después de eso:
 
 ---
 
-# ORDEN ACTUAL PARA ANTIGRAVITY — PREPARAR PROYECTO PARA REVISIÓN Y RETROALIMENTACIÓN
+# ORDEN VIGENTE FINAL PARA ANTIGRAVITY — LIMPIEZA PRE-REVISIÓN Y STOP DE DESARROLLO
+
+> [!IMPORTANT]
+> Esta es la única orden vigente desde este punto. No desarrollar nuevas funciones. No reabrir RF cerrados. El objetivo es dejar `AI_CONTEXT.md` totalmente coherente y el proyecto congelado en un estado estable para revisión y retroalimentación.
+
+## 1. UNIFICAR EL ESTADO VIGENTE
+
+Dejar claramente establecido en la parte superior y en `## 3. estado actual`:
+
+- RF01–RF18: **COMPLETADOS AL 100%**.
+- Suite vigente: **220/220 pruebas aprobadas**.
+- `python manage.py check`: **0 incidencias**.
+- Migraciones `ventas`: **20 aplicadas**.
+- Motor activo: **SQLite**.
+- Modelos/tablas `ventas`: **25**.
+- Roles operativos: ADMINISTRADOR, CAJERO, MESERO, COCINERO.
+- Mocks en flujos evaluables: **0%**.
+- Benchmark de regresión vigente:
+  - 20 usuarios concurrentes;
+  - 100 peticiones;
+  - 100% éxito;
+  - 166.59 RPS;
+  - 70.84 ms promedio;
+  - P95 524.29 ms.
+- `db.sqlite3`: fuera del índice Git y conservado localmente.
+- `.env`: protegido y no rastreado.
+
+## 2. MARCAR COMO HISTÓRICO TODO LO YA EJECUTADO
+
+Marcar explícitamente como `HISTÓRICO / NO VIGENTE`:
+
+- Orden de Consolidación Final anterior.
+- Plan Maestro RF07–RF18.
+- Plan Funcional Prioritario RF01–RF18.
+- Orden de ejecución RF05 -> RF07 -> RF10 -> RF13/16 -> RF17 -> RF18.
+- Mapa de Convergencia 06-Oct.
+- Plan académico Semana 10 / Semana 11.
+- cualquier instrucción antigua del tipo:
+  - “siguiente paso RF07”;
+  - “detener antes de RF08”;
+  - “RF05 pendiente”;
+  - “cada RF restante debe implementarse”.
+
+No eliminar información histórica útil. Solo evitar que pueda confundirse con una orden vigente.
+
+## 3. CORREGIR SEMANA 10 / SEMANA 11
+
+Cambiar el encabezado:
+
+`PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11`
+
+por:
+
+`HISTÓRICO — HITOS SEMANA 10 Y SEMANA 11 YA COMPLETADOS`
+
+Dentro de ese bloque:
+- conservar resultados;
+- conservar pruebas históricas 37/37, 41/41, 45/45, 50/50;
+- dejar claro que son conteos históricos y no el estado actual;
+- no dejar frases como “DEBE QUEDAR COMPLETA” o “AVANZAR PARCIALMENTE” como órdenes activas.
+
+## 4. ACTUALIZAR `## 3. ESTADO ACTUAL`
+
+La siguiente fase debe quedar descrita exactamente como:
+
+**“Preparación para revisión y retroalimentación. Desarrollo funcional detenido. Fase documental pendiente de autorización expresa del usuario.”**
+
+No poner “Entrega 3” como prioridad actual.
+
+## 5. ACTUALIZAR `## 4. ARCHIVOS IMPORTANTES`
+
+Corregir `tests.py`.
+
+Texto antiguo:
+- “Cubre los 15 escenarios clave…”
+
+Texto vigente:
+- “Suite oficial de 220 pruebas automatizadas que cubre RF01–RF18, seguridad, permisos, concurrencia, persistencia, tickets, impresión, consumo interno, tiempos, ocupación, reportes y regresión.”
+
+Verificar también que las descripciones de:
+- `views.py`;
+- `models.py`;
+- `utils.py`;
+- `settings.py`;
+- `tests.py`;
+sean coherentes con el estado actual.
+
+Agregar `models.py` y `utils.py` a archivos importantes si todavía no están descritos.
+
+## 6. LIMPIAR `## 6. ERRORES ACTUALES`
+
+No listar como pendientes acciones que ya fueron ejecutadas.
+
+Debe quedar solo:
+
+- **Bloqueantes funcionales actuales: ninguno conocido.**
+- **Pendientes técnicos para revisión: ninguno crítico.**
+- SQLite continúa como entorno de desarrollo.
+- PostgreSQL/MySQL: recordatorio académico futuro.
+- Fase documental: pendiente de autorización del usuario.
+- módulos huéspedes/cabañas/desayuno/ofertas: congelados y fuera del núcleo evaluable.
+
+Si durante esta limpieza aparece un problema real reproducible, registrarlo con:
+- archivo;
+- línea/función;
+- pasos para reproducir;
+- severidad;
+- solución aplicada o pendiente.
+
+## 7. LIMPIAR `## 10. SIGUIENTE TAREA`
+
+Reemplazar cualquier lista de trabajo ya realizada por:
+
+- **Siguiente tarea: ninguna de desarrollo.**
+- Proyecto congelado para revisión y retroalimentación.
+- Esperar nueva instrucción del usuario o feedback del docente/equipo.
+- No modificar código funcional sin error reproducible o nueva autorización.
+
+## 8. LIMPIAR `## 12. REGLAS PERMANENTES`
+
+Eliminar o marcar como históricas reglas contradictorias como:
+
+- “seguir el Plan Maestro RF07–RF18”;
+- “cada RF restante debe implementarse”;
+- “prioridad Entrega 3” si aparece como prioridad vigente.
+
+Dejar estas reglas vigentes:
+
+1. RF01–RF18 permanecen cerrados salvo regresión reproducible.
+2. RF19–RF24 permanecen excluidos.
+3. No agregar nuevas funcionalidades antes de revisión.
+4. Suite vigente: 220/220; conteos menores son históricos.
+5. prioridad vigente: revisión y retroalimentación.
+6. módulos huéspedes/cabañas/desayuno/ofertas congelados.
+7. no modificar Word, Draw.io ni informe sin autorización expresa.
+8. recordatorios académicos se conservan pero no gobiernan trabajo actual.
+9. leer y actualizar `AI_CONTEXT.md` solo ante cambios relevantes.
+10. no inventar resultados, métricas, rutas, pruebas ni requisitos.
+
+## 9. PRESERVAR RECORDATORIOS DE EVALUACIÓN
+
+No borrar ni ejecutar ahora:
+
+- retroalimentación del Informe 2;
+- PostgreSQL/MySQL;
+- modelo lógico/físico;
+- Azure DevOps;
+- redacción impersonal;
+- plantilla de pares;
+- documentación de performance;
+- Entrega 3.
+
+Mantener todos estos bloques bajo el encabezado:
+
+**RECORDATORIO ACADÉMICO / NO PRIORIDAD ACTUAL**
+
+El usuario decidirá cuándo trabajar cada punto.
+
+## 10. VERIFICACIÓN FINAL DEL PROYECTO
+
+Después de limpiar el contexto, ejecutar únicamente:
+
+1. `python manage.py check`
+2. `python manage.py test ventas`
+3. `python manage.py showmigrations`
+4. regresión básica de los 4 roles
+5. `git status`
+
+No modificar comportamiento funcional salvo que una de estas verificaciones encuentre una regresión real.
+
+Registrar:
+- conteo exacto de tests;
+- errores/fallos;
+- migraciones pendientes si existen;
+- estado Git;
+- cualquier archivo modificado durante la limpieza.
+
+## 11. CHECKLIST FINAL QUE DEBE QUEDAR EN EL AI_CONTEXT
+
+Crear o actualizar:
+
+`## CHECKLIST FINAL PRE-REVISIÓN`
+
+Debe ser corto y contener:
+
+- [ ] RF01–RF18 cerrados
+- [ ] 220/220 pruebas o nuevo conteo exacto
+- [ ] check limpio
+- [ ] migraciones al día
+- [ ] 4 roles verificados
+- [ ] SQLite identificado
+- [ ] 25 modelos auditados
+- [ ] mocks evaluables eliminados
+- [ ] `.env` protegido
+- [ ] `db.sqlite3` fuera de Git
+- [ ] benchmark real registrado
+- [ ] ninguna orden antigua activa
+- [ ] ninguna función nueva agregada
+- [ ] ningún bloqueante funcional conocido
+
+Marcar con `[x]` solo aquello comprobado.
+
+## 12. CRITERIO DE CIERRE
+
+La tarea termina cuando:
+
+- `AI_CONTEXT.md` tiene una sola orden vigente;
+- no hay contradicciones entre estado actual e historial;
+- no quedan órdenes antiguas que parezcan activas;
+- RF09 permanece 127/127 histórico;
+- matriz RF07/RF10 permanece corregida;
+- `check` y suite siguen en verde;
+- Git está limpio o cualquier cambio pendiente está documentado;
+- checklist pre-revisión está completo.
+
+Después:
+
+**STOP DESARROLLO.**
+
+No tocar:
+- RF;
+- modelos;
+- vistas;
+- templates;
+- base de datos;
+- informe;
+- Word;
+- Draw.io;
+
+salvo nueva instrucción del usuario o regresión reproducible.
+
+---
+
+# HISTÓRICO — ORDEN DE PREPARACIÓN PARA REVISIÓN YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
 > Esta es la orden vigente. El objetivo es dejar el proyecto lo más limpio, estable, consistente y presentable posible para una revisión técnica. No agregar funciones nuevas ni trabajar todavía el informe académico.
@@ -423,7 +656,7 @@ No crear funciones nuevas para estos casos si ya están cubiertos; solo comproba
 
 Crear dentro del `AI_CONTEXT.md` una sección breve llamada:
 
-`## CHECKLIST PARA REVISIÓN Y RETROALIMENTACIÓN`
+`## CHECKLIST FINAL PRE-REVISIÓN`
 
 Debe contener:
 - estado RF01–RF18;
@@ -1925,9 +2158,9 @@ Estas situaciones deben considerarse en todos los RF restantes:
 La implementación seguirá siendo incremental para detectar regresiones y mantener trazabilidad.
 
 ---
-### PLAN ACADÉMICO DE RECUPERACIÓN — SEMANA 10 Y AVANCE SEMANA 11
+### HISTÓRICO — HITOS SEMANA 10 Y SEMANA 11 YA COMPLETADOS
 
-#### Semana 10 — Clase 13/10/2026 — DEBE QUEDAR COMPLETA
+#### Semana 10 — Clase 13/10/2026 — HISTÓRICO / COMPLETADO
 Contenido solicitado por docente:
 - Creación de proyecto Django.
 - Inicio de sesión con cuentas de usuarios desde BD según perfil.
@@ -1996,7 +2229,7 @@ Estado actual frente a Semana 10:
 
 ---
 
-#### Semana 11 — Clase 20/10/2026 — AVANZAR PARCIALMENTE
+#### Semana 11 — Clase 20/10/2026 — HISTÓRICO / COMPLETADO
 Contenido solicitado por docente:
 - CRUD básicos con BD:
   - Gestión de Usuarios.
@@ -2207,14 +2440,26 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ---
 
 ## 3. estado actual
-- estado vigente: **RF01–RF18 COMPLETADOS AL 100%**.
-- suite vigente reportada al cierre de RF18: **220/220 pruebas aprobadas**.
-- `python manage.py check`: 0 incidencias según último cierre reportado.
-- roles operativos vigentes: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
-- reportes RF18: datos reales desde ORM, sin KPIs demo en el flujo evaluable reportado.
-- KDS Cocina, KDS Barra, Mesa/Cuenta Abierta, Caja, Tickets, Entregas, Tiempos, Ocupación y Reportes: implementados.
-- siguiente fase: auditoría técnica final, reconciliación documental y preparación de evidencias para Entrega 3.
-- nota: bloques con conteos menores de pruebas o hallazgos antiguos se conservan como historial y no representan el estado actual.
+- RF01–RF18: **COMPLETADOS AL 100%**.
+- suite vigente: **220/220 pruebas aprobadas**.
+- `python manage.py check`: **0 incidencias**.
+- migraciones `ventas`: **20 aplicadas**.
+- motor activo: **SQLite**.
+- modelos/tablas vigentes en `ventas`: **25**.
+- roles operativos: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
+- mocks en flujos evaluables: **0%**.
+- repositorio:
+  - `.env` protegido y no rastreado;
+  - `db.sqlite3` fuera del índice Git y conservado localmente.
+- rendimiento de regresión vigente:
+  - 20 usuarios concurrentes;
+  - 100 peticiones;
+  - 100% éxito;
+  - 166.59 RPS;
+  - 70.84 ms promedio;
+  - P95 524.29 ms.
+- siguiente fase: **Preparación para revisión y retroalimentación. Desarrollo funcional detenido. Fase documental pendiente de autorización expresa del usuario.**
+- los bloques con conteos anteriores o tareas antiguas son históricos y no representan órdenes vigentes.
 ## 4. archivos importantes
 - archivo: safari_alerts.js
   - ruta: c:/Users/pc/Desktop/safari Pilar/static/js/safari_alerts.js
@@ -2227,7 +2472,15 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - archivo: tests.py
   - ruta: c:/Users/pc/Desktop/safari Pilar/ventas/tests.py
   - función: Suite oficial de pruebas automatizadas reproducibles de Django
-  - motivo por el que es relevante: Cubre los 15 escenarios clave de RF01–RF03, aislamiento, fecha actual, estado activo/inactivo, preservación de credenciales, concurrencia y alternancia de estado por AJAX
+  - motivo por el que es relevante: Suite oficial de 220 pruebas automatizadas que cubre RF01–RF18, seguridad, permisos, concurrencia, persistencia, tickets, impresión, consumo interno, tiempos, ocupación, reportes y regresión.
+- archivo: models.py
+  - ruta: c:/Users/pc/Desktop/safari Pilar/ventas/models.py
+  - función: Modelo de dominio y persistencia del sistema
+  - motivo por el que es relevante: Contiene las 25 entidades vigentes, relaciones, restricciones, estados operativos, trazabilidad y reglas de integridad de RF01–RF18.
+- archivo: utils.py
+  - ruta: c:/Users/pc/Desktop/safari Pilar/ventas/utils.py
+  - función: Servicios de negocio centralizados
+  - motivo por el que es relevante: Centraliza validaciones, precios especiales, tickets, impresión, consumos internos, entregas, tiempos, ocupación y reportes reales.
 - archivo: views.py
   - ruta: c:/Users/pc/Desktop/safari Pilar/ventas/views.py
   - función: Controladores optimizados sin rutinas de siembra en el ciclo HTTP
@@ -2303,7 +2556,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - motivo: Solicitud expresa del usuario de disponer de la versión funcional completa del 29 de septiembre (previa a la retroalimentación) para tomar capturas de pantalla y documentar el avance.
   - resultado: Se reconstruyó de forma fidedigna el estado del código al 29-Sep (restauración del banner `SUPERVISIÓN DE LOCALES Y PERSONAL`, Centro de Alertas como bloque en el cuerpo, alertas nativas `confirm()`, recarga completa por POST, seeding en el ciclo HTTP y validación con `test_fase2a.py` al 100% OK). Se dispuso en el proyecto y directamente en el Escritorio con instrucciones para correr en el puerto 8001.
 
-## CHECKLIST PARA REVISIÓN Y RETROALIMENTACIÓN
+## CHECKLIST FINAL PRE-REVISIÓN
 
 - [x] **Estado RF01–RF18**: 100% implementados, testeados y cerrados conforme al alcance oficial.
 - [x] **Suite de Pruebas**: 220 de 220 pruebas automatizadas en verde (0 fallos, 0 errores en 388.5s).
@@ -2321,22 +2574,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ---
 
 ## 6. errores actuales y observaciones pendientes
-- RF01–RF18: sin pendientes funcionales conocidos según el último cierre.
-- prioridad actual: **calidad para revisión y retroalimentación**, no desarrollo de nuevas funciones ni documentación académica.
-- acciones técnicas vigentes:
-  1. reconciliar completamente `AI_CONTEXT.md`;
-  2. corregir encabezado RF09 a 127/127;
-  3. marcar planes antiguos como históricos;
-  4. corregir matriz RF07/RF10 y cualquier evidencia que no represente exactamente la implementación;
-  5. sacar `db.sqlite3` del índice Git sin borrar el archivo local;
-  6. confirmar `.env`, `.env.example`, `.gitignore` y secretos;
-  7. auditar restos de mocks/hardcodes/localStorage ya obsoletos;
-  8. ejecutar regresión completa y suite;
-  9. dejar checklist corto para revisión.
-- SQLite continúa siendo el motor activo de desarrollo.
-- PostgreSQL/MySQL se conserva como recordatorio académico futuro y no es prioridad actual.
-- huéspedes/cabañas/desayuno/ofertas continúan congelados y fuera del núcleo evaluable.
-- los recordatorios de evaluación anterior se conservan para que el usuario los revise posteriormente; no deben ejecutarse en esta fase.
+- **Bloqueantes funcionales actuales: ninguno conocido.**
+- **Pendientes técnicos para revisión: ninguno crítico.**
+- SQLite continúa como entorno activo de desarrollo.
+- PostgreSQL/MySQL se conserva únicamente como recordatorio académico futuro.
+- fase documental pendiente de autorización expresa del usuario.
+- módulos huéspedes/cabañas/desayuno/ofertas permanecen congelados y fuera del núcleo evaluable.
+- cualquier problema nuevo debe registrarse únicamente si es reproducible, indicando archivo, función/línea, pasos, severidad y solución.
 ## 7. dudas para ChatGPT
 - no hay dudas funcionales activas.
 - la prioridad definida por el usuario es dejar el proyecto en su mejor estado posible para revisión y retroalimentación.
@@ -2531,20 +2775,13 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- estado actual: **RF01–RF18 completados, 220/220 pruebas vigentes**.
-- próxima acción: **PREPARACIÓN PARA REVISIÓN Y RETROALIMENTACIÓN**.
-- ejecutar:
-  1. limpiar/reconciliar `AI_CONTEXT.md`;
-  2. corregir RF09 y matriz de evidencias;
-  3. limpiar seguimiento Git de `db.sqlite3` sin borrar BD local;
-  4. verificar secretos y archivos de entorno;
-  5. auditar residuos de mocks/hardcodes/legacy;
-  6. ejecutar `check`, suite y migraciones;
-  7. realizar regresión manual de los 4 roles;
-  8. crear checklist final de revisión;
-  9. actualizar este contexto;
-  10. detener y devolverlo.
-- no trabajar aún en los recordatorios de evaluación/Entrega 3.
+- **Siguiente tarea de desarrollo: NINGUNA.**
+- proyecto congelado para revisión y retroalimentación.
+- esperar nueva instrucción del usuario o feedback del docente/equipo.
+- no modificar código funcional sin:
+  1. error reproducible;
+  2. nueva instrucción expresa del usuario.
+- recordatorios académicos y fase documental permanecen pendientes, pero no son prioridad actual.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
@@ -2609,40 +2846,21 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
-- prioridad vigente: preparación para revisión y retroalimentación, estabilidad, limpieza y coherencia técnica
-- RF01–RF18 permanecen cerrados salvo regresión reproducible
-- suite vigente: 220/220; conteos anteriores son históricos
-- no agregar nuevas funcionalidades antes de la revisión
-- RF19–RF24 permanecen excluidos
-- huéspedes/cabañas/desayuno/ofertas permanecen congelados
-- recordatorios académicos/evaluación deben conservarse pero no son prioridad actual
-- no modificar Word, Draw.io ni informe sin autorización expresa del usuario
-
-- RF01–RF18 se consideran funcionalmente completados según el último cierre reportado; no reabrirlos salvo regresión reproducible
-- suite vigente reportada: 220/220 pruebas; conteos menores se consideran históricos
-- prioridad actual: auditoría final, coherencia técnica, evidencias y preparación documental
-- RF19–RF24 continúan totalmente excluidos
-- huéspedes/cabañas/desayuno/ofertas permanecen congelados y fuera del núcleo evaluable
-- no modificar Word, Draw.io ni informe oficial hasta autorización expresa del usuario
-
-- desde este punto, Antigravity debe seguir el Plan Maestro RF07–RF18 registrado en este archivo, un RF a la vez y sin saltarse auditoría, escenarios de falla, pruebas, regresión y revisión
-- prioridad funcional oficial: RF01–RF18; Requerimientos Futuros 19–24 continúan totalmente excluidos
-- módulos de huéspedes/cabañas/desayuno/ofertas quedan congelados y no deben desplazar el trabajo de RF01–RF18
-- cada RF restante debe implementarse de forma incremental, con auditoría previa, escenarios de error, pruebas y revisión antes del siguiente RF
-
-- estado de avance semanal: Todos los hitos de Semana 10, Semana 11 y semanas subsiguientes han sido completados y superados al 100%, con RF01 a RF18 plenamente implementados, blindados y respaldados por 220 pruebas automatizadas oficiales
-- prioridad académica actual: Consolidación final del proyecto, preparación de evidencias técnicas reproducibles para Entrega 3 y actualización rigurosa de la documentación formal
-- desde la retroalimentación de Informe 2 y su implementación posterior, `COCINERO` es un rol operativo vigente del sistema junto a `ADMINISTRADOR`, `CAJERO` y `MESERO`; no eliminarlo sin nueva instrucción del usuario/docente
-- si el usuario autoriza directamente un adelanto funcional para una presentación o demostración, registrarlo como adelanto autorizado y no tratarlo como desviación; posteriormente auditar su integración con los RF vigentes
-- leer este archivo antes de cambios importantes
-- actualizarlo después de cambios relevantes
-- no inventar información
-- mantenerlo breve
-- registrar errores exactos
-- registrar soluciones intentadas
-- no modificar requisitos sin autorización
-- preparar dudas para ChatGPT solo cuando sea necesario
-
+1. RF01–RF18 permanecen cerrados salvo regresión reproducible.
+2. RF19–RF24 permanecen totalmente excluidos.
+3. No agregar nuevas funcionalidades antes de revisión.
+4. Suite vigente: 220/220; conteos menores son históricos.
+5. Prioridad vigente: revisión y retroalimentación.
+6. Huéspedes/cabañas/desayuno/ofertas permanecen congelados y fuera del núcleo evaluable.
+7. No modificar Word, Draw.io ni informe oficial sin autorización expresa del usuario.
+8. Recordatorios académicos/evaluación se conservan como referencia futura, pero no gobiernan el trabajo actual.
+9. SQLite es el motor activo de desarrollo; no declarar PostgreSQL/MySQL como activo sin evidencia real.
+10. `.env` debe permanecer protegido y fuera de Git; `db.sqlite3` no debe volver a versionarse.
+11. Leer `AI_CONTEXT.md` antes de cambios importantes y actualizarlo solo después de cambios relevantes.
+12. No inventar información, resultados, métricas, pruebas, rutas ni requisitos.
+13. Registrar errores exactos y soluciones aplicadas.
+14. No reactivar planes históricos ni órdenes antiguas.
+15. Tras la limpieza pre-revisión: **STOP DESARROLLO** hasta nueva instrucción.
 ## 13. protocolo de trabajo ChatGPT ↔ Antigravity
 - objetivo: Usar este archivo como canal único de contexto y coordinación técnica para el desarrollo del Proyecto Integrado.
 - rol de ChatGPT: Revisar el estado informado en este archivo, contrastarlo con los requerimientos vigentes del Proyecto Integrado y proponer la siguiente orden técnica.
