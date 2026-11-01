@@ -24,6 +24,7 @@ urlpatterns = [
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
+    path('tickets/<int:ticket_id>/reimprimir/', views.reimprimir_ticket_view, name='reimprimir_ticket'),
     path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
     path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
 

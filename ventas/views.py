@@ -14,7 +14,11 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from .validators import validar_complejidad_clave
 
 from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial
-from .utils import validar_y_calcular_precio_linea, registrar_precio_especial_auditoria, calcular_redondeo_ley_20956
+from .utils import (
+    validar_y_calcular_precio_linea, registrar_precio_especial_auditoria,
+    calcular_redondeo_ley_20956, emitir_tickets_comanda, emitir_comprobante_venta,
+    reimprimir_ticket
+)
 
 
 def get_locales_data():
@@ -1226,26 +1230,13 @@ def crear_ticket(request):
             if not tiene_cocina and not tiene_barra:
                 tiene_cocina = True
 
-            tickets_generados = []
-            if tiene_cocina:
-                t_coc = Ticket.objects.create(
-                    pedido=pedido,
-                    codigo=f"POS-COC-{pedido.id:04d}",
-                    tipo_destino='COCINA',
-                    estado='EMITIDO',
-                    contenido_impresion=f"Comanda POS Cocina - Venta #{venta.id}"
-                )
-                tickets_generados.append(t_coc.codigo)
+            # RF08: Emisión clasificada por BD y comprobante de cliente
+            ticket_info = emitir_tickets_comanda(pedido, usuario_emisor=request.user)
+            comprobante = emitir_comprobante_venta(venta, usuario_emisor=request.user)
 
-            if tiene_barra:
-                t_bar = Ticket.objects.create(
-                    pedido=pedido,
-                    codigo=f"POS-BAR-{pedido.id:04d}",
-                    tipo_destino='BARRA',
-                    estado='EMITIDO',
-                    contenido_impresion=f"Comanda POS Barra - Venta #{venta.id}"
-                )
-                tickets_generados.append(t_bar.codigo)
+            tickets_generados = [t.codigo for t in ticket_info['tickets']]
+            if comprobante:
+                tickets_generados.append(comprobante.codigo)
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
                 return JsonResponse({
@@ -2512,6 +2503,27 @@ def administrador_historial(request):
             'estado': 'APLICADO',
         })
 
+    # 8. Eventos de Reimpresión de Tickets (RF08.6)
+    reimpresiones_qs = Ticket.objects.filter(es_reimpresion=True).select_related('venta', 'pedido', 'ultima_reimpresion_por', 'venta__punto_venta')
+    for tr in reimpresiones_qs:
+        local_t = tr.venta.punto_venta if (tr.venta and tr.venta.punto_venta) else None
+        usu_r = (tr.ultima_reimpresion_por.get_full_name() or tr.ultima_reimpresion_por.username) if tr.ultima_reimpresion_por else "Supervisión"
+        eventos.append({
+            'id_ref': f"REIMP-{tr.codigo}",
+            'tipo': 'TICKETS',
+            'subtipo': f"Reimpresión de Ticket ({tr.get_tipo_destino_display()})",
+            'badge_clase': 'badge-status-warning',
+            'icono': 'bi-printer-fill text-warning',
+            'titulo': f"Reimpresión {tr.codigo} (Copia #{tr.numero_reimpresiones})",
+            'descripcion': f"Reimpresión de ticket {tr.get_tipo_destino_display()} ({'Venta #' + str(tr.venta.id) if tr.venta else 'Pedido #' + str(tr.pedido_id)}).",
+            'usuario': usu_r,
+            'local': local_t.nombre if local_t else "Parque Safari General",
+            'local_id': str(local_t.id) if local_t else None,
+            'fecha_hora': tr.fecha_hora_reimpresion or tr.fecha_hora,
+            'monto': tr.venta.total if tr.venta else None,
+            'estado': 'REIMPRESO',
+        })
+
     # Ordenar cronológicamente descendente (lo más reciente primero)
     eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
 
@@ -2649,6 +2661,9 @@ def mesero(request):
                     venta_abierta.estado = 'PAGADA'
                     venta_abierta.metodo_pago = metodo_pago
                     venta_abierta.save()
+
+                    # RF08.4: Emisión de comprobante de venta de comensal
+                    emitir_comprobante_venta(venta_abierta, usuario_emisor=request.user)
 
                     mesa_obj.estado = 'HABILITADA'
                     mesa_obj.save()
@@ -2946,32 +2961,15 @@ def mesero(request):
                     venta.total = sum(d.subtotal for d in venta.detalles.all())
                     venta.save()
 
-                tiene_cocina = any(it['destino'] == 'COCINA' for it in items_validos)
-                tiene_barra = any(it['destino'] == 'BARRA' for it in items_validos)
-
-                # Fallback de seguridad si ningún ítem trae destino definido
-                if not tiene_cocina and not tiene_barra:
-                    tiene_cocina = True
-
+                # RF08: Clasificación por BD e incrementalidad de tickets (Cocina / Barra / Cero vacíos)
+                ticket_info = emitir_tickets_comanda(nuevo_pedido, usuario_emisor=request.user)
                 zonas_despachadas = []
-                if tiene_cocina:
-                    Ticket.objects.create(
-                        pedido=nuevo_pedido,
-                        codigo=f"COM-COC-{nuevo_pedido.id:04d}",
-                        tipo_destino='COCINA',
-                        estado='EMITIDO',
-                        contenido_impresion=f"Comanda Cocina (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-                    )
+                if ticket_info['tiene_cocina']:
                     zonas_despachadas.append("Cocina")
-                if tiene_barra:
-                    Ticket.objects.create(
-                        pedido=nuevo_pedido,
-                        codigo=f"COM-BAR-{nuevo_pedido.id:04d}",
-                        tipo_destino='BARRA',
-                        estado='EMITIDO',
-                        contenido_impresion=f"Comanda Barra (Ronda #{num_ronda}) - {mesa_obj.identificador if mesa_obj else 'Mesa'}"
-                    )
+                if ticket_info['tiene_barra']:
                     zonas_despachadas.append("Barra")
+                if not zonas_despachadas:
+                    zonas_despachadas.append("Producción")
 
                 zonas_txt = " y ".join(zonas_despachadas)
 
@@ -3877,3 +3875,26 @@ def administrador_ofertas_temporada(request):
     }
     return render(request, 'ventas/administrador_ofertas_temporada.html', context)
 
+
+# ==============================================================================
+# REIMPRESIÓN TRAZABLE DE TICKETS (RF08.6)
+# ==============================================================================
+@requiere_rol(['ADMINISTRADOR', 'CAJERO'])
+def reimprimir_ticket_view(request, ticket_id):
+    """Reimprime un ticket de producción o comprobante de forma trazable (RF08.6)"""
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    reimprimir_ticket(ticket, usuario_solicitante=request.user)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+        return JsonResponse({
+            'ok': True,
+            'ticket_id': ticket.id,
+            'ticket_codigo': ticket.codigo,
+            'tipo_destino': ticket.tipo_destino,
+            'numero_reimpresiones': ticket.numero_reimpresiones,
+            'contenido': ticket.contenido_impresion,
+            'mensaje': f"Ticket #{ticket.codigo} reimpreso exitosamente (Copia #{ticket.numero_reimpresiones})."
+        })
+
+    messages.success(request, f"Ticket #{ticket.codigo} reimpreso exitosamente (Copia #{ticket.numero_reimpresiones}).")
+    return redirect(request.META.get('HTTP_REFERER', 'vendedor'))

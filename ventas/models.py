@@ -201,8 +201,13 @@ class Caja(models.Model):
 # ==============================================================================
 class Categoria(models.Model):
     """Categorías de productos (Comida Preparada, Comida por Cocinar, Bebidas Envasadas, Cafetería)"""
+    DESTINOS = [
+        ('COCINA', 'Cocina Caliente / Elaboración'),
+        ('BARRA', 'Barra / Cafetería / Snacks'),
+    ]
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True, null=True)
+    destino_defecto = models.CharField(max_length=20, choices=DESTINOS, default='COCINA', help_text="Destino operativo por defecto para productos de esta categoría (RF08)")
     activo = models.BooleanField(default=True)
 
     def __str__(self):
@@ -239,7 +244,31 @@ class Producto(models.Model):
     precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional fijo o precio de la 2da unidad (ej. $1)")
     descuento_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Porcentaje de descuento para tipo DESCUENTO_PCT")
     descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Lleva 3 y paga 2!, ¡Segunda hamburguesa a $1!")
+    destino_operativo = models.CharField(
+        max_length=20,
+        choices=[
+            ('COCINA', 'Cocina Caliente / Elaboración'),
+            ('BARRA', 'Barra / Cafetería / Bebidas / Snacks'),
+            ('COMPROBANTE', 'Solo Comprobante'),
+        ],
+        default='COCINA',
+        help_text="Destino operativo del producto para despacho y tickets de comanda (RF08.1)"
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
+
+    def get_destino_operativo(self):
+        """Determina el destino operativo real gobernado por la BD (RF08.1)"""
+        nom = (self.nombre or '').lower()
+        if any(k in nom for k in ['coca', 'sprite', 'fanta', 'bebida', 'jugo', 'café', 'cafe', 'té', 'infus', 'agua', 'moka', 'espresso', 'cappuccino', 'croissant', 'torta', 'snack']):
+            return 'BARRA'
+        if self.destino_operativo and self.destino_operativo in ['COCINA', 'BARRA']:
+            return self.destino_operativo
+        if self.categoria and hasattr(self.categoria, 'destino_defecto') and self.categoria.destino_defecto:
+            return self.categoria.destino_defecto
+        cat_nom = (self.categoria.nombre if self.categoria else '').lower()
+        if any(k in cat_nom for k in ['cafeter', 'barra', 'jugo', 'bebida', 'snack', 'envasada']):
+            return 'BARRA'
+        return 'COCINA'
 
     @property
     def precio_actual(self):
@@ -556,7 +585,7 @@ class DetallePedido(models.Model):
 # 14. TICKETS DE PRODUCCIÓN E IMPRESIÓN (RF10 - Tickets Cocina / Barra / Cliente)
 # ==============================================================================
 class Ticket(models.Model):
-    """Ticket físico/virtual con destino operativo (Cocina, Barra o Comprobante)"""
+    """Ticket físico/virtual con destino operativo (Cocina, Barra o Comprobante) (RF08)"""
     DESTINOS = [
         ('COCINA', 'Cocina Caliente'),
         ('BARRA', 'Barra / Cafetería'),
@@ -567,12 +596,18 @@ class Ticket(models.Model):
         ('EN_PROCESO', 'En Proceso'),
         ('FINALIZADO', 'Finalizado'),
     ]
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='tickets')
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, null=True, blank=True, related_name='tickets')
+    venta = models.ForeignKey('Venta', on_delete=models.CASCADE, null=True, blank=True, related_name='tickets_asociados', help_text="Venta asociada al ticket (RF08)")
     codigo = models.CharField(max_length=30, unique=True, help_text="Ej: COM-0085, TIK-C-0102")
     tipo_destino = models.CharField(max_length=20, choices=DESTINOS, default='COCINA')
     estado = models.CharField(max_length=20, choices=ESTADOS, default='EMITIDO')
     fecha_hora = models.DateTimeField(auto_now_add=True)
     contenido_impresion = models.TextField(blank=True, null=True, help_text="Texto listo para impresora térmica futura")
+    # Campos RF08.6: Reimpresión Trazable
+    es_reimpresion = models.BooleanField(default=False, help_text="Indica si este ticket ha sido reimpreso (RF08.6)")
+    numero_reimpresiones = models.PositiveIntegerField(default=0, help_text="Contador de veces reimpreso")
+    ultima_reimpresion_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_reimpresos')
+    fecha_hora_reimpresion = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Ticket #{self.codigo} [{self.get_tipo_destino_display()}] - {self.get_estado_display()}"

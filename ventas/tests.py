@@ -2829,3 +2829,276 @@ class SafariRF07GestionPreciosTests(TestCase):
         self.assertContains(resp, "Promoción Supervisor")
         self.assertContains(resp, "Precio Especial:")
 
+
+# ==============================================================================
+# RF08 — SUITE DE PRUEBAS: GENERACIÓN DE TICKETS (COCINA, BARRA, COMPROBANTE)
+# ==============================================================================
+class SafariRF08GeneracionTicketsTests(TestCase):
+    """
+    Pruebas exhaustivas para RF08:
+    - Clasificación por destino gobernada por la Base de Datos (RF08.1).
+    - Ticket de Cocina para productos de elaboración con comensal y notas (RF08.2).
+    - Ticket de Barra para productos terminados, bebidas y cafetería (RF08.3).
+    - Comprobante fiscal y boleta de cliente (RF08.4).
+    - Incrementalidad de rondas: la segunda ronda solo imprime ítems nuevos (RF08.5).
+    - Reimpresión trazable sin duplicar ventas ni afectar contabilidad (RF08.6).
+    - Política de Cero Desperdicio: cero tickets vacíos.
+    - Soporte de Venta Rápida (Mostrador) y Mesas.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.hoy = timezone.localdate()
+
+        self.admin = User.objects.create_user(username='admin_rf08', password='Password123!', first_name='Admin', last_name='Tickets')
+        self.cajero = User.objects.create_user(username='cajero_rf08', password='Password123!', first_name='Cajero', last_name='Tickets')
+        self.mesero = User.objects.create_user(username='mesero_rf08', password='Password123!', first_name='Mesero', last_name='Tickets')
+
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante Central RF08", tipo="RESTAURANTE", activo=True)
+        PerfilEmpleado.objects.create(usuario=self.admin, rol='ADMINISTRADOR', punto_venta_actual=self.pv)
+        PerfilEmpleado.objects.create(usuario=self.cajero, rol='CAJERO', punto_venta_actual=self.pv)
+        PerfilEmpleado.objects.create(usuario=self.mesero, rol='MESERO', punto_venta_actual=self.pv)
+
+        self.cat_cocina = Categoria.objects.create(nombre="Minutas y Cocina", destino_defecto='COCINA', activo=True)
+        self.cat_barra = Categoria.objects.create(nombre="Barra y Bebidas", destino_defecto='BARRA', activo=True)
+
+        self.prod_cocina = Producto.objects.create(
+            nombre="Hamburguesa Especial Safari",
+            categoria=self.cat_cocina,
+            precio_base=Decimal('8500.00'),
+            destino_operativo='COCINA',
+            activo=True
+        )
+        self.prod_barra = Producto.objects.create(
+            nombre="Café Moka Barista",
+            categoria=self.cat_barra,
+            precio_base=Decimal('3200.00'),
+            destino_operativo='BARRA',
+            activo=True
+        )
+
+        self.jornada = Jornada.objects.create(fecha=self.hoy, estado='ABIERTA', usuario_apertura=self.admin)
+        self.caja = Caja.objects.create(
+            nombre="Caja Principal RF08", jornada=self.jornada, punto_venta=self.pv,
+            cajero=self.cajero, monto_apertura=Decimal('100000.00'), estado='ABIERTA'
+        )
+        self.mesa = Mesa.objects.create(identificador="Mesa 80", punto_venta=self.pv, capacidad=4, estado='HABILITADA')
+
+    # 1. Clasificación de destino gobernada por la Base de Datos (RF08.1)
+    def test_rf08_1_clasificacion_por_destino_gobernada_por_bd(self):
+        self.assertEqual(self.prod_cocina.get_destino_operativo(), 'COCINA')
+        self.assertEqual(self.prod_barra.get_destino_operativo(), 'BARRA')
+
+        # Si el producto no tiene destino manual explícito, hereda de su categoría
+        prod_heredado = Producto.objects.create(
+            nombre="Bebida Fanta 350ml",
+            categoria=self.cat_barra,
+            precio_base=Decimal('2000.00'),
+            destino_operativo='',
+            activo=True
+        )
+        self.assertEqual(prod_heredado.get_destino_operativo(), 'BARRA')
+
+    # 2. Ticket de Cocina: contenido estructurado y cero ticket de barra vacío (RF08.2)
+    def test_rf08_2_ticket_cocina_formato_y_cero_desperdicio_barra(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa, total=Decimal('17000.00'), estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE', observaciones="Mesa VIP Terraza")
+        DetallePedido.objects.create(
+            pedido=pedido, producto=self.prod_cocina, cantidad=2, observaciones="Término medio, sin cebolla"
+        )
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        self.assertTrue(res['tiene_cocina'])
+        self.assertFalse(res['tiene_barra']) # Cero desperdicio: no genera ticket de barra
+        self.assertEqual(res['total_tickets'], 1)
+
+        t_cocina = Ticket.objects.get(pedido=pedido, tipo_destino='COCINA')
+        self.assertIn("PARQUE SAFARI - COMANDA COCINA", t_cocina.contenido_impresion)
+        self.assertIn("Mesa: Mesa 80", t_cocina.contenido_impresion)
+        self.assertIn("2x  Hamburguesa Especial Safari", t_cocina.contenido_impresion)
+        self.assertIn("Nota: Término medio, sin cebolla", t_cocina.contenido_impresion)
+        self.assertEqual(Ticket.objects.filter(pedido=pedido, tipo_destino='BARRA').count(), 0)
+
+    # 3. Ticket de Barra: contenido estructurado y cero ticket de cocina vacío (RF08.3)
+    def test_rf08_3_ticket_barra_formato_y_cero_desperdicio_cocina(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa, total=Decimal('6400.00'), estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(
+            pedido=pedido, producto=self.prod_barra, cantidad=2, observaciones="Con leche vegetal"
+        )
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        self.assertFalse(res['tiene_cocina']) # Cero desperdicio: no genera ticket de cocina
+        self.assertTrue(res['tiene_barra'])
+        self.assertEqual(res['total_tickets'], 1)
+
+        t_barra = Ticket.objects.get(pedido=pedido, tipo_destino='BARRA')
+        self.assertIn("PARQUE SAFARI - COMANDA BARRA", t_barra.contenido_impresion)
+        self.assertIn("2x  Café Moka Barista", t_barra.contenido_impresion)
+        self.assertIn("Nota: Con leche vegetal", t_barra.contenido_impresion)
+        self.assertEqual(Ticket.objects.filter(pedido=pedido, tipo_destino='COCINA').count(), 0)
+
+    # 4. Pedido mixto genera exactamente 2 tickets clasificados (Cocina y Barra)
+    def test_rf08_pedido_mixto_cocina_y_barra(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa, total=Decimal('11700.00'), estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_barra, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        self.assertTrue(res['tiene_cocina'])
+        self.assertTrue(res['tiene_barra'])
+        self.assertEqual(res['total_tickets'], 2)
+
+        t_coc = Ticket.objects.get(pedido=pedido, tipo_destino='COCINA')
+        t_bar = Ticket.objects.get(pedido=pedido, tipo_destino='BARRA')
+        self.assertIn("Hamburguesa Especial", t_coc.contenido_impresion)
+        self.assertNotIn("Café Moka", t_coc.contenido_impresion) # Cocina no incluye barra
+        self.assertIn("Café Moka", t_bar.contenido_impresion)
+        self.assertNotIn("Hamburguesa Especial", t_bar.contenido_impresion) # Barra no incluye cocina
+
+    # 5. Comprobante de venta y boleta para el cliente (RF08.4)
+    def test_rf08_4_comprobante_venta_emision_completa(self):
+        from ventas.utils import emitir_comprobante_venta
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='EFECTIVO', total=Decimal('11700.00'),
+            total_sin_redondeo=Decimal('11700.00'), redondeo_ley_20956=Decimal('0.00'), estado='PAGADA'
+        )
+        DetalleVenta.objects.create(venta=venta, producto=self.prod_cocina, cantidad=1, precio_aplicado=Decimal('8500.00'), subtotal=Decimal('8500.00'))
+        DetalleVenta.objects.create(venta=venta, producto=self.prod_barra, cantidad=1, precio_aplicado=Decimal('3200.00'), subtotal=Decimal('3200.00'))
+
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+        self.assertIsNotNone(comp)
+        self.assertEqual(comp.tipo_destino, 'COMPROBANTE')
+        self.assertEqual(comp.venta, venta)
+        self.assertIn("PARQUE SAFARI CHILE", comp.contenido_impresion)
+        self.assertIn(f"TKT-VEN-{venta.id:05d}", comp.contenido_impresion)
+        self.assertIn("Hamburguesa Especial", comp.contenido_impresion)
+        self.assertIn("Café Moka Barista", comp.contenido_impresion)
+        self.assertIn("TOTAL PAGADO:", comp.contenido_impresion)
+        self.assertIn("$11.700", comp.contenido_impresion)
+        self.assertIn("Método de Pago:", comp.contenido_impresion)
+        self.assertIn("Efectivo", comp.contenido_impresion)
+
+    # 6. Incrementalidad de rondas: la segunda ronda NO reimprime productos anteriores (RF08.5)
+    def test_rf08_5_segunda_ronda_incremental_sin_duplicar_items_anteriores(self):
+        self.client.force_login(self.mesero)
+
+        # Ronda 1: Mesa pide Hamburguesa
+        payload_r1 = [
+            {"nombre": self.prod_cocina.nombre, "cantidad": 1, "precio": 8500, "destino": "COCINA"}
+        ]
+        self.client.post(reverse('mesero') + f"?local_id={self.pv.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa.id,
+            'items_json': json.dumps(payload_r1)
+        }, follow=True)
+
+        venta = Venta.objects.get(mesa=self.mesa, estado='ABIERTA')
+        pedido_r1 = venta.pedidos.order_by('id').first()
+        t_r1 = Ticket.objects.get(pedido=pedido_r1, tipo_destino='COCINA')
+        self.assertIn("Hamburguesa Especial Safari", t_r1.contenido_impresion)
+
+        # Ronda 2: Misma mesa pide Café
+        payload_r2 = [
+            {"nombre": self.prod_barra.nombre, "cantidad": 2, "precio": 3200, "destino": "BARRA"}
+        ]
+        self.client.post(reverse('mesero') + f"?local_id={self.pv.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa.id,
+            'items_json': json.dumps(payload_r2)
+        }, follow=True)
+
+        self.assertEqual(venta.pedidos.count(), 2)
+        pedido_r2 = venta.pedidos.order_by('id').last()
+
+        # Verificar tickets de Ronda 2
+        # Solo debe haber ticket de BARRA para la ronda 2, y NO de cocina
+        t_barra_r2 = Ticket.objects.filter(pedido=pedido_r2, tipo_destino='BARRA').first()
+        self.assertIsNotNone(t_barra_r2)
+        self.assertIn("Café Moka Barista", t_barra_r2.contenido_impresion)
+        self.assertNotIn("Hamburguesa", t_barra_r2.contenido_impresion) # No reimprime ronda 1
+        self.assertFalse(Ticket.objects.filter(pedido=pedido_r2, tipo_destino='COCINA').exists())
+
+    # 7. Reimpresión trazable sin duplicar ventas ni contabilidad (RF08.6)
+    def test_rf08_6_reimpresion_trazable_sin_crear_venta_ni_duplicar_contabilidad(self):
+        from ventas.utils import emitir_comprobante_venta, reimprimir_ticket
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='DEBITO', total=Decimal('8500.00'), estado='PAGADA'
+        )
+        DetalleVenta.objects.create(venta=venta, producto=self.prod_cocina, cantidad=1, precio_aplicado=Decimal('8500.00'), subtotal=Decimal('8500.00'))
+
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+        self.assertEqual(comp.numero_reimpresiones, 0)
+        self.assertFalse(comp.es_reimpresion)
+
+        ventas_antes = Venta.objects.count()
+        detalles_antes = DetalleVenta.objects.count()
+
+        # Realizar reimpresión trazable
+        reimpreso = reimprimir_ticket(comp, usuario_solicitante=self.admin)
+
+        self.assertTrue(reimpreso.es_reimpresion)
+        self.assertEqual(reimpreso.numero_reimpresiones, 1)
+        self.assertEqual(reimpreso.ultima_reimpresion_por, self.admin)
+        self.assertIn("*** COPIA DE REIMPRESIÓN #1 ***", reimpreso.contenido_impresion)
+
+        # Regla de Oro: La reimpresión jamás crea ventas nuevas ni altera inventarios
+        self.assertEqual(Venta.objects.count(), ventas_antes)
+        self.assertEqual(DetalleVenta.objects.count(), detalles_antes)
+
+    # 8. Rechazo estricto de pedidos vacíos (cero desperdicio de tickets)
+    def test_rf08_pedido_vacio_rechazado_sin_tickets(self):
+        from ventas.utils import emitir_tickets_comanda
+        from django.core.exceptions import ValidationError
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa, total=Decimal('0.00'), estado='ABIERTA'
+        )
+        pedido_vacio = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+
+        with self.assertRaises(ValidationError) as ctx:
+            emitir_tickets_comanda(pedido_vacio)
+        self.assertIn("no contiene productos", str(ctx.exception))
+        self.assertEqual(Ticket.objects.filter(pedido=pedido_vacio).count(), 0)
+
+    # 9. Endpoint de Reimpresión HTTP accesible para Cajero y Administrador (RF08.6)
+    def test_rf08_reimpresion_endpoint_http(self):
+        from ventas.utils import emitir_comprobante_venta
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MOSTRADOR', metodo_pago='EFECTIVO', total=Decimal('8500.00'), estado='PAGADA'
+        )
+        comp = emitir_comprobante_venta(venta)
+
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('reimprimir_ticket', args=[comp.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['numero_reimpresiones'], 1)
+
+        comp.refresh_from_db()
+        self.assertTrue(comp.es_reimpresion)
+        self.assertEqual(comp.numero_reimpresiones, 1)
+

@@ -253,3 +253,286 @@ def registrar_precio_especial_auditoria(venta, detalle_venta, calculo_dict):
         convenio_origen=calculo_dict.get('convenio_obj')
     )
     return registro
+
+
+# ==============================================================================
+# MOTOR DE GENERACIÓN Y REIMPRESIÓN DE TICKETS (RF08 - Cocina, Barra, Comprobante)
+# ==============================================================================
+def generar_contenido_ticket_cocina(pedido, items_cocina, es_reimpresion=False, num_reimpresion=0, usuario_reimpresion=None):
+    """
+    Genera el formato de texto estructurado para el Ticket de Cocina Caliente (RF08.2).
+    Incluye código, modalidad (Mesa / Venta Rápida), fecha/hora, ronda, productos de elaboración,
+    cantidades y observaciones individuales (RF12).
+    """
+    venta = pedido.venta
+    local_nom = venta.punto_venta.nombre if venta.punto_venta else "Restaurante Parque Safari"
+    mesa_txt = f"Mesa: {venta.mesa.identificador}" if (venta.modalidad == 'MESA' and venta.mesa) else "Venta Rápida / Mostrador"
+    rondas_total = venta.pedidos.count()
+    num_ronda = list(venta.pedidos.order_by('id').values_list('id', flat=True)).index(pedido.id) + 1 if pedido.id else rondas_total
+    hora_str = timezone.localtime(pedido.creado_en).strftime("%d/%m/%Y %H:%M:%S") if pedido.creado_en else timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
+
+    lineas = []
+    if es_reimpresion:
+        u_nom = usuario_reimpresion.get_full_name() or usuario_reimpresion.username if usuario_reimpresion else "Supervisión"
+        lineas.append("****************************************")
+        lineas.append(f"*** COPIA DE REIMPRESIÓN #{num_reimpresion} ***")
+        lineas.append(f"*** {timezone.localtime().strftime('%d/%m/%Y %H:%M:%S')} | Por: {u_nom} ***")
+        lineas.append("****************************************")
+
+    lineas.append("========================================")
+    lineas.append("     PARQUE SAFARI - COMANDA COCINA     ")
+    lineas.append(f"Local: {local_nom}")
+    lineas.append(f"Comanda #{pedido.id:04d} | Ronda #{num_ronda}")
+    lineas.append(f"Ubicación: {mesa_txt}")
+    lineas.append(f"Fecha/Hora: {hora_str}")
+    lineas.append("========================================")
+    lineas.append("CANT  PRODUCTO / ELABORACIÓN")
+    lineas.append("----------------------------------------")
+
+    total_unidades = 0
+    for d in items_cocina:
+        p_nom = d.producto.nombre
+        total_unidades += d.cantidad
+        lineas.append(f" {d.cantidad:>2}x  {p_nom[:32]}")
+        if d.observaciones and d.observaciones.strip():
+            lineas.append(f"      Nota: {d.observaciones.strip()[:60]}")
+
+    lineas.append("----------------------------------------")
+    lineas.append(f"TOTAL PRODUCTOS COCINA: {total_unidades} unid.")
+    if pedido.observaciones and pedido.observaciones.strip():
+        lineas.append(f"Obs. General: {pedido.observaciones.strip()[:70]}")
+    lineas.append("========================================")
+    return "\n".join(lineas)
+
+
+def generar_contenido_ticket_barra(pedido, items_barra, es_reimpresion=False, num_reimpresion=0, usuario_reimpresion=None):
+    """
+    Genera el formato de texto estructurado para el Ticket de Barra / Cafetería / Snacks (RF08.3).
+    Incluye productos terminados, bebidas, cafés, snacks o tickets de juegos.
+    """
+    venta = pedido.venta
+    local_nom = venta.punto_venta.nombre if venta.punto_venta else "Barra Parque Safari"
+    mesa_txt = f"Mesa: {venta.mesa.identificador}" if (venta.modalidad == 'MESA' and venta.mesa) else "Venta Rápida / Mostrador"
+    rondas_total = venta.pedidos.count()
+    num_ronda = list(venta.pedidos.order_by('id').values_list('id', flat=True)).index(pedido.id) + 1 if pedido.id else rondas_total
+    hora_str = timezone.localtime(pedido.creado_en).strftime("%d/%m/%Y %H:%M:%S") if pedido.creado_en else timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
+
+    lineas = []
+    if es_reimpresion:
+        u_nom = usuario_reimpresion.get_full_name() or usuario_reimpresion.username if usuario_reimpresion else "Supervisión"
+        lineas.append("****************************************")
+        lineas.append(f"*** COPIA DE REIMPRESIÓN #{num_reimpresion} ***")
+        lineas.append(f"*** {timezone.localtime().strftime('%d/%m/%Y %H:%M:%S')} | Por: {u_nom} ***")
+        lineas.append("****************************************")
+
+    lineas.append("========================================")
+    lineas.append("      PARQUE SAFARI - COMANDA BARRA     ")
+    lineas.append(f"Local: {local_nom}")
+    lineas.append(f"Comanda #{pedido.id:04d} | Ronda #{num_ronda}")
+    lineas.append(f"Ubicación: {mesa_txt}")
+    lineas.append(f"Fecha/Hora: {hora_str}")
+    lineas.append("========================================")
+    lineas.append("CANT  BEBIDA / CAFETERÍA / SNACK")
+    lineas.append("----------------------------------------")
+
+    total_unidades = 0
+    for d in items_barra:
+        p_nom = d.producto.nombre
+        total_unidades += d.cantidad
+        lineas.append(f" {d.cantidad:>2}x  {p_nom[:32]}")
+        if d.observaciones and d.observaciones.strip():
+            lineas.append(f"      Nota: {d.observaciones.strip()[:60]}")
+
+    lineas.append("----------------------------------------")
+    lineas.append(f"TOTAL PRODUCTOS BARRA: {total_unidades} unid.")
+    lineas.append("========================================")
+    return "\n".join(lineas)
+
+
+def generar_contenido_comprobante_venta(venta, es_reimpresion=False, num_reimpresion=0, usuario_reimpresion=None):
+    """
+    Genera el comprobante de cliente / boleta fiscal de venta (RF08.4).
+    Incluye detalle consolidado de venta, precios aplicados, descuentos, redondeo Ley 20.956 y método de pago.
+    """
+    local_nom = venta.punto_venta.nombre if venta.punto_venta else "Parque Safari General"
+    cajero_nom = venta.cajero.get_full_name() or venta.cajero.username if venta.cajero else "Cajero Autorizado"
+    caja_nom = venta.caja.nombre if venta.caja else "Caja Operativa"
+    mesa_txt = f"Consumo en Mesa {venta.mesa.identificador}" if (venta.modalidad == 'MESA' and venta.mesa) else "Venta Rápida Mostrador"
+    hora_str = timezone.localtime(venta.fecha_hora).strftime("%d/%m/%Y %H:%M:%S") if venta.fecha_hora else timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
+
+    lineas = []
+    if es_reimpresion:
+        u_nom = usuario_reimpresion.get_full_name() or usuario_reimpresion.username if usuario_reimpresion else "Supervisión"
+        lineas.append("****************************************")
+        lineas.append(f"*** COPIA DE REIMPRESIÓN #{num_reimpresion} ***")
+        lineas.append(f"*** {timezone.localtime().strftime('%d/%m/%Y %H:%M:%S')} | Por: {u_nom} ***")
+        lineas.append("****************************************")
+
+    lineas.append("========================================")
+    lineas.append("          PARQUE SAFARI CHILE           ")
+    lineas.append("      RUT: 76.842.109-5 | Rancagua      ")
+    lineas.append(f"Local: {local_nom}")
+    lineas.append(f"Boleta / Comprobante: TKT-VEN-{venta.id:05d}")
+    lineas.append(f"Fecha: {hora_str}")
+    lineas.append(f"Cajero: {cajero_nom}")
+    lineas.append(f"Caja: {caja_nom}")
+    lineas.append(f"Modalidad: {mesa_txt}")
+    lineas.append("========================================")
+    lineas.append("CANT  DESCRIPCIÓN              TOTAL   ")
+    lineas.append("----------------------------------------")
+
+    subtotal_items = Decimal('0')
+    descuento_total = Decimal('0')
+
+    detalles = venta.detalles.select_related('producto').all()
+    for d in detalles:
+        subtotal_items += d.subtotal
+        if d.precio_original and d.precio_original > d.precio_aplicado:
+            ahorro_linea = (d.precio_original - d.precio_aplicado) * d.cantidad
+            descuento_total += ahorro_linea
+
+        precio_txt = f"${int(d.subtotal):,}".replace(",", ".")
+        lineas.append(f" {d.cantidad:>2}x  {d.producto.nombre[:22]:<22} {precio_txt:>9}")
+        if d.es_precio_especial and d.motivo_precio_especial:
+            lineas.append(f"      [{d.motivo_precio_especial[:30]}]")
+
+    lineas.append("----------------------------------------")
+    subtotal_bruto = venta.total_sin_redondeo or subtotal_items
+    subtotal_str = f"${int(subtotal_bruto):,}".replace(",", ".")
+    lineas.append(f"Subtotal Bruto:             {subtotal_str:>16}")
+
+    if descuento_total > 0:
+        desc_str = f"-${int(descuento_total):,}".replace(",", ".")
+        lineas.append(f"Descuentos / Convenios:     {desc_str:>16}")
+
+    if venta.redondeo_ley_20956 and venta.redondeo_ley_20956 != 0:
+        signo = "+" if venta.redondeo_ley_20956 > 0 else ""
+        red_str = f"{signo}${int(venta.redondeo_ley_20956):,}".replace(",", ".")
+        lineas.append(f"Redondeo Ley 20.956:        {red_str:>16}")
+
+    lineas.append("========================================")
+    total_str = f"${int(venta.total):,}".replace(",", ".")
+    lineas.append(f"TOTAL PAGADO:               {total_str:>16}")
+    lineas.append(f"Método de Pago:             {venta.get_metodo_pago_display():>12}")
+    lineas.append(f"Estado de Operación:        {venta.get_estado_display():>12}")
+    lineas.append("========================================")
+    lineas.append("    ¡Gracias por visitar Parque Safari! ")
+    lineas.append("========================================")
+    return "\n".join(lineas)
+
+
+def emitir_tickets_comanda(pedido, usuario_emisor=None):
+    """
+    Clasifica y emite tickets de producción (Cocina y Barra) para una comanda o ronda (RF08.1, RF08.2, RF08.3).
+    - Cero Desperdicio de Papel: Solo genera ticket si hay productos asignados a ese destino.
+    - Incrementalidad (RF08.5): Solo toma en cuenta los productos del pedido en curso (ronda actual).
+    Retorna un diccionario con los tickets emitidos.
+    """
+    from .models import Ticket
+
+    detalles = list(pedido.detalles.select_related('producto', 'producto__categoria').all())
+    if not detalles:
+        raise ValidationError("El pedido no contiene productos para emitir comanda.")
+
+    items_cocina = [d for d in detalles if d.producto.get_destino_operativo() == 'COCINA']
+    items_barra = [d for d in detalles if d.producto.get_destino_operativo() == 'BARRA']
+
+    tickets_creados = []
+
+    # 1. Ticket Cocina Caliente (solo si hay ítems de cocina)
+    if items_cocina:
+        contenido_coc = generar_contenido_ticket_cocina(pedido, items_cocina)
+        ticket_coc, _ = Ticket.objects.update_or_create(
+            pedido=pedido,
+            tipo_destino='COCINA',
+            defaults={
+                'venta': pedido.venta,
+                'codigo': f"COM-COC-{pedido.id:04d}",
+                'estado': 'EMITIDO',
+                'contenido_impresion': contenido_coc
+            }
+        )
+        tickets_creados.append(ticket_coc)
+
+    # 2. Ticket Barra / Cafetería (solo si hay ítems de barra)
+    if items_barra:
+        contenido_bar = generar_contenido_ticket_barra(pedido, items_barra)
+        ticket_bar, _ = Ticket.objects.update_or_create(
+            pedido=pedido,
+            tipo_destino='BARRA',
+            defaults={
+                'venta': pedido.venta,
+                'codigo': f"COM-BAR-{pedido.id:04d}",
+                'estado': 'EMITIDO',
+                'contenido_impresion': contenido_bar
+            }
+        )
+        tickets_creados.append(ticket_bar)
+
+    return {
+        'tickets': tickets_creados,
+        'tiene_cocina': bool(items_cocina),
+        'tiene_barra': bool(items_barra),
+        'total_tickets': len(tickets_creados)
+    }
+
+
+def emitir_comprobante_venta(venta, usuario_emisor=None):
+    """
+    Genera el comprobante de cliente / boleta de venta (RF08.4).
+    """
+    from .models import Ticket
+
+    contenido = generar_contenido_comprobante_venta(venta)
+    pedido_asoc = venta.pedidos.order_by('id').first()
+
+    ticket_comp, _ = Ticket.objects.update_or_create(
+        venta=venta,
+        tipo_destino='COMPROBANTE',
+        defaults={
+            'pedido': pedido_asoc,
+            'codigo': f"TKT-VEN-{venta.id:05d}",
+            'estado': 'FINALIZADO',
+            'contenido_impresion': contenido
+        }
+    )
+    return ticket_comp
+
+
+def reimprimir_ticket(ticket, usuario_solicitante=None):
+    """
+    Reimprime un ticket existente de forma trazable (RF08.6).
+    - Marca es_reimpresion=True e incrementa numero_reimpresiones.
+    - Registra usuario_solicitante y marca de tiempo.
+    - NO genera una venta nueva ni duplica detalles contables.
+    """
+    if not ticket:
+        raise ValidationError("El ticket a reimprimir no existe.")
+
+    ticket.numero_reimpresiones += 1
+    ticket.es_reimpresion = True
+    ticket.ultima_reimpresion_por = usuario_solicitante
+    ticket.fecha_hora_reimpresion = timezone.now()
+
+    # Regenerar contenido con banner de reimpresión
+    if ticket.tipo_destino == 'COCINA' and ticket.pedido:
+        items_cocina = [d for d in ticket.pedido.detalles.select_related('producto').all() if d.producto.get_destino_operativo() == 'COCINA']
+        ticket.contenido_impresion = generar_contenido_ticket_cocina(
+            ticket.pedido, items_cocina, es_reimpresion=True,
+            num_reimpresion=ticket.numero_reimpresiones, usuario_reimpresion=usuario_solicitante
+        )
+    elif ticket.tipo_destino == 'BARRA' and ticket.pedido:
+        items_barra = [d for d in ticket.pedido.detalles.select_related('producto').all() if d.producto.get_destino_operativo() == 'BARRA']
+        ticket.contenido_impresion = generar_contenido_ticket_barra(
+            ticket.pedido, items_barra, es_reimpresion=True,
+            num_reimpresion=ticket.numero_reimpresiones, usuario_reimpresion=usuario_solicitante
+        )
+    elif ticket.tipo_destino == 'COMPROBANTE' and ticket.venta:
+        ticket.contenido_impresion = generar_contenido_comprobante_venta(
+            ticket.venta, es_reimpresion=True,
+            num_reimpresion=ticket.numero_reimpresiones, usuario_reimpresion=usuario_solicitante
+        )
+
+    ticket.save()
+    return ticket
+

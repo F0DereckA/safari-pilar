@@ -32,8 +32,8 @@ class CajaAdmin(admin.ModelAdmin):
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre', 'activo')
-    list_filter = ('activo',)
+    list_display = ('id', 'nombre', 'destino_defecto', 'activo')
+    list_filter = ('destino_defecto', 'activo')
     search_fields = ('nombre',)
 
 class PrecioEspecialInline(admin.TabularInline):
@@ -42,8 +42,8 @@ class PrecioEspecialInline(admin.TabularInline):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre', 'categoria', 'precio_base', 'activo')
-    list_filter = ('categoria', 'activo', 'puntos_venta')
+    list_display = ('id', 'nombre', 'categoria', 'precio_base', 'destino_operativo', 'activo')
+    list_filter = ('categoria', 'destino_operativo', 'activo', 'puntos_venta')
     search_fields = ('nombre', 'descripcion')
     filter_horizontal = ('puntos_venta',)
     inlines = [PrecioEspecialInline]
@@ -95,9 +95,9 @@ class PedidoAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'codigo', 'pedido', 'tipo_destino', 'estado', 'fecha_hora')
-    list_filter = ('tipo_destino', 'estado')
-    search_fields = ('codigo',)
+    list_display = ('id', 'codigo', 'pedido', 'venta', 'tipo_destino', 'estado', 'es_reimpresion', 'numero_reimpresiones', 'fecha_hora')
+    list_filter = ('tipo_destino', 'estado', 'es_reimpresion')
+    search_fields = ('codigo', 'venta__id')
 
 @admin.register(Entrega)
 class EntregaAdmin(admin.ModelAdmin):

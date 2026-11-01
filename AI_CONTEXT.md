@@ -10,7 +10,8 @@
 - punto de partida confirmado:
   - RF05 Reasignación de Mesas: **COMPLETADO Y TESTEADO (93/93 suite vigente)**.
   - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
-  - RF01–RF07: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
+  - RF01–RF08: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -191,7 +192,28 @@ Actualizar `AI_CONTEXT.md` y no iniciar RF08 hasta revisión.
 
 ---
 
-# RF08 — GENERACIÓN DE TICKETS
+# RF08 — GENERACIÓN DE TICKETS — [ESTADO: COMPLETADO Y CERRADO (116/116 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF08)
+- **Fecha de Cierre:** 2026-10-31 / 2026-11-01
+- **Migración Aplicada:** 0015_categoria_destino_defecto_producto_destino_operativo_and_more.py
+- **Modelos Actualizados:**
+  * Categoria: destino_defecto (COCINA/BARRA).
+  * Producto: destino_operativo (COCINA/BARRA/COMPROBANTE) con método get_destino_operativo().
+  * Ticket: venta (FK), es_reimpresion, numero_reimpresiones, ultima_reimpresion_por, fecha_hora_reimpresion.
+- **Motor de Emisión de Tickets (ventas/utils.py):**
+  * generar_contenido_ticket_cocina(), generar_contenido_ticket_barra(), generar_contenido_comprobante_venta().
+  * emitir_tickets_comanda(): clasificación estricta por destino de BD, política de cero tickets vacíos, soporte de rondas incrementales (solo emite tickets para los ítems de la comanda/ronda actual).
+  * emitir_comprobante_venta(): detalle financiero con total pagado, método de pago y formato fiscal/térmico.
+  * reimprimir_ticket(): trazabilidad inmutable sin duplicación de ventas ni mutación de caja.
+- **Vistas y Endpoints (ventas/views.py y urls.py):**
+  * enviar_comanda: emisión desacoplada por destino.
+  * cerrar_cuenta_mesa y crear_ticket: generación de comprobante y tickets operativos.
+  * reimprimir_ticket_view: endpoint seguro para reimpresión con trazabilidad de auditoría.
+- **Resultados de Pruebas Automatizadas:**
+  * Tests específicos RF08 (SafariRF08GeneracionTicketsTests): 9/9 tests OK.
+  * Suite completa (python manage.py test ventas): 116/116 tests pasados exitosamente (0 fallos, 0 errores).
+  * python manage.py check: 0 issues.
 
 ## Objetivo oficial
 Generar tickets según operación:

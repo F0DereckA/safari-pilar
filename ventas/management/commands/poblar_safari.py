@@ -219,40 +219,43 @@ class Command(BaseCommand):
 
         # 5. CATEGORÍAS GASTRONÓMICAS BASE
         categorias_def = [
-            {"nombre": "Comida por Cocinar", "descripcion": "Platos calientes, hamburguesas y minutas preparadas al momento (KDS Cocina)"},
-            {"nombre": "Comida Preparada", "descripcion": "Platos listos para buffet, mantenedor térmico y autoservicio"},
-            {"nombre": "Bebidas Envasadas", "descripcion": "Gaseosas, aguas minerales y jugos sellados"},
-            {"nombre": "Cafetería y Jugos", "descripcion": "Café de grano barista, infusiones calientes y jugos naturales (Barra)"},
-            {"nombre": "Pastelería y Snacks", "descripcion": "Tortas, pastelería artesanal y snacks al paso"},
+            {"nombre": "Comida por Cocinar", "descripcion": "Platos calientes, hamburguesas y minutas preparadas al momento (KDS Cocina)", "destino": "COCINA"},
+            {"nombre": "Comida Preparada", "descripcion": "Platos listos para buffet, mantenedor térmico y autoservicio", "destino": "COCINA"},
+            {"nombre": "Bebidas Envasadas", "descripcion": "Gaseosas, aguas minerales y jugos sellados", "destino": "BARRA"},
+            {"nombre": "Cafetería y Jugos", "descripcion": "Café de grano barista, infusiones calientes y jugos naturales (Barra)", "destino": "BARRA"},
+            {"nombre": "Pastelería y Snacks", "descripcion": "Tortas, pastelería artesanal y snacks al paso", "destino": "BARRA"},
         ]
         cats = {}
         for cdef in categorias_def:
             cat_obj, c_creado = Categoria.objects.get_or_create(
                 nombre=cdef["nombre"],
-                defaults={"descripcion": cdef["descripcion"], "activo": True}
+                defaults={"descripcion": cdef["descripcion"], "destino_defecto": cdef.get("destino", "COCINA"), "activo": True}
             )
+            if not c_creado and cdef.get("destino"):
+                cat_obj.destino_defecto = cdef["destino"]
+                cat_obj.save()
             cats[cdef["nombre"]] = cat_obj
             if c_creado:
                 self.stdout.write(self.style.SUCCESS(f"  [+] Categoría creada: {cat_obj.nombre}"))
 
         # 6. PRODUCTOS BASE POR LOCAL
         productos_def = [
-            {"nombre": "Hamburguesa Safari con Papas", "cat": "Comida por Cocinar", "precio": 8900, "locales": [1]},
-            {"nombre": "Churrasco Italiano con Papas", "cat": "Comida por Cocinar", "precio": 8500, "locales": [1]},
-            {"nombre": "Porción Papas Fritas Rústicas", "cat": "Comida por Cocinar", "precio": 3600, "locales": [1, 3]},
-            {"nombre": "Cazuela de Ave Criolla", "cat": "Comida Preparada", "precio": 7500, "locales": [1]},
-            {"nombre": "Menú Infantil Nuggets con Papas", "cat": "Comida por Cocinar", "precio": 5900, "locales": [1]},
-            {"nombre": "Empanada de Pino Horno", "cat": "Comida Preparada", "precio": 2800, "locales": [1, 3]},
-            {"nombre": "Café Espresso Doble", "cat": "Cafetería y Jugos", "precio": 2500, "locales": [2]},
-            {"nombre": "Café Cappuccino Vainilla", "cat": "Cafetería y Jugos", "precio": 3200, "locales": [2]},
-            {"nombre": "Jugo Natural Frambuesa 400ml", "cat": "Cafetería y Jugos", "precio": 3900, "locales": [1, 2]},
-            {"nombre": "Té e Infusiones Variadas", "cat": "Cafetería y Jugos", "precio": 1800, "locales": [2]},
-            {"nombre": "Torta Selva Negra Safari", "cat": "Pastelería y Snacks", "precio": 4200, "locales": [2]},
-            {"nombre": "Croissant Jamón y Queso", "cat": "Pastelería y Snacks", "precio": 3400, "locales": [2]},
-            {"nombre": "Bebida Coca-Cola 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3]},
-            {"nombre": "Bebida Sprite 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3]},
-            {"nombre": "Agua Mineral sin Gas 500ml", "cat": "Bebidas Envasadas", "precio": 1500, "locales": [1, 2, 3]},
-            {"nombre": "Jugo en Caja 200ml", "cat": "Bebidas Envasadas", "precio": 1350, "locales": [3]},
+            {"nombre": "Hamburguesa Safari con Papas", "cat": "Comida por Cocinar", "precio": 8900, "locales": [1], "destino": "COCINA"},
+            {"nombre": "Churrasco Italiano con Papas", "cat": "Comida por Cocinar", "precio": 8500, "locales": [1], "destino": "COCINA"},
+            {"nombre": "Porción Papas Fritas Rústicas", "cat": "Comida por Cocinar", "precio": 3600, "locales": [1, 3], "destino": "COCINA"},
+            {"nombre": "Cazuela de Ave Criolla", "cat": "Comida Preparada", "precio": 7500, "locales": [1], "destino": "COCINA"},
+            {"nombre": "Menú Infantil Nuggets con Papas", "cat": "Comida por Cocinar", "precio": 5900, "locales": [1], "destino": "COCINA"},
+            {"nombre": "Empanada de Pino Horno", "cat": "Comida Preparada", "precio": 2800, "locales": [1, 3], "destino": "COCINA"},
+            {"nombre": "Café Espresso Doble", "cat": "Cafetería y Jugos", "precio": 2500, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Café Cappuccino Vainilla", "cat": "Cafetería y Jugos", "precio": 3200, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Jugo Natural Frambuesa 400ml", "cat": "Cafetería y Jugos", "precio": 3900, "locales": [1, 2], "destino": "BARRA"},
+            {"nombre": "Té e Infusiones Variadas", "cat": "Cafetería y Jugos", "precio": 1800, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Torta Selva Negra Safari", "cat": "Pastelería y Snacks", "precio": 4200, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Croissant Jamón y Queso", "cat": "Pastelería y Snacks", "precio": 3400, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Bebida Coca-Cola 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Bebida Sprite 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Agua Mineral sin Gas 500ml", "cat": "Bebidas Envasadas", "precio": 1500, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Jugo en Caja 200ml", "cat": "Bebidas Envasadas", "precio": 1350, "locales": [3], "destino": "BARRA"},
         ]
         prods_dict = {}
         for pdef in productos_def:
@@ -262,10 +265,13 @@ class Command(BaseCommand):
                 defaults={
                     "categoria": cat_obj,
                     "precio_base": pdef["precio"],
-                    "activo": True,
-                    "descripcion": f"{pdef['nombre']} para servicio gastronómico Parque Safari"
+                    "destino_operativo": pdef.get("destino", "COCINA"),
+                    "activo": True
                 }
             )
+            if not p_creado and pdef.get("destino"):
+                prod_obj.destino_operativo = pdef["destino"]
+                prod_obj.save()
             # Asegurar relación con puntos de venta asignados
             for lid in pdef["locales"]:
                 if lid in puntos:
