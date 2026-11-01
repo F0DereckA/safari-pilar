@@ -23,6 +23,8 @@ desktop.ini
 
 # Logs y bases de datos locales temporales
 *.log
+db.sqlite3
+*.sqlite3
 
 # Exportaciones y paquetes temporales
 importar/
