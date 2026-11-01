@@ -8,6 +8,7 @@ from django.db import models, transaction
 from django.db.models import Sum, Count, Q, F
 from django.utils import timezone
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -18,7 +19,8 @@ from .utils import (
     validar_y_calcular_precio_linea, registrar_precio_especial_auditoria,
     calcular_redondeo_ley_20956, emitir_tickets_comanda, emitir_comprobante_venta,
     reimprimir_ticket, reintentar_despacho_impresion,
-    registrar_consumo_interno, liquidar_consumos_por_planilla
+    registrar_consumo_interno, liquidar_consumos_por_planilla,
+    validar_transicion_estado_pedido, registrar_entrega_pedido
 )
 
 
@@ -2480,11 +2482,12 @@ def administrador_historial(request):
             'estado': v.estado,
         })
 
-    # 5. Eventos de Entrega / Cocina KDS
-    entregas_qs = Entrega.objects.select_related('pedido__venta__punto_venta', 'usuario_entrega').all()
+    # 5. Eventos de Entrega / Cocina KDS (RF13)
+    entregas_qs = Entrega.objects.select_related('pedido__venta__punto_venta', 'pedido__venta__mesa', 'usuario_entrega').all()
     for e in entregas_qs:
-        local_e = e.pedido.venta.punto_venta if (e.pedido and e.pedido.venta) else None
+        local_e = e.get_punto_venta()
         usu_ent = (e.usuario_entrega.get_full_name() or e.usuario_entrega.username) if e.usuario_entrega else "Cocina KDS"
+        tiempo_despacho = e.get_tiempo_desde_creacion_minutos()
         eventos.append({
             'id_ref': f"ENT-{e.id}",
             'tipo': 'COCINA',
@@ -2492,7 +2495,7 @@ def administrador_historial(request):
             'badge_clase': 'badge-status-success',
             'icono': 'bi-check-circle-fill text-success',
             'titulo': f"Entrega Pedido #{e.pedido.id}",
-            'descripcion': f"Comanda despachada al cliente. Observaciones: {e.observaciones or 'Completado'}",
+            'descripcion': f"Comanda despachada ({e.get_ubicacion()}) en {tiempo_despacho:.1f} min. Obs: {e.observaciones or 'Completado'}",
             'usuario': usu_ent,
             'local': local_e.nombre if local_e else 'Cocina Central',
             'local_id': str(local_e.id) if local_e else None,
@@ -3561,6 +3564,7 @@ def cambiar_estado_pedido(request):
     """
     Endpoint para cambiar el estado de preparación de un pedido en cocina/barra:
     PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO
+    Garantiza concurrencia con select_for_update y validación estricta de máquina de estados (RF13).
     """
     if request.method == 'POST':
         pedido_raw = request.POST.get('pedido_id', '')
@@ -3581,19 +3585,63 @@ def cambiar_estado_pedido(request):
             messages.error(request, "Estado de pedido inválido.")
             return redirect('cocina')
 
-        pedido = get_object_or_404(Pedido, id=pedido_id)
-        pedido.estado = nuevo_estado
-        pedido.save()
+        ticket_id = request.POST.get('ticket_id')
+        ticket_obj = None
+        if ticket_id:
+            try:
+                ticket_obj = Ticket.objects.filter(id=int(ticket_id)).first()
+            except (ValueError, TypeError):
+                ticket_obj = None
 
-        if nuevo_estado == 'ENTREGADO':
-            Entrega.objects.create(
-                pedido=pedido,
-                usuario_entrega=request.user,
-                observaciones=f"Entregado al personal de servicio por {request.user.get_full_name() or request.user.username}"
-            )
-            pedido.tickets.update(estado='FINALIZADO')
-        elif nuevo_estado == 'EN_PREPARACION':
-            pedido.tickets.filter(estado='EMITIDO').update(estado='EN_PROCESO')
+        observaciones_entrega = request.POST.get('observaciones_entrega') or request.POST.get('observaciones')
+
+        try:
+            with transaction.atomic():
+                pedido = Pedido.objects.select_for_update().filter(id=pedido_id).first()
+                if not pedido:
+                    raise ValidationError(f"El pedido #{pedido_id} no existe.")
+
+                if nuevo_estado == 'ENTREGADO':
+                    entrega = registrar_entrega_pedido(
+                        pedido_or_id=pedido,
+                        usuario_entrega=request.user,
+                        ticket=ticket_obj,
+                        observaciones=observaciones_entrega
+                    )
+                else:
+                    validar_transicion_estado_pedido(pedido, nuevo_estado)
+                    if nuevo_estado != pedido.estado:
+                        pedido.estado = nuevo_estado
+                        ahora = timezone.now()
+                        if nuevo_estado == 'EN_PREPARACION':
+                            if not pedido.fecha_inicio_preparacion:
+                                pedido.fecha_inicio_preparacion = ahora
+                            if ticket_obj:
+                                ticket_obj.estado = 'EN_PROCESO'
+                                ticket_obj.save(update_fields=['estado'])
+                            else:
+                                pedido.tickets.filter(estado='EMITIDO').update(estado='EN_PROCESO')
+                        elif nuevo_estado == 'LISTO':
+                            if not pedido.fecha_listo:
+                                pedido.fecha_listo = ahora
+                        pedido.save()
+
+        except ValidationError as ve:
+            msg_err = ve.message if hasattr(ve, 'message') else str(ve)
+            if isinstance(msg_err, list):
+                msg_err = "; ".join(msg_err)
+            elif isinstance(msg_err, dict):
+                msg_err = str(msg_err)
+            if msg_err.startswith("['") and msg_err.endswith("']"):
+                msg_err = msg_err[2:-2]
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'error', 'mensaje': msg_err}, status=400)
+            messages.error(request, msg_err)
+            referer = request.META.get('HTTP_REFERER')
+            if referer and ('/cocina/' in referer or '/mesero/' in referer or '/barra/' in referer):
+                return redirect(referer)
+            return redirect('cocina')
 
         mensaje_exito = f"Pedido #{pedido.id:04d} actualizado a '{pedido.get_estado_display()}' exitosamente."
 

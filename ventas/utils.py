@@ -893,3 +893,105 @@ def sanitizar_observacion(texto, max_length=200):
     import html
     texto_escapado = html.escape(texto_str)
     return texto_escapado[:max_length]
+
+# ==============================================================================
+# 9. GESTIÓN Y TRAZABILIDAD DE ENTREGA DE PEDIDOS (RF13)
+# ==============================================================================
+
+TRANSICIONES_PERMITIDAS_PEDIDO = {
+    'PENDIENTE': ['EN_PREPARACION', 'LISTO', 'CANCELADO'],
+    'EN_PREPARACION': ['LISTO', 'CANCELADO'],
+    'LISTO': ['ENTREGADO', 'CANCELADO'],
+    'ENTREGADO': [],
+    'CANCELADO': [],
+}
+
+def validar_transicion_estado_pedido(pedido, nuevo_estado):
+    """
+    Valida las transiciones de estado permitidas en la máquina de estados de Pedidos (RF13.1).
+    Flujo: PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO.
+    Terminales: ENTREGADO, CANCELADO.
+    """
+    if pedido.estado == nuevo_estado:
+        if pedido.estado == 'ENTREGADO':
+            raise ValidationError("El pedido ya fue entregado previamente y no puede entregarse nuevamente (RF13.4).")
+        return True
+
+    permitidos = TRANSICIONES_PERMITIDAS_PEDIDO.get(pedido.estado, [])
+    if nuevo_estado not in permitidos:
+        if nuevo_estado == 'ENTREGADO':
+            raise ValidationError(
+                f"No se puede entregar un pedido que no ha sido marcado como LISTO previamente "
+                f"(estado actual: {pedido.get_estado_display()}) (RF13.1)."
+            )
+        if pedido.estado == 'CANCELADO':
+            raise ValidationError("Un pedido cancelado no puede cambiar de estado ni ser entregado (RF13).")
+        if pedido.estado == 'ENTREGADO':
+            raise ValidationError("El pedido ya fue entregado previamente y no admite modificaciones posteriores (RF13.4).")
+        raise ValidationError(
+            f"Transición de estado inválida: no se puede cambiar de {pedido.get_estado_display()} a {nuevo_estado}."
+        )
+    return True
+
+
+def registrar_entrega_pedido(pedido_or_id, usuario_entrega=None, ticket=None, observaciones=None):
+    """
+    Servicio centralizado y blindado para registrar la entrega de un pedido al comensal (RF13).
+    Aplica:
+    - Transacción atómica y bloqueo por fila (select_for_update) para concurrencia (RF13.4).
+    - Validación estricta: sólo pedidos en estado 'LISTO' pueden ser entregados (RF13.1).
+    - Prevención de doble entrega: rechazo si ya está ENTREGADO o si existe registro de Entrega (RF13.4).
+    - Rechazo de pedidos CANCELADOS.
+    - Registro de trazabilidad con timestamp, usuario responsable, ticket y ubicación (RF13.2).
+    - Cierre automático de tickets asociados a estado 'FINALIZADO'.
+    """
+    from .models import Pedido, Entrega, Ticket
+
+    with transaction.atomic():
+        if isinstance(pedido_or_id, Pedido):
+            pedido_id = pedido_or_id.id
+        else:
+            pedido_id = int(pedido_or_id)
+
+        pedido = Pedido.objects.select_for_update().filter(id=pedido_id).first()
+        if not pedido:
+            raise ValidationError(f"El pedido #{pedido_id} no existe.")
+
+        if pedido.estado == 'CANCELADO':
+            raise ValidationError(f"El pedido #{pedido.id} está cancelado y no puede ser entregado.")
+
+        if pedido.estado == 'ENTREGADO' or Entrega.objects.filter(pedido=pedido).exists():
+            raise ValidationError(f"El pedido #{pedido.id} ya ha sido entregado previamente (RF13.4).")
+
+        if pedido.estado != 'LISTO':
+            raise ValidationError(
+                f"El pedido #{pedido.id} debe estar en estado 'LISTO' antes de registrar su entrega "
+                f"(estado actual: {pedido.get_estado_display()}) (RF13.1)."
+            )
+
+        ticket_obj = ticket
+        if not ticket_obj:
+            ticket_obj = pedido.tickets.first()
+
+        obs_texto = observaciones
+        if not obs_texto:
+            nombre_u = usuario_entrega.get_full_name() or usuario_entrega.username if usuario_entrega else "Personal de Servicio"
+            obs_texto = f"Entregado al comensal por {nombre_u}"
+        else:
+            obs_texto = sanitizar_observacion(obs_texto, max_length=200)
+
+        entrega = Entrega.objects.create(
+            pedido=pedido,
+            ticket=ticket_obj,
+            usuario_entrega=usuario_entrega,
+            observaciones=obs_texto
+        )
+
+        pedido.estado = 'ENTREGADO'
+        pedido.save(update_fields=['estado', 'actualizado_en'])
+
+        # Finalizar tickets de producción
+        pedido.tickets.exclude(estado='FINALIZADO').update(estado='FINALIZADO')
+
+        return entrega
+

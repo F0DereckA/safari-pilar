@@ -15,7 +15,8 @@
   - RF10 Consumo Interno / Fiado: **COMPLETADO Y TESTEADO (137/137 suite vigente en verde al cerrar RF10)**.
   - RF11 Asignación de Mesa o Venta Rápida: **COMPLETADO Y TESTEADO (145/145 suite vigente en verde al cerrar RF11)**.
   - RF12 Comentarios Asociados a Productos: **COMPLETADO Y TESTEADO (153/153 suite vigente en verde al cerrar RF12)**.
-  - RF01–RF12: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF13 Registro de Entrega de Productos: **COMPLETADO Y TESTEADO (161/161 suite vigente en verde al cerrar RF13)**.
+  - RF01–RF13: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -611,7 +612,26 @@ Revisar `DetallePedido.observaciones` y UI actual.
 
 ---
 
-# RF13 — REGISTRO DE ENTREGA DE PRODUCTOS
+# RF13 — REGISTRO DE ENTREGA DE PRODUCTOS — [ESTADO: COMPLETADO Y CERRADO (161/161 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF13)
+- **Fecha de Cierre:** 2026-11-01
+- **Migración Aplicada:** `0019_pedido_fecha_inicio_preparacion_pedido_fecha_listo.py`
+- **Modelos Actualizados (`ventas/models.py`):**
+  * `Pedido`: incorporación de marcas de tiempo operativas `fecha_inicio_preparacion` y `fecha_listo`. Métodos de cálculo de tiempos `get_tiempo_preparacion_minutos()` y `get_tiempo_espera_total_minutos()`.
+  * `Entrega`: validaciones integradas en `clean()` y `save()` que blindan a nivel de modelo que solo comandas en estado `LISTO` puedan entregarse, prohibiendo terminantemente entregas de pedidos `CANCELADOS` y duplicación de entregas (RF13.4). Métodos de conveniencia añadidos: `get_ubicacion()`, `get_punto_venta()`, `get_tiempo_desde_creacion_minutos()` y `get_tiempo_desde_creacion_segundos()`.
+- **Servicios y Lógica Operativa (`ventas/utils.py`):**
+  * `validar_transicion_estado_pedido()`: máquina de estados rigurosa `PENDIENTE` -> `EN_PREPARACION` -> `LISTO` -> `ENTREGADO`. Estados terminales inmutables (`ENTREGADO`, `CANCELADO`).
+  * `registrar_entrega_pedido()`: servicio atómico con bloqueo de concurrencia `select_for_update()`, verificación de estado `LISTO`, sanitización de observaciones (OWASP ASVS), asignación de usuario responsable (`usuario_entrega`), vinculación a ticket y cierre automático de tickets asociados a `FINALIZADO`.
+- **Integración de Vistas y Plantillas:**
+  * Endpoint KDS/BDS/Salón (`cambiar_estado_pedido` en `ventas/views.py`): operación bajo `transaction.atomic()` y `select_for_update()`, delegación de entrega a `registrar_entrega_pedido`, captura estructurada de `ValidationError` y respuestas HTTP 400 coherentes para llamadas AJAX/KDS y redirección segura para salón.
+  * Salón Mesero (`mesero.html`): notificación visual de comandas listas para servir y botón "Servir" que marca la entrega manteniendo la mesa ocupada mientras la cuenta siga abierta.
+  * Auditoría Administrativa (`administrador_historial`): trazabilidad de eventos `ENT-...` con ubicación ("Mesa X (Salón)" vs "Retiro Rápido / Mostrador") y tiempos de atención reales en minutos.
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF13 (`SafariRF13RegistroEntregaProductosTests`): 8/8 tests OK.
+  * Suite completa del sistema: 161/161 tests OK en 278.8s (0 fallos, 0 errores).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado.
 
 ## Auditoría
 Revisar `Entrega`, `Pedido`, `Ticket` y estados KDS.

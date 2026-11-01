@@ -605,6 +605,22 @@ class Pedido(models.Model):
     observaciones = models.TextField(blank=True, null=True, help_text="Instrucciones especiales para cocina/barra")
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    fecha_inicio_preparacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de preparación en cocina/barra (RF13/RF16)")
+    fecha_listo = models.DateTimeField(null=True, blank=True, help_text="Timestamp de marcado como listo para servir (RF13/RF16)")
+
+    def get_tiempo_preparacion_minutos(self):
+        """Retorna el tiempo de preparación en minutos desde inicio hasta marcado como listo (RF16)"""
+        if self.fecha_inicio_preparacion and self.fecha_listo:
+            delta = self.fecha_listo - self.fecha_inicio_preparacion
+            return max(0.0, round(delta.total_seconds() / 60.0, 1))
+        return None
+
+    def get_tiempo_espera_total_minutos(self):
+        """Retorna el tiempo transcurrido desde la creación del pedido hasta su entrega o momento actual (RF16)"""
+        entrega = self.entregas.first()
+        fin = entrega.fecha_hora_entrega if (entrega and entrega.fecha_hora_entrega) else timezone.now()
+        delta = fin - self.creado_en
+        return max(0.0, round(delta.total_seconds() / 60.0, 1))
 
     def __str__(self):
         return f"Pedido #{self.id} (Venta #{self.venta.id}) - {self.get_estado_display()}"
@@ -782,8 +798,57 @@ class Entrega(models.Model):
     fecha_hora_entrega = models.DateTimeField(auto_now_add=True)
     observaciones = models.CharField(max_length=200, blank=True, null=True)
 
+    def clean(self):
+        super().clean()
+        from django.core.exceptions import ValidationError
+        if self.pedido:
+            if self.pedido.estado == 'CANCELADO':
+                raise ValidationError("No se puede registrar entrega para un pedido cancelado.")
+            if self.pedido.estado not in ['LISTO', 'ENTREGADO']:
+                raise ValidationError(f"El pedido #{self.pedido.id} debe estar en estado 'LISTO' para ser entregado (estado actual: {self.pedido.get_estado_display()}) (RF13.1).")
+            if not self.pk and Entrega.objects.filter(pedido=self.pedido).exists():
+                raise ValidationError(f"El pedido #{self.pedido.id} ya registra una entrega previa (RF13.4).")
+        if self.observaciones:
+            from ventas.utils import sanitizar_observacion
+            self.observaciones = sanitizar_observacion(self.observaciones, max_length=200)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def get_ubicacion(self):
+        """Retorna la ubicación operativa formal de la comanda (RF11 / RF13)"""
+        if self.pedido and self.pedido.venta:
+            return self.pedido.venta.get_ubicacion_despacho()
+        return "Retiro Rápido / Mostrador"
+
+    def get_punto_venta(self):
+        """Retorna el Punto de Venta donde se despachó el pedido (RF13.2)"""
+        if self.pedido and self.pedido.venta:
+            if self.pedido.venta.punto_venta:
+                return self.pedido.venta.punto_venta
+            if self.pedido.venta.mesa and self.pedido.venta.mesa.punto_venta:
+                return self.pedido.venta.mesa.punto_venta
+        if self.ticket and self.ticket.punto_venta:
+            return self.ticket.punto_venta
+        return None
+
+    def get_tiempo_desde_creacion_minutos(self):
+        """Retorna los minutos transcurridos desde que se generó la comanda hasta su entrega final (RF13 / RF16)"""
+        if self.pedido and self.pedido.creado_en and self.fecha_hora_entrega:
+            delta = self.fecha_hora_entrega - self.pedido.creado_en
+            return max(0.0, round(delta.total_seconds() / 60.0, 1))
+        return 0.0
+
+    def get_tiempo_desde_creacion_segundos(self):
+        """Retorna los segundos transcurridos desde la creación del pedido hasta su entrega (RF13 / RF16)"""
+        if self.pedido and self.pedido.creado_en and self.fecha_hora_entrega:
+            delta = self.fecha_hora_entrega - self.pedido.creado_en
+            return max(0, int(delta.total_seconds()))
+        return 0
+
     def __str__(self):
-        return f"Entrega Pedido #{self.pedido.id} ({self.fecha_hora_entrega.strftime('%H:%M:%S')})"
+        return f"Entrega Pedido #{self.pedido.id} ({self.fecha_hora_entrega.strftime('%H:%M:%S')}) - {self.get_ubicacion()}"
 
     class Meta:
         verbose_name = "Entrega de Pedido"

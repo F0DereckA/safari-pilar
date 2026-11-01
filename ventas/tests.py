@@ -4532,3 +4532,375 @@ class SafariRF12ComentariosProductosTests(TestCase):
         ped = v.pedidos.first()
         det = ped.detalles.first()
         self.assertEqual(det.observaciones, "Para llevar en bolsa termica")
+
+
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF13 (Registro de Entrega de Productos)
+# ==============================================================================
+class SafariRF13RegistroEntregaProductosTests(TestCase):
+    """
+    Pruebas unitarias e integración de alta fidelidad para RF13:
+    - RF13.1: Ciclo de vida y máquina de estados (PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO).
+    - RF13.2: Registro de auditoría trazable con fecha/hora, usuario responsable, ticket, local y ubicación.
+    - RF13.3: Granularidad operativa por comanda (Pedido) e integración con tickets de producción.
+    - RF13.4: Prevención estricta de doble entrega y blindaje de concurrencia.
+    - Rechazo de entregas prematuras (antes de LISTO) y de pedidos CANCELADOS.
+    - Aislamiento de tiempos y entregas multi-ronda.
+    - Integración visual y operativa con panel de Mesero y Auditoría Administrador.
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Producto, Categoria, Venta, Pedido, DetallePedido, Ticket, Entrega, Jornada, Caja
+
+        self.pv_central = PuntoVenta.objects.create(nombre="Restaurante Central Safari", activo=True)
+        self.pv_barra = PuntoVenta.objects.create(nombre="Barra Rápida Safari", activo=True)
+
+        self.admin_user = User.objects.create_superuser('admin_rf13', 'admin@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv_central)
+
+        self.cocinero_user = User.objects.create_user('cocinero_rf13', 'cocinero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cocinero_user, rol='COCINERO', punto_venta_actual=self.pv_central)
+
+        self.mesero_user = User.objects.create_user('mesero_rf13', 'mesero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv_central)
+
+        self.cajero_user = User.objects.create_user('cajero_rf13', 'cajero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv_central)
+
+        self.cajero_barra_user = User.objects.create_user('cajero_barra_rf13', 'cajerobarra@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_barra_user, rol='CAJERO', punto_venta_actual=self.pv_barra)
+
+        self.mesa_m1 = Mesa.objects.create(identificador="M1", capacidad=4, punto_venta=self.pv_central, estado='HABILITADA')
+
+        self.cat_cocina = Categoria.objects.create(nombre="Cocina Caliente")
+        self.prod_hamburguesa = Producto.objects.create(
+            nombre="Hamburguesa Safari Premium",
+            categoria=self.cat_cocina,
+            precio_base=Decimal('8500'),
+            activo=True
+        )
+
+        self.cat_barra = Categoria.objects.create(nombre="Cafetería y Jugos")
+        self.prod_jugo = Producto.objects.create(
+            nombre="Jugo Natural Frambuesa",
+            categoria=self.cat_barra,
+            precio_base=Decimal('3500'),
+            activo=True
+        )
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin_user, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+        self.caja_barra, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_barra_user,
+            punto_venta=self.pv_barra,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf13_1_flujo_valido_completo_hasta_entrega(self):
+        """RF13.1: Ciclo completo válido PENDIENTE -> EN_PREPARACION -> LISTO -> ENTREGADO con trazabilidad"""
+        from ventas.models import Venta, Pedido, DetallePedido, Ticket, Entrega
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_m1,
+            total=Decimal('12000'),
+            estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE', observaciones="Sin sal")
+        dp = DetallePedido.objects.create(pedido=pedido, producto=self.prod_hamburguesa, cantidad=1)
+        ticket = Ticket.objects.create(pedido=pedido, venta=venta, codigo="COM-COC-1301", tipo_destino='COCINA', estado='EMITIDO')
+
+        # 1. Pasar a EN_PREPARACION
+        self.client.force_login(self.cocinero_user)
+        resp1 = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'EN_PREPARACION'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp1.status_code, 200)
+        pedido.refresh_from_db()
+        ticket.refresh_from_db()
+        self.assertEqual(pedido.estado, 'EN_PREPARACION')
+        self.assertIsNotNone(pedido.fecha_inicio_preparacion)
+        self.assertEqual(ticket.estado, 'EN_PROCESO')
+
+        # 2. Pasar a LISTO
+        resp2 = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'LISTO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp2.status_code, 200)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'LISTO')
+        self.assertIsNotNone(pedido.fecha_listo)
+
+        # 3. Mesero entrega el pedido al comensal (ENTREGADO)
+        self.client.force_login(self.mesero_user)
+        resp3 = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp3.status_code, 200)
+        pedido.refresh_from_db()
+        ticket.refresh_from_db()
+        self.assertEqual(pedido.estado, 'ENTREGADO')
+        self.assertEqual(ticket.estado, 'FINALIZADO')
+
+        # Verificar auditoría en Entrega
+        entrega = Entrega.objects.filter(pedido=pedido).first()
+        self.assertIsNotNone(entrega)
+        self.assertEqual(entrega.usuario_entrega, self.mesero_user)
+        self.assertEqual(entrega.ticket, ticket)
+        self.assertIsNotNone(entrega.fecha_hora_entrega)
+
+    def test_rf13_2_rechazo_entrega_antes_de_estar_listo(self):
+        """RF13.1 / Problema 1: Se rechaza marcar como ENTREGADO un pedido que está PENDIENTE o EN_PREPARACION"""
+        from ventas.models import Venta, Pedido, DetallePedido, Entrega
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='VENTA_RAPIDA',
+            total=Decimal('8500'),
+            estado='PAGADA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+
+        self.client.force_login(self.mesero_user)
+
+        # Intento de entregar pedido en PENDIENTE
+        resp_pend = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_pend.status_code, 400)
+        self.assertIn("error", resp_pend.json()['status'])
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'PENDIENTE')
+        self.assertEqual(Entrega.objects.filter(pedido=pedido).count(), 0)
+
+        # Intento de entregar pedido en EN_PREPARACION
+        pedido.estado = 'EN_PREPARACION'
+        pedido.save()
+
+        resp_prep = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_prep.status_code, 400)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'EN_PREPARACION')
+        self.assertEqual(Entrega.objects.filter(pedido=pedido).count(), 0)
+
+    def test_rf13_3_prevencion_doble_entrega_y_concurrencia(self):
+        """RF13.4 / Problema 2: Prevención estricta de doble entrega; segundo intento rechazado con cero duplicados"""
+        from ventas.models import Venta, Pedido, Entrega
+        from django.core.exceptions import ValidationError
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero_user, punto_venta=self.pv_central, modalidad='VENTA_RAPIDA', total=Decimal('3500'), estado='PAGADA')
+        pedido = Pedido.objects.create(venta=venta, estado='LISTO')
+
+        self.client.force_login(self.mesero_user)
+
+        # Primera entrega: exitosa
+        resp1 = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp1.status_code, 200)
+        self.assertEqual(Entrega.objects.filter(pedido=pedido).count(), 1)
+
+        # Segunda entrega concurrente/duplicada: debe fallar con 400
+        resp2 = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp2.status_code, 400)
+        self.assertIn("error", resp2.json()['status'])
+        # Garantía de cero duplicados en base de datos
+        self.assertEqual(Entrega.objects.filter(pedido=pedido).count(), 1)
+
+        # Validación directa a nivel de modelo
+        with self.assertRaises(ValidationError):
+            Entrega.objects.create(pedido=pedido, usuario_entrega=self.cajero_user)
+
+    def test_rf13_4_rechazo_entrega_pedido_cancelado(self):
+        """RF13.1 / Problema 6: Un pedido CANCELADO no puede ser entregado ni cambiar de estado"""
+        from ventas.models import Venta, Pedido, Entrega
+        from django.core.exceptions import ValidationError
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero_user, punto_venta=self.pv_central, modalidad='VENTA_RAPIDA', total=Decimal('5000'), estado='PAGADA')
+        pedido = Pedido.objects.create(venta=venta, estado='CANCELADO')
+
+        self.client.force_login(self.mesero_user)
+        resp = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 400)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'CANCELADO')
+        self.assertEqual(Entrega.objects.filter(pedido=pedido).count(), 0)
+
+        # Nivel modelo
+        with self.assertRaises(ValidationError):
+            Entrega.objects.create(pedido=pedido, usuario_entrega=self.mesero_user)
+
+    def test_rf13_5_trazabilidad_ubicacion_local_y_tiempos(self):
+        """RF13.2 / RF16: Registro de entrega calcula ubicación, punto de venta y tiempos transcurridos válidos"""
+        from ventas.models import Venta, Pedido, Entrega
+        from ventas.utils import registrar_entrega_pedido
+        from django.utils import timezone
+        import datetime
+
+        # Venta en Mesa
+        venta_mesa = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_m1,
+            total=Decimal('8500'),
+            estado='ABIERTA'
+        )
+        pedido_mesa = Pedido.objects.create(venta=venta_mesa, estado='LISTO')
+        pedido_mesa.fecha_inicio_preparacion = timezone.now() - datetime.timedelta(minutes=10)
+        pedido_mesa.fecha_listo = timezone.now() - datetime.timedelta(minutes=2)
+        pedido_mesa.save()
+
+        entrega_m = registrar_entrega_pedido(pedido_mesa, usuario_entrega=self.mesero_user)
+        self.assertEqual(entrega_m.get_ubicacion(), "Mesa M1 (Salón)")
+        self.assertEqual(entrega_m.get_punto_venta(), self.pv_central)
+        self.assertGreaterEqual(entrega_m.get_tiempo_desde_creacion_minutos(), 0.0)
+        self.assertGreaterEqual(pedido_mesa.get_tiempo_preparacion_minutos(), 0.0)
+
+        # Venta Rápida
+        venta_vr = Venta.objects.create(
+            caja=self.caja_barra,
+            cajero=self.cajero_barra_user,
+            punto_venta=self.pv_barra,
+            modalidad='VENTA_RAPIDA',
+            total=Decimal('3500'),
+            estado='PAGADA'
+        )
+        pedido_vr = Pedido.objects.create(venta=venta_vr, estado='LISTO')
+        entrega_vr = registrar_entrega_pedido(pedido_vr, usuario_entrega=self.cajero_user)
+        self.assertEqual(entrega_vr.get_ubicacion(), "Retiro Rápido / Mostrador")
+        self.assertEqual(entrega_vr.get_punto_venta(), self.pv_barra)
+
+    def test_rf13_6_mesero_servir_pedido_listo_en_salon(self):
+        """RF13.2 / Integración Salón: Mesero visualiza comanda lista y pulsa 'Servir'; mesa se mantiene OCUPADA"""
+        from ventas.models import Venta, Pedido, Entrega
+
+        self.mesa_m1.estado = 'OCUPADA'
+        self.mesa_m1.save()
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_m1,
+            total=Decimal('12000'),
+            estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='LISTO', observaciones="Mesa 1 comensales VIP")
+
+        self.client.force_login(self.mesero_user)
+
+        # Mesero ve el pedido listo en su interfaz
+        resp_get = self.client.get(reverse('mesero'))
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertIn(pedido, resp_get.context['pedidos_listos'])
+
+        # Mesero pulsa botón "Servir"
+        resp_post = self.client.post(reverse('cambiar_estado_pedido'), {
+            'pedido_id': pedido.id,
+            'nuevo_estado': 'ENTREGADO'
+        }, HTTP_REFERER='/mesero/')
+        self.assertEqual(resp_post.status_code, 302)
+
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'ENTREGADO')
+
+        # La mesa debe seguir OCUPADA mientras los comensales comen y la cuenta siga ABIERTA
+        self.mesa_m1.refresh_from_db()
+        self.assertEqual(self.mesa_m1.estado, 'OCUPADA')
+
+        # Entrega registrada por el mesero
+        entrega = Entrega.objects.filter(pedido=pedido).first()
+        self.assertEqual(entrega.usuario_entrega, self.mesero_user)
+
+    def test_rf13_7_segunda_ronda_tiempos_y_entregas_independientes(self):
+        """RF13.3 / Problema 5: Segunda ronda de la misma mesa tiene Pedido y Entrega estrictamente independientes"""
+        from ventas.models import Venta, Pedido, Entrega
+        from ventas.utils import registrar_entrega_pedido
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_m1,
+            total=Decimal('20000'),
+            estado='ABIERTA'
+        )
+
+        # Ronda 1
+        p1 = Pedido.objects.create(venta=venta, estado='LISTO', observaciones="Ronda 1")
+        e1 = registrar_entrega_pedido(p1, usuario_entrega=self.mesero_user, observaciones="Entregada Ronda 1")
+        p1.refresh_from_db()
+        self.assertEqual(p1.estado, 'ENTREGADO')
+
+        # Ronda 2
+        p2 = Pedido.objects.create(venta=venta, estado='LISTO', observaciones="Ronda 2")
+        e2 = registrar_entrega_pedido(p2, usuario_entrega=self.mesero_user, observaciones="Entregada Ronda 2")
+        p2.refresh_from_db()
+        self.assertEqual(p2.estado, 'ENTREGADO')
+
+        # Comprobación de aislamiento
+        self.assertNotEqual(p1.id, p2.id)
+        self.assertNotEqual(e1.id, e2.id)
+        self.assertEqual(e1.pedido, p1)
+        self.assertEqual(e2.pedido, p2)
+        self.assertEqual(venta.pedidos.count(), 2)
+        self.assertEqual(Entrega.objects.filter(pedido__venta=venta).count(), 2)
+
+    def test_rf13_8_historial_auditoria_muestra_entrega(self):
+        """RF13.2 / Auditoría: El panel de historial administrativo refleja el evento de Entrega con ubicación y tiempo"""
+        from ventas.models import Venta, Pedido, Entrega
+        from ventas.utils import registrar_entrega_pedido
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            modalidad='MESA',
+            mesa=self.mesa_m1,
+            total=Decimal('15000'),
+            estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='LISTO')
+        entrega = registrar_entrega_pedido(pedido, usuario_entrega=self.mesero_user, observaciones="Despacho comensal mesa 1")
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('administrador_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f"ENT-{entrega.id}")
+        self.assertContains(resp, f"Entrega Pedido #{pedido.id}")
+
