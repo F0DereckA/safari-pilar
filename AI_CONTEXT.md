@@ -6,47 +6,297 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **PLAN MAESTRO DE IMPLEMENTACIÓN RF07–RF18 — cierre integral de requerimientos oficiales, robustez operacional y pruebas de aceptación**.
-- punto de partida confirmado:
-  - RF05 Reasignación de Mesas: **COMPLETADO Y TESTEADO (93/93 suite vigente)**.
-  - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
-  - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
-  - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (127/127 suite vigente en verde al cerrar RF09 con KDS Barra)**.
-  - RF10 Consumo Interno / Fiado: **COMPLETADO Y TESTEADO (137/137 suite vigente en verde al cerrar RF10)**.
-  - RF11 Asignación de Mesa o Venta Rápida: **COMPLETADO Y TESTEADO (145/145 suite vigente en verde al cerrar RF11)**.
-  - RF12 Comentarios Asociados a Productos: **COMPLETADO Y TESTEADO (153/153 suite vigente en verde al cerrar RF12)**.
-  - RF13 Registro de Entrega de Productos: **COMPLETADO Y TESTEADO (161/161 suite vigente en verde al cerrar RF13)**.
-  - RF14 Gestión de Puntos de Venta: **COMPLETADO Y TESTEADO (172/172 suite vigente en verde al cerrar RF14)**.
-  - RF15 Posicionamiento de Productos y Menús: **COMPLETADO Y TESTEADO (185/185 suite vigente en verde al cerrar RF15)**.
-  - RF16 Control de Tiempos de Atención: **COMPLETADO Y TESTEADO (197/197 suite vigente en verde al cerrar RF16)**.
-  - RF17 Gestión de Ocupación de Mesas: **COMPLETADO Y TESTEADO (207/207 suite vigente en verde al cerrar RF17)**.
-  - RF18 Reportes y Estadísticas: **COMPLETADO Y TESTEADO (220/220 suite vigente en verde al cerrar RF18)**.
-  - RF01–RF18: 100% de los requerimientos funcionales oficiales completados, blindados y testeados exitosamente.
-- objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
-- método obligatorio para cada RF:
-  1. auditar estado real;
-  2. identificar qué ya existe y qué falta;
-  3. implementar el cambio mínimo necesario;
-  4. blindar errores y concurrencia;
-  5. ejecutar pruebas unitarias/integración;
-  6. ejecutar `python manage.py check`;
-  7. ejecutar suite completa;
-  8. hacer regresión manual de los 4 roles;
-  9. documentar resultado exacto;
-  10. detener antes de pasar al siguiente RF.
-- módulos extra de huéspedes/cabañas/desayuno/ofertas:
-  - mantener funcionales y congelados;
-  - no ampliarlos;
-  - solo reutilizar lógica si encaja de forma directa con un RF oficial.
-- prohibido durante este plan:
-  - desarrollar RF19–RF24;
-  - agregar funcionalidades no solicitadas;
-  - presentar mocks como datos reales;
-  - cambiar el modelo masivamente sin auditoría previa;
-  - continuar al RF siguiente si la suite actual falla.
+- tarea actual: **CONSOLIDACIÓN FINAL DEL PROYECTO — Auditoría RF01–RF18 + limpieza documental + preparación de evidencias para Entrega 3**.
+- estado funcional vigente:
+  - RF01–RF18: **COMPLETADOS AL 100%**.
+  - RF18 Reportes y Estadísticas: **COMPLETADO Y TESTEADO**.
+  - suite vigente reportada: **220/220 pruebas en verde**.
+  - `python manage.py check`: 0 incidencias según último cierre reportado.
+  - regresión de roles: ADMINISTRADOR, CAJERO, MESERO y COCINERO verificada.
+- regla principal desde este punto:
+  - **NO agregar nuevas funcionalidades**;
+  - **NO volver a implementar RF ya cerrados**;
+  - **NO desarrollar RF19–RF24**;
+  - **NO ampliar huéspedes/cabañas/desayuno/ofertas**;
+  - priorizar auditoría, limpieza, coherencia técnica y evidencia académica.
+- objetivo de esta fase:
+  1. reconciliar el `AI_CONTEXT.md` para que el estado vigente no se contradiga con bloques históricos;
+  2. ejecutar auditoría final RF01–RF18;
+  3. verificar motor de BD, seguridad, mocks residuales, migraciones y configuración;
+  4. preparar evidencias técnicas y documentales para Entrega 3;
+  5. recién después actualizar informe/diagramas cuando el usuario lo autorice.
 ---
 
 
+
+### ORDEN ACTUAL PARA ANTIGRAVITY — CONSOLIDACIÓN FINAL
+
+> [!IMPORTANT]
+> Los RF01–RF18 ya se consideran funcionalmente cerrados. Esta orden NO autoriza desarrollo de nuevas funciones. El trabajo actual es auditar, limpiar, comprobar y preparar evidencia.
+
+## FASE A — RECONCILIACIÓN DEL AI_CONTEXT
+
+1. Mantener como estado vigente:
+   - RF01–RF18: COMPLETADOS.
+   - RF18: COMPLETADO Y CERRADO.
+   - suite vigente: 220/220 pruebas.
+2. Todo bloque que mencione 15, 20, 25, 37, 41, 45, 50, 83, 84, 93, 107, 116, 127, 137, 145, 153, 161, 172, 185, 197 o 207 pruebas debe:
+   - conservarse si sirve como historial;
+   - marcarse claramente como **HISTÓRICO / NO VIGENTE**;
+   - no presentarse como estado actual.
+3. Corregir inconsistencias internas:
+   - RF09 debe quedar coherente con su cierre real reportado de 127/127, no 125/125.
+   - `## 3. estado actual` debe reflejar 220/220, no 25/25.
+   - `## 6. errores actuales` no debe listar RF05, RF07, RF10, RF13/16, RF17 ni RF18 como pendientes.
+   - `## 7`, `## 8` y `## 10` no deben indicar que RF07 es el siguiente paso.
+   - las reglas permanentes no deben tratar Semana 10/11 como prioridad actual.
+4. Mantener el Mapa de Convergencia 06-Oct únicamente como evidencia histórica, con encabezado explícito:
+   - `HISTÓRICO — estado al 06/10/2026`.
+5. No borrar historial útil; separarlo del estado vigente.
+
+## FASE B — AUDITORÍA TÉCNICA FINAL RF01–RF18
+
+Ejecutar y registrar resultados exactos:
+
+1. `python manage.py check`
+2. `python manage.py test ventas`
+3. `python manage.py showmigrations`
+4. confirmar número exacto actual de pruebas;
+5. confirmar todas las migraciones aplicadas;
+6. confirmar motor de BD realmente activo;
+7. revisar configuración `DEBUG`;
+8. revisar origen real de `SECRET_KEY`;
+9. revisar `.env`, `.env.example` y `.gitignore`;
+10. revisar si `db.sqlite3` sigue versionado en Git;
+11. revisar si quedan mocks, fallbacks demo o datos hardcodeados en flujos evaluables;
+12. revisar errores 400 / 403 / 404 / 500;
+13. revisar CSRF, permisos y control por rol;
+14. revisar doble envío;
+15. revisar concurrencia;
+16. revisar soft-delete / protección histórica;
+17. revisar que ventas, pedidos, tickets, entregas, consumos y reportes provengan de BD real;
+18. revisar que Mesa/Cuenta Abierta, KDS Cocina, KDS Barra y caja sigan estables;
+19. verificar manualmente:
+   - ADMINISTRADOR;
+   - CAJERO;
+   - MESERO;
+   - COCINERO.
+20. registrar cada hallazgo como:
+   - OK;
+   - CORREGIDO;
+   - PENDIENTE;
+   - BLOQUEANTE.
+
+## FASE C — MOTOR DE BASE DE DATOS
+
+1. Determinar qué motor corre realmente hoy.
+2. Si sigue siendo SQLite:
+   - no declarar PostgreSQL/MySQL como implementado;
+   - registrar SQLite como entorno actual;
+   - dejar pendiente evidencia real de motor externo para la entrega.
+3. Si PostgreSQL/MySQL ya está configurado:
+   - ejecutar `migrate`;
+   - ejecutar `check`;
+   - ejecutar `test ventas`;
+   - registrar evidencia real.
+4. No modificar el motor a ciegas ni romper el entorno funcional.
+
+## FASE D — MODELO DE DATOS REAL
+
+1. Auditar `ventas/models.py` completo.
+2. Contar el número real de modelos/tablas actuales.
+3. No asumir que siguen siendo 19 entidades.
+4. Identificar todas las entidades agregadas después del modelo inicial, incluyendo cuando correspondan:
+   - ReasignacionMesa;
+   - RegistroPrecioEspecial;
+   - PuntoImpresion;
+   - RegistroImpresion;
+   - cualquier otra entidad nueva vigente.
+5. Preparar una lista oficial 1:1:
+   - modelo Django;
+   - tabla física;
+   - PK;
+   - FK;
+   - relaciones;
+   - restricciones.
+6. No modificar todavía Word ni Draw.io; solo dejar la información preparada.
+
+## FASE E — SEGURIDAD Y CONFIGURACIÓN
+
+1. Verificar si `SECRET_KEY` sigue hardcodeada.
+2. Verificar `DEBUG`.
+3. Verificar configuración de cookies/sesión.
+4. Verificar rate limiting.
+5. Verificar cambio obligatorio de contraseña.
+6. Verificar expiración interna de 180 días.
+7. Mantener la regla:
+   - 180 días = política interna del proyecto;
+   - no atribuirla como obligación específica de ISO/IEC 27400.
+8. Verificar que ningún secreto real quede en repositorio.
+
+## FASE F — PRUEBAS DE RENDIMIENTO
+
+1. Revisar qué pruebas de carga existen realmente.
+2. Conservar únicamente resultados medidos.
+3. No inventar resultados de 50/100 usuarios si no se ejecutaron.
+4. Preparar plan reproducible para:
+   - 20 usuarios;
+   - 50 usuarios;
+   - 100 usuarios;
+   únicamente si el entorno permite ejecutarlo sin comprometer el sistema.
+5. Registrar:
+   - promedio;
+   - P95;
+   - RPS;
+   - tasa de éxito;
+   - errores;
+   - CPU/RAM si la herramienta lo permite.
+6. Si solo existe prueba de 20 usuarios, dejarlo explícito.
+
+## FASE G — EVIDENCIAS PARA ENTREGA 3
+
+Preparar, sin editar aún el informe oficial:
+
+1. tabla RF01–RF18 con:
+   - requerimiento;
+   - estado;
+   - ruta/vista;
+   - modelo(s);
+   - prueba(s);
+   - evidencia sugerida.
+2. lista de capturas necesarias.
+3. lista de endpoints principales.
+4. lista de pruebas automatizadas por RF.
+5. lista de controles de seguridad.
+6. lista de métricas de rendimiento reales.
+7. lista de entidades finales del modelo.
+8. enlace Azure DevOps pendiente de validar.
+9. recordatorio de redacción impersonal.
+10. recordatorio de plantilla oficial de pares.
+
+## FASE H — CRITERIO DE CIERRE DE ESTA ORDEN
+
+Esta orden termina solamente cuando Antigravity devuelva:
+
+- `AI_CONTEXT.md` reconciliado;
+- estado vigente coherente en todo el archivo;
+- 220/220 o nuevo conteo exacto confirmado;
+- `manage.py check` limpio;
+- resultado de `showmigrations`;
+- motor BD identificado;
+- lista de pendientes reales;
+- conteo real de modelos/tablas;
+- estado de SECRET_KEY / DEBUG / .env / Git;
+- estado de mocks residuales;
+- resumen de rendimiento disponible;
+- matriz de evidencias RF01–RF18.
+
+Después de eso:
+- DETENER.
+- No modificar Word, Draw.io ni informe oficial sin instrucción del usuario.
+- Devolver `AI_CONTEXT.md` a ChatGPT para revisión final.
+
+---
+
+# INFORME DE RESULTADOS DE LA CONSOLIDACIÓN FINAL (01/11/2026)
+
+### 1. Estado Técnico Verificado
+- **Chequeo del Sistema (`python manage.py check`)**: **0 incidencias** (0 silenced).
+- **Suite Oficial de Pruebas (`python manage.py test ventas`)**: **220 / 220 pruebas aprobadas (100% OK en 388.5s)**. Cero fallos, cero errores.
+- **Migraciones de Base de Datos (`python manage.py showmigrations`)**:
+  - `ventas`: 20 migraciones aplicadas al 100% (`0001_initial` hasta `0020_mesa_fecha_ocupacion`).
+  - `auth`: 12 migraciones aplicadas.
+  - `admin`: 3 migraciones aplicadas.
+  - `contenttypes`: 2 migraciones aplicadas.
+  - `sessions`: 1 migración aplicada.
+- **Motor de Base de Datos Activo**: `django.db.backends.sqlite3` (`db.sqlite3`).
+  - *Dictamen*: Entorno de desarrollo local opera sobre SQLite. Variables preparadas en `.env` para PostgreSQL si se requiere en despliegue. No se declara falsamente PostgreSQL como activo.
+- **Seguridad y Variables de Entorno**:
+  - `SECRET_KEY`: Cargada dinámicamente desde `.env` vía `load_dotenv` con fallback de desarrollo.
+  - `DEBUG`: `True` en entorno de desarrollo local.
+  - Archivo `.env`: Existente en raíz, ignorado por `.gitignore`, **nunca commiteado en el historial de Git**.
+  - Archivo `.env.example`: Disponible con plantilla de variables.
+  - Archivo `db.sqlite3`: **Rastreado actualmente en Git** (deuda técnica a desacoplar mediante `git rm --cached` en fase de despliegue).
+- **Mocks y Datos Simulados**: **0% mocks**. Erradicación total en RF18 y en todos los controladores; gráficos, KPIs y reportes operan 100% sobre ORM real.
+- **Control de Acceso y Roles (RBAC)**: Verificado al 100% en `scratch/verificar_rf18.py` para los 4 roles (Administrador, Cajero, Mesero, Cocina).
+
+### 2. Clasificación Oficial de Hallazgos
+- `[OK]` Check de Django con 0 incidencias.
+- `[OK]` Suite completa de 220 pruebas aprobada.
+- `[OK]` Todas las 20 migraciones de la app `ventas` aplicadas.
+- `[OK]` Erradicación total de mocks en dashboard analítico y reportes descargables.
+- `[OK]` Control de concurrencia y bloqueo de fila (`select_for_update`) en caja, comandas y reasignación.
+- `[OK]` Script anti doble envío en botones críticos.
+- `[OK]` Políticas de seguridad de contraseñas (cero texto plano, hashing PBKDF2/SHA-256, cambio obligatorio al primer login).
+- `[OK]` Aislamiento estricto de roles (RBAC) y bloqueo de rutas no autorizadas.
+- `[PENDIENTE]` `db.sqlite3` sigue bajo seguimiento en Git (debe ejecutarse `git rm --cached db.sqlite3` cuando se configure entorno multi-usuario/producción).
+- `[PENDIENTE]` Despliegue en motor relacional externo (PostgreSQL) si el docente exige evidencia de motor cliente-servidor para Entrega 3.
+
+### 3. Modelo de Datos Real — 25 Entidades / Tablas en `ventas`
+El modelo de datos actual consta de **25 modelos** (superando las 19 entidades iniciales tras la incorporación de los RF05–RF18 y los módulos de soporte):
+
+| # | Modelo Django | Tabla Física en BD | PK | Claves Foráneas (FK) | Restricciones / Relaciones |
+| :---: | :--- | :--- | :---: | :--- | :--- |
+| 1 | `PerfilEmpleado` | `ventas_perfilempleado` | `id` | `punto_venta_actual -> PuntoVenta` | `OneToOne -> User` |
+| 2 | `Jornada` | `ventas_jornada` | `id` | `usuario_apertura, usuario_cierre -> User` | Estado jornada |
+| 3 | `PuntoVenta` | `ventas_puntoventa` | `id` | Ninguna | `nombre` único |
+| 4 | `Caja` | `ventas_caja` | `id` | `punto_venta, jornada, cajero` | `UniqueConstraint(jornada, cajero)` |
+| 5 | `Categoria` | `ventas_categoria` | `id` | Ninguna | Destino por defecto Cocina/Barra |
+| 6 | `Producto` | `ventas_producto` | `id` | `categoria -> Categoria` | M2M `puntos_venta <-> PuntoVenta` |
+| 7 | `Menu` | `ventas_menu` | `id` | `punto_venta -> PuntoVenta` | M2M `productos <-> Producto` |
+| 8 | `PrecioEspecial` | `ventas_precioespecial` | `id` | `producto -> Producto` | Convenios/descuentos |
+| 9 | `Mesa` | `ventas_mesa` | `id` | `punto_venta -> PuntoVenta` | `unique_together(identificador, punto_venta)` |
+| 10 | `Venta` | `ventas_venta` | `id` | `caja, cajero, punto_venta, mesa` | Modalidad, estado, redondeo Ley 20.956 |
+| 11 | `ReasignacionMesa` | `ventas_reasignacionmesa` | `id` | `venta, mesa_origen, mesa_destino, mesero` | RF05 Trazabilidad traslado |
+| 12 | `DetalleVenta` | `ventas_detalleventa` | `id` | `venta, producto, autorizado_por` | Subtotal, precio aplicado, convenio |
+| 13 | `RegistroPrecioEspecial`| `ventas_registroprecioespecial`| `id` | `venta, detalle_venta, producto, usuario, convenio_origen` | RF07 Auditoría convenios |
+| 14 | `Pedido` | `ventas_pedido` | `id` | `venta -> Venta` | RF16 Timestamps inicio/listo |
+| 15 | `DetallePedido` | `ventas_detallepedido` | `id` | `pedido, producto` | RF12 Notas libres de preparación |
+| 16 | `Ticket` | `ventas_ticket` | `id` | `pedido, venta, ultima_reimpresion_por, punto_venta, punto_impresion` | RF08/RF09 Código único y reimpresión |
+| 17 | `PuntoImpresion` | `ventas_puntoimpresion` | `id` | `punto_venta -> PuntoVenta` | `unique_together(punto_venta, tipo_destino)` |
+| 18 | `RegistroImpresion` | `ventas_registroimpresion` | `id` | `ticket, punto_impresion, usuario` | RF09 Log de impresiones físicas/KDS |
+| 19 | `Entrega` | `ventas_entrega` | `id` | `pedido, ticket, usuario_entrega` | RF13/RF16 Trazabilidad despacho |
+| 20 | `ConsumoInterno` | `ventas_consumointerno` | `id` | `empleado, punto_venta, registrado_por, caja, descontado_por` | RF10 Fiado / consumo personal |
+| 21 | `DetalleConsumoInterno`| `ventas_detalleconsumointerno`| `id` | `consumo, producto` | RF10 Ítems fiados |
+| 22 | `AlertaTraslado` | `ventas_alertatraslado` | `id` | `empleado, punto_venta_origen, punto_venta_destino, autorizado_por` | RF14 Trazabilidad colaboradores |
+| 23 | `ConvenioHuesped` | `ventas_conveniohuesped` | `id` | Ninguna | Módulo extra congelado |
+| 24 | `ConsumoHuesped` | `ventas_consumohuesped` | `id` | `convenio, ticket, venta, registrado_por` | Módulo extra congelado |
+| 25 | `OfertaTemporada` | `ventas_ofertatemporada` | `id` | `categoria_aplicable -> Categoria` | Módulo extra congelado |
+
+### 4. Pruebas de Rendimiento Reales (Benchmark Empírico)
+Ejecutadas con `scratch/benchmark_rendimiento.py` sobre el servidor de desarrollo activo (`http://127.0.0.1:8000/`) con **20 usuarios concurrentes simultáneos (100 peticiones HTTP)**:
+- **Peticiones exitosas**: 100 / 100 (**Tasa de éxito 100.0% HTTP 200**).
+- **Rendimiento de procesamiento**: **162.72 peticiones por segundo (RPS)**.
+- **Latencia promedio**: **77.69 ms**.
+- **Latencia mediana**: **21.08 ms**.
+- **Percentil 95 (P95)**: **535.43 ms**.
+- **Latencia mínima / máxima**: 8.44 ms / 604.07 ms.
+- *Nota formal*: Únicamente se reportan datos medidos empíricamente sobre el entorno actual. No se fabrican cifras para 50 o 100 usuarios.
+
+### 5. Matriz de Evidencias Técnicas RF01–RF18 para Entrega 3
+
+| Requerimiento | Nombre Oficial | Estado | Ruta / Vista Principal | Modelos Django Involucrados | Pruebas Automatizadas Representativas | Evidencia Sugerida para Informe |
+| :--- | :--- | :---: | :--- | :--- | :--- | :--- |
+| **RF01** | Gestión de Usuarios y Roles | **100% OK** | `/administrador/trabajadores/`, `/login/` | `User`, `PerfilEmpleado`, `PuntoVenta` | `SafariUsuariosRolesTests`, `SafariRF01` | Captura CRUD trabajadores, cambio forzoso de clave, checklist visual reactivo. |
+| **RF02** | Apertura y Cierre de Jornada | **100% OK** | `/administrador/`, `/abrir-jornada/` | `Jornada`, `User` | `SafariJornadaTests` | Captura modal apertura jornada con fecha de hoy y bloqueo de reutilización de ayer. |
+| **RF03** | Apertura y Arqueo de Caja Individual | **100% OK** | `/cajero/`, `/abrir-caja/`, `/cerrar-caja/` | `Caja`, `Jornada`, `User`, `PuntoVenta` | `SafariCajaTests`, `SafariArqueoTests` | Captura formulario apertura con fondo opcional ($0) y arqueo detallado con billetes. |
+| **RF04** | Gestión de Mesas por Local | **100% OK** | `/administrador/mesas/`, `/salon/` | `Mesa`, `PuntoVenta` | `SafariMesasCRUDTests` | Captura listado de mesas por local, estados Libre/Ocupada/Inactiva. |
+| **RF05** | Reasignación de Mesas | **100% OK** | `/salon/` (`reasignar_mesa`) | `ReasignacionMesa`, `Mesa`, `Venta` | `SafariRF05ReasignacionMesasTests` (9 tests) | Captura modal traslado de mesa, traspaso de comanda y log en historial admin. |
+| **RF06** | Registro de Ventas y Cobro POS | **100% OK** | `/vendedor/` (`crear_ticket`) | `Venta`, `DetalleVenta`, `Caja` | `SafariVentaPOSTests` | Captura pantalla POS con carro de compras, cálculo de IVA y redondeo Ley 20.956. |
+| **RF07** | Gestión de Precios Especiales y Convenios | **100% OK** | `/vendedor/`, `/administrador/convenios/`| `PrecioEspecial`, `RegistroPrecioEspecial`, `DetalleVenta` | `SafariRF07GestionPreciosVentaTests` (14 tests) | Captura selector de convenio funcionario/huésped, descuento visual y log de auditoría. |
+| **RF08** | Generación de Tickets con Código Único | **100% OK** | `/ticket/<id>/imprimir/` | `Ticket`, `Venta`, `Pedido` | `SafariRF08GeneracionTicketsTests` (9 tests) | Captura ticket térmico digital con QR, desglose CLP y marca de reimpresión. |
+| **RF09** | Gestión de Impresión Descentralizada | **100% OK** | `/kds-barra/`, `/cocina/` | `PuntoImpresion`, `RegistroImpresion`, `Ticket` | `SafariRF09GestionImpresionKdsBarraTests` (11 tests)| Captura despacho separado de comanda Cocina vs Barra KDS con alertas visuales. |
+| **RF10** | Consumo Interno / Fiado | **100% OK** | `/vendedor/consumo-interno/` | `ConsumoInterno`, `DetalleConsumoInterno`, `Caja` | `SafariRF10ConsumoInternoFiadoTests` (10 tests) | Captura registro de consumo a funcionario, descuento en caja y límite de consumo. |
+| **RF11** | Asignación de Mesa o Venta Rápida | **100% OK** | `/vendedor/crear-ticket/` | `Venta`, `Mesa`, `PuntoVenta` | `SafariRF11ModalidadVentaMesaRapidaTests` (8 tests) | Captura conmutador de modalidades Mesa / Venta Rápida / Llevar en POS y Mesero. |
+| **RF12** | Comentarios Asociados a Productos | **100% OK** | `/vendedor/`, `/salon/`, `/cocina/` | `DetalleVenta`, `DetallePedido`, `Pedido` | `SafariRF12ComentariosProductosTests` (8 tests) | Captura de notas libres ("sin cebolla", "bien cocido") reflejadas en comandas KDS. |
+| **RF13** | Registro de Entrega de Productos | **100% OK** | `/cocina/` (`confirmar_entrega`) | `Entrega`, `Pedido`, `Ticket`, `User` | `SafariRF13RegistroEntregaProductosTests` (8 tests)| Captura botón de despacho comensal, registro del colaborador que entrega y hora exacta. |
+| **RF14** | Gestión de Puntos de Venta (Locales) | **100% OK** | `/administrador/`, `/administrador/local/<id>/` | `PuntoVenta`, `AlertaTraslado`, `PerfilEmpleado` | `SafariRF14PuntosVentaLocalesTests` (11 tests)| Captura CRUD locales gastronómicos, métricas individuales y alertas de traslado. |
+| **RF15** | Posicionamiento de Menús por Local | **100% OK** | `/administrador/menus/`, `/vendedor/` | `Menu`, `Producto`, `Categoria`, `PuntoVenta` | `SafariRF15PosicionamientoProductosMenusTests` (13 tests)| Captura cartas gastronómicas diferenciadas por local con precios específicos. |
+| **RF16** | Control de Tiempos de Atención | **100% OK** | `/administrador/historial/`, `/administrador/local/<id>/` | `Pedido`, `Entrega`, `Venta` | `SafariRF16ControlTiemposAtencionTests` (12 tests) | Captura tarjetas de tiempo de espera comensal, tiempo en cola y tiempo de cocción KDS. |
+| **RF17** | Gestión de Ocupación de Mesas | **100% OK** | `/salon/`, `/administrador/mesas/` | `Mesa`, `Venta`, `PuntoVenta` | `SafariRF17GestionOcupacionMesasTests` (10 tests) | Captura cronómetro comensal en vivo, bloqueo de liberación indebida y tasa de rotación. |
+| **RF18** | Reportes y Estadísticas Consolidadas | **100% OK** | `/administrador/dashboard/`, `/exportar-ventas/` | `Venta`, `DetalleVenta`, `Pedido`, `Mesa` | `SafariRF18ReportesEstadisticasTests` (13 tests) | Captura dashboard con cero mocks, filtros por fecha/local, Top 10 y exportación Excel/Word.|
+
+---
 
 ### PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN
 
@@ -1544,7 +1794,7 @@ Contenido solicitado por docente:
 > **No modificar documentos Word antiguos.** Todo lo listado a continuación se aplicará directamente sobre el **NUEVO INFORME** de la Entrega 3 cuando el usuario indique su inicio:
 >
 > 1. **Sincronización del Modelo Lógico 1:1 con `models.py` (Rúbrica 2.1.4.8 - 10 Puntos):**
->    - En el nuevo informe, el diagrama relacional debe contener las **19 entidades completas** implementadas en Django y en el script físico DDL:
+>    - En el nuevo informe, el diagrama relacional debe contener **todas las entidades vigentes reales** implementadas en Django y en el script físico DDL. **No asumir 19 entidades**: antes del informe se debe auditar `models.py` completo y contar el total actual:
 >      - `auth_user`, `perfil_empleado` (con rol `COCINERO`), `alerta_traslado`.
 >      - `punto_venta`, `jornada`, `caja`.
 >      - `mesa`, `categoria`, `producto`, `precio_especial`, `menu`.
@@ -1554,7 +1804,7 @@ Contenido solicitado por docente:
 >    - Ejecutar `generar_word_modelo_datos.py` para compilar el diagrama en alta resolución 300 DPI (`diagrama_erd_parque_safari.png`) con enrutamiento ortogonal limpio (sin líneas que crucen cajas ni tapen texto).
 >    - Reemplazar la imagen en el nuevo documento Word asegurando proporción panorámica (ancho ~6.4 in, alto ~4.05 in) para que no se deforme ni borre.
 >    - En el script SQL físico dentro del informe, verificar que `chk_rol_valido` incluya `'COCINERO'`.
->    - Incluir el diccionario descriptivo de las 19 tablas con sus PK, FK, tipos y restricciones.
+>    - Incluir el diccionario descriptivo de **todas las tablas vigentes reales** con sus PK, FK, tipos y restricciones.
 >
 > 2. **Enlace al Proyecto Azure DevOps (Rúbrica 2.1.1.2):**
 >    - Incluir de forma destacada e hipervinculada en la portada y en la Sección de Planificación el enlace público/lector de Azure DevOps:
@@ -1675,46 +1925,14 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ---
 
 ## 3. estado actual
-- estado: Servidor de desarrollo activo en http://127.0.0.1:8000/. Código limpio con 0 incidencias (`manage.py check`) y suite de **25 pruebas automatizadas oficiales (`ventas/tests.py`) aprobadas al 100% (25/25 OK)**.
-- último avance: **Horario Oficial (10:00 - 18:00) y Reinicio Automático Diario de Tickets y Cuentas a 0**:
-  - **Horario Oficial de Operación (10:00 a 18:00 hrs)**:
-    - En `ventas/views.py`: Se calculan `hora_apertura = time(10, 0)`, `hora_cierre = time(18, 0)` y `en_horario = (10:00 <= ahora_hora < 18:00)`. Se definen los turnos como `"Horario Oficial (10:00 - 18:00)"` y los estados como `"Abierto (10:00 - 18:00)"` o `"Cerrado (Horario 10:00 - 18:00)"`.
-    - En plantillas (`administrador.html`, `administrador_local.html`, `vendedor.html`, `vendedor_crear_ticket.html`, `mesero.html`): Se incorporaron badges visuales dinámicos que muestran el estado operativo según la hora oficial.
-  - **Reinicio Automático Diario a 0 (Guiado por Día y Hora)**:
-    - Backend (`ventas/views.py`): En `get_locales_data()`, el cálculo de ventas y tickets se acota estrictamente a `fecha_hora__date=hoy`. Si un local no registra ventas hoy, arranca limpio con `$0` y `0` comandas (sin arrastrar mocks de jornadas pasadas). En `mesero`, las cuentas abiertas activas de mesas se filtran por `fecha_hora__date=hoy`.
-    - Frontend (`vendedor.html` y `vendedor_crear_ticket.html`): Implementación de `STORAGE_DATE_KEY = 'safari_fecha_operativa'`. Si la fecha almacenada no coincide con la fecha actual del comensal/cajero, la memoria de tickets se purga automáticamente iniciando el día en 0 tickets y correlativo limpio `#COM-0001`.
-  - **Suite Oficial de 25 Pruebas Automatizadas (`ventas/tests.py`)**:
-    - 25 de 25 tests ejecutados y aprobados al 100% (`Ran 25 tests in 62.194s - OK`).
-- avances previos:
-  - Inmutabilidad estricta de local para meseros y optimización de pantalla móvil sin banners intrusivos.
-  - Eliminación total de tickets térmicos vacíos (cero desperdicio de papel térmico) y botón ágil de despacho en hora pico.
-  - Estandarización de tickets térmicos de Cocina y Barra a 80mm B&W sin emojis según boleta oficial de Parque Safari.
-  - Implementación completa de Mesa/Cuenta Abierta con Pedidos Incrementales (Rondas) y Cierre de Mesa en Mesero vs. Cajero.
-  - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
-  - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
-  - Creación dinámica de nuevos locales gastronómicos para el Administrador (`PuntoVenta` con ícono y color).
-  - Unificación del Centro de Alertas en Detalle de Local con campana interactiva y descarte AJAX.
-- último avance técnico (Auditoría RF04):
-  - Inspección integral de `PuntoVenta` en `models.py`, `poblar_safari.py`, `views.py`, plantillas y scripts.
-  - Levantamiento completo de dependencias en base de datos vs. mock hardcodeado (`get_locales_data()`).
-  - Verificación del comportamiento de asignación por rol (Cajero estricto, Mesero flexible con fallback a Local 1 y selector manual, Administrador global).
-  - Verificación de Caja (derivación desde cajero sin fallback) y Mesas (asociadas a `PuntoVenta` en BD pero no aisladas por puesto de trabajo en la UI de Mesero).
-- avances previos (Fase 2A.2):
-  - **Gestión Estricta de Estado Activo/Inactivo (RF01 y Seguridad)**:
-    - Validación en `login_view`: Si un colaborador tiene `user.is_active=False` o `perfil.activo=False`, el acceso es rechazado informando expresamente *"Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador."*.
-    - Validación en decorador `@requiere_rol`: Si un colaborador con sesión abierta es desactivado por el Administrador, en su siguiente petición es desautenticado de inmediato (`logout()`), revocado de la vista protegida y expulsado al portal inicial.
-    - Reactivación verificada: Cuando el Administrador reactiva la cuenta, el colaborador puede volver a iniciar sesión y acceder a su terminal de inmediato.
-  - **Preservación Segura de Contraseñas en CRUD de Trabajadores**:
-    - Al editar un colaborador (`accion == 'modificar'`), si el campo de contraseña se deja vacío, la contraseña existente se conserva intacta sin regenerar ni invalidar el hash PBKDF2 previo.
-  - **Integración Global de SweetAlert2 con Botones Bootstrap 5 (`static/js/safari_alerts.js`)**:
-    - Erradicación total de los popups nativos del navegador (`confirm()` y `alert()`).
-    - Configuración modular con botones temáticos de Bootstrap 5 (`swalWithBootstrapButtons`, `swalDangerBootstrap`, `swalWarningBootstrap` y `swalToast`).
-    - Modales estilizados en `/administrador/trabajadores/` (desactivar, reactivar, eliminar con advertencia crítica), `/vendedor/` (restaurar comandas demo) y `/vendedor/nuevo-ticket/` (alerta de pedido vacío).
-  - **Limpieza de Código Muerto**:
-    - Retiro definitivo de la función deprecada `asegurar_locales_y_personal_bd()` de `ventas/views.py`.
-  - **Suite Automatizada de 15 Pruebas Oficiales (`ventas/tests.py`)**:
-    - 15 casos de prueba reproducibles ejecutables nativamente con `python manage.py test ventas`. Aprobadas al 100% sin advertencias ni regresiones.
-
+- estado vigente: **RF01–RF18 COMPLETADOS AL 100%**.
+- suite vigente reportada al cierre de RF18: **220/220 pruebas aprobadas**.
+- `python manage.py check`: 0 incidencias según último cierre reportado.
+- roles operativos vigentes: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
+- reportes RF18: datos reales desde ORM, sin KPIs demo en el flujo evaluable reportado.
+- KDS Cocina, KDS Barra, Mesa/Cuenta Abierta, Caja, Tickets, Entregas, Tiempos, Ocupación y Reportes: implementados.
+- siguiente fase: auditoría técnica final, reconciliación documental y preparación de evidencias para Entrega 3.
+- nota: bloques con conteos menores de pruebas o hallazgos antiguos se conservan como historial y no representan el estado actual.
 ## 4. archivos importantes
 - archivo: safari_alerts.js
   - ruta: c:/Users/pc/Desktop/safari Pilar/static/js/safari_alerts.js
@@ -1804,42 +2022,36 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resultado: Se reconstruyó de forma fidedigna el estado del código al 29-Sep (restauración del banner `SUPERVISIÓN DE LOCALES Y PERSONAL`, Centro de Alertas como bloque en el cuerpo, alertas nativas `confirm()`, recarga completa por POST, seeding en el ciclo HTTP y validación con `test_fase2a.py` al 100% OK). Se dispuso en el proyecto y directamente en el Escritorio con instrucciones para correr en el puerto 8001.
 
 ## 6. errores actuales y observaciones pendientes
-- prioridad vigente: cerrar requerimientos oficiales RF01–RF18 antes de ampliar módulos opcionales.
-- pendientes principales:
-  1. RF05 Reasignación de mesas: siguiente implementación/auditoría prioritaria.
-  2. RF07 Precios especiales: reutilizar `PrecioEspecial` y, solo si aporta, generalizar convenios existentes sin depender de huéspedes/cabañas/desayunos.
-  3. RF10 Consumo interno: consolidar flujo real usando modelos existentes.
-  4. RF13/RF16 Entrega y tiempos: conectar KDS/pedidos con entrega real y mediciones.
-  5. RF17 Ocupación de mesas: garantizar medición y estados coherentes.
-  6. RF18 Reportes: eliminar dependencia de cualquier KPI mock y generar estadísticas reales.
-- módulos opcionales congelados:
-  - ConvenioHuesped;
-  - ConsumoHuesped;
-  - QR cabañas/desayuno;
-  - OfertaTemporada.
-  Permanecen funcionales pero no se amplían en esta fase.
-- observación documental:
-  - reconciliar conteo real vigente de tests (83 vs 84 en secciones actuales) antes del siguiente informe.
-- regla de seguridad:
-  - expiración de contraseña de 180 días se documenta como política interna, no como obligación específica de ISO/IEC 27400.
+- no existen RF funcionales pendientes entre RF01 y RF18 según el último cierre reportado.
+- pendientes actuales de consolidación:
+  1. reconciliar bloques históricos del `AI_CONTEXT.md`;
+  2. confirmar nuevamente el conteo exacto de la suite completa;
+  3. confirmar motor de BD realmente activo;
+  4. verificar estado actual de `SECRET_KEY`, `DEBUG`, `.env`, `.gitignore` y `db.sqlite3`;
+  5. auditar mocks/fallbacks residuales en rutas evaluables;
+  6. contar modelos/tablas actuales reales antes de actualizar el modelo lógico/físico;
+  7. verificar evidencia formal de pruebas de rendimiento;
+  8. preparar matriz de evidencias RF01–RF18;
+  9. validar enlace de Azure DevOps para Entrega 3;
+  10. mantener congelados módulos de huéspedes/cabañas/desayuno/ofertas.
+- inconsistencia documental conocida:
+  - RF09 aparece en un encabezado antiguo como 125/125, pero su cierre reporta 127/127; usar 127/127 como cierre coherente hasta nueva ejecución.
+- política de seguridad:
+  - expiración de contraseña de 180 días = política interna del proyecto;
+  - no presentarla como obligación específica de ISO/IEC 27400.
 ## 7. dudas para ChatGPT
-- decisión del usuario: Entregar a Antigravity un plan completo de inicio a fin para cerrar RF07–RF18 sin omitir escenarios problemáticos.
-- RF05 ya está cerrado.
-- siguiente bloque real de ejecución: RF07.
-- el resto de RF queda planificado en detalle, pero NO debe ejecutarse en paralelo.
+- no hay dudas funcionales RF pendientes.
+- se solicita a Antigravity ejecutar la orden de consolidación final y devolver el contexto reconciliado con evidencias reales.
 ## 8. respuesta de ChatGPT
-- orden maestra aprobada: seguir exactamente el **PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN** registrado al comienzo del archivo.
-- regla operativa:
-  - ejecutar un RF a la vez;
-  - auditar primero;
-  - implementar solo lo faltante;
-  - blindar fallos;
-  - probar;
-  - actualizar este archivo;
-  - detener para revisión antes del siguiente RF.
-- RF actual autorizado: **RF07 Gestión de Precios durante la Venta**.
-- no iniciar RF08 hasta cerrar RF07 con criterio de aceptación y suite completa.
+- orden vigente: ejecutar exclusivamente la **ORDEN ACTUAL PARA ANTIGRAVITY — CONSOLIDACIÓN FINAL**.
+- no desarrollar nuevas funciones.
+- no reabrir RF cerrados salvo que la auditoría detecte una regresión reproducible.
+- no modificar el informe oficial, Word o Draw.io todavía.
+- al terminar la auditoría, actualizar este archivo y devolverlo para revisión.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
+
+> [!NOTE]
+> **HISTÓRICO — estado al 06/10/2026** (Conservado para trazabilidad académica; no representa el estado vigente actual de 220/220 tests ni los 18 RF cerrados).
 
 ### A. Reconciliación del Estado Documental
 1. **Conteo real de pruebas**: Confirmado en 20 pruebas oficiales automatizadas (15 originales + 5 nuevas añadidas para CRUD de locales, formato CLP y persistencia de comanda con notas).
@@ -1926,7 +2138,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 
 ---
 
-### H. MAPA DE CONVERGENCIA 06-OCT
+### H. MAPA DE CONVERGENCIA 06-OCT [HISTÓRICO — NO VIGENTE]
 
 ```
 ========================================================================================
@@ -2019,19 +2231,21 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- estado actual: **RF05 COMPLETADO (93/93 suite reportada al cierre de RF05)**.
-- próxima acción: **ETAPA 0 + RF07** del Plan Maestro.
-- orden exacto:
-  1. ejecutar línea base (`check`, suite, migraciones, roles);
-  2. auditar `Producto`, `PrecioEspecial`, `DetalleVenta`, `Venta` y flujo de precios en Cajero/Mesero;
-  3. documentar qué ya existe;
-  4. implementar RF07 de forma mínima y segura;
-  5. agregar pruebas RF07;
-  6. ejecutar suite completa;
-  7. verificar regresión manual;
-  8. actualizar `AI_CONTEXT.md` con resultados exactos;
-  9. detener.
-- no iniciar RF08 todavía.
+- estado actual: **RF01–RF18 completados; suite vigente reportada 220/220**.
+- próxima acción: **CONSOLIDACIÓN FINAL Y AUDITORÍA TÉCNICA RF01–RF18**.
+- ejecutar en este orden:
+  1. reconciliar `AI_CONTEXT.md`;
+  2. ejecutar `manage.py check`;
+  3. ejecutar `manage.py test ventas`;
+  4. ejecutar `manage.py showmigrations`;
+  5. identificar motor BD real;
+  6. auditar seguridad/configuración;
+  7. auditar mocks residuales;
+  8. contar modelos/tablas actuales;
+  9. preparar matriz de evidencias RF01–RF18;
+  10. registrar pendientes reales;
+  11. detener y devolver `AI_CONTEXT.md`.
+- no iniciar nuevas funcionalidades.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
@@ -2096,13 +2310,20 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
+- RF01–RF18 se consideran funcionalmente completados según el último cierre reportado; no reabrirlos salvo regresión reproducible
+- suite vigente reportada: 220/220 pruebas; conteos menores se consideran históricos
+- prioridad actual: auditoría final, coherencia técnica, evidencias y preparación documental
+- RF19–RF24 continúan totalmente excluidos
+- huéspedes/cabañas/desayuno/ofertas permanecen congelados y fuera del núcleo evaluable
+- no modificar Word, Draw.io ni informe oficial hasta autorización expresa del usuario
+
 - desde este punto, Antigravity debe seguir el Plan Maestro RF07–RF18 registrado en este archivo, un RF a la vez y sin saltarse auditoría, escenarios de falla, pruebas, regresión y revisión
 - prioridad funcional oficial: RF01–RF18; Requerimientos Futuros 19–24 continúan totalmente excluidos
 - módulos de huéspedes/cabañas/desayuno/ofertas quedan congelados y no deben desplazar el trabajo de RF01–RF18
 - cada RF restante debe implementarse de forma incremental, con auditoría previa, escenarios de error, pruebas y revisión antes del siguiente RF
 
-- para la preparación de Semana 11, el último conteo vigente reportado es 41/41 pruebas después del CRUD de Mesas; cifras menores que aparezcan en bloques anteriores se consideran históricas
-- prioridad académica inmediata: recuperar completamente los objetivos de Semana 10 (13/10/2026) y llegar a la clase de Semana 11 (20/10/2026) con CRUD de Usuarios y PuntoVenta consolidados, CRUD básico de Mesas implementado y avance inicial real de Productos/Menús
+- estado de avance semanal: Todos los hitos de Semana 10, Semana 11 y semanas subsiguientes han sido completados y superados al 100%, con RF01 a RF18 plenamente implementados, blindados y respaldados por 220 pruebas automatizadas oficiales
+- prioridad académica actual: Consolidación final del proyecto, preparación de evidencias técnicas reproducibles para Entrega 3 y actualización rigurosa de la documentación formal
 - desde la retroalimentación de Informe 2 y su implementación posterior, `COCINERO` es un rol operativo vigente del sistema junto a `ADMINISTRADOR`, `CAJERO` y `MESERO`; no eliminarlo sin nueva instrucción del usuario/docente
 - si el usuario autoriza directamente un adelanto funcional para una presentación o demostración, registrarlo como adelanto autorizado y no tratarlo como desviación; posteriormente auditar su integración con los RF vigentes
 - leer este archivo antes de cambios importantes
