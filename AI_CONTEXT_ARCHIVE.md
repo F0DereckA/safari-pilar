@@ -3236,3 +3236,447 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - objetivo: Usar este archivo como canal único de contexto y coordinación técnica para el desarrollo del Proyecto Integrado.
 - rol de ChatGPT: Revisar el estado informado en este archivo, contrastarlo con los requerimientos vigentes del Proyecto Integrado y proponer la siguiente orden técnica.
 - rol de Antigravity: Ejecutar en el proyecto local las órdenes técnicas registradas en este archivo y luego actualizar el estado, cambios, errores y dudas.
+
+
+---
+
+## HISTÓRICO — ORDEN MAESTRA DE NORMALIZACIÓN Y VERIFICACIÓN (01/11/2026) / YA EJECUTADA
+
+# ORDEN MAESTRA PARA ANTIGRAVITY — ORDENAR TODO Y DEJAR EL PROYECTO LISTO PARA REVISIÓN
+
+> [!IMPORTANT]
+> Esta es una tarea de **normalización, verificación y orden documental**.
+> NO desarrollar nuevas funciones.
+> NO modificar lógica funcional salvo que se detecte una contradicción documental que requiera únicamente corregir el contexto.
+> NO tocar Word, Draw.io ni informe oficial.
+> NO reabrir RF01–RF18.
+> RF19–RF24 permanecen excluidos.
+>
+> El objetivo es dejar `AI_CONTEXT.md` y `AI_CONTEXT_ARCHIVE.md` completamente coherentes, verificables y preparados para revisión/retroalimentación.
+
+---
+
+## 1. FUENTE DE VERDAD VIGENTE
+
+La única fuente de verdad operativa debe ser `AI_CONTEXT.md`.
+
+Debe quedar inequívocamente establecido:
+
+- RF01–RF18: **COMPLETADOS AL 100%**.
+- Suite oficial: **220/220 pruebas aprobadas**.
+- `python manage.py check`: **0 incidencias**.
+- Migraciones `ventas`: **20 aplicadas**.
+- Motor activo actual: **SQLite**.
+- PostgreSQL/MySQL: solo soporte/configuración futura o recordatorio académico; NO declarar activo.
+- Roles oficiales:
+  - `ADMINISTRADOR`
+  - `CAJERO`
+  - `MESERO`
+  - `COCINERO`
+- Mocks evaluables: **0%**.
+- `.env`: protegido y fuera de Git.
+- `db.sqlite3`: fuera del índice Git y preservado localmente.
+- Desarrollo funcional: **STOP TOTAL**.
+- Siguiente tarea de desarrollo: **NINGUNA**.
+- Fase documental: pendiente únicamente cuando el usuario la autorice.
+- Recordatorios académicos: conservados, **NO prioridad actual**.
+
+---
+
+## 2. VERIFICAR `AI_CONTEXT_ARCHIVE.md`
+
+Confirmar físicamente que:
+
+1. `AI_CONTEXT_ARCHIVE.md` existe en la raíz del proyecto.
+2. Contiene:
+   - órdenes antiguas;
+   - Plan Maestro RF07–RF18;
+   - Plan Funcional;
+   - Semana 10 / Semana 11;
+   - Mapa de Convergencia 06-Oct;
+   - estados previos;
+   - conteos históricos de pruebas;
+   - auditorías antiguas;
+   - retroalimentación detallada;
+   - historial cronológico.
+3. El archivo comienza con una advertencia explícita:
+   - historial técnico;
+   - no ejecutar;
+   - no usar como fuente de estado vigente.
+4. Ningún contenido histórico fue perdido durante la separación.
+5. `AI_CONTEXT.md` activo NO vuelva a contener planes completos antiguos.
+
+Si `AI_CONTEXT_ARCHIVE.md` no existe, reconstruirlo con el historial previamente separado.
+
+---
+
+## 3. CORREGIR EL CONCEPTO “25 MODELOS / 25 TABLAS”
+
+Actualmente el contexto mezcla:
+- 25 modelos explícitos Django;
+- 25 tablas.
+
+Eso debe corregirse.
+
+### 3.1 Verificación real
+Usar SOLO lectura/introspección:
+
+- revisar `ventas/models.py`;
+- contar modelos Django explícitos;
+- inspeccionar las tablas físicas de SQLite mediante:
+  - `connection.introspection.table_names()`
+  o
+  - consulta de solo lectura a `sqlite_master`.
+
+Registrar por separado:
+
+- **Modelos Django explícitos en `ventas`: X**
+- **Tablas físicas propias de la app `ventas`: Y**
+- **Tablas intermedias M2M automáticas: Z**
+- **Tablas Django del framework (`auth`, `admin`, `sessions`, etc.): no contarlas dentro del total funcional de `ventas`.**
+
+No asumir que 25 modelos equivalen a 25 tablas físicas.
+
+### 3.2 Redacción final
+En `AI_CONTEXT.md` usar:
+
+- `25 modelos Django explícitos en la app ventas` si ese conteo se confirma.
+- indicar el número real de tablas físicas después de la introspección.
+
+En la tabla de modelo de datos:
+- mantener los 25 modelos explícitos;
+- agregar una nota para relaciones M2M automáticas;
+- no decir “mapeados 1:1” si existen tablas intermedias automáticas.
+
+---
+
+## 4. UNIFICAR EL NOMBRE DEL ROL COCINA
+
+En todo `AI_CONTEXT.md` activo usar únicamente:
+
+`COCINERO`
+
+No mezclar:
+- `COCINA`
+- `Cocina`
+- `Cocinero`
+
+cuando se esté hablando del nombre oficial del rol.
+
+Se permite “Cocina” solo para referirse al área/KDS físico, no al rol.
+
+Ejemplo correcto:
+- Rol: `COCINERO`
+- Módulo: `KDS Cocina`
+
+Corregir checklist, verificaciones y tablas donde actualmente figure `COCINA` como rol.
+
+---
+
+## 5. CORREGIR RF01 — SEGURIDAD / ISO
+
+Actualmente aparece una frase tipo:
+`cambio de clave ISO/IEC 27400`.
+
+Reemplazarla por:
+
+`cambio obligatorio de clave y controles internos de seguridad`
+
+o:
+
+`cambio obligatorio de clave conforme a políticas internas de seguridad del proyecto`
+
+Mantener la regla:
+- no atribuir la expiración de 180 días ni reglas concretas de contraseña como obligación específica de ISO/IEC 27400.
+
+---
+
+## 6. CORREGIR RF13 — ENTREGA
+
+Revisar la descripción oficial en el resumen.
+
+No decir:
+`despacho de platos por comensal`
+
+si el modelo real registra entrega por:
+- `Pedido`;
+- `Ticket`;
+- `Entrega`.
+
+Redacción sugerida:
+
+`Registro trazable de entrega de pedidos/productos, usuario responsable, ticket asociado y hora exacta.`
+
+Debe coincidir con:
+- `Entrega`;
+- `Pedido`;
+- `Ticket`;
+- flujo `LISTO -> ENTREGADO`.
+
+---
+
+## 7. CORREGIR RF15 — MENÚS POR LOCAL
+
+Actualmente puede aparecer:
+`precios específicos por local`.
+
+Verificar si realmente existe un precio base distinto por punto de venta.
+
+Si NO existe:
+reemplazar por:
+
+`productos y menús diferenciados por Punto de Venta, con disponibilidad gobernada por BD.`
+
+No afirmar precios distintos por local si el modelo no lo soporta realmente.
+
+---
+
+## 8. CORREGIR RF11 — MODALIDAD
+
+Verificar términos vigentes.
+
+Si el sistema oficial usa:
+- `MESA`;
+- `VENTA_RAPIDA`;
+- alias `MOSTRADOR` / `LLEVAR`;
+
+no escribir una lista visual que pueda confundirse con tres modalidades independientes si solo existen dos modalidades oficiales.
+
+Usar una redacción como:
+
+`Modalidad MESA o VENTA_RAPIDA, con alias operativos de mostrador/retiro cuando corresponda.`
+
+---
+
+## 9. REVISAR NOMBRES OFICIALES RF01–RF18
+
+Auditar la tabla resumen completa.
+
+Para cada RF:
+- nombre;
+- estado;
+- evidencia;
+- modelo;
+- ruta si se menciona;
+- descripción.
+
+No inventar.
+No cambiar la funcionalidad.
+Solo corregir nombres o descripciones si contradicen lo implementado.
+
+Especial atención a:
+- RF04;
+- RF06;
+- RF07;
+- RF09;
+- RF10;
+- RF11;
+- RF13;
+- RF15;
+- RF16;
+- RF17;
+- RF18.
+
+---
+
+## 10. ARCHIVOS IMPORTANTES
+
+Ordenar la lista y dejar únicamente archivos vigentes.
+
+Orden recomendado:
+
+1. `AI_CONTEXT.md`
+2. `AI_CONTEXT_ARCHIVE.md`
+3. `ventas/models.py`
+4. `ventas/views.py`
+5. `ventas/utils.py`
+6. `ventas/tests.py`
+7. `Venta_safari/settings.py`
+8. `Venta_safari/urls.py`
+9. `ventas/management/commands/poblar_safari.py`
+10. `static/js/anti_doble_envio.js`
+11. `static/js/safari_alerts.js`
+12. scripts de verificación/benchmark realmente vigentes.
+
+Para cada uno:
+- función;
+- motivo de relevancia.
+
+Eliminar del contexto activo cualquier archivo antiguo que ya no sea relevante.
+
+---
+
+## 11. VERIFICACIONES VIGENTES
+
+Mantener una única sección con resultados actuales.
+
+Debe contener SOLO resultados vigentes:
+
+- 220/220;
+- check 0;
+- migraciones;
+- 4 roles;
+- DB activa;
+- seguridad;
+- Git;
+- benchmark;
+- mocks 0%;
+- modelos/tablas verificados.
+
+No mezclar conteos históricos en esta sección.
+
+Los conteos históricos van exclusivamente en `AI_CONTEXT_ARCHIVE.md`.
+
+---
+
+## 12. RECORDATORIOS ACADÉMICOS
+
+Mantener solo un resumen breve.
+
+Debe quedar:
+
+- Motor externo PostgreSQL/MySQL: recordatorio.
+- Modelo lógico/físico: recordatorio.
+- Azure DevOps: recordatorio.
+- Redacción impersonal: recordatorio.
+- Plantilla de pares: recordatorio.
+- Pruebas de rendimiento en informe: recordatorio.
+
+Agregar:
+
+`Detalle completo de evaluación, puntajes y comentarios del docente: AI_CONTEXT_ARCHIVE.md.`
+
+NO mantener acciones largas de Entrega 3 dentro del archivo activo.
+
+---
+
+## 13. REGLAS PERMANENTES
+
+Dejar una sola lista limpia:
+
+1. RF01–RF18 permanecen cerrados salvo regresión reproducible.
+2. RF19–RF24 están excluidos.
+3. No agregar funciones nuevas antes de retroalimentación.
+4. No declarar PostgreSQL/MySQL activo sin evidencia.
+5. No versionar `.env`.
+6. No versionar `db.sqlite3`.
+7. No modificar Word/Draw.io/informe sin autorización del usuario.
+8. No inventar resultados ni requisitos.
+9. Todo cambio futuro debe pasar `check` y suite completa.
+10. `AI_CONTEXT_ARCHIVE.md` es solo histórico y no contiene órdenes ejecutables.
+11. `AI_CONTEXT.md` es la única fuente de verdad vigente.
+
+---
+
+## 14. CHECKLIST FINAL
+
+Debe quedar:
+
+- [x] RF01–RF18 cerrados.
+- [x] 220/220 pruebas.
+- [x] check limpio.
+- [x] migraciones al día.
+- [x] motor activo identificado.
+- [x] 4 roles con nombre oficial coherente.
+- [x] modelos Django explícitos contados.
+- [x] tablas físicas reales contadas.
+- [x] tablas M2M diferenciadas.
+- [x] mocks 0%.
+- [x] `.env` protegido.
+- [x] `db.sqlite3` fuera de Git.
+- [x] benchmark registrado.
+- [x] `AI_CONTEXT_ARCHIVE.md` existe.
+- [x] historial separado.
+- [x] RF01/RF13/RF15/RF11 corregidos documentalmente.
+- [x] ningún bloqueante funcional conocido.
+- [x] ninguna tarea de desarrollo activa.
+- [x] STOP DESARROLLO TOTAL.
+
+---
+
+## 15. BARRIDO FINAL DE COHERENCIA
+
+Buscar en `AI_CONTEXT.md` activo:
+
+- `PARCIALMENTE COMPLETADO`
+- `Pendiente`
+- `localStorage`
+- `mock_metricas`
+- `hardcodeada`
+- `SIGUIENTE PASO`
+- `ORDEN`
+- `implementar`
+- `RF05 pendiente`
+- `requiere RF05`
+- `COCINA` usado como nombre de rol
+- `25 tablas` sin distinción
+- `1:1` aplicado incorrectamente al modelo físico
+- `ISO/IEC 27400` asociado directamente a reglas específicas de contraseña
+- `precios específicos por local`
+- `despacho por comensal`
+
+Resultado esperado:
+- 0 contradicciones operativas.
+- Las únicas palabras “pendiente” permitidas son:
+  - fase documental pendiente de autorización;
+  - recordatorios académicos futuros.
+
+---
+
+## 16. NO MODIFICAR EL SISTEMA
+
+Esta tarea NO autoriza cambios en:
+
+- `models.py`
+- `views.py`
+- `utils.py`
+- `tests.py`
+- templates
+- migraciones
+- base de datos
+- CSS
+- JavaScript funcional
+- Word
+- Draw.io
+- informe
+
+La única excepción permitida es ejecutar comandos de **solo lectura** para:
+- contar modelos;
+- contar tablas;
+- verificar archivos;
+- confirmar estado Git.
+
+---
+
+## 17. CIERRE
+
+Cuando todo esté ordenado:
+
+1. eliminar esta orden del `AI_CONTEXT.md` activo;
+2. moverla a `AI_CONTEXT_ARCHIVE.md`;
+3. dejar al final de `AI_CONTEXT.md` únicamente:
+
+`**NO EXISTE NINGUNA ORDEN DE DESARROLLO ACTIVA.**`
+
+`**STOP DESARROLLO TOTAL HASTA RETROALIMENTACIÓN O NUEVA INSTRUCCIÓN DEL USUARIO.**`
+
+4. guardar ambos archivos;
+5. devolver:
+   - `AI_CONTEXT.md`;
+   - `AI_CONTEXT_ARCHIVE.md`.
+
+## CRITERIO DE 100%
+
+Solo declarar el ordenamiento completo cuando:
+
+- el archivo activo contiene únicamente información vigente;
+- el archivo histórico contiene el pasado;
+- no existen contradicciones técnicas;
+- modelos y tablas están diferenciados correctamente;
+- roles están unificados;
+- RF01/RF11/RF13/RF15 están descritos con precisión;
+- evaluación está reducida a recordatorio;
+- no existe ninguna orden activa;
+- STOP DESARROLLO TOTAL está vigente.
+
+---
