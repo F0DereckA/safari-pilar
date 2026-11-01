@@ -5604,3 +5604,466 @@ class SafariRF15PosicionamientoProductosMenusTests(TestCase):
         # prod_b (exclusivo de local_b) y prod_inactivo NO deben estar presentes
         self.assertNotIn(self.prod_b, prods_context)
         self.assertNotIn(self.prod_inactivo, prods_context)
+
+# ==============================================================================
+# RF16: PRUEBAS DE CONTROL DE TIEMPOS DE ATENCIÓN
+# ==============================================================================
+class SafariRF16ControlTiemposAtencionTests(TestCase):
+    """
+    Pruebas unitarias e integración de alta fidelidad para RF16:
+    - RF16.1: Cálculo exacto de timestamps y duraciones en ciclo de vida completo.
+    - RF16.2: Blindaje de duraciones no negativas ante desfases o skew de reloj.
+    - RF16.3: Incompletos no inventados: pedidos pendientes/en prep retornan None en cálculos cerrados.
+    - RF16.4: Tiempos en curso (en_curso=True) para monitoreo activo de KDS.
+    - RF16.5: Robustez ante cambio de día y medianoche (cruce de fechas 23:50 a 00:15).
+    - RF16.6: Zona horaria oficial de Chile ('America/Santiago') sin errores naive/aware.
+    - RF16.7: Aislamiento estricto de tiempos en comandas multi-ronda sobre una misma mesa.
+    - RF16.8: Pedido cancelado excluido de métricas de entrega sin tiempos fabricados.
+    - RF16.9: Servicio de promedios por local (calcular_tiempos_promedio_local) para reportes de auditoría.
+    - RF16.10: Métodos auxiliares de despacho en modelo Entrega (get_tiempo_desde_listo_minutos).
+    - RF16.11: Trazabilidad y visualización en vista administrador_historial.
+    - RF16.12: Dashboard administrador_local incorpora métricas de tiempos de atención.
+    """
+
+    def setUp(self):
+        from decimal import Decimal
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Producto, Categoria, Venta, Pedido, DetallePedido, Ticket, Entrega, Jornada, Caja
+
+        self.pv_central = PuntoVenta.objects.create(nombre="Restaurante Central Safari", activo=True)
+        self.pv_barra = PuntoVenta.objects.create(nombre="Barra Rápida Safari", activo=True)
+
+        self.admin_user = User.objects.create_superuser('admin_rf16', 'admin@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv_central)
+
+        self.cocinero_user = User.objects.create_user('cocinero_rf16', 'cocinero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cocinero_user, rol='COCINERO', punto_venta_actual=self.pv_central)
+
+        self.mesero_user = User.objects.create_user('mesero_rf16', 'mesero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv_central)
+
+        self.cajero_user = User.objects.create_user('cajero_rf16', 'cajero@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv_central)
+
+        self.mesa_m1 = Mesa.objects.create(identificador="M-T16", capacidad=4, punto_venta=self.pv_central, estado='HABILITADA')
+
+        self.cat_cocina = Categoria.objects.create(nombre="Cocina Caliente T16")
+        self.prod_hamburguesa = Producto.objects.create(
+            nombre="Hamburguesa Temporizada",
+            categoria=self.cat_cocina,
+            precio_base=Decimal('8900'),
+            activo=True
+        )
+        self.prod_hamburguesa.puntos_venta.add(self.pv_central)
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin_user, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+        # Venta base para pruebas
+        self.venta = Venta.objects.create(
+            punto_venta=self.pv_central,
+            mesa=self.mesa_m1,
+            cajero=self.mesero_user,
+            caja=self.caja,
+            modalidad='MESA',
+            estado='PENDIENTE'
+        )
+
+    def test_rf16_1_calculo_tiempos_ciclo_completo_normal(self):
+        """RF16.1: Cálculo exacto de cola, preparación, despacho y espera total en ciclo normal"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido, DetallePedido, Entrega
+
+        base_time = timezone.now() - datetime.timedelta(minutes=30)
+
+        # Crear pedido simulando creado_en
+        pedido = Pedido.objects.create(venta=self.venta, estado='PENDIENTE')
+        Pedido.objects.filter(id=pedido.id).update(creado_en=base_time)
+        pedido.refresh_from_db()
+
+        # Inicio preparación a los 5 minutos
+        t_inicio = base_time + datetime.timedelta(minutes=5)
+        # Listo a los 20 minutos (15 min de preparación)
+        t_listo = base_time + datetime.timedelta(minutes=20)
+        # Entregado a los 23 minutos (3 min de despacho)
+        t_entrega = base_time + datetime.timedelta(minutes=23)
+
+        pedido.fecha_inicio_preparacion = t_inicio
+        pedido.fecha_listo = t_listo
+        pedido.estado = 'LISTO'
+        pedido.save()
+
+        entrega = Entrega.objects.create(
+            pedido=pedido,
+            usuario_entrega=self.cocinero_user,
+            observaciones="Entrega a tiempo"
+        )
+        Entrega.objects.filter(id=entrega.id).update(fecha_hora_entrega=t_entrega)
+        entrega.refresh_from_db()
+        pedido.refresh_from_db()
+        pedido.estado = 'ENTREGADO'
+        pedido.save()
+
+        # Verificaciones métricas
+        self.assertEqual(pedido.get_tiempo_cola_minutos(), 5.0)
+        self.assertEqual(pedido.get_tiempo_cola_segundos(), 300)
+        self.assertEqual(pedido.get_tiempo_preparacion_minutos(), 15.0)
+        self.assertEqual(pedido.get_tiempo_preparacion_segundos(), 900)
+        self.assertEqual(pedido.get_tiempo_despacho_minutos(), 3.0)
+        self.assertEqual(pedido.get_tiempo_despacho_segundos(), 180)
+        self.assertEqual(pedido.get_tiempo_espera_total_minutos(), 23.0)
+        self.assertEqual(pedido.get_tiempo_espera_total_segundos(), 1380)
+
+        # Validación de orden temporal
+        es_valido, inconsistencias = pedido.validar_orden_temporal()
+        self.assertTrue(es_valido)
+        self.assertEqual(len(inconsistencias), 0)
+
+    def test_rf16_2_tiempos_no_negativos_blindaje_desfase(self):
+        """RF16.2: Blindaje de duraciones no negativas ante desfases cronológicos o reloj invertido"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido
+
+        base_time = timezone.now()
+        pedido = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=pedido.id).update(creado_en=base_time)
+        pedido.refresh_from_db()
+
+        # Invertir deliberadamente timestamps
+        pedido.fecha_inicio_preparacion = base_time - datetime.timedelta(minutes=5)  # antes de creación
+        pedido.fecha_listo = pedido.fecha_inicio_preparacion - datetime.timedelta(minutes=3)  # antes de inicio
+        pedido.fecha_entregado = pedido.fecha_listo - datetime.timedelta(minutes=2)  # antes de listo
+        pedido.save()
+
+        # Los cálculos deben retornar 0.0 y NUNCA números negativos
+        self.assertEqual(pedido.get_tiempo_cola_minutos(), 0.0)
+        self.assertEqual(pedido.get_tiempo_preparacion_minutos(), 0.0)
+        self.assertEqual(pedido.get_tiempo_despacho_minutos(), 0.0)
+        self.assertEqual(pedido.get_tiempo_espera_total_minutos(), 0.0)
+
+        # validar_orden_temporal debe alertar las inconsistencias
+        es_valido, inconsistencias = pedido.validar_orden_temporal()
+        self.assertFalse(es_valido)
+        self.assertGreaterEqual(len(inconsistencias), 3)
+
+    def test_rf16_3_incompletos_no_inventados(self):
+        """RF16.3: Incompletos no inventados: pedidos no entregados retornan None en cálculos cerrados"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido
+
+        base_time = timezone.now() - datetime.timedelta(minutes=10)
+        pedido_pendiente = Pedido.objects.create(venta=self.venta, estado='PENDIENTE')
+        Pedido.objects.filter(id=pedido_pendiente.id).update(creado_en=base_time)
+        pedido_pendiente.refresh_from_db()
+
+        # Para un pedido pendiente, la espera total cerrada debe ser None (no inventada)
+        self.assertIsNone(pedido_pendiente.get_tiempo_espera_total_minutos(en_curso=False))
+        self.assertIsNone(pedido_pendiente.get_tiempo_preparacion_minutos(en_curso=False))
+        self.assertIsNone(pedido_pendiente.get_tiempo_despacho_minutos(en_curso=False))
+        self.assertIsNone(pedido_pendiente.fecha_entregado)
+
+        # Pedido en preparación sin marcar como listo
+        pedido_prep = Pedido.objects.create(venta=self.venta, estado='EN_PREPARACION')
+        pedido_prep.fecha_inicio_preparacion = timezone.now() - datetime.timedelta(minutes=4)
+        pedido_prep.save()
+
+        self.assertIsNone(pedido_prep.get_tiempo_preparacion_minutos(en_curso=False))
+        self.assertIsNone(pedido_prep.get_tiempo_espera_total_minutos(en_curso=False))
+
+    def test_rf16_4_tiempos_en_curso_monitoreo_kds(self):
+        """RF16.4: Tiempos en curso (en_curso=True) permiten monitorear demoras en tiempo real en KDS"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido
+
+        t_creacion = timezone.now() - datetime.timedelta(minutes=12)
+        pedido = Pedido.objects.create(venta=self.venta, estado='PENDIENTE')
+        Pedido.objects.filter(id=pedido.id).update(creado_en=t_creacion)
+        pedido.refresh_from_db()
+
+        # En curso para PENDIENTE calcula cola transcurrida
+        t_cola_curso = pedido.get_tiempo_cola_minutos(en_curso=True)
+        self.assertIsNotNone(t_cola_curso)
+        self.assertGreaterEqual(t_cola_curso, 11.9)
+
+        # Espera total en curso
+        t_espera_curso = pedido.get_tiempo_espera_total_minutos(en_curso=True)
+        self.assertIsNotNone(t_espera_curso)
+        self.assertGreaterEqual(t_espera_curso, 11.9)
+
+        # Cambiar a EN_PREPARACION hace 6 minutos
+        pedido.estado = 'EN_PREPARACION'
+        pedido.fecha_inicio_preparacion = timezone.now() - datetime.timedelta(minutes=6)
+        pedido.save()
+
+        t_prep_curso = pedido.get_tiempo_preparacion_minutos(en_curso=True)
+        self.assertIsNotNone(t_prep_curso)
+        self.assertGreaterEqual(t_prep_curso, 5.9)
+
+    def test_rf16_5_cambio_de_dia_medianoche(self):
+        """RF16.5: Robustez ante cruce de medianoche (pedido creado 23:50 y entregado 00:15 del día siguiente)"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido, Entrega
+
+        # Definir fechas a través de medianoche
+        tz = timezone.get_current_timezone()
+        t_creacion = timezone.make_aware(datetime.datetime(2026, 11, 1, 23, 50, 0), tz)
+        t_inicio = timezone.make_aware(datetime.datetime(2026, 11, 1, 23, 55, 0), tz)
+        t_listo = timezone.make_aware(datetime.datetime(2026, 11, 2, 0, 10, 0), tz)
+        t_entrega = timezone.make_aware(datetime.datetime(2026, 11, 2, 0, 15, 0), tz)
+
+        pedido = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=pedido.id).update(
+            creado_en=t_creacion,
+            fecha_inicio_preparacion=t_inicio,
+            fecha_listo=t_listo,
+            estado='LISTO'
+        )
+        pedido.refresh_from_db()
+
+        entrega = Entrega.objects.create(pedido=pedido, usuario_entrega=self.cocinero_user)
+        Entrega.objects.filter(id=entrega.id).update(fecha_hora_entrega=t_entrega)
+        entrega.refresh_from_db()
+        pedido.refresh_from_db()
+
+        # Verificaciones cruzando medianoche (25 minutos totales)
+        self.assertEqual(pedido.get_tiempo_cola_minutos(), 5.0)
+        self.assertEqual(pedido.get_tiempo_preparacion_minutos(), 15.0)
+        self.assertEqual(pedido.get_tiempo_despacho_minutos(), 5.0)
+        self.assertEqual(pedido.get_tiempo_espera_total_minutos(), 25.0)
+
+        # Orden temporal válido a través del día
+        es_valido, _ = pedido.validar_orden_temporal()
+        self.assertTrue(es_valido)
+
+    def test_rf16_6_zona_horaria_chile(self):
+        """RF16.6: Formateo y métricas localizadas para la zona horaria oficial de Chile"""
+        import datetime
+        from django.utils import timezone
+        from ventas.utils import formatear_fecha_hora_chile, calcular_metricas_tiempos_pedido
+        from ventas.models import Pedido
+
+        tz = timezone.get_current_timezone()
+        dt_test = timezone.make_aware(datetime.datetime(2026, 11, 1, 14, 30, 45), tz)
+
+        str_formateada = formatear_fecha_hora_chile(dt_test)
+        self.assertEqual(str_formateada, "01/11/2026 14:30:45")
+
+        # Datetime naive debe manejarse sin excepción
+        dt_naive = datetime.datetime(2026, 11, 1, 14, 30, 45)
+        str_naive = formatear_fecha_hora_chile(dt_naive)
+        self.assertIn("01/11/2026", str_naive)
+
+        # None debe retornar None
+        self.assertIsNone(formatear_fecha_hora_chile(None))
+
+        # Métricas de pedido enriquecidas con strings chilenos
+        pedido = Pedido.objects.create(venta=self.venta, estado='PENDIENTE')
+        metricas = calcular_metricas_tiempos_pedido(pedido)
+        self.assertIn('creado_en_chile', metricas)
+        self.assertIn('mesa_identificador', metricas)
+        self.assertEqual(metricas['mesa_identificador'], "M-T16")
+
+    def test_rf16_7_rondas_separadas_tiempos_independientes(self):
+        """RF16.7: Aislamiento estricto de tiempos en comandas multi-ronda de una misma mesa"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido, Entrega
+
+        tz = timezone.get_current_timezone()
+        t0 = timezone.now() - datetime.timedelta(hours=2)
+
+        # Ronda 1
+        ronda_1 = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=ronda_1.id).update(
+            creado_en=t0,
+            fecha_inicio_preparacion=t0 + datetime.timedelta(minutes=3),
+            fecha_listo=t0 + datetime.timedelta(minutes=15),
+            estado='LISTO'
+        )
+        ronda_1.refresh_from_db()
+
+        ent_1 = Entrega.objects.create(pedido=ronda_1, usuario_entrega=self.cocinero_user)
+        Entrega.objects.filter(id=ent_1.id).update(fecha_hora_entrega=t0 + datetime.timedelta(minutes=18))
+        ent_1.refresh_from_db()
+
+        # Ronda 2 generada 50 minutos después
+        t_r2 = t0 + datetime.timedelta(minutes=50)
+        ronda_2 = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=ronda_2.id).update(
+            creado_en=t_r2,
+            fecha_inicio_preparacion=t_r2 + datetime.timedelta(minutes=4),
+            fecha_listo=t_r2 + datetime.timedelta(minutes=16),
+            estado='LISTO'
+        )
+        ronda_2.refresh_from_db()
+
+        ent_2 = Entrega.objects.create(pedido=ronda_2, usuario_entrega=self.cocinero_user)
+        Entrega.objects.filter(id=ent_2.id).update(fecha_hora_entrega=t_r2 + datetime.timedelta(minutes=20))
+        ent_2.refresh_from_db()
+
+        ronda_1.refresh_from_db()
+        ronda_2.refresh_from_db()
+
+        # Tiempos de Ronda 1
+        self.assertEqual(ronda_1.get_tiempo_cola_minutos(), 3.0)
+        self.assertEqual(ronda_1.get_tiempo_preparacion_minutos(), 12.0)
+        self.assertEqual(ronda_1.get_tiempo_despacho_minutos(), 3.0)
+        self.assertEqual(ronda_1.get_tiempo_espera_total_minutos(), 18.0)
+
+        # Tiempos de Ronda 2 estrictamente independientes (no suma los 50 min previos)
+        self.assertEqual(ronda_2.get_tiempo_cola_minutos(), 4.0)
+        self.assertEqual(ronda_2.get_tiempo_preparacion_minutos(), 12.0)
+        self.assertEqual(ronda_2.get_tiempo_despacho_minutos(), 4.0)
+        self.assertEqual(ronda_2.get_tiempo_espera_total_minutos(), 20.0)
+
+    def test_rf16_8_pedido_cancelado_sin_tiempos_inventados(self):
+        """RF16.8: Pedido cancelado no reporta tiempo de entrega ni contamina los cálculos de servicio"""
+        from ventas.models import Pedido
+        from ventas.utils import calcular_tiempos_promedio_local
+
+        pedido_canc = Pedido.objects.create(venta=self.venta, estado='CANCELADO')
+        self.assertIsNone(pedido_canc.get_tiempo_espera_total_minutos(en_curso=False))
+        self.assertIsNone(pedido_canc.fecha_entregado)
+
+        promedios = calcular_tiempos_promedio_local(punto_venta=self.pv_central)
+        self.assertEqual(promedios['total_cancelados'], 1)
+        self.assertEqual(promedios['total_entregados'], 0)
+        self.assertEqual(promedios['promedio_tiempo_espera_total_minutos'], 0.0)
+
+    def test_rf16_9_servicio_promedios_local_para_reportes(self):
+        """RF16.9: calcular_tiempos_promedio_local agrega únicamente órdenes entregadas reales"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido, Entrega
+        from ventas.utils import calcular_tiempos_promedio_local
+
+        base = timezone.now() - datetime.timedelta(minutes=45)
+
+        # Pedido 1 entregado: 10 min de espera total, 6 min de preparación
+        p1 = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=p1.id).update(
+            creado_en=base,
+            fecha_inicio_preparacion=base + datetime.timedelta(minutes=2),
+            fecha_listo=base + datetime.timedelta(minutes=8),
+            estado='ENTREGADO'
+        )
+        p1.refresh_from_db()
+        e1 = Entrega.objects.create(pedido=p1, usuario_entrega=self.cocinero_user)
+        Entrega.objects.filter(id=e1.id).update(fecha_hora_entrega=base + datetime.timedelta(minutes=10))
+        e1.refresh_from_db()
+
+        # Pedido 2 entregado: 20 min de espera total, 14 min de preparación
+        p2 = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=p2.id).update(
+            creado_en=base,
+            fecha_inicio_preparacion=base + datetime.timedelta(minutes=4),
+            fecha_listo=base + datetime.timedelta(minutes=18),
+            estado='ENTREGADO'
+        )
+        p2.refresh_from_db()
+        e2 = Entrega.objects.create(pedido=p2, usuario_entrega=self.cocinero_user)
+        Entrega.objects.filter(id=e2.id).update(fecha_hora_entrega=base + datetime.timedelta(minutes=20))
+        e2.refresh_from_db()
+
+        # Pedido 3 en preparación (no entregado)
+        p3 = Pedido.objects.create(venta=self.venta, estado='EN_PREPARACION')
+        p3.fecha_inicio_preparacion = timezone.now() - datetime.timedelta(minutes=5)
+        p3.save()
+
+        # Pedido 4 pendiente
+        Pedido.objects.create(venta=self.venta, estado='PENDIENTE')
+
+        promedios = calcular_tiempos_promedio_local(punto_venta=self.pv_central)
+
+        self.assertEqual(promedios['total_pedidos'], 4)
+        self.assertEqual(promedios['total_entregados'], 2)
+        self.assertEqual(promedios['total_pendientes'], 1)
+        self.assertEqual(promedios['total_en_preparacion'], 1)
+
+        # Espera promedio: (10 + 20) / 2 = 15.0 min
+        self.assertEqual(promedios['promedio_tiempo_espera_total_minutos'], 15.0)
+        self.assertEqual(promedios['min_tiempo_espera_total_minutos'], 10.0)
+        self.assertEqual(promedios['max_tiempo_espera_total_minutos'], 20.0)
+
+        # Prep promedio: (6 + 14) / 2 = 10.0 min
+        self.assertEqual(promedios['promedio_tiempo_preparacion_minutos'], 10.0)
+
+    def test_rf16_10_entrega_model_metodos_desde_listo(self):
+        """RF16.10: Modelo Entrega calcula tiempo desde listo hasta entrega comensal"""
+        import datetime
+        from django.utils import timezone
+        from ventas.models import Pedido, Entrega
+
+        t_listo = timezone.now() - datetime.timedelta(minutes=7)
+        pedido = Pedido.objects.create(venta=self.venta, estado='LISTO', fecha_listo=t_listo)
+
+        entrega = Entrega.objects.create(pedido=pedido, usuario_entrega=self.cocinero_user)
+        # 5 minutos después de estar listo
+        Entrega.objects.filter(id=entrega.id).update(fecha_hora_entrega=t_listo + datetime.timedelta(minutes=5))
+        entrega.refresh_from_db()
+
+        self.assertEqual(entrega.get_tiempo_desde_listo_minutos(), 5.0)
+        self.assertEqual(entrega.get_tiempo_desde_listo_segundos(), 300)
+
+    def test_rf16_11_administrador_historial_visualiza_tiempos_reales(self):
+        """RF16.11: Vista administrador_historial muestra tiempos reales de despacho y preparación"""
+        import datetime
+        from django.urls import reverse
+        from django.utils import timezone
+        from ventas.models import Pedido, Entrega
+
+        base = timezone.now() - datetime.timedelta(minutes=15)
+        pedido = Pedido.objects.create(venta=self.venta, estado='LISTO')
+        Pedido.objects.filter(id=pedido.id).update(
+            creado_en=base,
+            fecha_inicio_preparacion=base + datetime.timedelta(minutes=2),
+            fecha_listo=base + datetime.timedelta(minutes=10),
+            estado='ENTREGADO'
+        )
+        pedido.refresh_from_db()
+
+        entrega = Entrega.objects.create(pedido=pedido, usuario_entrega=self.cocinero_user, observaciones="Despacho VIP")
+        Entrega.objects.filter(id=entrega.id).update(fecha_hora_entrega=base + datetime.timedelta(minutes=12))
+        entrega.refresh_from_db()
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('administrador_historial'))
+        self.assertEqual(resp.status_code, 200)
+
+        # Debe contener la descripción formateada con minutos totales y de preparación
+        contenido = resp.content.decode('utf-8')
+        self.assertIn("12.0 min total", contenido)
+        self.assertIn("Prep: 8.0 min", contenido)
+
+    def test_rf16_12_administrador_local_incluye_promedios_tiempos(self):
+        """RF16.12: Dashboard administrador_local incorpora métricas de tiempos de atención en context y UI"""
+        from django.urls import reverse
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('administrador_local', kwargs={'local_id': self.pv_central.id}))
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertIn('promedios_tiempos', resp.context)
+        promedios = resp.context['promedios_tiempos']
+        self.assertIn('promedio_tiempo_espera_total_minutos', promedios)
+        self.assertIn('promedio_tiempo_preparacion_minutos', promedios)
+
+        contenido = resp.content.decode('utf-8')
+        self.assertIn("Espera Total Promedio", contenido)
+        self.assertIn("Prep. Cocina Promedio", contenido)
+

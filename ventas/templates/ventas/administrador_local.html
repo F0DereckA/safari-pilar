@@ -319,6 +319,61 @@
             </div>
         </div>
 
+        <!-- Métricas de Control de Tiempos de Atención y Cocina (RF16) -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card border-start border-4 border-info">
+                    <div class="admin-kpi-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                        <i class="bi bi-stopwatch-fill"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Espera Total Promedio</div>
+                        <div class="admin-kpi-val text-info">{{ promedios_tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Desde comanda a entrega comensal</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card border-start border-4 border-warning">
+                    <div class="admin-kpi-icon" style="background-color: #fef3c7; color: #d97706;">
+                        <i class="bi bi-fire"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Prep. Cocina Promedio</div>
+                        <div class="admin-kpi-val text-warning">{{ promedios_tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Tiempo en preparación culinaria</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card border-start border-4 border-primary">
+                    <div class="admin-kpi-icon" style="background-color: #ede9fe; color: #7c3aed;">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Tiempo en Cola Promedio</div>
+                        <div class="admin-kpi-val text-primary">{{ promedios_tiempos.promedio_tiempo_cola_minutos|default:"0.0" }} min</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Tiempo en espera antes de cocinar</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-xl-3">
+                <div class="admin-kpi-card border-start border-4 border-success">
+                    <div class="admin-kpi-icon" style="background-color: #dcfce7; color: #16a34a;">
+                        <i class="bi bi-check2-all"></i>
+                    </div>
+                    <div>
+                        <div class="admin-kpi-label">Comandas Despachadas</div>
+                        <div class="admin-kpi-val text-success">{{ promedios_tiempos.total_entregados }} / {{ promedios_tiempos.total_pedidos }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Total comandas entregadas al comensal</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4 mb-4">
             
             <!-- Columna Izquierda: Personal Actualmente Logueado y Trabajando -->

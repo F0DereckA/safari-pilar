@@ -695,19 +695,162 @@ class Pedido(models.Model):
     fecha_inicio_preparacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de preparación en cocina/barra (RF13/RF16)")
     fecha_listo = models.DateTimeField(null=True, blank=True, help_text="Timestamp de marcado como listo para servir (RF13/RF16)")
 
-    def get_tiempo_preparacion_minutos(self):
-        """Retorna el tiempo de preparación en minutos desde inicio hasta marcado como listo (RF16)"""
-        if self.fecha_inicio_preparacion and self.fecha_listo:
-            delta = self.fecha_listo - self.fecha_inicio_preparacion
-            return max(0.0, round(delta.total_seconds() / 60.0, 1))
+    @property
+    def fecha_entregado(self):
+        """Retorna el timestamp de la primera entrega registrada o el valor asignado manualmente (RF16)"""
+        if hasattr(self, '_fecha_entregado_override'):
+            return self._fecha_entregado_override
+        if not self.pk:
+            return None
+        try:
+            entrega = self.entregas.order_by('id').first()
+            return entrega.fecha_hora_entrega if entrega else None
+        except Exception:
+            return None
+
+    @fecha_entregado.setter
+    def fecha_entregado(self, value):
+        """Permite asignar o simular timestamp de entrega en memoria/tests (RF16)"""
+        self._fecha_entregado_override = value
+
+    def _calcular_delta_segundos(self, dt_fin, dt_inicio):
+        """Calcula la diferencia en segundos entre dos datetimes de forma robusta con zonas horarias (RF16)"""
+        if not dt_fin or not dt_inicio:
+            return None
+        if timezone.is_naive(dt_fin) and timezone.is_aware(dt_inicio):
+            dt_fin = timezone.make_aware(dt_fin, timezone.get_current_timezone())
+        elif timezone.is_aware(dt_fin) and timezone.is_naive(dt_inicio):
+            dt_inicio = timezone.make_aware(dt_inicio, timezone.get_current_timezone())
+        return (dt_fin - dt_inicio).total_seconds()
+
+    def get_tiempo_cola_minutos(self, en_curso=False):
+        """Retorna el tiempo en cola en minutos desde creación hasta inicio de preparación (RF16)"""
+        if self.creado_en and self.fecha_inicio_preparacion:
+            segundos = self._calcular_delta_segundos(self.fecha_inicio_preparacion, self.creado_en)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        if en_curso and self.creado_en and self.estado == 'PENDIENTE':
+            segundos = self._calcular_delta_segundos(timezone.now(), self.creado_en)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
         return None
 
-    def get_tiempo_espera_total_minutos(self):
-        """Retorna el tiempo transcurrido desde la creación del pedido hasta su entrega o momento actual (RF16)"""
-        entrega = self.entregas.first()
-        fin = entrega.fecha_hora_entrega if (entrega and entrega.fecha_hora_entrega) else timezone.now()
-        delta = fin - self.creado_en
-        return max(0.0, round(delta.total_seconds() / 60.0, 1))
+    def get_tiempo_cola_segundos(self, en_curso=False):
+        """Retorna el tiempo en cola en segundos (RF16)"""
+        minutos = self.get_tiempo_cola_minutos(en_curso=en_curso)
+        return int(minutos * 60) if minutos is not None else None
+
+    def get_tiempo_preparacion_minutos(self, en_curso=False):
+        """Retorna el tiempo de preparación en minutos desde inicio hasta marcado como listo (RF16)"""
+        if self.fecha_inicio_preparacion and self.fecha_listo:
+            segundos = self._calcular_delta_segundos(self.fecha_listo, self.fecha_inicio_preparacion)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        if en_curso and self.fecha_inicio_preparacion and self.estado == 'EN_PREPARACION':
+            segundos = self._calcular_delta_segundos(timezone.now(), self.fecha_inicio_preparacion)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        return None
+
+    def get_tiempo_preparacion_segundos(self, en_curso=False):
+        """Retorna el tiempo de preparación en segundos (RF16)"""
+        minutos = self.get_tiempo_preparacion_minutos(en_curso=en_curso)
+        return int(minutos * 60) if minutos is not None else None
+
+    def get_tiempo_despacho_minutos(self, en_curso=False):
+        """Retorna el tiempo de despacho en minutos desde que estuvo listo hasta su entrega (RF16)"""
+        fe = self.fecha_entregado
+        if self.fecha_listo and fe:
+            segundos = self._calcular_delta_segundos(fe, self.fecha_listo)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        if en_curso and self.fecha_listo and self.estado == 'LISTO':
+            segundos = self._calcular_delta_segundos(timezone.now(), self.fecha_listo)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        return None
+
+    def get_tiempo_despacho_segundos(self, en_curso=False):
+        """Retorna el tiempo de despacho en segundos (RF16)"""
+        minutos = self.get_tiempo_despacho_minutos(en_curso=en_curso)
+        return int(minutos * 60) if minutos is not None else None
+
+    def get_tiempo_espera_total_minutos(self, en_curso=False):
+        """
+        Retorna el tiempo transcurrido desde la creación del pedido hasta su entrega (RF16).
+        Si el pedido aún no está entregado y no se solicita cálculo en curso, retorna None para no inventar tiempos.
+        """
+        fe = self.fecha_entregado
+        if not fe and not en_curso:
+            return None
+        fin = fe if fe else timezone.now()
+        if self.creado_en and fin:
+            segundos = self._calcular_delta_segundos(fin, self.creado_en)
+            return max(0.0, round(segundos / 60.0, 1)) if segundos is not None else None
+        return None
+
+    def get_tiempo_espera_total_segundos(self, en_curso=False):
+        """Retorna el tiempo de espera total en segundos (RF16)"""
+        minutos = self.get_tiempo_espera_total_minutos(en_curso=en_curso)
+        return int(minutos * 60) if minutos is not None else None
+
+    def validar_orden_temporal(self):
+        """
+        Valida que la secuencia de timestamps sea cronológicamente coherente:
+        creado_en <= fecha_inicio_preparacion <= fecha_listo <= fecha_entregado.
+        Retorna (es_valido, lista_inconsistencias).
+        """
+        inconsistencias = []
+        fe = self.fecha_entregado
+
+        if self.creado_en and self.fecha_inicio_preparacion:
+            seg = self._calcular_delta_segundos(self.fecha_inicio_preparacion, self.creado_en)
+            if seg is not None and seg < 0:
+                inconsistencias.append(
+                    f"fecha_inicio_preparacion ({self.fecha_inicio_preparacion}) es anterior a creado_en ({self.creado_en})"
+                )
+
+        if self.fecha_inicio_preparacion and self.fecha_listo:
+            seg = self._calcular_delta_segundos(self.fecha_listo, self.fecha_inicio_preparacion)
+            if seg is not None and seg < 0:
+                inconsistencias.append(
+                    f"fecha_listo ({self.fecha_listo}) es anterior a fecha_inicio_preparacion ({self.fecha_inicio_preparacion})"
+                )
+
+        if self.fecha_listo and fe:
+            seg = self._calcular_delta_segundos(fe, self.fecha_listo)
+            if seg is not None and seg < 0:
+                inconsistencias.append(
+                    f"fecha_entregado ({fe}) es anterior a fecha_listo ({self.fecha_listo})"
+                )
+
+        if self.creado_en and fe:
+            seg = self._calcular_delta_segundos(fe, self.creado_en)
+            if seg is not None and seg < 0:
+                inconsistencias.append(
+                    f"fecha_entregado ({fe}) es anterior a creado_en ({self.creado_en})"
+                )
+
+        es_valido = len(inconsistencias) == 0
+        return (es_valido, inconsistencias)
+
+    def get_metricas_tiempos(self, en_curso=False):
+        """Retorna un diccionario estructurado con todas las métricas de tiempos de atención (RF16)"""
+        valido, inconsistencias = self.validar_orden_temporal()
+        return {
+            'pedido_id': self.id,
+            'estado': self.estado,
+            'creado_en': self.creado_en,
+            'fecha_inicio_preparacion': self.fecha_inicio_preparacion,
+            'fecha_listo': self.fecha_listo,
+            'fecha_entregado': self.fecha_entregado,
+            'tiempo_cola_minutos': self.get_tiempo_cola_minutos(en_curso=en_curso),
+            'tiempo_cola_segundos': self.get_tiempo_cola_segundos(en_curso=en_curso),
+            'tiempo_preparacion_minutos': self.get_tiempo_preparacion_minutos(en_curso=en_curso),
+            'tiempo_preparacion_segundos': self.get_tiempo_preparacion_segundos(en_curso=en_curso),
+            'tiempo_despacho_minutos': self.get_tiempo_despacho_minutos(en_curso=en_curso),
+            'tiempo_despacho_segundos': self.get_tiempo_despacho_segundos(en_curso=en_curso),
+            'tiempo_espera_total_minutos': self.get_tiempo_espera_total_minutos(en_curso=en_curso),
+            'tiempo_espera_total_segundos': self.get_tiempo_espera_total_segundos(en_curso=en_curso),
+            'orden_temporal_valido': valido,
+            'inconsistencias_temporales': inconsistencias,
+            'esta_entregado': self.fecha_entregado is not None,
+            'en_curso': en_curso,
+        }
 
     def __str__(self):
         return f"Pedido #{self.id} (Venta #{self.venta.id}) - {self.get_estado_display()}"
@@ -933,6 +1076,20 @@ class Entrega(models.Model):
             delta = self.fecha_hora_entrega - self.pedido.creado_en
             return max(0, int(delta.total_seconds()))
         return 0
+
+    def get_tiempo_desde_listo_minutos(self):
+        """Retorna los minutos transcurridos desde que el pedido estuvo listo hasta su entrega (RF16)"""
+        if self.pedido and self.pedido.fecha_listo and self.fecha_hora_entrega:
+            delta = self.fecha_hora_entrega - self.pedido.fecha_listo
+            return max(0.0, round(delta.total_seconds() / 60.0, 1))
+        return None
+
+    def get_tiempo_desde_listo_segundos(self):
+        """Retorna los segundos transcurridos desde que el pedido estuvo listo hasta su entrega (RF16)"""
+        if self.pedido and self.pedido.fecha_listo and self.fecha_hora_entrega:
+            delta = self.fecha_hora_entrega - self.pedido.fecha_listo
+            return max(0, int(delta.total_seconds()))
+        return None
 
     def __str__(self):
         return f"Entrega Pedido #{self.pedido.id} ({self.fecha_hora_entrega.strftime('%H:%M:%S')}) - {self.get_ubicacion()}"

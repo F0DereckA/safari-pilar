@@ -1576,6 +1576,10 @@ def administrador_local(request, local_id):
         leida=False
     ).count()
 
+    local_obj = PuntoVenta.objects.filter(id=local_id).first()
+    from ventas.utils import calcular_tiempos_promedio_local
+    promedios_tiempos = calcular_tiempos_promedio_local(punto_venta=local_obj)
+
     context = {
         "local": local,
         "locales": locales.values(),
@@ -1584,6 +1588,7 @@ def administrador_local(request, local_id):
         "ahora_hora_str": ahora_dt.strftime("%H:%M"),
         "en_horario": en_horario,
         "horario_oficial": "10:00 a 18:00",
+        "promedios_tiempos": promedios_tiempos,
     }
     return render(request, 'ventas/administrador_local.html', context)
 
@@ -2568,6 +2573,8 @@ def administrador_historial(request):
         local_e = e.get_punto_venta()
         usu_ent = (e.usuario_entrega.get_full_name() or e.usuario_entrega.username) if e.usuario_entrega else "Cocina KDS"
         tiempo_despacho = e.get_tiempo_desde_creacion_minutos()
+        tiempo_prep = e.pedido.get_tiempo_preparacion_minutos() if e.pedido else None
+        prep_txt = f" • Prep: {tiempo_prep:.1f} min" if tiempo_prep is not None else ""
         eventos.append({
             'id_ref': f"ENT-{e.id}",
             'tipo': 'COCINA',
@@ -2575,7 +2582,7 @@ def administrador_historial(request):
             'badge_clase': 'badge-status-success',
             'icono': 'bi-check-circle-fill text-success',
             'titulo': f"Entrega Pedido #{e.pedido.id}",
-            'descripcion': f"Comanda despachada ({e.get_ubicacion()}) en {tiempo_despacho:.1f} min. Obs: {e.observaciones or 'Completado'}",
+            'descripcion': f"Comanda despachada ({e.get_ubicacion()}) en {tiempo_despacho:.1f} min total{prep_txt}. Obs: {e.observaciones or 'Completado'}",
             'usuario': usu_ent,
             'local': local_e.nombre if local_e else 'Cocina Central',
             'local_id': str(local_e.id) if local_e else None,

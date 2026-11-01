@@ -1012,3 +1012,142 @@ def validar_disponibilidad_producto(producto, punto_venta=None):
                 f"El producto '{producto.nombre}' no se encuentra disponible para venta en el local '{punto_venta.nombre}' (RF15)."
             )
     return True
+
+# ==============================================================================
+# CONTROL DE TIEMPOS DE ATENCIÓN (RF16)
+# ==============================================================================
+
+def formatear_fecha_hora_chile(dt, formato="%d/%m/%Y %H:%M:%S"):
+    """
+    Formatea un datetime en la zona horaria oficial de Chile ('America/Santiago').
+    Maneja datetimes naive y aware de forma segura sin excepciones (RF16).
+    """
+    if dt is None:
+        return None
+    try:
+        import zoneinfo
+        chile_tz = zoneinfo.ZoneInfo("America/Santiago")
+    except Exception:
+        chile_tz = timezone.get_current_timezone()
+
+    if timezone.is_naive(dt):
+        dt_aware = timezone.make_aware(dt, timezone.get_current_timezone())
+    else:
+        dt_aware = dt
+
+    dt_chile = dt_aware.astimezone(chile_tz)
+    return dt_chile.strftime(formato)
+
+
+def calcular_metricas_tiempos_pedido(pedido, en_curso=False):
+    """
+    RF16: Calcula y estructura las métricas completas de tiempos de atención de un pedido:
+    - marcas temporales (creado, inicio preparación, listo, entregado)
+    - marcas temporales localizadas para Chile (America/Santiago)
+    - duraciones calculadas (tiempo en cola, tiempo preparación, tiempo despacho, espera total)
+    - validación de orden cronológico
+    - control de incompletos no inventados
+    """
+    from ventas.models import Pedido
+    if isinstance(pedido, (int, str)):
+        pedido = Pedido.objects.select_related('venta', 'venta__punto_venta', 'venta__mesa').prefetch_related('entregas').get(id=int(pedido))
+
+    metricas = pedido.get_metricas_tiempos(en_curso=en_curso)
+
+    # Agregar representación en horario local de Chile
+    metricas['creado_en_chile'] = formatear_fecha_hora_chile(metricas['creado_en'])
+    metricas['fecha_inicio_preparacion_chile'] = formatear_fecha_hora_chile(metricas['fecha_inicio_preparacion'])
+    metricas['fecha_listo_chile'] = formatear_fecha_hora_chile(metricas['fecha_listo'])
+    metricas['fecha_entregado_chile'] = formatear_fecha_hora_chile(metricas['fecha_entregado'])
+
+    # Metadata de comanda y mesa
+    if pedido.venta:
+        metricas['venta_id'] = pedido.venta.id
+        metricas['mesa_identificador'] = pedido.venta.mesa.identificador if pedido.venta.mesa else None
+        metricas['punto_venta_nombre'] = pedido.venta.punto_venta.nombre if pedido.venta.punto_venta else None
+    else:
+        metricas['venta_id'] = None
+        metricas['mesa_identificador'] = None
+        metricas['punto_venta_nombre'] = None
+
+    return metricas
+
+
+def calcular_tiempos_promedio_local(punto_venta=None, fecha=None, pedidos_qs=None):
+    """
+    RF16: Calcula promedios reales de tiempos de atención por local gastronómico o general.
+    Garantiza:
+    - Tiempos de pedidos incompletos o cancelados NO se inventan ni sesgan el promedio de entregados.
+    - Soporte multi-ronda independiente.
+    - Cálculo robusto de tiempos de cola, preparación, despacho y espera total.
+    """
+    from django.db import models
+    from ventas.models import Pedido
+
+    if pedidos_qs is not None:
+        qs = pedidos_qs
+    else:
+        qs = Pedido.objects.all().select_related('venta', 'venta__punto_venta', 'venta__mesa', 'venta__mesa__punto_venta').prefetch_related('entregas')
+        if punto_venta:
+            qs = qs.filter(models.Q(venta__punto_venta=punto_venta) | models.Q(venta__mesa__punto_venta=punto_venta))
+        if fecha:
+            qs = qs.filter(creado_en__date=fecha)
+
+    total_pedidos = 0
+    total_pendientes = 0
+    total_en_preparacion = 0
+    total_listos = 0
+    total_cancelados = 0
+
+    colas = []
+    preparaciones = []
+    despachos = []
+    esperas = []
+
+    for p in qs:
+        total_pedidos += 1
+        if p.estado == 'CANCELADO':
+            total_cancelados += 1
+            continue
+        elif p.estado == 'PENDIENTE':
+            total_pendientes += 1
+        elif p.estado == 'EN_PREPARACION':
+            total_en_preparacion += 1
+        elif p.estado == 'LISTO':
+            total_listos += 1
+
+        # Solo pedidos efectivamente entregados se consideran en promedios de atención finalizada
+        if p.estado == 'ENTREGADO' or p.fecha_entregado is not None:
+            c = p.get_tiempo_cola_minutos(en_curso=False)
+            if c is not None:
+                colas.append(c)
+
+            pr = p.get_tiempo_preparacion_minutos(en_curso=False)
+            if pr is not None:
+                preparaciones.append(pr)
+
+            d = p.get_tiempo_despacho_minutos(en_curso=False)
+            if d is not None:
+                despachos.append(d)
+
+            e = p.get_tiempo_espera_total_minutos(en_curso=False)
+            if e is not None:
+                esperas.append(e)
+
+    total_entregados = len(esperas)
+
+    return {
+        'total_pedidos': total_pedidos,
+        'total_entregados': total_entregados,
+        'total_pendientes': total_pendientes,
+        'total_en_preparacion': total_en_preparacion,
+        'total_listos': total_listos,
+        'total_cancelados': total_cancelados,
+        'promedio_tiempo_cola_minutos': round(sum(colas) / len(colas), 1) if colas else 0.0,
+        'promedio_tiempo_preparacion_minutos': round(sum(preparaciones) / len(preparaciones), 1) if preparaciones else 0.0,
+        'promedio_tiempo_despacho_minutos': round(sum(despachos) / len(despachos), 1) if despachos else 0.0,
+        'promedio_tiempo_espera_total_minutos': round(sum(esperas) / len(esperas), 1) if esperas else 0.0,
+        'min_tiempo_espera_total_minutos': min(esperas) if esperas else 0.0,
+        'max_tiempo_espera_total_minutos': max(esperas) if esperas else 0.0,
+    }
+

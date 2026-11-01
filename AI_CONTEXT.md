@@ -17,7 +17,9 @@
   - RF12 Comentarios Asociados a Productos: **COMPLETADO Y TESTEADO (153/153 suite vigente en verde al cerrar RF12)**.
   - RF13 Registro de Entrega de Productos: **COMPLETADO Y TESTEADO (161/161 suite vigente en verde al cerrar RF13)**.
   - RF14 Gestión de Puntos de Venta: **COMPLETADO Y TESTEADO (172/172 suite vigente en verde al cerrar RF14)**.
-  - RF01–RF14: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF15 Posicionamiento de Productos y Menús: **COMPLETADO Y TESTEADO (185/185 suite vigente en verde al cerrar RF15)**.
+  - RF16 Control de Tiempos de Atención: **COMPLETADO Y TESTEADO (197/197 suite vigente en verde al cerrar RF16)**.
+  - RF01–RF16: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -781,7 +783,32 @@ Revisar relaciones actuales Producto/PuntoVenta/Menu.
 
 ---
 
-# RF16 — CONTROL DE TIEMPOS DE ATENCIÓN
+# RF16 — CONTROL DE TIEMPOS DE ATENCIÓN — [ESTADO: COMPLETADO Y CERRADO (197/197 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF16)
+- **Fecha de Cierre:** 2026-11-01
+- **Modelos y Métodos Operativos (`ventas/models.py`):**
+  * `Pedido.fecha_entregado`: Property getter y setter que recupera el timestamp inmutable de la primera entrega registrada (`self.entregas.order_by('id').first().fecha_hora_entrega`) o soporta override en memoria para simulación y pruebas.
+  * `Pedido._calcular_delta_segundos(dt_fin, dt_inicio)`: Motor de cálculo temporal timezone-aware blindado contra desfases naive/aware y diferencias a través de medianoche.
+  * `Pedido.get_tiempo_cola_minutos(en_curso=False)` y `get_tiempo_cola_segundos(en_curso=False)`: Tiempo transcurrido desde creación de la comanda hasta el inicio de su preparación en cocina/barra (`fecha_inicio_preparacion - creado_en`). Si `en_curso=True` y está pendiente, calcula tiempo transcurrido en vivo.
+  * `Pedido.get_tiempo_preparacion_minutos(en_curso=False)` y `get_tiempo_preparacion_segundos(en_curso=False)`: Tiempo culinario transcurrido desde inicio de preparación hasta marcado como listo (`fecha_listo - fecha_inicio_preparacion`).
+  * `Pedido.get_tiempo_despacho_minutos(en_curso=False)` y `get_tiempo_despacho_segundos(en_curso=False)`: Tiempo transcurrido desde que la comanda estuvo lista hasta su entrega física al comensal (`fecha_entregado - fecha_listo`).
+  * `Pedido.get_tiempo_espera_total_minutos(en_curso=False)` y `get_tiempo_espera_total_segundos(en_curso=False)`: Tiempo global desde creación de la comanda hasta entrega comensal (`fecha_entregado - creado_en`). Implementa política estricta de *incompletos no inventados*: pedidos no entregados retornan `None` para no falsear auditorías, salvo que explícitamente se solicite cálculo en curso (`en_curso=True`).
+  * `Pedido.validar_orden_temporal()`: Validador cronológico estricto que certifica la secuencia `creado_en <= fecha_inicio_preparacion <= fecha_listo <= fecha_entregado`, retornando `(es_valido, lista_inconsistencias)` y garantizando duraciones no negativas (`max(0.0, ...)`).
+  * `Pedido.get_metricas_tiempos(en_curso=False)`: Diccionario consolidado de métricas, timestamps y validaciones para auditoría de servicio.
+  * `Entrega.get_tiempo_desde_listo_minutos()` y `get_tiempo_desde_listo_segundos()`: Métodos auxiliares en modelo de auditoría de entrega.
+- **Servicios Centralizados y Lógica de Negocio (`ventas/utils.py`):**
+  * `formatear_fecha_hora_chile(dt)`: Formateador en zona horaria oficial de Chile (`America/Santiago`), robusto ante datetimes naive y aware.
+  * `calcular_metricas_tiempos_pedido(pedido, en_curso=False)`: Servicio que enriquece las métricas temporales con strings chilenos formateados, metadata de venta, mesa y local.
+  * `calcular_tiempos_promedio_local(punto_venta=None, fecha=None, pedidos_qs=None)`: Agregador de promedios de tiempos de atención (espera total, preparación cocina, tiempo en cola, despacho, mínimos y máximos) calculado exclusivamente a partir de órdenes efectivamente entregadas, evitando que pedidos pendientes, en preparación o cancelados distorsionen los tiempos de servicio.
+- **Interfaces, Dashboards y Auditoría (`ventas/views.py` y templates):**
+  * `administrador_historial`: Trazabilidad enriquecida en bitácora de entrega de pedidos, detallando minutos totales de atención y desglose de tiempo de preparación en cocina.
+  * `administrador_local`: Inclusión en context de `promedios_tiempos` y despliegue en `administrador_local.html` de 4 tarjetas KPI con bordes temáticos (Espera Total Promedio, Prep. Cocina Promedio, Tiempo en Cola Promedio, Comandas Despachadas).
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF16 (`SafariRF16ControlTiemposAtencionTests`): 12/12 tests OK.
+  * Suite completa del sistema: 197/197 tests pasados exitosamente en 394.2s (0 fallos, 0 errores, 100% verde).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado (`scratch/verificar_rf16.py`).
 
 ## Dependencia
 RF13 debe estar cerrado.
