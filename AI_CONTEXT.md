@@ -11,7 +11,7 @@
   - RF05 Reasignación de Mesas: **COMPLETADO Y TESTEADO (93/93 suite vigente)**.
   - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
   - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
-  - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (125/125 suite vigente en verde al cerrar RF09)**.
+  - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (127/127 suite vigente en verde al cerrar RF09 con KDS Barra)**.
   - RF01–RF09: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
@@ -318,12 +318,13 @@ Debe incluir, si existe:
 - **Vistas, Endpoints y Plantillas:**
   * Endpoint de previsualización e impresión digital térmica: `/tickets/<int:ticket_id>/imprimir/` ([`ticket_impresion_digital.html`](file:///c:/Users/pc/Desktop/safari%20Pilar/ventas/templates/ventas/ticket_impresion_digital.html)) con formato monospace 80mm/58mm, alerta de estado, botón `window.print()` y reintento.
   * Endpoint de reintento de despacho: `/tickets/<int:ticket_id>/reintentar/` con soporte HTTP y AJAX.
+  * **Pantalla Táctil KDS Barra & Cafetería (`/barra/` y [`barra.html`](file:///c:/Users/pc/Desktop/safari%20Pilar/ventas/templates/ventas/barra.html)):** Módulo operativo en pantalla equivalente al KDS de Cocina en reemplazo de tickets físicos de papel. Cumple estrictamente las mismas condiciones operacionales: sin temporizador de 15 minutos, auto-actualización en vivo cada 1 segundo con Scroll-Lock (sin saltos arriba), cero botones manuales de refresco, y aislamiento exclusivo de ítems de barra (bebidas, cafetería, jugos, snacks).
   * Integración en `administrador_historial`: registro de eventos de fallos y reintentos de impresión (`tipo: IMPRESION`).
   * Admin Django: `PuntoImpresionAdmin` y `RegistroImpresionAdmin` registrados en `ventas/admin.py`.
   * Poblamiento Demo: comando `poblar_safari.py` inicializa automáticamente los 3 puntos de impresión oficiales para cada uno de los 3 locales.
 - **Resultados de Pruebas Automatizadas:**
-  * Tests específicos RF09 (`SafariRF09GestionImpresionTests`): 9/9 tests OK.
-  * Suite completa (`python manage.py test ventas`): **125/125 tests pasados exitosamente (0 fallos, 0 errores)**.
+  * Tests específicos RF09 (`SafariRF09GestionImpresionTests`): 11/11 tests OK.
+  * Suite completa (`python manage.py test ventas`): **127/127 tests pasados exitosamente (0 fallos, 0 errores)**.
   * `python manage.py check`: 0 issues.
 - **Regresión Manual de 4 Roles:**
   * Administrador (`rgomez`): 200 OK.

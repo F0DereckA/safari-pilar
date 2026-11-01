@@ -3305,13 +3305,11 @@ def cocina(request):
         tiene_barra = False
         
         for det in ped.detalles.all():
-            cat_id = det.producto.categoria_id if det.producto.categoria else 1
-            if cat_id in [1, 2]:
-                destino_item = 'COCINA'
-                tiene_cocina = True
-            else:
-                destino_item = 'BARRA'
+            destino_item = det.producto.get_destino_operativo()
+            if destino_item == 'BARRA':
                 tiene_barra = True
+            else:
+                tiene_cocina = True
 
             items_pedido.append({
                 'nombre': det.producto.nombre,
@@ -3374,6 +3372,110 @@ def cocina(request):
 
 
 @requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
+
+
+def barra(request):
+    """
+    BDS (Bar Display System) - Módulo Operativo de Barra & Cafetería (KDS Barra).
+    Pantalla táctil dedicada para personal de barra, baristas y bartender.
+    Mismas condiciones operativas que Cocina:
+    - Sin cronómetro ni desconexión forzada de 15 minutos.
+    - Auto-actualización fluida en vivo (1 segundo) con Scroll-Lock.
+    - Cero botones manuales de refresco.
+    - Visualización exclusiva de productos de Barra (bebidas, jugos, cafetería, snacks).
+    """
+    hoy = timezone.localdate()
+    ahora_dt = timezone.localtime()
+    ahora_hora = ahora_dt.time()
+    en_horario = (datetime.time(10, 0) <= ahora_hora < datetime.time(18, 0))
+
+    perfil = getattr(request.user, 'perfil', None)
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+
+    if perfil and perfil.punto_venta_actual:
+        local_actual = perfil.punto_venta_actual
+    else:
+        local_id = request.GET.get('local_id')
+        if local_id:
+            local_actual = get_object_or_404(PuntoVenta, id=local_id)
+        else:
+            local_actual = locales.first()
+
+    pedidos_qs = Pedido.objects.filter(
+        venta__punto_venta=local_actual,
+        creado_en__date=hoy,
+        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
+    ).select_related('venta__mesa', 'venta__cajero').prefetch_related('detalles__producto__categoria', 'tickets').order_by('creado_en')
+
+    pedidos_data = []
+    total_pendientes = 0
+    total_en_preparacion = 0
+    total_listos = 0
+
+    for ped in pedidos_qs:
+        tiempo_creacion = timezone.localtime(ped.creado_en)
+        minutos = int((ahora_dt - tiempo_creacion).total_seconds() // 60)
+
+        items_barra = []
+        for det in ped.detalles.all():
+            dest = det.producto.get_destino_operativo()
+            if dest == 'BARRA':
+                items_barra.append({
+                    'nombre': det.producto.nombre,
+                    'cantidad': det.cantidad,
+                    'observaciones': det.observaciones or '',
+                    'destino': 'BARRA',
+                })
+
+        # Solo incluir pedidos que contengan ítems para Barra
+        if not items_barra:
+            continue
+
+        if ped.estado == 'PENDIENTE':
+            total_pendientes += 1
+        elif ped.estado == 'EN_PREPARACION':
+            total_en_preparacion += 1
+        elif ped.estado == 'LISTO':
+            total_listos += 1
+
+        pedidos_data.append({
+            'id': ped.id,
+            'codigo_ticket': f"BAR-{ped.id:04d}",
+            'estado': ped.estado,
+            'estado_display': ped.get_estado_display(),
+            'mesa': ped.venta.mesa.identificador if ped.venta.mesa else 'Mostrador / Para Llevar',
+            'es_mesa': bool(ped.venta.mesa),
+            'cajero': ped.venta.cajero.get_full_name() or ped.venta.cajero.username,
+            'hora_creacion': tiempo_creacion.strftime('%H:%M'),
+            'minutos_transcurridos': minutos,
+            'es_demorado': minutos >= 15,
+            'observaciones': ped.observaciones or '',
+            'items': items_barra,
+            'total_items': sum(it['cantidad'] for it in items_barra),
+        })
+
+    ultimos_entregados = Pedido.objects.filter(
+        venta__punto_venta=local_actual,
+        creado_en__date=hoy,
+        estado='ENTREGADO',
+        detalles__producto__categoria__destino_defecto='BARRA'
+    ).distinct().select_related('venta__mesa').order_by('-actualizado_en')[:5]
+
+    context = {
+        'local_actual': local_actual,
+        'locales': locales,
+        'pedidos': pedidos_data,
+        'total_pendientes': total_pendientes,
+        'total_en_preparacion': total_en_preparacion,
+        'total_listos': total_listos,
+        'total_cola': len(pedidos_data),
+        'ultimos_entregados': ultimos_entregados,
+        'hoy_str': hoy.strftime("%d/%m/%Y"),
+        'ahora_hora_str': ahora_dt.strftime("%H:%M"),
+        'en_horario': en_horario,
+    }
+    return render(request, 'ventas/barra.html', context)
+
 def cambiar_estado_pedido(request):
     """
     Endpoint para cambiar el estado de preparación de un pedido en cocina/barra:
@@ -3425,7 +3527,7 @@ def cambiar_estado_pedido(request):
 
         messages.success(request, mensaje_exito)
         referer = request.META.get('HTTP_REFERER')
-        if referer and ('/cocina/' in referer or '/mesero/' in referer):
+        if referer and ('/cocina/' in referer or '/mesero/' in referer or '/barra/' in referer):
             return redirect(referer)
         return redirect('cocina')
 

@@ -199,6 +199,9 @@
                 <a href="?zona=BARRA{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'BARRA' %}btn-info text-dark{% else %}btn-outline-light text-white border-0{% endif %}">
                     <i class="bi bi-cup-straw me-1"></i> Barra & Bebidas
                 </a>
+                <a href="{% url 'barra' %}" class="btn btn-sm rounded-pill px-3 fw-bold btn-outline-info text-info border-0" title="Abrir Pantalla KDS Táctil exclusiva de Barra">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Monitor Barra
+                </a>
             </div>
 
             <!-- Derecha: Estado de Turno, Datos del Cocinero y Reloj -->

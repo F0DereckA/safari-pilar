@@ -23,6 +23,7 @@ urlpatterns = [
     path('administrador/dashboard/exportar/', views.exportar_reporte_ventas, name='exportar_reporte_ventas'),
     path('mesero/', views.mesero, name='mesero'),
     path('cocina/', views.cocina, name='cocina'),
+    path('barra/', views.barra, name='barra'),
     path('cocina/cambiar-estado/', views.cambiar_estado_pedido, name='cambiar_estado_pedido'),
     path('tickets/<int:ticket_id>/reimprimir/', views.reimprimir_ticket_view, name='reimprimir_ticket'),
     path('tickets/<int:ticket_id>/imprimir/', views.ver_imprimir_ticket_digital, name='ver_imprimir_ticket_digital'),

@@ -3430,3 +3430,69 @@ class SafariRF09GestionImpresionTests(TestCase):
         self.assertIsNotNone(reg_reimp)
         self.assertTrue(reg_reimp.exitoso)
         self.assertEqual(reg_reimp.usuario, self.admin)
+    # 10. KDS Barra: Acceso, renderizado y aislamiento de bebidas (BDS)
+    def test_rf09_10_kds_barra_pantalla_tactil_y_aislamiento(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        # Pedido 1: Solo Cocina
+        v1 = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('8500.00'), estado='ABIERTA')
+        p1 = Pedido.objects.create(venta=v1, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=p1, producto=self.prod_cocina, cantidad=1)
+        emitir_tickets_comanda(p1, usuario_emisor=self.mesero)
+
+        # Pedido 2: Mixto (Cocina + Barra)
+        m2 = Mesa.objects.create(identificador="Mesa RF09-2", punto_venta=self.pv1, capacidad=2, estado='OCUPADA')
+        v2 = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=m2, total=Decimal('11700.00'), estado='ABIERTA')
+        p2 = Pedido.objects.create(venta=v2, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=p2, producto=self.prod_cocina, cantidad=1)
+        DetallePedido.objects.create(pedido=p2, producto=self.prod_barra, cantidad=2, observaciones="Con hielo y endulzante")
+        emitir_tickets_comanda(p2, usuario_emisor=self.mesero)
+
+        self.client.force_login(self.mesero)
+        resp = self.client.get(reverse('barra'))
+        self.assertEqual(resp.status_code, 200)
+
+        # Pedido 1 (solo cocina) NO debe figurar en KDS Barra
+        self.assertNotContains(resp, f"COM-{p1.id:04d}")
+        # Pedido 2 (tiene barra) SÍ debe figurar
+        self.assertContains(resp, f"BAR-{p2.id:04d}")
+        self.assertContains(resp, "Café Moka Barista")
+        self.assertContains(resp, "Con hielo y endulzante")
+        # El ítem de cocina de ese mismo pedido no se lista en la tarjeta de barra
+        self.assertNotContains(resp, "Hamburguesa Especial Safari")
+
+        # Verificar condiciones operativas requeridas por el usuario:
+        # 1. No debe tener reloj regresivo de 15 minutos
+        self.assertNotContains(resp, "Sesión: 15:00")
+        self.assertNotContains(resp, "Sesión: 14:")
+        # 2. Sin botón manual 'Actualizar Pantalla'
+        self.assertNotContains(resp, "Actualizar Pantalla")
+        # 3. Auto-actualización fluida en 1s presente
+        self.assertContains(resp, "autoActualizarBarra")
+
+    # 11. Transición táctil de estados en KDS Barra (Pendiente -> En Barra -> Listo -> Entregado)
+    def test_rf09_11_kds_barra_transicion_estados(self):
+        v = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('3200.00'), estado='ABIERTA')
+        p = Pedido.objects.create(venta=v, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=p, producto=self.prod_barra, cantidad=1)
+
+        self.client.force_login(self.mesero)
+
+        # 1. Preparar en Barra
+        resp1 = self.client.post(reverse('cambiar_estado_pedido'), {'pedido_id': p.id, 'nuevo_estado': 'EN_PREPARACION'}, HTTP_REFERER='/barra/')
+        self.assertEqual(resp1.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'EN_PREPARACION')
+
+        # 2. Listo en Barra
+        resp2 = self.client.post(reverse('cambiar_estado_pedido'), {'pedido_id': p.id, 'nuevo_estado': 'LISTO'}, HTTP_REFERER='/barra/')
+        self.assertEqual(resp2.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'LISTO')
+
+        # 3. Despachar / Entregado
+        resp3 = self.client.post(reverse('cambiar_estado_pedido'), {'pedido_id': p.id, 'nuevo_estado': 'ENTREGADO'}, HTTP_REFERER='/barra/')
+        self.assertEqual(resp3.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'ENTREGADO')
+        self.assertEqual(Entrega.objects.filter(pedido=p).count(), 1)
