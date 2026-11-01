@@ -17,6 +17,7 @@ from .validators import validar_complejidad_clave
 from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion, ConsumoInterno, DetalleConsumoInterno
 from .utils import (
     validar_y_calcular_precio_linea, registrar_precio_especial_auditoria,
+    validar_disponibilidad_producto,
     calcular_redondeo_ley_20956, emitir_tickets_comanda, emitir_comprobante_venta,
     reimprimir_ticket, reintentar_despacho_impresion,
     registrar_consumo_interno, liquidar_consumos_por_planilla,
@@ -1146,6 +1147,17 @@ def crear_ticket(request):
                     messages.error(request, f"El producto '{p_nom or p_id}' no existe en el catálogo.")
                     return redirect('crear_ticket')
 
+                # RF15: Validación estricta de disponibilidad del producto en el punto de venta de la caja
+                pv_caja = caja.punto_venta if caja else punto_venta
+                try:
+                    validar_disponibilidad_producto(prod, pv_caja)
+                except ValidationError as ve:
+                    err_msg = ve.message if hasattr(ve, 'message') else str(ve)
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+                    messages.error(request, err_msg)
+                    return redirect('crear_ticket')
+
                 precio_req_val = None
                 if p_precio_solicitado is not None:
                     try:
@@ -1287,7 +1299,15 @@ def crear_ticket(request):
             messages.success(request, f"¡Venta #{venta.id} emitida exitosamente por ${int(venta.total):,} CLP! Comanda derivada a cocina/barra.")
             return redirect('crear_ticket')
 
-    productos_activos = Producto.objects.filter(activo=True).select_related('categoria').prefetch_related('precios_especiales')
+    perfil = getattr(request.user, 'perfil', None)
+    punto_venta = perfil.punto_venta_actual if perfil else None
+    if caja_activa and caja_activa.punto_venta:
+        punto_venta = caja_activa.punto_venta
+
+    if punto_venta:
+        productos_activos = punto_venta.get_productos_disponibles().select_related('categoria').prefetch_related('precios_especiales')
+    else:
+        productos_activos = Producto.objects.filter(activo=True).select_related('categoria').prefetch_related('precios_especiales')
     convenios_activos = PrecioEspecial.objects.filter(activo=True).select_related('producto')
     trabajadores_activos = User.objects.filter(is_active=True, perfil__activo=True).select_related('perfil', 'perfil__punto_venta_actual').order_by('first_name', 'username')
     mesas_disponibles = Mesa.objects.filter(punto_venta=punto_venta, estado='HABILITADA').order_by('identificador') if punto_venta else Mesa.objects.none()
@@ -2945,12 +2965,17 @@ def mesero(request):
                 try:
                     cant = max(1, int(it.get('cantidad', 1)))
                     precio = max(0, int(it.get('precio', 0)))
+                    raw_id = it.get('id') or it.get('producto_id')
+                    p_id_int = int(raw_id) if raw_id and str(raw_id).isdigit() else None
                     items_validos.append({
+                        'id': p_id_int,
                         'nombre': str(it.get('nombre', 'Producto')).strip()[:120],
                         'precio': precio,
                         'cantidad': cant,
                         'nota': str(it.get('nota', '')).strip()[:200],
-                        'destino': 'BARRA' if it.get('destino') == 'BARRA' else 'COCINA'
+                        'destino': 'BARRA' if it.get('destino') == 'BARRA' else 'COCINA',
+                        'convenio_id': it.get('convenio_id'),
+                        'motivo': it.get('motivo_precio_especial') or it.get('motivo')
                     })
                 except (ValueError, TypeError):
                     continue
@@ -3015,19 +3040,47 @@ def mesero(request):
                     observaciones=f"Ronda #{num_ronda} enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
                 )
 
-                cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
                 subtotal_acumulado_ronda = Decimal('0')
                 for it in items_validos:
+                    p_id = it.get('id')
                     p_nom = it['nombre']
                     p_precio = it['precio']
                     p_cant = it['cantidad']
                     p_conv_id = it.get('convenio_id')
                     p_motivo = it.get('motivo_precio_especial') or it.get('motivo')
 
-                    prod_obj, _ = Producto.objects.get_or_create(
-                        nombre=p_nom,
-                        defaults={'categoria': cat_general, 'precio_base': p_precio}
-                    )
+                    prod_obj = None
+                    if p_id:
+                        prod_obj = Producto.objects.filter(id=p_id).first()
+                    if not prod_obj and p_nom:
+                        prod_obj = Producto.objects.filter(nombre__iexact=p_nom).first()
+                    if not prod_obj and p_nom:
+                        prod_obj = Producto.objects.filter(nombre=p_nom).first()
+
+                    if not prod_obj and p_nom:
+                        cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
+                        prod_obj, creado = Producto.objects.get_or_create(
+                            nombre=p_nom,
+                            defaults={'categoria': cat_general, 'precio_base': p_precio, 'activo': True}
+                        )
+                        if creado:
+                            prod_obj.puntos_venta.add(local_actual)
+
+                    if not prod_obj:
+                        err_msg = f"El producto '{p_nom or p_id}' no existe en el catálogo."
+                        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                            return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+                        messages.error(request, err_msg)
+                        return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+                    try:
+                        validar_disponibilidad_producto(prod_obj, local_actual)
+                    except ValidationError as ve:
+                        err_msg = ve.message if hasattr(ve, 'message') else str(ve)
+                        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                            return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+                        messages.error(request, err_msg)
+                        return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
                     # RF07: Validación y cálculo blindado de precios con auditoría
                     # Si el usuario es MESERO y no hay convenio ni autorización de supervisor,
@@ -3131,200 +3184,12 @@ def mesero(request):
     mesas_libres = mesas.filter(estado='HABILITADA').count()
     mesas_ocupadas = mesas.filter(estado='OCUPADA').count()
 
-    # Catálogo de alimentos y bebidas clasificados con destino operativo de comandas
-    catalogo_productos = [
-        # Comida por cocinar (Destino: COCINA)
-        {
-            "id": 101,
-            "nombre": "Hamburguesa Safari con Papas",
-            "categoria": "cocinar",
-            "categoria_nombre": "Comida por Cocinar",
-            "destino": "COCINA",
-            "destino_badge": "Impresora Cocina",
-            "icono": "bi-fire",
-            "precio": 8900,
-            "descripcion": "Hamburguesa casera 200g, cheddar, lechuga, tomate y papas fritas rústicas."
-        },
-        {
-            "id": 102,
-            "nombre": "Cazuela de Ave Criolla",
-            "categoria": "cocinar",
-            "categoria_nombre": "Comida por Cocinar",
-            "destino": "COCINA",
-            "destino_badge": "Impresora Cocina",
-            "icono": "bi-fire",
-            "precio": 7500,
-            "descripcion": "Plato de fondo tradicional caliente con pollo de campo, choclo y zapallo."
-        },
-        {
-            "id": 103,
-            "nombre": "Churrasco Italiano con Papas",
-            "categoria": "cocinar",
-            "categoria_nombre": "Comida por Cocinar",
-            "destino": "COCINA",
-            "destino_badge": "Impresora Cocina",
-            "icono": "bi-fire",
-            "precio": 8500,
-            "descripcion": "Láminas de vacuno a la plancha, palta fresca, tomate y mayonesa casera en pan frica."
-        },
-        {
-            "id": 104,
-            "nombre": "Porción Papas Fritas Rústicas",
-            "categoria": "cocinar",
-            "categoria_nombre": "Comida por Cocinar",
-            "destino": "COCINA",
-            "destino_badge": "Impresora Cocina",
-            "icono": "bi-fire",
-            "precio": 3500,
-            "descripcion": "Papas fritas con piel crujientes doradas al momento con sal de mar."
-        },
-        {
-            "id": 105,
-            "nombre": "Menú Infantil Nuggets con Papas",
-            "categoria": "cocinar",
-            "categoria_nombre": "Comida por Cocinar",
-            "destino": "COCINA",
-            "destino_badge": "Impresora Cocina",
-            "icono": "bi-fire",
-            "precio": 5900,
-            "descripcion": "6 nuggets de pechuga de pollo crocantes con papas fritas para niños."
-        },
-        # Comida preparada (Destino: SALÓN / MOSTRADOR)
-        {
-            "id": 201,
-            "nombre": "Sándwich Pan Jamón y Queso",
-            "categoria": "preparada",
-            "categoria_nombre": "Comida Preparada",
-            "destino": "SALON",
-            "destino_badge": "Despacho Inmediato",
-            "icono": "bi-basket2-fill",
-            "precio": 3500,
-            "descripcion": "Pan marraqueta fresca con láminas de jamón pierna artesanal y queso chanco de campo."
-        },
-        {
-            "id": 202,
-            "nombre": "Sándwich Ave Pimentón",
-            "categoria": "preparada",
-            "categoria_nombre": "Comida Preparada",
-            "destino": "SALON",
-            "destino_badge": "Despacho Inmediato",
-            "icono": "bi-basket2-fill",
-            "precio": 4200,
-            "descripcion": "Pasta cremosa de pechuga de ave desmenuzada con pimentón rojo en pan molde rústico."
-        },
-        {
-            "id": 203,
-            "nombre": "Empanada de Pino al Horno",
-            "categoria": "preparada",
-            "categoria_nombre": "Comida Preparada",
-            "destino": "SALON",
-            "destino_badge": "Mantenedor Caliente",
-            "icono": "bi-basket2-fill",
-            "precio": 2800,
-            "descripcion": "Empanada tradicional horneada, pino de carne picada, aceituna sevillana y huevo duro."
-        },
-        {
-            "id": 204,
-            "nombre": "Croissant de Mantequilla",
-            "categoria": "preparada",
-            "categoria_nombre": "Comida Preparada",
-            "destino": "SALON",
-            "destino_badge": "Vitrina / Repostería",
-            "icono": "bi-basket2-fill",
-            "precio": 2400,
-            "descripcion": "Medialuna hojaldrada horneada fresca de pastelería de la mañana."
-        },
-        # Bebidas envasadas (Destino: BARRA)
-        {
-            "id": 301,
-            "nombre": "Coca Cola Original 350ml",
-            "categoria": "envasada",
-            "categoria_nombre": "Bebidas Envasadas",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-straw",
-            "precio": 1800,
-            "descripcion": "Bebida gaseosa helada en lata 350ml directo de conservadora de frío."
-        },
-        {
-            "id": 302,
-            "nombre": "Coca Cola Sin Azúcar 350ml",
-            "categoria": "envasada",
-            "categoria_nombre": "Bebidas Envasadas",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-straw",
-            "precio": 1800,
-            "descripcion": "Bebida gaseosa sin calorías helada en lata 350ml."
-        },
-        {
-            "id": 303,
-            "nombre": "Agua Mineral Sin Gas 500ml",
-            "categoria": "envasada",
-            "categoria_nombre": "Bebidas Envasadas",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-straw",
-            "precio": 1500,
-            "descripcion": "Agua purificada de manantial natural en botella pet 500ml."
-        },
-        {
-            "id": 304,
-            "nombre": "Jugo en Caja Naranja Watt's",
-            "categoria": "envasada",
-            "categoria_nombre": "Bebidas Envasadas",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-straw",
-            "precio": 1400,
-            "descripcion": "Jugo néctar de naranja individual con bombilla 200ml."
-        },
-        # Cafetería y jugos naturales (Destino: BARRA)
-        {
-            "id": 401,
-            "nombre": "Café Espresso Grano Barista",
-            "categoria": "cafeteria",
-            "categoria_nombre": "Cafetería y Jugos",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-hot-fill",
-            "precio": 2200,
-            "descripcion": "Café de grano italiano recién molido, extracción corta con crema avellana dorada."
-        },
-        {
-            "id": 402,
-            "nombre": "Capuchino Italiano Vainilla",
-            "categoria": "cafeteria",
-            "categoria_nombre": "Cafetería y Jugos",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-hot-fill",
-            "precio": 2900,
-            "descripcion": "Espresso de grano con leche texturizada vaporizada y toque de cacao en polvo."
-        },
-        {
-            "id": 403,
-            "nombre": "Jugo Natural Frutilla Exprimido",
-            "categoria": "cafeteria",
-            "categoria_nombre": "Cafetería y Jugos",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-hot-fill",
-            "precio": 3500,
-            "descripcion": "Jugo 100% natural licuado al momento con pulpa de fruta fresca de temporada."
-        },
-        {
-            "id": 404,
-            "nombre": "Jugo Natural Naranja Exprimido",
-            "categoria": "cafeteria",
-            "categoria_nombre": "Cafetería y Jugos",
-            "destino": "BARRA",
-            "destino_badge": "Impresora Barra",
-            "icono": "bi-cup-hot-fill",
-            "precio": 3200,
-            "descripcion": "Jugo recién exprimido de naranjas dulces seleccionadas."
-        }
-    ]
+    # Catálogo de alimentos y bebidas clasificados con destino operativo de comandas (RF15: Fuente de verdad BD)
+    if local_actual:
+        prods_local = local_actual.get_productos_disponibles().select_related('categoria')
+        catalogo_productos = [p.to_mesero_dict() for p in prods_local]
+    else:
+        catalogo_productos = []
 
     hoy = timezone.localdate()
     ahora_dt = timezone.localtime()

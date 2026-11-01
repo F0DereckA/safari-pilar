@@ -725,7 +725,29 @@ Ya existe CRUD; verificar cumplimiento oficial.
 
 ---
 
-# RF15 — POSICIONAMIENTO DE PRODUCTOS Y MENÚS
+# RF15 — POSICIONAMIENTO DE PRODUCTOS Y MENÚS — [ESTADO: COMPLETADO Y CERRADO (185/185 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF15)
+- **Fecha de Cierre:** 2026-11-01
+- **Modelos y Métodos Operativos (`ventas/models.py`):**
+  * `PuntoVenta.get_productos_disponibles()`: QuerySet dinámico gobernado por la base de datos real que combina productos asignados directamente (`puntos_venta`) y productos presentes en sus menús/cartas activas (`menus__activo=True`), filtrando estrictamente productos activos (`activo=True`) y aplicando `.distinct()`.
+  * `Producto.esta_disponible_en(punto_venta)`: Validador de disponibilidad del producto para un local físico específico.
+  * `Producto.to_mesero_dict()`: Serializador de producto hacia la interfaz táctil del Mesero, eliminando la lista hardcodeada y gobernando categorías, destinos operativos y precios en vivo desde la base de datos.
+  * `Menu.productos_activos()` y `Menu.esta_vacio()`: Detección y gestión de cartas vacías o sin productos vigentes.
+- **Servicios Centralizados y Lógica de Negocio (`ventas/utils.py`):**
+  * `validar_disponibilidad_producto(producto, punto_venta)`: Servicio blindado de validación server-side que rechaza con `ValidationError`:
+    - Productos inexistentes en el catálogo;
+    - Productos desactivados (`activo=False`);
+    - Productos no asignados ni en `puntos_venta` ni en cartas activas del local especificado (`RF15`).
+- **Control de Terminales y Vistas (`ventas/views.py`):**
+  * `crear_ticket` (POS Cajero): Validación estricta server-side en transacción atómica que rechaza con HTTP 400 cualquier intento de venta cruzada donde una terminal intente colar productos de otro local o productos deshabilitados. En modo GET, filtra el catálogo `productos_activos` mostrando únicamente la oferta oficial del local de la caja.
+  * `mesero` (`enviar_comanda`): Validación server-side de disponibilidad en el punto de venta de la mesa seleccionada. Reemplazo del catálogo hardcodeado de 200 líneas por consulta en vivo a la BD mediante `local_actual.get_productos_disponibles()`. Soporte de mensajes de error limpios y controlados para meseros.
+  * `poblar_safari`: Catálogo base de alimentos, bebidas y cafetería registrado en la BD con vinculación explícita a sus puntos de venta correspondientes (Restaurante Central, Cafetería La Selva, Kiosco Oasis).
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF15 (`SafariRF15PosicionamientoProductosMenusTests`): 13/13 tests OK.
+  * Suite completa del sistema: 185/185 tests pasados exitosamente en 340.5s (0 fallos, 0 errores, 100% verde).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado (`scratch/verificar_rf15.py`).
 
 ## Objetivo
 Definir qué productos ofrece cada Punto de Venta.

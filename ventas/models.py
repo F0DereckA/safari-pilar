@@ -135,6 +135,19 @@ class PuntoVenta(models.Model):
             self.mesas.filter(ventas__isnull=False).exists()
         )
 
+    def get_productos_disponibles(self):
+        """
+        Retorna el QuerySet de productos activos habilitados para este punto de venta (RF15),
+        combinando los asignados directamente y los presentes en sus menús activos.
+        """
+        from django.db.models import Q
+        ProductoModel = self.productos_disponibles.model
+        return ProductoModel.objects.filter(
+            activo=True
+        ).filter(
+            Q(puntos_venta=self) | Q(menus__punto_venta=self, menus__activo=True)
+        ).distinct()
+
     def __str__(self):
         return self.nombre
 
@@ -294,6 +307,55 @@ class Producto(models.Model):
             return 'BARRA'
         return 'COCINA'
 
+    def esta_disponible_en(self, punto_venta):
+        """
+        Indica si el producto está activo y habilitado para comercialización
+        en el punto de venta especificado (RF15).
+        """
+        if not self.activo:
+            return False
+        if not punto_venta:
+            return True
+        return (
+            self.puntos_venta.filter(id=punto_venta.id).exists() or
+            self.menus.filter(punto_venta=punto_venta, activo=True).exists()
+        )
+
+    def to_mesero_dict(self):
+        """
+        Serializa el producto al formato esperado por la interfaz táctil de meseros (RF15),
+        eliminando datos hardcodeados y gobernando la información desde la base de datos real.
+        """
+        destino = self.get_destino_operativo()
+        if destino == 'COCINA':
+            destino_badge = 'Impresora Cocina'
+            categoria_slug = 'cocinar'
+        elif destino == 'BARRA':
+            destino_badge = 'Impresora Barra'
+            nom_lower = (self.nombre or '').lower()
+            cat_lower = (self.categoria.nombre if self.categoria else '').lower()
+            if any(k in nom_lower or k in cat_lower for k in ['café', 'cafe', 'té', 'te', 'cappuccino', 'jugo', 'frutilla', 'naranja', 'limonada', 'infus']):
+                categoria_slug = 'cafeteria'
+            else:
+                categoria_slug = 'envasada'
+        else:
+            destino_badge = 'Despacho Inmediato'
+            categoria_slug = 'preparada'
+
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "categoria": categoria_slug,
+            "categoria_nombre": self.categoria.nombre if self.categoria else "General",
+            "destino": destino,
+            "destino_badge": destino_badge,
+            "precio": int(self.precio_actual),
+            "precio_base": int(self.precio_base),
+            "en_oferta": self.en_oferta,
+            "descripcion_oferta": self.descripcion_oferta or '',
+            "descripcion": self.descripcion or '',
+        }
+
     @property
     def precio_actual(self):
         """Retorna el precio unitario base o el precio de oferta fijo si aplica"""
@@ -381,6 +443,14 @@ class Menu(models.Model):
     punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.CASCADE, related_name='menus')
     productos = models.ManyToManyField(Producto, related_name='menus', blank=True)
     activo = models.BooleanField(default=True)
+
+    def productos_activos(self):
+        """Retorna únicamente los productos activos vinculados a este menú (RF15)"""
+        return self.productos.filter(activo=True)
+
+    def esta_vacio(self):
+        """Indica si el menú no posee productos activos asignados (RF15)"""
+        return not self.productos_activos().exists()
 
     def __str__(self):
         return f"{self.nombre} ({self.punto_venta.nombre})"

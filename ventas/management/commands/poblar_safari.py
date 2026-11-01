@@ -252,7 +252,7 @@ class Command(BaseCommand):
             if c_creado:
                 self.stdout.write(self.style.SUCCESS(f"  [+] Categoría creada: {cat_obj.nombre}"))
 
-        # 6. PRODUCTOS BASE POR LOCAL
+        # 6. PRODUCTOS BASE POR LOCAL (RF15: Catálogo Oficial por Punto de Venta)
         productos_def = [
             {"nombre": "Hamburguesa Safari con Papas", "cat": "Comida por Cocinar", "precio": 8900, "locales": [1], "destino": "COCINA"},
             {"nombre": "Churrasco Italiano con Papas", "cat": "Comida por Cocinar", "precio": 8500, "locales": [1], "destino": "COCINA"},
@@ -260,16 +260,28 @@ class Command(BaseCommand):
             {"nombre": "Cazuela de Ave Criolla", "cat": "Comida Preparada", "precio": 7500, "locales": [1], "destino": "COCINA"},
             {"nombre": "Menú Infantil Nuggets con Papas", "cat": "Comida por Cocinar", "precio": 5900, "locales": [1], "destino": "COCINA"},
             {"nombre": "Empanada de Pino Horno", "cat": "Comida Preparada", "precio": 2800, "locales": [1, 3], "destino": "COCINA"},
+            {"nombre": "Empanada de Pino al Horno", "cat": "Comida Preparada", "precio": 2800, "locales": [1, 3], "destino": "COCINA"},
+            {"nombre": "Sándwich Pan Jamón y Queso", "cat": "Comida Preparada", "precio": 3500, "locales": [1, 2, 3], "destino": "SALON"},
+            {"nombre": "Sándwich Ave Pimentón", "cat": "Comida Preparada", "precio": 4200, "locales": [1, 2, 3], "destino": "SALON"},
+            {"nombre": "Croissant de Mantequilla", "cat": "Pastelería y Snacks", "precio": 2400, "locales": [2], "destino": "SALON"},
             {"nombre": "Café Espresso Doble", "cat": "Cafetería y Jugos", "precio": 2500, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Café Espresso Grano Barista", "cat": "Cafetería y Jugos", "precio": 2200, "locales": [1, 2], "destino": "BARRA"},
             {"nombre": "Café Cappuccino Vainilla", "cat": "Cafetería y Jugos", "precio": 3200, "locales": [2], "destino": "BARRA"},
+            {"nombre": "Capuchino Italiano Vainilla", "cat": "Cafetería y Jugos", "precio": 2900, "locales": [2], "destino": "BARRA"},
             {"nombre": "Jugo Natural Frambuesa 400ml", "cat": "Cafetería y Jugos", "precio": 3900, "locales": [1, 2], "destino": "BARRA"},
+            {"nombre": "Jugo Natural Frutilla Exprimido", "cat": "Cafetería y Jugos", "precio": 3500, "locales": [1, 2], "destino": "BARRA"},
+            {"nombre": "Jugo Natural Naranja Exprimido", "cat": "Cafetería y Jugos", "precio": 3200, "locales": [1, 2], "destino": "BARRA"},
             {"nombre": "Té e Infusiones Variadas", "cat": "Cafetería y Jugos", "precio": 1800, "locales": [2], "destino": "BARRA"},
             {"nombre": "Torta Selva Negra Safari", "cat": "Pastelería y Snacks", "precio": 4200, "locales": [2], "destino": "BARRA"},
             {"nombre": "Croissant Jamón y Queso", "cat": "Pastelería y Snacks", "precio": 3400, "locales": [2], "destino": "BARRA"},
             {"nombre": "Bebida Coca-Cola 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Coca Cola Original 350ml", "cat": "Bebidas Envasadas", "precio": 1800, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Coca Cola Sin Azúcar 350ml", "cat": "Bebidas Envasadas", "precio": 1800, "locales": [1, 2, 3], "destino": "BARRA"},
             {"nombre": "Bebida Sprite 350ml", "cat": "Bebidas Envasadas", "precio": 2000, "locales": [1, 2, 3], "destino": "BARRA"},
             {"nombre": "Agua Mineral sin Gas 500ml", "cat": "Bebidas Envasadas", "precio": 1500, "locales": [1, 2, 3], "destino": "BARRA"},
+            {"nombre": "Agua Mineral Sin Gas 500ml", "cat": "Bebidas Envasadas", "precio": 1500, "locales": [1, 2, 3], "destino": "BARRA"},
             {"nombre": "Jugo en Caja 200ml", "cat": "Bebidas Envasadas", "precio": 1350, "locales": [3], "destino": "BARRA"},
+            {"nombre": "Jugo en Caja Naranja Watt's", "cat": "Bebidas Envasadas", "precio": 1400, "locales": [3], "destino": "BARRA"},
         ]
         prods_dict = {}
         for pdef in productos_def:

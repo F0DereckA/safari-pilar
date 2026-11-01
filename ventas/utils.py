@@ -995,3 +995,20 @@ def registrar_entrega_pedido(pedido_or_id, usuario_entrega=None, ticket=None, ob
 
         return entrega
 
+
+def validar_disponibilidad_producto(producto, punto_venta=None):
+    """
+    RF15: Valida estrictamente que el producto se encuentre activo y habilitado
+    para su comercialización en el punto de venta especificado.
+    Lanza ValidationError si no cumple las condiciones de disponibilidad.
+    """
+    if not producto:
+        raise ValidationError("El producto especificado no existe.")
+    if not producto.activo:
+        raise ValidationError(f"El producto '{producto.nombre}' se encuentra desactivado del catálogo.")
+    if punto_venta:
+        if not producto.esta_disponible_en(punto_venta):
+            raise ValidationError(
+                f"El producto '{producto.nombre}' no se encuentra disponible para venta en el local '{punto_venta.nombre}' (RF15)."
+            )
+    return True

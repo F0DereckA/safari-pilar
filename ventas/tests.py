@@ -2514,6 +2514,7 @@ class SafariRF07GestionPreciosTests(TestCase):
             precio_base=Decimal('9000.00'),
             activo=True
         )
+        self.producto.puntos_venta.add(self.pv)
 
         self.jornada = Jornada.objects.create(
             fecha=self.hoy, estado='ABIERTA', usuario_apertura=self.admin_user
@@ -2880,6 +2881,8 @@ class SafariRF08GeneracionTicketsTests(TestCase):
             destino_operativo='BARRA',
             activo=True
         )
+        self.prod_cocina.puntos_venta.add(self.pv)
+        self.prod_barra.puntos_venta.add(self.pv)
 
         self.jornada = Jornada.objects.create(fecha=self.hoy, estado='ABIERTA', usuario_apertura=self.admin)
         self.caja = Caja.objects.create(
@@ -3191,6 +3194,8 @@ class SafariRF09GestionImpresionTests(TestCase):
             destino_operativo='BARRA',
             activo=True
         )
+        self.prod_cocina.puntos_venta.add(self.pv1)
+        self.prod_barra.puntos_venta.add(self.pv1)
 
         self.jornada = Jornada.objects.create(
             fecha=self.hoy,
@@ -5225,3 +5230,377 @@ class SafariRF14GestionPuntosVentaTests(TestCase):
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(r_mod.status_code, 404)
 
+
+
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF15 (Posicionamiento de Productos y Menús)
+# ==============================================================================
+
+class SafariRF15PosicionamientoProductosMenusTests(TestCase):
+    """
+    Suite oficial de pruebas automatizadas para RF15 - Posicionamiento de Productos y Menús:
+    - Validación de disponibilidad de productos por Punto de Venta (local).
+    - Menú por local: inclusión de productos vía Menú activo o asignación directa.
+    - Rechazo estricto en POS Cajero y Mesero de productos no disponibles o de otro local.
+    - Rechazo de productos desactivados (activo=False).
+    - Preservación de integridad histórica contable al desasignar o desactivar productos.
+    - Menú vacío o local sin productos.
+    - Actualización dinámica: cambios en el catálogo de un local invalidan ventas en terminales.
+    - Productos multi-local disponibles en todos sus puntos de venta asignados.
+    - Filtrado dinámico en la vista de emisión de tickets del Cajero.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        self.hoy = timezone.localdate()
+
+        # Usuarios
+        self.admin = User.objects.create_user('admin_rf15', 'admin15@safari.cl', 'safari123')
+        self.cajero_a = User.objects.create_user('cajero15_a', 'cajero_a@safari.cl', 'safari123')
+        self.cajero_b = User.objects.create_user('cajero15_b', 'cajero_b@safari.cl', 'safari123')
+        self.mesero_a = User.objects.create_user('mesero15_a', 'mesero_a@safari.cl', 'safari123')
+
+        # Locales
+        self.local_a = PuntoVenta.objects.create(nombre="Terraza Safari Central", tipo="RESTAURANTE", activo=True)
+        self.local_b = PuntoVenta.objects.create(nombre="Kiosco Safari Express", tipo="KIOSCO", activo=True)
+        self.local_vacio = PuntoVenta.objects.create(nombre="Cafetería Sin Carta", tipo="CAFETERIA", activo=True)
+
+        # Perfiles
+        PerfilEmpleado.objects.create(usuario=self.admin, rol='ADMINISTRADOR', punto_venta_actual=self.local_a)
+        PerfilEmpleado.objects.create(usuario=self.cajero_a, rol='CAJERO', punto_venta_actual=self.local_a)
+        PerfilEmpleado.objects.create(usuario=self.cajero_b, rol='CAJERO', punto_venta_actual=self.local_b)
+        PerfilEmpleado.objects.create(usuario=self.mesero_a, rol='MESERO', punto_venta_actual=self.local_a)
+
+        # Categoría
+        self.cat = Categoria.objects.create(nombre="Gastronomía RF15", activo=True)
+
+        # Productos
+        self.prod_a = Producto.objects.create(
+            nombre="Plato Exclusivo Terraza",
+            categoria=self.cat,
+            precio_base=Decimal('8500'),
+            activo=True
+        )
+        self.prod_a.puntos_venta.add(self.local_a)
+
+        self.prod_b = Producto.objects.create(
+            nombre="Snack Exclusivo Kiosco",
+            categoria=self.cat,
+            precio_base=Decimal('2500'),
+            activo=True
+        )
+        self.prod_b.puntos_venta.add(self.local_b)
+
+        self.prod_multi = Producto.objects.create(
+            nombre="Bebida Compartida Ambos Locales",
+            categoria=self.cat,
+            precio_base=Decimal('1800'),
+            activo=True
+        )
+        self.prod_multi.puntos_venta.add(self.local_a, self.local_b)
+
+        self.prod_inactivo = Producto.objects.create(
+            nombre="Plato Descontinuado RF15",
+            categoria=self.cat,
+            precio_base=Decimal('5000'),
+            activo=False
+        )
+        self.prod_inactivo.puntos_venta.add(self.local_a)
+
+        self.prod_solo_menu = Producto.objects.create(
+            nombre="Postre Especial Carta Terraza",
+            categoria=self.cat,
+            precio_base=Decimal('4200'),
+            activo=True
+        )
+
+        # Menús
+        self.menu_a = Menu.objects.create(
+            nombre="Carta Ejecutiva Terraza",
+            punto_venta=self.local_a,
+            activo=True
+        )
+        self.menu_a.productos.add(self.prod_solo_menu)
+
+        self.menu_vacio = Menu.objects.create(
+            nombre="Carta Vacía",
+            punto_venta=self.local_vacio,
+            activo=True
+        )
+
+        # Jornada y Cajas
+        self.jornada = Jornada.objects.create(
+            fecha=self.hoy,
+            estado='ABIERTA',
+            usuario_apertura=self.admin
+        )
+        self.caja_a = Caja.objects.create(
+            nombre="Caja Terraza 1",
+            jornada=self.jornada,
+            cajero=self.cajero_a,
+            punto_venta=self.local_a,
+            monto_apertura=Decimal('50000'),
+            estado='ABIERTA'
+        )
+        self.caja_b = Caja.objects.create(
+            nombre="Caja Kiosco 1",
+            jornada=self.jornada,
+            cajero=self.cajero_b,
+            punto_venta=self.local_b,
+            monto_apertura=Decimal('30000'),
+            estado='ABIERTA'
+        )
+
+        # Mesa para mesero
+        self.mesa_a = Mesa.objects.create(
+            identificador="T1",
+            punto_venta=self.local_a,
+            capacidad=4,
+            estado='HABILITADA'
+        )
+
+    def test_rf15_1_producto_disponible_en_local_permite_venta_pos(self):
+        """RF15.1: Cajero puede vender exitosamente un producto asignado al Punto de Venta de su caja"""
+        self.client.force_login(self.cajero_a)
+        payload = [
+            {"producto_id": self.prod_a.id, "cantidad": 2}
+        ]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['total'], 17000.0)
+
+        # Verificar Venta en base de datos
+        venta = Venta.objects.get(id=data['venta_id'])
+        self.assertEqual(venta.punto_venta, self.local_a)
+        self.assertEqual(venta.detalles.first().producto, self.prod_a)
+
+    def test_rf15_2_producto_no_disponible_en_local_rechazado_pos(self):
+        """RF15.2 / Problema 1: Cajero de Local A intenta vender producto exclusivo de Local B -> HTTP 400 rechazado"""
+        self.client.force_login(self.cajero_a)
+        payload = [
+            {"producto_id": self.prod_b.id, "cantidad": 1}
+        ]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        data = resp.json()
+        self.assertFalse(data['ok'])
+        self.assertIn("no se encuentra disponible para venta en el local", data['error'])
+        self.assertIn(self.local_a.nombre, data['error'])
+
+    def test_rf15_3_producto_desactivado_rechazado_en_venta_pos(self):
+        """RF15.3 / Problema 2: Terminal intenta vender producto desactivado del catálogo (activo=False) -> Rechazado"""
+        self.client.force_login(self.cajero_a)
+        payload = [
+            {"producto_id": self.prod_inactivo.id, "cantidad": 1}
+        ]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        data = resp.json()
+        self.assertFalse(data['ok'])
+        self.assertIn("desactivado del catálogo", data['error'])
+
+    def test_rf15_4_mesero_comanda_permite_producto_disponible_en_local(self):
+        """RF15.4: Mesero en salón emite comanda con producto asignado a su local -> Éxito total"""
+        self.client.force_login(self.mesero_a)
+        items = [
+            {"id": self.prod_a.id, "nombre": self.prod_a.nombre, "cantidad": 1, "precio": float(self.prod_a.precio_base), "destino": "COCINA"}
+        ]
+        resp = self.client.post(reverse('mesero') + f"?local_id={self.local_a.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_a.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "despachada con éxito")
+
+        self.mesa_a.refresh_from_db()
+        self.assertEqual(self.mesa_a.estado, 'OCUPADA')
+        venta = Venta.objects.filter(mesa=self.mesa_a, estado='ABIERTA').first()
+        self.assertIsNotNone(venta)
+        self.assertEqual(venta.detalles.first().producto, self.prod_a)
+
+    def test_rf15_5_mesero_comanda_rechaza_producto_de_otro_local(self):
+        """RF15.5 / Problema 1: Mesero intenta colar producto de otro local en la comanda -> Rechazado con mensaje"""
+        self.client.force_login(self.mesero_a)
+        items = [
+            {"id": self.prod_b.id, "nombre": self.prod_b.nombre, "cantidad": 1, "precio": float(self.prod_b.precio_base), "destino": "BARRA"}
+        ]
+        resp = self.client.post(reverse('mesero') + f"?local_id={self.local_a.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_a.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+
+        self.assertContains(resp, "no se encuentra disponible para venta en el local")
+        self.assertEqual(DetalleVenta.objects.filter(producto=self.prod_b).count(), 0)
+
+    def test_rf15_6_mesero_comanda_rechaza_producto_desactivado(self):
+        """RF15.6 / Problema 2: Mesero intenta emitir comanda con producto desactivado -> Rechazado"""
+        self.client.force_login(self.mesero_a)
+        items = [
+            {"id": self.prod_inactivo.id, "nombre": self.prod_inactivo.nombre, "cantidad": 1, "precio": float(self.prod_inactivo.precio_base), "destino": "COCINA"}
+        ]
+        resp = self.client.post(reverse('mesero') + f"?local_id={self.local_a.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_a.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+
+        self.assertContains(resp, "desactivado del catálogo")
+        self.assertEqual(DetalleVenta.objects.filter(producto=self.prod_inactivo).count(), 0)
+
+    def test_rf15_7_producto_disponible_por_menu_activo(self):
+        """RF15.7: Producto NO asignado en puntos_venta pero presente en Carta activa del local se valida y vende"""
+        # prod_solo_menu no está en puntos_venta de local_a, pero sí en menu_a (activo)
+        self.assertFalse(self.prod_solo_menu.puntos_venta.filter(id=self.local_a.id).exists())
+        self.assertTrue(self.prod_solo_menu.esta_disponible_en(self.local_a))
+        self.assertTrue(self.local_a.get_productos_disponibles().filter(id=self.prod_solo_menu.id).exists())
+
+        self.client.force_login(self.cajero_a)
+        payload = [
+            {"producto_id": self.prod_solo_menu.id, "cantidad": 1}
+        ]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
+
+    def test_rf15_8_menu_desactivado_inhabilita_productos_exclusivos(self):
+        """RF15.8: Desactivar una carta inhabilita inmediatamente los productos que solo estaban en esa carta"""
+        self.menu_a.activo = False
+        self.menu_a.save()
+
+        self.assertFalse(self.prod_solo_menu.esta_disponible_en(self.local_a))
+        self.assertFalse(self.local_a.get_productos_disponibles().filter(id=self.prod_solo_menu.id).exists())
+
+        self.client.force_login(self.cajero_a)
+        payload = [
+            {"producto_id": self.prod_solo_menu.id, "cantidad": 1}
+        ]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("no se encuentra disponible", resp.json()['error'])
+
+    def test_rf15_9_actualizacion_dinamica_desasignar_producto(self):
+        """RF15.9 / Problema 5: Administrador retira producto de local; terminal antigua que intente venderlo es rechazada"""
+        # Inicialmente disponible
+        self.assertTrue(self.prod_a.esta_disponible_en(self.local_a))
+
+        # Administrador retira el producto del catálogo de ese local
+        self.prod_a.puntos_venta.remove(self.local_a)
+        self.assertFalse(self.prod_a.esta_disponible_en(self.local_a))
+
+        # Terminal intenta vender el producto retirado
+        self.client.force_login(self.cajero_a)
+        payload = [{"producto_id": self.prod_a.id, "cantidad": 1}]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("no se encuentra disponible", resp.json()['error'])
+
+    def test_rf15_10_historico_ventas_preservado_tras_retirar_producto_de_local(self):
+        """RF15.10 / Problema 4: Producto retirado o desactivado conserva 100% sus ventas históricas e integridad contable"""
+        # Registrar venta inicial
+        self.client.force_login(self.cajero_a)
+        payload = [{"producto_id": self.prod_a.id, "cantidad": 3}]
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        venta_id = resp.json()['venta_id']
+
+        # Desasignar del local y soft-deactivate
+        self.prod_a.puntos_venta.clear()
+        self.prod_a.activo = False
+        self.prod_a.save()
+
+        # Auditoría histórica
+        venta = Venta.objects.get(id=venta_id)
+        self.assertEqual(venta.total, Decimal('25500.00')) # 3 * 8500
+        det = venta.detalles.first()
+        self.assertEqual(det.producto, self.prod_a)
+        self.assertEqual(det.cantidad, 3)
+        self.assertEqual(det.subtotal, Decimal('25500.00'))
+
+    def test_rf15_11_menu_vacio_y_local_sin_productos(self):
+        """RF15.11 / Problema 3: Menú vacío y local sin productos configurados no ofrecen catálogo y rechazan compras"""
+        self.assertTrue(self.menu_vacio.esta_vacio())
+        self.assertEqual(self.menu_vacio.productos_activos().count(), 0)
+        self.assertEqual(self.local_vacio.get_productos_disponibles().count(), 0)
+
+        # Validar rechazo con helper
+        from ventas.utils import validar_disponibilidad_producto
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_disponibilidad_producto(self.prod_a, self.local_vacio)
+        self.assertIn("no se encuentra disponible para venta en el local", str(ctx.exception))
+
+    def test_rf15_12_producto_multi_local_disponible_en_ambos(self):
+        """RF15.12: Producto asignado a múltiples locales puede ser vendido legítimamente en ambos terminales"""
+        # Terminal Local A
+        self.client.force_login(self.cajero_a)
+        r_a = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps([{"producto_id": self.prod_multi.id, "cantidad": 1}]),
+            'metodo_pago': 'EFECTIVO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r_a.status_code, 200)
+        self.assertTrue(r_a.json()['ok'])
+
+        # Terminal Local B
+        self.client.force_login(self.cajero_b)
+        r_b = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps([{"producto_id": self.prod_multi.id, "cantidad": 1}]),
+            'metodo_pago': 'EFECTIVO'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r_b.status_code, 200)
+        self.assertTrue(r_b.json()['ok'])
+
+    def test_rf15_13_vendedor_crear_ticket_get_filtra_catalogo_por_local(self):
+        """RF15.13: GET en terminal vendedor_crear_ticket entrega solo productos disponibles del local del cajero"""
+        self.client.force_login(self.cajero_a)
+        resp = self.client.get(reverse('crear_ticket'))
+        self.assertEqual(resp.status_code, 200)
+
+        prods_context = list(resp.context['productos_activos'])
+        # prod_a y prod_multi y prod_solo_menu deben estar presentes
+        self.assertIn(self.prod_a, prods_context)
+        self.assertIn(self.prod_multi, prods_context)
+        self.assertIn(self.prod_solo_menu, prods_context)
+
+        # prod_b (exclusivo de local_b) y prod_inactivo NO deben estar presentes
+        self.assertNotIn(self.prod_b, prods_context)
+        self.assertNotIn(self.prod_inactivo, prods_context)
