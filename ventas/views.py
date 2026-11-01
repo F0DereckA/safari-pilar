@@ -1334,11 +1334,17 @@ def administrador(request):
             color = request.POST.get('color', '').strip() or '#c62828'
 
             if not nombre:
-                messages.error(request, "Debes ingresar un nombre para el nuevo local gastronómico.")
+                msg = "Debes ingresar un nombre para el nuevo local gastronómico."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('administrador')
 
             if PuntoVenta.objects.filter(nombre__iexact=nombre).exists():
-                messages.error(request, f"Ya existe un local gastronómico registrado con el nombre '{nombre}'.")
+                msg = f"Ya existe un local gastronómico registrado con el nombre '{nombre}'."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('administrador')
 
             nuevo_local = PuntoVenta.objects.create(
@@ -1349,12 +1355,23 @@ def administrador(request):
                 color=color,
                 activo=True
             )
-            messages.success(request, f"¡Local gastronómico '{nuevo_local.nombre}' creado exitosamente! Ya se encuentra disponible para asignación de colaboradores y auditoría.")
+            msg_exito = f"¡Local gastronómico '{nuevo_local.nombre}' creado exitosamente! Ya se encuentra disponible para asignación de colaboradores y auditoría."
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'ok', 'mensaje': msg_exito, 'local_id': nuevo_local.id, 'nombre': nuevo_local.nombre})
+            messages.success(request, msg_exito)
             return redirect('administrador')
 
         elif accion == 'modificar_local':
             local_id = request.POST.get('local_id')
-            pv = get_object_or_404(PuntoVenta, id=local_id)
+            try:
+                pv = PuntoVenta.objects.get(id=int(local_id))
+            except (ValueError, TypeError, PuntoVenta.DoesNotExist):
+                msg = "El local gastronómico especificado no existe."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=404)
+                messages.error(request, msg)
+                return redirect('administrador')
+
             nombre = request.POST.get('nombre', '').strip()
             tipo = request.POST.get('tipo', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
@@ -1364,12 +1381,27 @@ def administrador(request):
             activo = activo_raw in ['true', 'True', '1', 'on']
 
             if not nombre:
-                messages.error(request, "El nombre del local gastronómico no puede estar en blanco.")
+                msg = "El nombre del local gastronómico no puede estar en blanco."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('administrador')
 
             if PuntoVenta.objects.filter(nombre__iexact=nombre).exclude(id=pv.id).exists():
-                messages.error(request, f"Ya existe otro local registrado con el nombre '{nombre}'.")
+                msg = f"Ya existe otro local registrado con el nombre '{nombre}'."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                messages.error(request, msg)
                 return redirect('administrador')
+
+            # Blindaje RF14: No desactivar si tiene cajas o ventas abiertas
+            if not activo and pv.activo:
+                if pv.tiene_cajas_abiertas() or pv.tiene_ventas_abiertas():
+                    msg = f"No es posible desactivar el local '{pv.nombre}' mientras tenga cajas abiertas o cuentas en consumo activas (RF14)."
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                    messages.error(request, msg)
+                    return redirect('administrador')
 
             pv.nombre = nombre
             pv.tipo = tipo or "Punto de Venta"
@@ -1379,28 +1411,56 @@ def administrador(request):
             pv.activo = activo
             pv.save()
 
-            messages.success(request, f"¡Local gastronómico '{pv.nombre}' actualizado correctamente!")
+            msg_exito = f"¡Local gastronómico '{pv.nombre}' actualizado correctamente!"
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'ok', 'mensaje': msg_exito, 'local_id': pv.id, 'activo': pv.activo})
+            messages.success(request, msg_exito)
             return redirect('administrador')
 
         elif accion == 'eliminar_local':
             local_id = request.POST.get('local_id')
-            pv = get_object_or_404(PuntoVenta, id=local_id)
+            try:
+                pv = PuntoVenta.objects.get(id=int(local_id))
+            except (ValueError, TypeError, PuntoVenta.DoesNotExist):
+                msg = "El local gastronómico a eliminar no existe."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=404)
+                messages.error(request, msg)
+                return redirect('administrador')
+
             nombre_local = pv.nombre
+
+            # Blindaje RF14: No permitir eliminar ni desactivar si hay cajas o ventas abiertas
+            if pv.tiene_cajas_abiertas() or pv.tiene_ventas_abiertas():
+                msg = f"No es posible eliminar o desactivar el local '{nombre_local}' porque tiene cajas abiertas o cuentas en consumo activas (RF14)."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'error', 'mensaje': msg}, status=400)
+                messages.error(request, msg)
+                return redirect('administrador')
 
             # Desasignar colaboradores de este local
             PerfilEmpleado.objects.filter(punto_venta_actual=pv).update(punto_venta_actual=None)
 
-            # Eliminar mesas que no tengan ventas asociadas
-            Mesa.objects.filter(punto_venta=pv, ventas__isnull=True).delete()
-
-            try:
-                pv.delete()
-                messages.success(request, f"Local gastronómico '{nombre_local}' eliminado exitosamente del sistema.")
-            except models.ProtectedError:
+            # Si tiene transacciones o registros históricos: SOFT-DELETE obligatorio
+            if pv.tiene_historial_operativo():
                 pv.activo = False
-                pv.save()
-                messages.warning(request, f"El local '{nombre_local}' contiene transacciones y ventas históricas en auditoría. Ha sido desactivado e inactivado del servicio.")
+                pv.save(update_fields=['activo'])
+                msg_adv = f"El local '{nombre_local}' contiene transacciones y ventas históricas en auditoría. Ha sido desactivado e inactivado del servicio (soft-delete) para proteger los datos (RF14)."
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                    return JsonResponse({'status': 'ok', 'modo': 'soft-delete', 'mensaje': msg_adv, 'local_id': pv.id, 'activo': False})
+                messages.warning(request, msg_adv)
+                return redirect('administrador')
 
+            # Si no tiene historial: eliminación física limpia
+            Mesa.objects.filter(punto_venta=pv).delete()
+            pv.puntos_impresion.all().delete()
+            pv.menus.all().delete()
+            pv.delete()
+
+            msg_exito = f"Local gastronómico '{nombre_local}' eliminado exitosamente del sistema."
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                return JsonResponse({'status': 'ok', 'modo': 'hard-delete', 'mensaje': msg_exito})
+            messages.success(request, msg_exito)
             return redirect('administrador')
 
     locales = get_locales_data()

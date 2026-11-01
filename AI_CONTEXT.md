@@ -16,7 +16,8 @@
   - RF11 Asignación de Mesa o Venta Rápida: **COMPLETADO Y TESTEADO (145/145 suite vigente en verde al cerrar RF11)**.
   - RF12 Comentarios Asociados a Productos: **COMPLETADO Y TESTEADO (153/153 suite vigente en verde al cerrar RF12)**.
   - RF13 Registro de Entrega de Productos: **COMPLETADO Y TESTEADO (161/161 suite vigente en verde al cerrar RF13)**.
-  - RF01–RF13: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF14 Gestión de Puntos de Venta: **COMPLETADO Y TESTEADO (172/172 suite vigente en verde al cerrar RF14)**.
+  - RF01–RF14: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -676,7 +677,22 @@ PENDIENTE -> EN PREPARACIÓN -> LISTO -> ENTREGADO.
 
 ---
 
-# RF14 — GESTIÓN DE PUNTOS DE VENTA
+# RF14 — GESTIÓN DE PUNTOS DE VENTA — [ESTADO: COMPLETADO Y CERRADO (172/172 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF14)
+- **Fecha de Cierre:** 2026-11-01
+- **Modelos y Métodos Operativos (`ventas/models.py`):**
+  * `PuntoVenta`: incorporación de métodos de control de integridad operativa: `tiene_cajas_abiertas()`, `tiene_ventas_abiertas()` y `tiene_historial_operativo()`.
+- **Lógica de Protección y Vistas (`ventas/views.py`):**
+  * `crear_local`: validación rigurosa de nombre no vacío, unicidad case-insensitive, soporte AJAX estructurado y creación con estado activo por defecto.
+  * `modificar_local`: validación de nombre y unicidad excluyendo el propio ID; blindaje estricto que prohíbe desactivar (`activo=False`) si el local tiene cajas abiertas o cuentas en consumo activas en salón (`RF14`).
+  * `eliminar_local`: blindaje contra eliminación con cajas o ventas abiertas; soft-delete obligatorio (`activo=False`) ante presencia de historial operativo (ventas, cajas, consumos de colaboradores o mesas con auditoría) para proteger la integridad histórica; eliminación física limpia solo si el local no posee transacciones históricas; desasignación automática y segura de trabajadores (`punto_venta_actual=None`) sin eliminar perfiles de usuario.
+  * `administrador_local`: blindaje mediante decorador `@requiere_rol(['ADMINISTRADOR'])` y respuesta controlada HTTP 404 ante identificadores inexistentes.
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF14 (`SafariRF14GestionPuntosVentaTests`): 11/11 tests OK.
+  * Suite completa del sistema: 172/172 tests pasados exitosamente en 337.1s (0 fallos, 0 errores).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado.
 
 ## Auditoría
 Ya existe CRUD; verificar cumplimiento oficial.

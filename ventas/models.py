@@ -118,6 +118,23 @@ class PuntoVenta(models.Model):
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
 
+    def tiene_cajas_abiertas(self):
+        """Indica si el local tiene alguna caja operativa en estado ABIERTA (RF14)"""
+        return self.cajas.filter(estado='ABIERTA').exists()
+
+    def tiene_ventas_abiertas(self):
+        """Indica si el local tiene alguna comanda o cuenta en salón en estado ABIERTA (RF14)"""
+        return self.ventas.filter(estado='ABIERTA').exists()
+
+    def tiene_historial_operativo(self):
+        """Indica si el local tiene transacciones históricas que exigen soft-delete para auditoría (RF14)"""
+        return (
+            self.ventas.exists() or
+            self.cajas.exists() or
+            self.consumos_internos.exists() or
+            self.mesas.filter(ventas__isnull=False).exists()
+        )
+
     def __str__(self):
         return self.nombre
 

@@ -4904,3 +4904,324 @@ class SafariRF13RegistroEntregaProductosTests(TestCase):
         self.assertContains(resp, f"ENT-{entrega.id}")
         self.assertContains(resp, f"Entrega Pedido #{pedido.id}")
 
+
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF14 (Gestión de Puntos de Venta)
+# ==============================================================================
+class SafariRF14GestionPuntosVentaTests(TestCase):
+    """
+    Pruebas unitarias e integración de alta fidelidad para RF14 (Gestión de Puntos de Venta):
+    - CRUD completo de puntos de venta (crear, modificar, activar/desactivar, eliminar).
+    - Prevención de nombres duplicados (case-insensitive) y rechazo de nombres vacíos.
+    - Blindaje contra desactivación o eliminación de locales con cajas abiertas o cuentas en salón.
+    - Soft-delete obligatorio cuando existen transacciones históricas para proteger la auditoría.
+    - Eliminación física limpia cuando no existe historial operativo.
+    - Desasignación automática y segura de trabajadores al dar de baja el local.
+    - Asociación coherente de mesas, menús y productos disponibles por local.
+    - Control de acceso estricto: denegación de privilegios a roles no administradores (403/redirect).
+    - Manejo seguro de identificadores de local inexistentes (404 controlado).
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Producto, Categoria, Venta, Caja, Jornada, Menu
+
+        self.admin_user = User.objects.create_superuser('admin_rf14', 'admin14@safari.cl', 'safari123')
+        self.pv_central = PuntoVenta.objects.create(nombre="Restaurante Central Safari", tipo="Restaurante", activo=True)
+        PerfilEmpleado.objects.create(usuario=self.admin_user, rol='ADMINISTRADOR', punto_venta_actual=self.pv_central)
+
+        self.cajero_user = User.objects.create_user('cajero_rf14', 'cajero14@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cajero_user, rol='CAJERO', punto_venta_actual=self.pv_central)
+
+        self.mesero_user = User.objects.create_user('mesero_rf14', 'mesero14@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.mesero_user, rol='MESERO', punto_venta_actual=self.pv_central)
+
+        self.cocinero_user = User.objects.create_user('cocinero_rf14', 'cocinero14@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=self.cocinero_user, rol='COCINERO', punto_venta_actual=self.pv_central)
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin_user, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero_user,
+            punto_venta=self.pv_central,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf14_1_crear_punto_venta_exitoso(self):
+        """RF14: Administrador crea un nuevo punto de venta con todos sus atributos operativos"""
+        from ventas.models import PuntoVenta
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'crear_local',
+            'nombre': 'Punto Waffles & Churros Oasis',
+            'tipo': 'Pastelería & Snacks',
+            'descripcion': 'Waffles recién horneados y bebidas calientes.',
+            'icono': 'bi-cup-hot-fill',
+            'color': '#d97706'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['status'], 'ok')
+
+        pv = PuntoVenta.objects.get(nombre='Punto Waffles & Churros Oasis')
+        self.assertEqual(pv.tipo, 'Pastelería & Snacks')
+        self.assertEqual(pv.icono, 'bi-cup-hot-fill')
+        self.assertEqual(pv.color, '#d97706')
+        self.assertTrue(pv.activo)
+
+    def test_rf14_2_prevencion_duplicados_case_insensitive(self):
+        """RF14 / Problema: Rechazo estricto de nombres duplicados (insensible a mayúsculas/minúsculas)"""
+        from ventas.models import PuntoVenta
+
+        self.client.force_login(self.admin_user)
+        # Nombre exacto en mayúsculas
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'crear_local',
+            'nombre': 'RESTAURANTE CENTRAL SAFARI',
+            'tipo': 'Restaurante'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("error", resp.json()['status'])
+        self.assertIn("Ya existe un local", resp.json()['mensaje'])
+
+    def test_rf14_3_rechazo_nombre_vacio(self):
+        """RF14 / Validación: Rechazo de nombres vacíos o solo compuestos de espacios"""
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'crear_local',
+            'nombre': '   ',
+            'tipo': 'Cafetería'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("error", resp.json()['status'])
+
+    def test_rf14_4_modificar_punto_venta_exitoso(self):
+        """RF14: Administrador modifica atributos de un punto de venta existente"""
+        from ventas.models import PuntoVenta
+
+        local = PuntoVenta.objects.create(nombre="Kiosco África", tipo="Kiosco", activo=True)
+        self.client.force_login(self.admin_user)
+
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'modificar_local',
+            'local_id': local.id,
+            'nombre': 'Kiosco Sabana Africana',
+            'tipo': 'Punto Snacks & Bebidas',
+            'descripcion': 'Bebidas heladas y snacks.',
+            'icono': 'bi-snow',
+            'color': '#0284c7',
+            'activo': 'true'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        local.refresh_from_db()
+        self.assertEqual(local.nombre, 'Kiosco Sabana Africana')
+        self.assertEqual(local.tipo, 'Punto Snacks & Bebidas')
+        self.assertEqual(local.color, '#0284c7')
+
+    def test_rf14_5_rechazo_desactivar_o_eliminar_con_caja_abierta(self):
+        """RF14 / Problema: No se puede desactivar ni eliminar un local que tiene una caja operativa ABIERTA"""
+        from ventas.models import PuntoVenta, Caja
+
+        self.client.force_login(self.admin_user)
+
+        # 1. Intento de desactivar vía modificar_local
+        resp_desact = self.client.post(reverse('administrador'), {
+            'accion': 'modificar_local',
+            'local_id': self.pv_central.id,
+            'nombre': self.pv_central.nombre,
+            'activo': 'false'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp_desact.status_code, 400)
+        self.assertIn("cajas abiertas", resp_desact.json()['mensaje'])
+        self.pv_central.refresh_from_db()
+        self.assertTrue(self.pv_central.activo)
+
+        # 2. Intento de eliminar vía eliminar_local
+        resp_elim = self.client.post(reverse('administrador'), {
+            'accion': 'eliminar_local',
+            'local_id': self.pv_central.id
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp_elim.status_code, 400)
+        self.assertIn("cajas abiertas", resp_elim.json()['mensaje'])
+        self.assertTrue(PuntoVenta.objects.filter(id=self.pv_central.id).exists())
+
+    def test_rf14_6_rechazo_desactivar_o_eliminar_con_venta_abierta(self):
+        """RF14 / Problema: No se puede desactivar ni eliminar un local con comanda abierta en salón"""
+        from ventas.models import PuntoVenta, Mesa, Venta
+
+        pv_nuevo = PuntoVenta.objects.create(nombre="Terraza Safari Club", tipo="Bar", activo=True)
+        mesa = Mesa.objects.create(identificador="T1", capacidad=4, punto_venta=pv_nuevo, estado='OCUPADA')
+        Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero_user,
+            punto_venta=pv_nuevo,
+            modalidad='MESA',
+            mesa=mesa,
+            total=Decimal('5000'),
+            estado='ABIERTA'
+        )
+
+        self.client.force_login(self.admin_user)
+
+        # Intento de desactivación rechazado
+        resp_mod = self.client.post(reverse('administrador'), {
+            'accion': 'modificar_local',
+            'local_id': pv_nuevo.id,
+            'nombre': pv_nuevo.nombre,
+            'activo': 'false'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_mod.status_code, 400)
+        self.assertIn("cuentas en consumo activas", resp_mod.json()['mensaje'])
+
+        # Intento de eliminación rechazado
+        resp_del = self.client.post(reverse('administrador'), {
+            'accion': 'eliminar_local',
+            'local_id': pv_nuevo.id
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp_del.status_code, 400)
+        self.assertIn("cuentas en consumo activas", resp_del.json()['mensaje'])
+
+    def test_rf14_7_soft_delete_preserva_historico_ventas_y_cajas(self):
+        """RF14 / Problema: Locales con transacciones históricas no se eliminan físicamente (soft-delete activo=False)"""
+        from ventas.models import PuntoVenta, Venta, Caja
+
+        from django.contrib.auth.models import User
+        from ventas.models import PerfilEmpleado
+
+        pv_hist = PuntoVenta.objects.create(nombre="Buffet Antiguo Histórico", tipo="Buffet", activo=True)
+        u_hist = User.objects.create_user('cajero_hist14', 'cajerohist14@safari.cl', 'safari123')
+        PerfilEmpleado.objects.create(usuario=u_hist, rol='CAJERO', punto_venta_actual=pv_hist)
+        # Caja histórica ya cerrada
+        caja_cerrada = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=u_hist,
+            punto_venta=pv_hist,
+            monto_apertura=Decimal('10000'),
+            estado='CERRADA'
+        )
+        # Venta histórica ya pagada
+        venta_pagada = Venta.objects.create(
+            caja=caja_cerrada,
+            cajero=self.cajero_user,
+            punto_venta=pv_hist,
+            modalidad='VENTA_RAPIDA',
+            total=Decimal('15000'),
+            estado='PAGADA'
+        )
+
+        self.client.force_login(self.admin_user)
+
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'eliminar_local',
+            'local_id': pv_hist.id
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['modo'], 'soft-delete')
+
+        pv_hist.refresh_from_db()
+        self.assertFalse(pv_hist.activo)
+        # Registros de auditoría intactos
+        self.assertTrue(Venta.objects.filter(id=venta_pagada.id).exists())
+        self.assertTrue(Caja.objects.filter(id=caja_cerrada.id).exists())
+
+    def test_rf14_8_hard_delete_sin_historial_y_desasigna_trabajadores(self):
+        """RF14: Local virgen sin historial se elimina físicamente y libera a los trabajadores asignados"""
+        from ventas.models import PuntoVenta, PerfilEmpleado
+        from django.contrib.auth.models import User
+
+        pv_virgen = PuntoVenta.objects.create(nombre="Kiosco Demo Temporal", tipo="Kiosco", activo=True)
+        u_temp = User.objects.create_user('temp_colab', 'temp@safari.cl', 'safari123')
+        perfil_temp = PerfilEmpleado.objects.create(usuario=u_temp, rol='MESERO', punto_venta_actual=pv_virgen)
+
+        self.client.force_login(self.admin_user)
+
+        resp = self.client.post(reverse('administrador'), {
+            'accion': 'eliminar_local',
+            'local_id': pv_virgen.id
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['modo'], 'hard-delete')
+
+        # Local ya no existe
+        self.assertFalse(PuntoVenta.objects.filter(id=pv_virgen.id).exists())
+
+        # Colaborador liberado y no eliminado
+        perfil_temp.refresh_from_db()
+        self.assertIsNone(perfil_temp.punto_venta_actual)
+        self.assertTrue(User.objects.filter(id=u_temp.id).exists())
+
+    def test_rf14_9_asociacion_mesas_menus_y_productos(self):
+        """RF14: Asociación estructural de mesas, menús y productos habilitados por punto de venta"""
+        from ventas.models import PuntoVenta, Mesa, Menu, Producto, Categoria
+
+        pv = PuntoVenta.objects.create(nombre="Rincón Criollo Parrillero", tipo="Parrillada", activo=True)
+        mesa = Mesa.objects.create(identificador="P1", capacidad=6, punto_venta=pv, estado='HABILITADA')
+        menu = Menu.objects.create(nombre="Carta Asados Safari", punto_venta=pv)
+
+        cat, _ = Categoria.objects.get_or_create(nombre="Carnes")
+        prod = Producto.objects.create(nombre="Parrillada Familiar Safari", precio_base=Decimal('28000'), categoria=cat)
+        prod.puntos_venta.add(pv)
+
+        self.assertEqual(mesa.punto_venta, pv)
+        self.assertEqual(menu.punto_venta, pv)
+        self.assertIn(pv, prod.puntos_venta.all())
+        self.assertIn(prod, pv.productos_disponibles.all())
+
+    def test_rf14_10_control_acceso_roles_no_admin(self):
+        """RF14 / Seguridad: Roles Cajero, Mesero, Cocinero y anónimos son bloqueados y redirigidos con alerta"""
+        # 1. Cajero
+        self.client.force_login(self.cajero_user)
+        r1 = self.client.post(reverse('administrador'), {'accion': 'crear_local', 'nombre': 'Local Hacker 1'}, follow=True)
+        self.assertRedirects(r1, reverse('vendedor'))
+        self.assertContains(r1, "Acceso restringido")
+
+        # 2. Mesero
+        self.client.force_login(self.mesero_user)
+        r2 = self.client.post(reverse('administrador'), {'accion': 'crear_local', 'nombre': 'Local Hacker 2'}, follow=True)
+        self.assertRedirects(r2, reverse('mesero'))
+        self.assertContains(r2, "Acceso restringido")
+
+        # 3. Cocinero
+        self.client.force_login(self.cocinero_user)
+        r3 = self.client.get(reverse('administrador_local', kwargs={'local_id': self.pv_central.id}), follow=True)
+        self.assertRedirects(r3, reverse('cocina'))
+        self.assertContains(r3, "Acceso restringido")
+
+        # 4. Anónimo
+        self.client.logout()
+        r4 = self.client.post(reverse('administrador'), {'accion': 'crear_local', 'nombre': 'Local Anonimo'}, follow=True)
+        self.assertRedirects(r4, reverse('index'))
+        self.assertContains(r4, "Acceso protegido")
+
+    def test_rf14_11_manejo_local_inexistente(self):
+        """RF14 / Robustez: Manejo seguro y controlado de identificadores de local inexistentes"""
+        self.client.force_login(self.admin_user)
+
+        # GET local inexistente -> 404
+        r_get = self.client.get(reverse('administrador_local', kwargs={'local_id': 999999}))
+        self.assertEqual(r_get.status_code, 404)
+
+        # Modificar local inexistente -> 404
+        r_mod = self.client.post(reverse('administrador'), {
+            'accion': 'modificar_local',
+            'local_id': 999999,
+            'nombre': 'Local Fantasma'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r_mod.status_code, 404)
+
