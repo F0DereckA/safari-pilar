@@ -14,7 +14,8 @@ from django.core.cache import cache
 from ventas.models import (
     PuntoVenta, PerfilEmpleado, AlertaTraslado, Jornada, Caja, Mesa, Venta,
     DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu,
-    PrecioEspecial, RegistroPrecioEspecial, ReasignacionMesa
+    PrecioEspecial, RegistroPrecioEspecial, ReasignacionMesa,
+    PuntoImpresion, RegistroImpresion
 )
 
 
@@ -3102,3 +3103,330 @@ class SafariRF08GeneracionTicketsTests(TestCase):
         self.assertTrue(comp.es_reimpresion)
         self.assertEqual(comp.numero_reimpresiones, 1)
 
+class SafariRF09GestionImpresionTests(TestCase):
+    """
+    Pruebas exhaustivas para RF09 — Gestión de Impresión:
+    - Separación estricta de Capa de Impresión, Persistencia y Generación (RF09.1).
+    - Enrutamiento a tres puntos de impresión oficiales: Cocina, Barra, Comprobante (RF09.2).
+    - Modo Digital Provisional y renderizado térmico en pantalla (RF09.3).
+    - Resiliencia y Desacoplamiento: Si la impresora falla o está sin papel, la venta y el pedido no se pierden (RF09.4).
+    - Reintento de despacho seguro y trazable sin duplicación contable (RF09.4).
+    - Impresión parcial independiente (Cocina OK / Barra Fallo) (Problema 8).
+    - Aislamiento de impresoras por Punto de Venta / Local (Problema 10).
+    - Endpoint HTTP de reintento e impresión digital.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.hoy = timezone.localdate()
+
+        self.admin = User.objects.create_user(username='admin_rf09', password='Password123!', first_name='Admin', last_name='Print')
+        self.cajero = User.objects.create_user(username='cajero_rf09', password='Password123!', first_name='Cajero', last_name='Print')
+        self.mesero = User.objects.create_user(username='mesero_rf09', password='Password123!', first_name='Mesero', last_name='Print')
+
+        self.pv1 = PuntoVenta.objects.create(nombre="Restaurante Central RF09", tipo="RESTAURANTE", activo=True)
+        self.pv2 = PuntoVenta.objects.create(nombre="Cafetería La Selva RF09", tipo="CAFETERIA", activo=True)
+
+        PerfilEmpleado.objects.create(usuario=self.admin, rol='ADMINISTRADOR', punto_venta_actual=self.pv1)
+        PerfilEmpleado.objects.create(usuario=self.cajero, rol='CAJERO', punto_venta_actual=self.pv1)
+        PerfilEmpleado.objects.create(usuario=self.mesero, rol='MESERO', punto_venta_actual=self.pv1)
+
+        # Configuración de 3 Puntos de Impresión para Local 1
+        self.imp_cocina = PuntoImpresion.objects.create(
+            nombre="Impresora Térmica Cocina Central",
+            punto_venta=self.pv1,
+            tipo_destino='COCINA',
+            tipo_conexion='DIGITAL',
+            estado_operativo='ONLINE',
+            ancho_papel_mm=80,
+            activo=True
+        )
+        self.imp_barra = PuntoImpresion.objects.create(
+            nombre="Impresora Térmica Barra y Bebidas",
+            punto_venta=self.pv1,
+            tipo_destino='BARRA',
+            tipo_conexion='DIGITAL',
+            estado_operativo='ONLINE',
+            ancho_papel_mm=80,
+            activo=True
+        )
+        self.imp_caja = PuntoImpresion.objects.create(
+            nombre="Impresora Térmica Boleta / Caja",
+            punto_venta=self.pv1,
+            tipo_destino='COMPROBANTE',
+            tipo_conexion='DIGITAL',
+            estado_operativo='ONLINE',
+            ancho_papel_mm=80,
+            activo=True
+        )
+
+        # Configuración para Local 2 (Aislamiento)
+        self.imp_cocina_local2 = PuntoImpresion.objects.create(
+            nombre="Impresora Cocina Cafetería",
+            punto_venta=self.pv2,
+            tipo_destino='COCINA',
+            tipo_conexion='DIGITAL',
+            estado_operativo='ONLINE',
+            ancho_papel_mm=80,
+            activo=True
+        )
+
+        self.cat_cocina = Categoria.objects.create(nombre="Minutas y Cocina", destino_defecto='COCINA', activo=True)
+        self.cat_barra = Categoria.objects.create(nombre="Barra y Cafetería", destino_defecto='BARRA', activo=True)
+
+        self.prod_cocina = Producto.objects.create(
+            nombre="Hamburguesa Especial Safari",
+            categoria=self.cat_cocina,
+            precio_base=Decimal('8500.00'),
+            destino_operativo='COCINA',
+            activo=True
+        )
+        self.prod_barra = Producto.objects.create(
+            nombre="Café Moka Barista",
+            categoria=self.cat_barra,
+            precio_base=Decimal('3200.00'),
+            destino_operativo='BARRA',
+            activo=True
+        )
+
+        self.jornada = Jornada.objects.create(
+            fecha=self.hoy,
+            estado='ABIERTA',
+            usuario_apertura=self.admin,
+            observaciones="Jornada RF09"
+        )
+        self.caja = Caja.objects.create(
+            nombre="Caja POS Central RF09",
+            punto_venta=self.pv1,
+            jornada=self.jornada,
+            cajero=self.cajero,
+            monto_apertura=Decimal('50000.00'),
+            estado='ABIERTA'
+        )
+        self.mesa = Mesa.objects.create(identificador="Mesa RF09-1", punto_venta=self.pv1, capacidad=4, estado='HABILITADA')
+
+    # 1. Desacoplamiento estricto: Persistencia en BD garantizada y despacho a capa de impresión (RF09.1)
+    def test_rf09_1_desacoplamiento_persistencia_y_despacho(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('8500.00'), estado='ABIERTA')
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        self.assertEqual(res['total_tickets'], 1)
+
+        tkt = res['tickets'][0]
+        self.assertIsNotNone(tkt.id)
+        self.assertEqual(tkt.estado_impresion, 'IMPRESO')
+        self.assertIsNone(tkt.error_impresion)
+        self.assertEqual(tkt.punto_impresion, self.imp_cocina)
+
+        # Verificar auditoría inmutable
+        reg = RegistroImpresion.objects.filter(ticket=tkt).first()
+        self.assertIsNotNone(reg)
+        self.assertTrue(reg.exitoso)
+        self.assertEqual(reg.modo, 'DIGITAL')
+        self.assertEqual(reg.usuario, self.mesero)
+
+    # 2. Tres Puntos Oficiales de Impresión: Cocina, Barra y Comprobante (RF09.2)
+    def test_rf09_2_tres_puntos_oficiales_enrutamiento(self):
+        from ventas.utils import emitir_tickets_comanda, emitir_comprobante_venta
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('11700.00'), estado='PAGADA')
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_barra, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.cajero)
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+
+        self.assertEqual(res['total_tickets'], 2)
+        tkt_cocina = next(t for t in res['tickets'] if t.tipo_destino == 'COCINA')
+        tkt_barra = next(t for t in res['tickets'] if t.tipo_destino == 'BARRA')
+
+        self.assertEqual(tkt_cocina.punto_impresion, self.imp_cocina)
+        self.assertEqual(tkt_barra.punto_impresion, self.imp_barra)
+        self.assertEqual(comp.punto_impresion, self.imp_caja)
+
+    # 3. Modo Digital Provisional y Previsualización Térmica (RF09.3)
+    def test_rf09_3_modo_digital_previsualizacion_endpoint(self):
+        from ventas.utils import emitir_comprobante_venta
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MOSTRADOR', total=Decimal('8500.00'), estado='PAGADA')
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+
+        self.client.force_login(self.cajero)
+        resp = self.client.get(reverse('ver_imprimir_ticket_digital', args=[comp.id]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, comp.codigo)
+        self.assertContains(resp, "Impresora Térmica Boleta / Caja")
+        self.assertContains(resp, "Despachado OK")
+        self.assertContains(resp, "window.print()")
+
+    # 4. Fallo Simulado de Impresión: La Venta y el Pedido persisten 100% intactos (RF09.4)
+    def test_rf09_4_fallo_impresora_no_destruye_venta(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        # Simular fallo de hardware o papel agotado en cocina
+        self.imp_cocina.simular_fallo = True
+        self.imp_cocina.save()
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('8500.00'), estado='ABIERTA')
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        det = DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        tkt = res['tickets'][0]
+
+        # El ticket debe registrar estado FALLO con detalle técnico
+        self.assertEqual(tkt.estado_impresion, 'FALLO')
+        self.assertIn("Fallo simulado", tkt.error_impresion)
+
+        # REGLA DE ORO RF09.4: La venta y el pedido persisten intactos
+        venta.refresh_from_db()
+        pedido.refresh_from_db()
+        det.refresh_from_db()
+        self.assertEqual(venta.estado, 'ABIERTA')
+        self.assertEqual(venta.total, Decimal('8500.00'))
+        self.assertEqual(pedido.detalles.count(), 1)
+
+        # Auditoría de fallo registrada
+        reg = RegistroImpresion.objects.filter(ticket=tkt, exitoso=False).first()
+        self.assertIsNotNone(reg)
+        self.assertIn("Fallo simulado", reg.mensaje_error)
+
+    # 5. Reintento de Despacho tras Recuperación de Impresora (RF09.4)
+    def test_rf09_5_reintento_despacho_exitoso(self):
+        from ventas.utils import emitir_tickets_comanda, reintentar_despacho_impresion
+
+        self.imp_cocina.estado_operativo = 'SIN_PAPEL'
+        self.imp_cocina.save()
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('8500.00'), estado='ABIERTA')
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        tkt = res['tickets'][0]
+        self.assertEqual(tkt.estado_impresion, 'FALLO')
+
+        # Se recarga papel y vuelve ONLINE
+        self.imp_cocina.estado_operativo = 'ONLINE'
+        self.imp_cocina.save()
+
+        # Reintento de despacho
+        resultado_reintento = reintentar_despacho_impresion(tkt, usuario=self.cajero)
+        self.assertTrue(resultado_reintento['exito'])
+
+        tkt.refresh_from_db()
+        self.assertEqual(tkt.estado_impresion, 'IMPRESO')
+        self.assertIsNone(tkt.error_impresion)
+        self.assertEqual(tkt.intentos_impresion, 2)
+
+        # Auditoría con es_reintento=True
+        reg_reintento = RegistroImpresion.objects.filter(ticket=tkt, es_reintento=True).first()
+        self.assertIsNotNone(reg_reintento)
+        self.assertTrue(reg_reintento.exitoso)
+        self.assertEqual(reg_reintento.usuario, self.cajero)
+
+        # La venta no se duplicó ni alteró
+        self.assertEqual(Venta.objects.filter(mesa=self.mesa).count(), 1)
+
+    # 6. Impresión Parcial Independiente (Cocina OK / Barra Fallo) (Problema 8)
+    def test_rf09_6_impresion_parcial_independiente(self):
+        from ventas.utils import emitir_tickets_comanda, reintentar_despacho_impresion
+
+        # Cocina ONLINE, Barra con fallo
+        self.imp_cocina.estado_operativo = 'ONLINE'
+        self.imp_cocina.save()
+        self.imp_barra.estado_operativo = 'OFFLINE'
+        self.imp_barra.save()
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('11700.00'), estado='ABIERTA')
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_cocina, cantidad=1)
+        DetallePedido.objects.create(pedido=pedido, producto=self.prod_barra, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.mesero)
+        tkt_cocina = next(t for t in res['tickets'] if t.tipo_destino == 'COCINA')
+        tkt_barra = next(t for t in res['tickets'] if t.tipo_destino == 'BARRA')
+
+        self.assertEqual(tkt_cocina.estado_impresion, 'IMPRESO')
+        self.assertEqual(tkt_barra.estado_impresion, 'FALLO')
+
+        # Se repara la impresora de Barra
+        self.imp_barra.estado_operativo = 'ONLINE'
+        self.imp_barra.save()
+
+        # Solo se reintenta Barra; Cocina no se reenvía innecesariamente
+        reintento_bar = reintentar_despacho_impresion(tkt_barra, usuario=self.cajero)
+        self.assertTrue(reintento_bar['exito'])
+
+        tkt_barra.refresh_from_db()
+        tkt_cocina.refresh_from_db()
+        self.assertEqual(tkt_barra.estado_impresion, 'IMPRESO')
+        self.assertEqual(tkt_barra.intentos_impresion, 2)
+        self.assertEqual(tkt_cocina.intentos_impresion, 1)
+
+    # 7. Aislamiento estricto de impresoras por Local / Punto de Venta (Problema 10)
+    def test_rf09_7_aislamiento_impresoras_por_local(self):
+        from ventas.utils import emitir_tickets_comanda
+
+        venta_local1 = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MESA', mesa=self.mesa, total=Decimal('8500.00'), estado='ABIERTA')
+        pedido_local1 = Pedido.objects.create(venta=venta_local1, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=pedido_local1, producto=self.prod_cocina, cantidad=1)
+
+        res = emitir_tickets_comanda(pedido_local1, usuario_emisor=self.mesero)
+        tkt1 = res['tickets'][0]
+
+        # Debe enrutar a la impresora de Local 1, nunca a Local 2
+        self.assertEqual(tkt1.punto_impresion, self.imp_cocina)
+        self.assertNotEqual(tkt1.punto_impresion, self.imp_cocina_local2)
+
+    # 8. Endpoint HTTP de Reintento de Impresión (RF09.4)
+    def test_rf09_8_endpoint_reintentar_http(self):
+        from ventas.utils import emitir_comprobante_venta
+
+        self.imp_caja.simular_fallo = True
+        self.imp_caja.save()
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MOSTRADOR', total=Decimal('8500.00'), estado='PAGADA')
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+        self.assertEqual(comp.estado_impresion, 'FALLO')
+
+        # Se restaura impresora
+        self.imp_caja.simular_fallo = False
+        self.imp_caja.save()
+
+        self.client.force_login(self.cajero)
+        resp = self.client.post(reverse('reintentar_impresion', args=[comp.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['estado_impresion'], 'IMPRESO')
+
+        comp.refresh_from_db()
+        self.assertEqual(comp.estado_impresion, 'IMPRESO')
+        self.assertEqual(comp.intentos_impresion, 2)
+
+    # 9. Reimpresión Trazable vuelve a despachar al punto físico/digital (RF08.6 + RF09.4)
+    def test_rf09_9_reimpresion_redespacha_impresora(self):
+        from ventas.utils import emitir_comprobante_venta, reimprimir_ticket
+
+        venta = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv1, modalidad='MOSTRADOR', total=Decimal('8500.00'), estado='PAGADA')
+        comp = emitir_comprobante_venta(venta, usuario_emisor=self.cajero)
+        self.assertEqual(comp.intentos_impresion, 1)
+
+        # Reimpresión solicitada por supervisor
+        reimprimir_ticket(comp, usuario_solicitante=self.admin)
+        comp.refresh_from_db()
+        self.assertTrue(comp.es_reimpresion)
+        self.assertEqual(comp.numero_reimpresiones, 1)
+        self.assertEqual(comp.intentos_impresion, 2)
+
+        # Registros de auditoría deben reflejar la reimpresión
+        reg_reimp = RegistroImpresion.objects.filter(ticket=comp, es_reintento=True).first()
+        self.assertIsNotNone(reg_reimp)
+        self.assertTrue(reg_reimp.exitoso)
+        self.assertEqual(reg_reimp.usuario, self.admin)

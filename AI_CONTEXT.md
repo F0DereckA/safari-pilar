@@ -11,7 +11,8 @@
   - RF05 Reasignación de Mesas: **COMPLETADO Y TESTEADO (93/93 suite vigente)**.
   - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
   - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
-  - RF01–RF08: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (125/125 suite vigente en verde al cerrar RF09)**.
+  - RF01–RF09: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -299,7 +300,37 @@ Debe incluir, si existe:
 
 ---
 
-# RF09 — GESTIÓN DE IMPRESIÓN
+# RF09 — GESTIÓN DE IMPRESIÓN — [ESTADO: COMPLETADO Y CERRADO (125/125 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF09)
+- **Fecha de Cierre:** 2026-11-01
+- **Migración Aplicada:** `0016_ticket_error_impresion_ticket_estado_impresion_and_more.py`
+- **Modelos Creados y Actualizados (`ventas/models.py`):**
+  * `PuntoImpresion`: entidad de configuración física/digital asociada a `PuntoVenta` con `tipo_destino` (`COCINA`, `BARRA`, `COMPROBANTE`), `tipo_conexion` (`DIGITAL`, `RED`, `USB`), `direccion_ip`, `puerto`, `ancho_papel_mm` (80mm / 58mm), `estado_operativo` (`ONLINE`, `OFFLINE`, `SIN_PAPEL`, `ERROR`), `simular_fallo`. Restricción única por local y destino: `unique_together = ('punto_venta', 'tipo_destino')`.
+  * `Ticket`: campos de gestión de despacho `punto_venta`, `punto_impresion`, `estado_impresion` (`PENDIENTE`, `IMPRESO`, `FALLO`), `error_impresion`, `intentos_impresion` y método de resolución de local emisor `get_punto_venta()`.
+  * `RegistroImpresion`: auditoría inmutable de cada despacho o reintento de impresión (`ticket`, `punto_impresion`, `exitoso`, `modo`, `mensaje_error`, `es_reintento`, `usuario`, `fecha_hora`).
+- **Capa y Servicio Lógico de Impresión (`ventas/utils.py`):**
+  * `obtener_o_crear_punto_impresion()`: resolución inteligente de impresoras asignadas por local y destino.
+  * `enviar_a_impresora()`: servicio de despacho desacoplado. Soporta modo `DIGITAL` con render térmico, modo `RED` mediante socket ESC/POS con timeout estricto de 1.0s, y modo resiliente ante fallos de hardware o sin papel.
+  * **Regla Crítica de Oro (RF09.4):** Si la impresora falla, está desconectada, o se queda sin papel, **la venta y el pedido persisten 100% intactos en la BD**; el ticket queda en estado `FALLO` con auditoría detallada y disponible para reintento.
+  * `reintentar_despacho_impresion()`: reintento idempotente que vuelve a despachar a la impresora una vez restablecida, sin duplicar ventas ni corromper saldos contables.
+  * `reimprimir_ticket()`: ahora re-despacha automáticamente la copia trazable a su punto de impresión registrado.
+- **Vistas, Endpoints y Plantillas:**
+  * Endpoint de previsualización e impresión digital térmica: `/tickets/<int:ticket_id>/imprimir/` ([`ticket_impresion_digital.html`](file:///c:/Users/pc/Desktop/safari%20Pilar/ventas/templates/ventas/ticket_impresion_digital.html)) con formato monospace 80mm/58mm, alerta de estado, botón `window.print()` y reintento.
+  * Endpoint de reintento de despacho: `/tickets/<int:ticket_id>/reintentar/` con soporte HTTP y AJAX.
+  * Integración en `administrador_historial`: registro de eventos de fallos y reintentos de impresión (`tipo: IMPRESION`).
+  * Admin Django: `PuntoImpresionAdmin` y `RegistroImpresionAdmin` registrados en `ventas/admin.py`.
+  * Poblamiento Demo: comando `poblar_safari.py` inicializa automáticamente los 3 puntos de impresión oficiales para cada uno de los 3 locales.
+- **Resultados de Pruebas Automatizadas:**
+  * Tests específicos RF09 (`SafariRF09GestionImpresionTests`): 9/9 tests OK.
+  * Suite completa (`python manage.py test ventas`): **125/125 tests pasados exitosamente (0 fallos, 0 errores)**.
+  * `python manage.py check`: 0 issues.
+- **Regresión Manual de 4 Roles:**
+  * Administrador (`rgomez`): 200 OK.
+  * Cajero (`cvalenzuela`): 200 OK.
+  * Mesero (`dsilva`): 200 OK.
+  * Cocinero (`eparedes`): 200 OK.
+  * RF05 (Reasignación de Mesas): intacto y verificado.
 
 ## Objetivo oficial
 Considerar tres puntos de impresión físicos en restaurante; provisionalmente digital.

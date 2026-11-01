@@ -421,12 +421,193 @@ def generar_contenido_comprobante_venta(venta, es_reimpresion=False, num_reimpre
     return "\n".join(lineas)
 
 
+# ==============================================================================
+# SERVICIO LÓGICO DE IMPRESIÓN Y DESPACHO (RF09 - Cocina, Barra, Comprobante)
+# ==============================================================================
+
+def obtener_o_crear_punto_impresion(tipo_destino, punto_venta=None):
+    """
+    Obtiene o inicializa el Punto de Impresión (Cocina, Barra, Comprobante)
+    asignado a un Local/Punto de Venta específico (RF09.1, RF09.2).
+    """
+    from .models import PuntoImpresion, PuntoVenta
+
+    if not punto_venta:
+        punto_venta = PuntoVenta.objects.filter(activo=True).order_by('id').first()
+
+    if not punto_venta:
+        return None
+
+    punto_imp = PuntoImpresion.objects.filter(
+        punto_venta=punto_venta,
+        tipo_destino=tipo_destino,
+        activo=True
+    ).first()
+
+    if not punto_imp:
+        nombre_defecto = {
+            'COCINA': f"Impresora Térmica Cocina - {punto_venta.nombre}",
+            'BARRA': f"Impresora Térmica Barra - {punto_venta.nombre}",
+            'COMPROBANTE': f"Impresora Boleta / Caja - {punto_venta.nombre}",
+        }.get(tipo_destino, f"Impresora {tipo_destino} - {punto_venta.nombre}")
+
+        punto_imp, _ = PuntoImpresion.objects.get_or_create(
+            punto_venta=punto_venta,
+            tipo_destino=tipo_destino,
+            defaults={
+                'nombre': nombre_defecto,
+                'tipo_conexion': 'DIGITAL',
+                'estado_operativo': 'ONLINE',
+                'ancho_papel_mm': 80,
+                'activo': True
+            }
+        )
+
+    return punto_imp
+
+
+def enviar_a_impresora(ticket, usuario=None, forzar_reintento=False):
+    """
+    Servicio lógico de impresión física y digital (RF09.1, RF09.3, RF09.4).
+    - Desacoplamiento Total: Si la impresora falla o está offline, la venta y el pedido
+      permanecen intactos en la base de datos (RF09.4).
+    - Soporta 3 destinos físicos/lógicos: COCINA, BARRA, COMPROBANTE (RF09.2).
+    - Registra auditoría inmutable en RegistroImpresion.
+    """
+    from .models import RegistroImpresion
+    import socket
+
+    if not ticket:
+        return {'exito': False, 'error': 'Ticket inválido o nulo'}
+
+    pv = ticket.get_punto_venta()
+    if pv and not ticket.punto_venta:
+        ticket.punto_venta = pv
+
+    punto_imp = ticket.punto_impresion or obtener_o_crear_punto_impresion(ticket.tipo_destino, pv)
+    if punto_imp and punto_imp.id:
+        try:
+            punto_imp.refresh_from_db()
+        except Exception:
+            pass
+    ticket.punto_impresion = punto_imp
+
+    if forzar_reintento:
+        ticket.intentos_impresion += 1
+
+    # 1. Comprobación de fallo simulado o estado fuera de línea (RF09.4)
+    if punto_imp and (punto_imp.simular_fallo or punto_imp.estado_operativo != 'ONLINE'):
+        motivo = f"Impresora '{punto_imp.nombre}' en estado {punto_imp.get_estado_operativo_display()}"
+        if punto_imp.simular_fallo:
+            motivo += " [Fallo simulado de hardware]"
+        ticket.estado_impresion = 'FALLO'
+        ticket.error_impresion = motivo
+        ticket.save()
+
+        RegistroImpresion.objects.create(
+            ticket=ticket,
+            punto_impresion=punto_imp,
+            exitoso=False,
+            modo=punto_imp.tipo_conexion if punto_imp else 'DESCONOCIDO',
+            mensaje_error=motivo,
+            es_reintento=forzar_reintento,
+            usuario=usuario
+        )
+        return {
+            'exito': False,
+            'ticket': ticket,
+            'punto_impresion': punto_imp,
+            'error': motivo
+        }
+
+    # 2. Conexión a Impresora de Red (Ethernet / WiFi RAW 9100)
+    if punto_imp and punto_imp.tipo_conexion == 'RED':
+        if not punto_imp.direccion_ip:
+            ticket.estado_impresion = 'FALLO'
+            ticket.error_impresion = "Impresora de red sin dirección IP configurada"
+            ticket.save()
+            RegistroImpresion.objects.create(
+                ticket=ticket,
+                punto_impresion=punto_imp,
+                exitoso=False,
+                modo='RED',
+                mensaje_error=ticket.error_impresion,
+                es_reintento=forzar_reintento,
+                usuario=usuario
+            )
+            return {'exito': False, 'ticket': ticket, 'punto_impresion': punto_imp, 'error': ticket.error_impresion}
+
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1.0)
+            sock.connect((punto_imp.direccion_ip, punto_imp.puerto or 9100))
+
+            payload = b'\x1b@' + (ticket.contenido_impresion or '').encode('latin-1', errors='replace') + b'\n\n\n\x1dV1'
+            sock.sendall(payload)
+            sock.close()
+
+            ticket.estado_impresion = 'IMPRESO'
+            ticket.error_impresion = None
+            ticket.save()
+
+            RegistroImpresion.objects.create(
+                ticket=ticket,
+                punto_impresion=punto_imp,
+                exitoso=True,
+                modo='RED',
+                es_reintento=forzar_reintento,
+                usuario=usuario
+            )
+            return {'exito': True, 'ticket': ticket, 'punto_impresion': punto_imp, 'modo': 'RED'}
+        except Exception as e:
+            ticket.estado_impresion = 'FALLO'
+            ticket.error_impresion = f"Error de conexión RAW ({punto_imp.direccion_ip}:{punto_imp.puerto}): {str(e)}"
+            ticket.save()
+
+            RegistroImpresion.objects.create(
+                ticket=ticket,
+                punto_impresion=punto_imp,
+                exitoso=False,
+                modo='RED',
+                mensaje_error=ticket.error_impresion,
+                es_reintento=forzar_reintento,
+                usuario=usuario
+            )
+            return {'exito': False, 'ticket': ticket, 'punto_impresion': punto_imp, 'error': ticket.error_impresion}
+
+    # 3. Modo Digital Provisional (RF09.3 - Previsualización y Spooler de Navegador)
+    ticket.estado_impresion = 'IMPRESO'
+    ticket.error_impresion = None
+    ticket.save()
+
+    RegistroImpresion.objects.create(
+        ticket=ticket,
+        punto_impresion=punto_imp,
+        exitoso=True,
+        modo='DIGITAL',
+        es_reintento=forzar_reintento,
+        usuario=usuario
+    )
+    return {'exito': True, 'ticket': ticket, 'punto_impresion': punto_imp, 'modo': 'DIGITAL'}
+
+
+def reintentar_despacho_impresion(ticket, usuario=None):
+    """
+    Reintenta el despacho de impresión de un ticket previamente fallido o pendiente (RF09.4).
+    - Preserva la venta y los detalles contables.
+    - Incrementa el contador de intentos y actualiza la auditoría.
+    """
+    if not ticket:
+        raise ValidationError("El ticket para reintento no existe.")
+    return enviar_a_impresora(ticket, usuario=usuario, forzar_reintento=True)
+
+
 def emitir_tickets_comanda(pedido, usuario_emisor=None):
     """
-    Clasifica y emite tickets de producción (Cocina y Barra) para una comanda o ronda (RF08.1, RF08.2, RF08.3).
+    Clasifica, persiste y despacha tickets de producción (Cocina y Barra) para una comanda (RF08, RF09).
     - Cero Desperdicio de Papel: Solo genera ticket si hay productos asignados a ese destino.
-    - Incrementalidad (RF08.5): Solo toma en cuenta los productos del pedido en curso (ronda actual).
-    Retorna un diccionario con los tickets emitidos.
+    - Incrementalidad (RF08.5): Solo toma en cuenta los productos del pedido en curso.
+    - Desacoplamiento (RF09.1): Persiste primero en BD y despacha al servicio de impresión.
     """
     from .models import Ticket
 
@@ -438,6 +619,11 @@ def emitir_tickets_comanda(pedido, usuario_emisor=None):
     items_barra = [d for d in detalles if d.producto.get_destino_operativo() == 'BARRA']
 
     tickets_creados = []
+    despachos = []
+
+    pv = None
+    if pedido.venta:
+        pv = pedido.venta.punto_venta or (pedido.venta.mesa.punto_venta if pedido.venta.mesa else None)
 
     # 1. Ticket Cocina Caliente (solo si hay ítems de cocina)
     if items_cocina:
@@ -447,12 +633,15 @@ def emitir_tickets_comanda(pedido, usuario_emisor=None):
             tipo_destino='COCINA',
             defaults={
                 'venta': pedido.venta,
+                'punto_venta': pv,
                 'codigo': f"COM-COC-{pedido.id:04d}",
                 'estado': 'EMITIDO',
                 'contenido_impresion': contenido_coc
             }
         )
+        res_coc = enviar_a_impresora(ticket_coc, usuario=usuario_emisor)
         tickets_creados.append(ticket_coc)
+        despachos.append(res_coc)
 
     # 2. Ticket Barra / Cafetería (solo si hay ítems de barra)
     if items_barra:
@@ -462,15 +651,19 @@ def emitir_tickets_comanda(pedido, usuario_emisor=None):
             tipo_destino='BARRA',
             defaults={
                 'venta': pedido.venta,
+                'punto_venta': pv,
                 'codigo': f"COM-BAR-{pedido.id:04d}",
                 'estado': 'EMITIDO',
                 'contenido_impresion': contenido_bar
             }
         )
+        res_bar = enviar_a_impresora(ticket_bar, usuario=usuario_emisor)
         tickets_creados.append(ticket_bar)
+        despachos.append(res_bar)
 
     return {
         'tickets': tickets_creados,
+        'despachos': despachos,
         'tiene_cocina': bool(items_cocina),
         'tiene_barra': bool(items_barra),
         'total_tickets': len(tickets_creados)
@@ -479,7 +672,7 @@ def emitir_tickets_comanda(pedido, usuario_emisor=None):
 
 def emitir_comprobante_venta(venta, usuario_emisor=None):
     """
-    Genera el comprobante de cliente / boleta de venta (RF08.4).
+    Genera, persiste y despacha el comprobante de cliente / boleta de venta (RF08.4, RF09.1, RF09.2).
     """
     from .models import Ticket
 
@@ -491,20 +684,23 @@ def emitir_comprobante_venta(venta, usuario_emisor=None):
         tipo_destino='COMPROBANTE',
         defaults={
             'pedido': pedido_asoc,
+            'punto_venta': venta.punto_venta,
             'codigo': f"TKT-VEN-{venta.id:05d}",
             'estado': 'FINALIZADO',
             'contenido_impresion': contenido
         }
     )
+    enviar_a_impresora(ticket_comp, usuario=usuario_emisor)
     return ticket_comp
 
 
 def reimprimir_ticket(ticket, usuario_solicitante=None):
     """
-    Reimprime un ticket existente de forma trazable (RF08.6).
+    Reimprime un ticket existente de forma trazable (RF08.6, RF09.4).
     - Marca es_reimpresion=True e incrementa numero_reimpresiones.
     - Registra usuario_solicitante y marca de tiempo.
     - NO genera una venta nueva ni duplica detalles contables.
+    - Vuelve a despachar el ticket a su punto de impresión registrado.
     """
     if not ticket:
         raise ValidationError("El ticket a reimprimir no existe.")
@@ -534,5 +730,6 @@ def reimprimir_ticket(ticket, usuario_solicitante=None):
         )
 
     ticket.save()
+    enviar_a_impresora(ticket, usuario=usuario_solicitante, forzar_reintento=True)
     return ticket
 

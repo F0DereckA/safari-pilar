@@ -608,9 +608,32 @@ class Ticket(models.Model):
     numero_reimpresiones = models.PositiveIntegerField(default=0, help_text="Contador de veces reimpreso")
     ultima_reimpresion_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_reimpresos')
     fecha_hora_reimpresion = models.DateTimeField(null=True, blank=True)
+    # Campos RF09: Gestión de Impresión y Despacho
+    punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets', help_text="Local/Punto de Venta emisor (RF09)")
+    punto_impresion = models.ForeignKey('PuntoImpresion', on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_despachados', help_text="Punto de impresión enrutado (RF09)")
+    estado_impresion = models.CharField(
+        max_length=20,
+        choices=[('PENDIENTE', 'Pendiente de Envío'), ('IMPRESO', 'Impreso / Enviado'), ('FALLO', 'Fallo de Impresión')],
+        default='IMPRESO',
+        help_text="Estado del despacho físico o digital (RF09)"
+    )
+    error_impresion = models.TextField(blank=True, null=True, help_text="Detalle del error si falló la impresión (RF09)")
+    intentos_impresion = models.PositiveIntegerField(default=1, help_text="Contador de intentos de despacho (RF09)")
+
+    def get_punto_venta(self):
+        if self.punto_venta:
+            return self.punto_venta
+        if self.venta and self.venta.punto_venta:
+            return self.venta.punto_venta
+        if self.pedido and self.pedido.venta:
+            if self.pedido.venta.punto_venta:
+                return self.pedido.venta.punto_venta
+            if self.pedido.venta.mesa and self.pedido.venta.mesa.punto_venta:
+                return self.pedido.venta.mesa.punto_venta
+        return None
 
     def __str__(self):
-        return f"Ticket #{self.codigo} [{self.get_tipo_destino_display()}] - {self.get_estado_display()}"
+        return f"Ticket #{self.codigo} [{self.get_tipo_destino_display()}] - {self.get_estado_display()} (Impresión: {self.get_estado_impresion_display()})"
 
     class Meta:
         verbose_name = "Ticket de Producción"
@@ -619,6 +642,72 @@ class Ticket(models.Model):
 
 
 # ==============================================================================
+
+
+# ==============================================================================
+# 14.1 PUNTOS DE IMPRESIÓN Y AUDITORÍA DE DESPACHO (RF09)
+# ==============================================================================
+class PuntoImpresion(models.Model):
+    """Punto de impresión físico o digital para restaurante/bar/caja (RF09)"""
+    TIPO_DESTINOS = [
+        ('COCINA', 'Cocina Caliente'),
+        ('BARRA', 'Barra / Cafetería'),
+        ('COMPROBANTE', 'Caja / Boleta de Venta'),
+    ]
+    TIPO_CONEXION = [
+        ('DIGITAL', 'Digital / Previsualización en Pantalla (Navegador)'),
+        ('RED', 'Impresora Térmica de Red (Ethernet / WiFi RAW ESC/POS)'),
+        ('USB', 'Impresora Térmica USB / Spooler'),
+    ]
+    ESTADOS = [
+        ('ONLINE', 'En Línea / Operativa'),
+        ('OFFLINE', 'Fuera de Línea / Desconectada'),
+        ('SIN_PAPEL', 'Sin Papel'),
+        ('ERROR', 'Error de Comunicación'),
+    ]
+
+    nombre = models.CharField(max_length=100, help_text="Ej: Impresora Térmica Cocina Central")
+    punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.CASCADE, related_name='puntos_impresion')
+    tipo_destino = models.CharField(max_length=20, choices=TIPO_DESTINOS)
+    tipo_conexion = models.CharField(max_length=20, choices=TIPO_CONEXION, default='DIGITAL')
+    direccion_ip = models.CharField(max_length=100, blank=True, null=True, help_text="Ej: 192.168.1.201")
+    puerto = models.PositiveIntegerField(default=9100, help_text="Puerto RAW ESC/POS (típicamente 9100)")
+    ancho_papel_mm = models.PositiveIntegerField(default=80, choices=[(80, '80 mm'), (58, '58 mm')])
+    estado_operativo = models.CharField(max_length=20, choices=ESTADOS, default='ONLINE')
+    activo = models.BooleanField(default=True)
+    simular_fallo = models.BooleanField(default=False, help_text="Para pruebas y contingencia: simula fallo físico de impresión sin bloquear venta")
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Punto de Impresión"
+        verbose_name_plural = "Puntos de Impresión"
+        unique_together = ('punto_venta', 'tipo_destino')
+
+    def __str__(self):
+        return f"{self.nombre} [{self.get_tipo_destino_display()}] - {self.punto_venta.nombre} ({self.get_estado_operativo_display()})"
+
+
+class RegistroImpresion(models.Model):
+    """Auditoría de despachos y reintentos de impresión (RF09)"""
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='registros_impresion')
+    punto_impresion = models.ForeignKey(PuntoImpresion, on_delete=models.SET_NULL, null=True, blank=True, related_name='registros_despacho')
+    exitoso = models.BooleanField(default=True)
+    modo = models.CharField(max_length=20, default='DIGITAL')
+    mensaje_error = models.TextField(blank=True, null=True)
+    es_reintento = models.BooleanField(default=False)
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='despachos_impresion')
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Registro de Impresión"
+        verbose_name_plural = "Registros de Impresión"
+        ordering = ['-fecha_hora']
+
+    def __str__(self):
+        estado_str = "EXITOSO" if self.exitoso else "FALLIDO"
+        return f"Registro #{self.id} Ticket #{self.ticket.codigo} [{estado_str}] - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+
 # 15. ENTREGA DE PEDIDOS (RF11 - Medición de tiempos de entrega)
 # ==============================================================================
 class Entrega(models.Model):

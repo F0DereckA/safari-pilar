@@ -3,7 +3,8 @@ from .models import (
     PerfilEmpleado, Jornada, PuntoVenta, Caja, Categoria, Producto,
     Menu, PrecioEspecial, Mesa, Venta, DetalleVenta, Pedido,
     DetallePedido, Ticket, Entrega, ConsumoInterno, DetalleConsumoInterno,
-    AlertaTraslado, ReasignacionMesa, RegistroPrecioEspecial
+    AlertaTraslado, ReasignacionMesa, RegistroPrecioEspecial,
+    PuntoImpresion, RegistroImpresion
 )
 
 @admin.register(PerfilEmpleado)
@@ -95,9 +96,21 @@ class PedidoAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'codigo', 'pedido', 'venta', 'tipo_destino', 'estado', 'es_reimpresion', 'numero_reimpresiones', 'fecha_hora')
-    list_filter = ('tipo_destino', 'estado', 'es_reimpresion')
-    search_fields = ('codigo', 'venta__id')
+    list_display = ('id', 'codigo', 'pedido', 'venta', 'tipo_destino', 'punto_venta', 'punto_impresion', 'estado_impresion', 'intentos_impresion', 'es_reimpresion', 'numero_reimpresiones', 'fecha_hora')
+    list_filter = ('tipo_destino', 'estado', 'estado_impresion', 'es_reimpresion', 'punto_venta')
+    search_fields = ('codigo', 'venta__id', 'error_impresion')
+
+@admin.register(PuntoImpresion)
+class PuntoImpresionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nombre', 'punto_venta', 'tipo_destino', 'tipo_conexion', 'direccion_ip', 'puerto', 'estado_operativo', 'activo', 'simular_fallo')
+    list_filter = ('tipo_destino', 'tipo_conexion', 'estado_operativo', 'activo', 'punto_venta')
+    search_fields = ('nombre', 'direccion_ip')
+
+@admin.register(RegistroImpresion)
+class RegistroImpresionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'ticket', 'punto_impresion', 'exitoso', 'modo', 'es_reintento', 'usuario', 'fecha_hora')
+    list_filter = ('exitoso', 'modo', 'es_reintento', 'fecha_hora')
+    search_fields = ('ticket__codigo', 'mensaje_error')
 
 @admin.register(Entrega)
 class EntregaAdmin(admin.ModelAdmin):

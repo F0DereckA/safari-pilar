@@ -13,11 +13,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from .validators import validar_complejidad_clave
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion
 from .utils import (
     validar_y_calcular_precio_linea, registrar_precio_especial_auditoria,
     calcular_redondeo_ley_20956, emitir_tickets_comanda, emitir_comprobante_venta,
-    reimprimir_ticket
+    reimprimir_ticket, reintentar_despacho_impresion
 )
 
 
@@ -3898,3 +3898,45 @@ def reimprimir_ticket_view(request, ticket_id):
 
     messages.success(request, f"Ticket #{ticket.codigo} reimpreso exitosamente (Copia #{ticket.numero_reimpresiones}).")
     return redirect(request.META.get('HTTP_REFERER', 'vendedor'))
+
+def ver_imprimir_ticket_digital(request, ticket_id):
+    """
+    Previsualización e impresión digital térmica de ticket (RF09.3).
+    Permite abrir la ventana de impresión térmica o del navegador con formato 80mm/58mm.
+    """
+    ticket = get_object_or_404(Ticket.objects.select_related('punto_impresion', 'punto_venta', 'pedido', 'venta'), id=ticket_id)
+    punto_imp = ticket.punto_impresion
+    if not punto_imp and ticket.get_punto_venta():
+        punto_imp = ticket.get_punto_venta().puntos_impresion.filter(tipo_destino=ticket.tipo_destino).first()
+
+    return render(request, 'ventas/ticket_impresion_digital.html', {
+        'ticket': ticket,
+        'punto_impresion': punto_imp
+    })
+
+
+def reintentar_impresion_view(request, ticket_id):
+    """
+    Reintenta el despacho de impresión de un ticket fallido o pendiente (RF09.4).
+    Si el punto de impresión volvió a estar online, despacha sin alterar la venta.
+    """
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    resultado = reintentar_despacho_impresion(ticket, usuario=request.user if request.user.is_authenticated else None)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+        return JsonResponse({
+            'ok': resultado.get('exito', False),
+            'ticket_id': ticket.id,
+            'ticket_codigo': ticket.codigo,
+            'estado_impresion': ticket.estado_impresion,
+            'intentos': ticket.intentos_impresion,
+            'error': ticket.error_impresion,
+            'mensaje': "Despacho a impresora completado con éxito." if resultado.get('exito') else f"Fallo al reintentar: {ticket.error_impresion}"
+        })
+
+    if resultado.get('exito'):
+        messages.success(request, f"¡Ticket #{ticket.codigo} reenviado exitosamente a {ticket.punto_impresion.nombre if ticket.punto_impresion else 'la impresora'}!")
+    else:
+        messages.error(request, f"No se pudo completar el reintento de impresión de #{ticket.codigo}: {ticket.error_impresion}")
+
+    return redirect(request.META.get('HTTP_REFERER') or f"/tickets/{ticket.id}/imprimir/")

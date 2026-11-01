@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Categoria, Producto, Menu
+from ventas.models import PuntoVenta, PerfilEmpleado, Mesa, Categoria, Producto, Menu, PuntoImpresion
 
 
 class Command(BaseCommand):
@@ -74,6 +74,20 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"  [+] Local creado: {pv.nombre} (ID {pv.id})"))
             else:
                 self.stdout.write(f"  [=] Local existente: {pv.nombre} (ID {pv.id})")
+
+            # RF09: Puntos de Impresión Oficiales (Cocina, Barra, Comprobante)
+            PuntoImpresion.objects.get_or_create(
+                punto_venta=pv, tipo_destino='COCINA',
+                defaults={'nombre': f"Impresora Térmica Cocina - {pv.nombre}", 'tipo_conexion': 'DIGITAL', 'estado_operativo': 'ONLINE', 'ancho_papel_mm': 80}
+            )
+            PuntoImpresion.objects.get_or_create(
+                punto_venta=pv, tipo_destino='BARRA',
+                defaults={'nombre': f"Impresora Térmica Barra - {pv.nombre}", 'tipo_conexion': 'DIGITAL', 'estado_operativo': 'ONLINE', 'ancho_papel_mm': 80}
+            )
+            PuntoImpresion.objects.get_or_create(
+                punto_venta=pv, tipo_destino='COMPROBANTE',
+                defaults={'nombre': f"Impresora Boleta / Caja - {pv.nombre}", 'tipo_conexion': 'DIGITAL', 'estado_operativo': 'ONLINE', 'ancho_papel_mm': 80}
+            )
 
         # 2. USUARIOS ADMINISTRADORES
         admins_def = [
