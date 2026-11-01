@@ -142,7 +142,7 @@ El modelo de persistencia cuenta exactamente con **25 modelos Django explícitos
 ## 8. RECORDATORIOS ACADÉMICOS — NO PRIORIDAD ACTUAL
 Conservados exclusivamente como referencia para la futura fase documental del usuario:
 - **Motor externo PostgreSQL/MySQL:** Soporte formal configurado en `settings.py` y `.env` para cuando el docente lo solicite en despliegue.
-- **Modelo lógico Draw.io:** Sincronización gráfica del diagrama con las 25 entidades del modelo físico.
+- **Modelo lógico Draw.io:** Sincronización gráfica del diagrama con los 25 modelos de dominio explícitos y las 2 tablas intermedias ManyToMany automáticas (27 tablas físicas propias de `ventas`).
 - **Enlace a Azure DevOps:** Inclusión visible en el informe oficial.
 - **Redacción impersonal:** Revisión en tercera persona para las vistas 4+1 del informe.
 - **Plantilla de pares:** Transcripción de la retroalimentación en la plantilla oficial de Semana 7.
@@ -188,7 +188,7 @@ Conservados exclusivamente como referencia para la futura fase documental del us
 - [x] `.env` protegido.
 - [x] `db.sqlite3` fuera de Git.
 - [x] benchmark registrado.
-- [x] `AI_CONTEXT_ARCHIVE.md` existe.
+- [x] `AI_CONTEXT_ARCHIVE.md` existe como archivo separado y conserva la trazabilidad histórica.
 - [x] historial separado.
 - [x] RF01/RF13/RF15/RF11 corregidos documentalmente.
 - [x] ningún bloqueante funcional conocido.
