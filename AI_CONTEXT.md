@@ -41,7 +41,7 @@
 ### HISTÓRICO — ORDEN DE CONSOLIDACIÓN FINAL YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
-> Los RF01–RF18 ya se consideran funcionalmente cerrados. Esta orden NO autoriza desarrollo de nuevas funciones. El trabajo actual es auditar, limpiar, comprobar y preparar evidencia.
+> Esta orden fue ejecutada en una fase anterior. Los RF01–RF18 se encuentran funcionalmente cerrados (220/220 pruebas OK). Se conserva exclusivamente como trazabilidad histórica y NO constituye trabajo pendiente.
 
 ## FASE A — RECONCILIACIÓN DEL AI_CONTEXT
 
@@ -207,10 +207,274 @@ Después de eso:
 
 ---
 
-# ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL
+# HISTÓRICO — SANEAMIENTO DOCUMENTAL 100% EJECUTADO / CIERRE DEFINITIVO
 
 > [!IMPORTANT]
-> Esta es la **única orden vigente**. No modificar código funcional. No tocar modelos, vistas, templates, migraciones, base de datos ni lógica de negocio. La tarea consiste exclusivamente en eliminar las últimas contradicciones textuales de `AI_CONTEXT.md` y dejar el proyecto congelado para revisión y retroalimentación.
+> Esta orden fue ejecutada por completo. Se conserva como trazabilidad y NO constituye una orden activa.
+
+## A. REGLA DE SANEAMIENTO TOTAL
+
+Revisar `AI_CONTEXT.md` completo, de la primera a la última línea.
+
+Para cada bloque anterior al estado vigente:
+1. conservar hechos, fechas, resultados y decisiones históricas;
+2. transformar encabezados imperativos en encabezados históricos;
+3. transformar frases en presente como “falta”, “pendiente”, “debe”, “avanzar”, “implementar”, “siguiente paso”, “orden actual” a redacción pasada cuando ya fueron resueltas;
+4. nunca permitir que un bloque histórico use la expresión “orden vigente”;
+5. cuando una brecha histórica ya fue corregida, indicarlo como:
+   - `HISTÓRICO — brecha registrada en esa fecha; resuelta posteriormente`;
+6. no borrar evidencia útil;
+7. no alterar hechos técnicos históricos ni conteos de pruebas históricos.
+
+## B. CORRECCIONES OBLIGATORIAS YA IDENTIFICADAS
+
+### B1. Antigua orden final pre-revisión
+En el bloque:
+`HISTÓRICO — ORDEN FINAL PRE-REVISIÓN YA EJECUTADA / NO VIGENTE`
+
+cambiar cualquier frase equivalente a:
+`Esta es la única orden vigente...`
+
+por:
+`Esta fue una orden vigente en una fase anterior. Se conserva únicamente como trazabilidad histórica y NO debe ejecutarse.`
+
+### B2. Plan Funcional histórico
+Dentro de:
+`PLAN FUNCIONAL PRIORITARIO RF01–RF18 — ROBUSTEZ OPERACIONAL (HISTÓRICO / REFERENCIA)`
+
+cambiar:
+`ORDEN DE EJECUCIÓN AUTORIZADO`
+
+por:
+`HISTÓRICO — ORDEN DE EJECUCIÓN RF05–RF18 YA EJECUTADA / NO VIGENTE`
+
+y agregar inmediatamente:
+`Todo el contenido de esta subsección describe la secuencia usada durante el desarrollo y no constituye trabajo pendiente.`
+
+### B3. Semana 10
+Dentro de:
+`HISTÓRICO — HITOS SEMANA 10 Y SEMANA 11 YA COMPLETADOS`
+
+cambiar:
+- `Estado actual frente a Semana 10` -> `Estado registrado en ese momento frente a Semana 10`.
+- cualquier frase `Falta...` -> `En ese momento faltaba...`.
+- `Orden técnica Semana 10` -> `HISTÓRICO — Orden técnica Semana 10 ya ejecutada`.
+
+La subsección debe conservar sus pasos como evidencia, pero no debe sonar como una orden actual.
+
+### B4. Semana 11
+Cambiar:
+`Qué debe quedar adelantado antes de la clase del 20/10`
+
+por:
+`HISTÓRICO — Objetivos definidos antes de la clase del 20/10, ya ejecutados`
+
+Cambiar cualquier “debe”, “consolidar”, “confirmar”, etc. que aparezca como instrucción vigente a formulación histórica cuando corresponda:
+- `se definió como objetivo...`
+- `se debía confirmar...`
+- `posteriormente quedó completado...`
+
+No alterar los resultados reales 41/41, 45/45, 50/50.
+
+### B5. Mapa de Convergencia 06-Oct
+Dentro del bloque ya marcado:
+`HISTÓRICO — estado al 06/10/2026`
+
+renombrar las subsecciones:
+
+- `IMPLEMENTADO PERO REQUIERE CORRECCIÓN`
+  -> `HISTÓRICO — IMPLEMENTADO PERO REQUERÍA CORRECCIÓN AL 06-OCT; RESUELTO POSTERIORMENTE`
+
+- `TODAVÍA MOCK / HARDCODEADO`
+  -> `HISTÓRICO — MOCK / HARDCODEADO AL 06-OCT; RESUELTO POSTERIORMENTE`
+
+- `RIESGOS DE INTEGRIDAD`
+  -> `HISTÓRICO — RIESGOS DE INTEGRIDAD IDENTIFICADOS AL 06-OCT`
+
+- `RIESGOS DE SEGURIDAD / REPOSITORIO`
+  -> `HISTÓRICO — RIESGOS DE SEGURIDAD / REPOSITORIO IDENTIFICADOS AL 06-OCT`
+
+- `PRUEBAS FALTANTES`
+  -> `HISTÓRICO — PRUEBAS QUE FALTABAN AL 06-OCT; CUBIERTAS POSTERIORMENTE`
+
+- `REGLA FUNCIONAL PENDIENTE — MESA / CUENTA ABIERTA`
+  -> `HISTÓRICO — REGLA FUNCIONAL QUE ESTABA PENDIENTE AL 06-OCT; RESUELTA`
+
+- `SIGUIENTE PASO RECOMENDADO`
+  -> `HISTÓRICO — SIGUIENTE PASO RECOMENDADO AL 06-OCT; YA EJECUTADO`
+
+También cambiar:
+`Estado Actual`
+por:
+`Estado registrado al 06-Oct`
+
+cuando aparezca dentro de ese bloque.
+
+### B6. Sección `## 9`
+Cambiar:
+`## 9. HISTÓRICO — Auditoría de Convergencia y Mapa de Convergencia 06-Oct`
+
+por:
+`## 9. HISTÓRICO — Auditoría de Convergencia y Mapa de Convergencia 06-Oct`
+
+## C. RECORDATORIOS DE EVALUACIÓN — DEBEN QUEDAR SOLO COMO RECORDATORIO
+
+El usuario decidió expresamente que esta parte **NO ES PRIORIDAD ACTUAL**.
+
+Mantener toda la retroalimentación, puntajes, comentarios del profesor y notas del usuario, pero neutralizar etiquetas que parezcan órdenes vigentes.
+
+Dentro del bloque:
+`RECORDATORIO ACADÉMICO / NO PRIORIDAD ACTUAL`
+
+cambiar encabezados como:
+- `[URGENTE - CRÍTICO]`
+- `[ALTA PRIORIDAD]`
+- `[MEDIA-ALTA PRIORIDAD]`
+- `[RECORDATORIO FORMATO]`
+- `[CORRECCIÓN FORMATO]`
+- `[GESTIÓN ACADÉMICA]`
+- `[SEGUIMIENTO]`
+
+por una forma histórica, por ejemplo:
+`[PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]`
+
+Cambiar:
+`Acción Requerida para Entrega 3:`
+
+por:
+`Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:`
+
+Conservar literalmente:
+- puntajes obtenidos;
+- observaciones del docente;
+- notas del usuario;
+- contenido técnico del recordatorio.
+
+NO ejecutar ninguna de esas acciones ahora.
+
+## D. ESTADO VIGENTE ÚNICO
+
+Al terminar, la única fuente de verdad vigente debe ser:
+
+- RF01–RF18: **COMPLETADOS AL 100%**.
+- Suite: **220/220**.
+- `python manage.py check`: **0 incidencias**.
+- Migraciones `ventas`: **20 aplicadas**.
+- Motor actual: **SQLite**.
+- Modelos/tablas `ventas`: **25**.
+- Roles: ADMINISTRADOR, CAJERO, MESERO, COCINERO.
+- Mocks evaluables: **0%**.
+- `.env`: protegido.
+- `db.sqlite3`: fuera del índice Git y conservado localmente.
+- Benchmark vigente: 166.59 RPS, 70.84 ms promedio, P95 524.29 ms, 100/100 exitosas.
+- Bloqueantes funcionales: **ninguno conocido**.
+- Tarea de desarrollo: **NINGUNA**.
+- Fase documental: pendiente de autorización expresa del usuario.
+- Recordatorios de evaluación: conservados, **NO prioridad actual**.
+
+## E. BARRIDO FINAL OBLIGATORIO
+
+Antes de cerrar, revisar el archivo completo buscando semánticamente cualquier texto histórico que aún parezca presente/activo.
+
+No limitarse a una lista literal.
+
+Debe detectarse y corregirse cualquier uso histórico de conceptos como:
+- orden vigente;
+- orden actual;
+- siguiente paso;
+- siguiente tarea;
+- pendiente;
+- falta;
+- debe implementarse;
+- debe completarse;
+- avanzar;
+- urgente;
+- crítico;
+- alta prioridad;
+- acción requerida;
+
+cuando el contexto real indique que ya fue ejecutado o que solo corresponde a evaluación futura.
+
+Excepción:
+- `## 10. siguiente tarea` vigente puede existir únicamente para declarar **NINGUNA**.
+- los términos pueden permanecer en citas literales del docente o notas históricas si quedan inequívocamente contextualizados como cita/registro pasado.
+
+## F. VERIFICACIÓN DE CONSISTENCIA
+
+Al finalizar revisar expresamente:
+
+1. El bloque de estado actual.
+2. El checklist final.
+3. `## 6. errores actuales`.
+4. `## 8. respuesta de ChatGPT`.
+5. `## 9` histórico.
+6. `## 10. siguiente tarea`.
+7. `## 12. reglas permanentes`.
+8. Todos los encabezados `HISTÓRICO`.
+9. Todo el bloque de retroalimentación académica.
+10. Todo el Mapa de Convergencia 06-Oct.
+
+No modificar:
+- código;
+- models.py;
+- views.py;
+- utils.py;
+- templates;
+- migraciones;
+- BD;
+- Word;
+- Draw.io;
+- informe.
+
+## G. AUTOCIERRE DE ESTA MISMA ORDEN
+
+Cuando el saneamiento esté terminado:
+
+1. cambiar el encabezado de esta sección:
+   `# ORDEN VIGENTE DE SANEAMIENTO DOCUMENTAL 100% — ÚLTIMA EJECUCIÓN Y AUTOCIERRE`
+
+   por:
+
+   `# HISTÓRICO — SANEAMIENTO DOCUMENTAL 100% EJECUTADO / CIERRE DEFINITIVO`
+
+2. reemplazar esta advertencia inicial por:
+   `Esta orden fue ejecutada por completo. Se conserva como trazabilidad y NO constituye una orden activa.`
+
+3. En `## 8. respuesta de ChatGPT`, dejar:
+   - `No existe ninguna orden de desarrollo vigente.`
+   - `Proyecto congelado para revisión y retroalimentación.`
+   - `STOP DESARROLLO TOTAL hasta nueva instrucción expresa del usuario.`
+
+4. En `## 10. siguiente tarea`, dejar exclusivamente:
+   - `Siguiente tarea de desarrollo: NINGUNA.`
+   - `Esperar revisión/retroalimentación o nueva instrucción expresa del usuario.`
+
+5. En el checklist final confirmar:
+   - `[x] No existe ninguna orden activa anterior.`
+   - `[x] Todo contenido imperativo histórico está contextualizado como pasado/no vigente.`
+   - `[x] Recordatorios académicos preservados sin prioridad operativa actual.`
+   - `[x] STOP DESARROLLO TOTAL.`
+
+## CRITERIO REAL DE 100%
+
+No declarar esta tarea terminada por haber agregado una advertencia general.
+
+Solo se considera 100% cuando:
+- todo encabezado histórico imperativo está renombrado o contextualizado;
+- ninguna frase histórica puede confundirse razonablemente con una orden actual;
+- las prioridades académicas antiguas no aparentan ser prioridad operativa;
+- existe una sola fuente de verdad vigente;
+- esta propia orden queda autocerrada como histórica;
+- no queda ninguna tarea de desarrollo activa.
+
+Después de eso: **STOP DESARROLLO TOTAL**.
+
+---
+
+# HISTÓRICO — ORDEN DEFINITIVA DE LIMPIEZA TEXTUAL YA EJECUTADA / NO VIGENTE
+
+> [!IMPORTANT]
+> Esta fue una orden vigente en una fase anterior. Se conserva exclusivamente como trazabilidad histórica y **NO debe ejecutarse**.
 
 ## TAREA 1 — CORREGIR `## 8. respuesta de ChatGPT`
 
@@ -220,7 +484,7 @@ Reemplazar cualquier referencia a una orden antigua, especialmente:
 
 por una formulación vigente:
 
-- **orden vigente: ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL**;
+- **orden que estuvo vigente en esa fase: ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL**;
 - no ejecutar órdenes históricas;
 - no desarrollar nuevas funciones;
 - no modificar documentos académicos todavía;
@@ -299,8 +563,10 @@ Confirmar que `## CHECKLIST FINAL PRE-REVISIÓN` permanezca con todos sus ítems
 
 Agregar dos ítems si todavía no existen:
 
-- [x] **Una sola orden vigente**: todas las órdenes anteriores están marcadas como históricas/no vigentes.
-- [x] **STOP desarrollo**: no existe ninguna tarea funcional pendiente autorizada.
+- [x] No existe ninguna orden activa anterior.
+- [x] Todo contenido imperativo histórico está contextualizado como pasado/no vigente.
+- [x] Recordatorios académicos preservados sin prioridad operativa actual.
+- [x] STOP DESARROLLO TOTAL.
 
 ## TAREA 7 — VERIFICACIÓN DOCUMENTAL FINAL
 
@@ -324,12 +590,12 @@ Para cada coincidencia:
 
 La tarea termina cuando:
 
-1. existe una sola orden vigente;
-2. no hay contradicciones entre la orden vigente y los bloques históricos;
-3. `## 8. respuesta de ChatGPT` apunta a esta orden definitiva;
-4. la antigua orden de preparación ya no dice “Esta es la orden vigente”;
-5. el Plan Maestro RF07–RF18 contiene advertencia de historial;
-6. el checklist confirma una sola orden vigente y STOP desarrollo;
+1. existió una sola orden ejecutada en esa fase;
+2. no hubo contradicciones entre la orden y los bloques históricos;
+3. `## 8. respuesta de ChatGPT` apuntó a esa orden de limpieza;
+4. la antigua orden de preparación ya no dijo “Esta es la orden vigente”;
+5. el Plan Maestro RF07–RF18 contuvo advertencia de historial;
+6. el checklist confirmó el cierre definitivo y STOP desarrollo;
 7. no se modificó ningún archivo funcional del sistema;
 8. no se modificó Word, Draw.io ni informe;
 9. no se agregaron RF ni funcionalidades;
@@ -348,7 +614,7 @@ No realizar ningún cambio adicional hasta:
 # HISTÓRICO — ORDEN FINAL PRE-REVISIÓN YA EJECUTADA / NO VIGENTE
 
 > [!IMPORTANT]
-> Esta es la única orden vigente desde este punto. No desarrollar nuevas funciones. No reabrir RF cerrados. El objetivo es dejar `AI_CONTEXT.md` totalmente coherente y el proyecto congelado en un estado estable para revisión y retroalimentación.
+> Esta fue una orden vigente en una fase anterior. Se conserva únicamente como trazabilidad histórica y NO debe ejecutarse.
 
 ## 1. UNIFICAR EL ESTADO VIGENTE
 
@@ -551,7 +817,7 @@ Marcar con `[x]` solo aquello comprobado.
 
 La tarea termina cuando:
 
-- `AI_CONTEXT.md` tiene una sola orden vigente;
+- `AI_CONTEXT.md` quedó con todas sus órdenes anteriores marcadas como históricas;
 - no hay contradicciones entre estado actual e historial;
 - no quedan órdenes antiguas que parezcan activas;
 - RF09 permanece 127/127 histórico;
@@ -626,8 +892,8 @@ Corregir textos que se alejan del alcance oficial:
 ## FASE 3 — HIGIENE DEL REPOSITORIO
 
 ### 3.1 `db.sqlite3`
-- Actualmente está rastreado por Git.
-- Corregir de forma segura:
+- HISTÓRICO — brecha registrada en esa fecha; resuelta posteriormente: `db.sqlite3` fue retirado del índice Git (`git rm --cached`) y agregado a `.gitignore`, preservando la base de datos física localmente.
+- Procedimiento ejecutado:
   1. agregar `db.sqlite3` a `.gitignore` si no está;
   2. ejecutar `git rm --cached db.sqlite3`;
   3. confirmar que el archivo local físico NO se elimine;
@@ -1809,7 +2075,7 @@ RF05 y Mesa/Cuenta Abierta.
 
 ---
 
-# RF18 — REPORTES Y ESTADÍSTICAS
+# RF18 — REPORTES Y ESTADÍSTICAS — [ESTADO: COMPLETADO Y CERRADO (220/220 OK)]
 
 ## Dependencias
 RF06, RF13, RF16, RF17.
@@ -1884,7 +2150,9 @@ RF06, RF13, RF16, RF17.
 
 ---
 
-# ETAPA FINAL — AUDITORÍA INTEGRAL RF01–RF18
+# HISTÓRICO — ETAPA FINAL — AUDITORÍA INTEGRAL RF01–RF18 YA EJECUTADA
+
+> Esta etapa fue ejecutada y culminó con la suite oficial de 220/220 pruebas aprobadas y el cierre al 100% de RF01–RF18.
 
 ## Objetivo
 Confirmar que todos los requerimientos oficiales están cubiertos sin contradicciones.
@@ -2288,15 +2556,16 @@ Estas situaciones deben considerarse en todos los RF restantes:
 
 ---
 
-### ORDEN DE EJECUCIÓN AUTORIZADO
-1. Auditar implementación actual exacta de RF05.
-2. Implementar/cerrar RF05 con pruebas.
-3. Detener y devolver `AI_CONTEXT.md` para revisión de ChatGPT/usuario.
-4. Solo después avanzar RF07.
-5. Repetir el mismo ciclo para RF10, RF13/16, RF17 y RF18.
+### HISTÓRICO — ORDEN DE EJECUCIÓN RF05–RF18 YA EJECUTADA / NO VIGENTE
+Todo el contenido de esta subsección describe la secuencia usada durante el desarrollo y no constituye trabajo pendiente.
 
-**No ejecutar todos los RF restantes de una sola vez.**
-La implementación seguirá siendo incremental para detectar regresiones y mantener trazabilidad.
+1. Se auditó la implementación exacta de RF05.
+2. Se implementó y cerró RF05 con pruebas.
+3. Se detuvo y devolvió `AI_CONTEXT.md` para revisión de ChatGPT/usuario.
+4. Solo después se avanzó con RF07.
+5. Se repitió el mismo ciclo para RF10, RF13/16, RF17 y RF18 hasta el cierre completo al 100% (220/220 pruebas).
+
+La implementación siguió una secuencia incremental para detectar regresiones y mantener trazabilidad, completándose en su totalidad.
 
 ---
 ### HISTÓRICO — HITOS SEMANA 10 Y SEMANA 11 YA COMPLETADOS
@@ -2314,14 +2583,14 @@ Contenido solicitado por docente:
   - otros escenarios controlables.
 - Validaciones necesarias para enfrentar escenarios complejos de vulnerabilidad y caídas.
 
-Estado actual frente a Semana 10:
+Estado registrado en ese momento frente a Semana 10:
 - Proyecto Django: YA EXISTE.
 - Login real desde BD: YA EXISTE.
 - Perfiles/roles actuales: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
 - Validaciones de credenciales, usuario inactivo y aislamiento de roles: YA EXISTEN.
-- Falta dejar completamente demostrable y testeado el bloque de manejo de errores y robustez/vulnerabilidades.
+- En ese momento faltaba dejar completamente demostrable y testeado el bloque de manejo de errores y robustez/vulnerabilidades (posteriormente completado al 100%).
 
-#### Orden técnica Semana 10
+#### HISTÓRICO — Orden técnica Semana 10 ya ejecutada
 1. **Auditar login y permisos existentes**
    - Confirmar validación de campos vacíos.
    - Confirmar credenciales inválidas.
@@ -2382,18 +2651,16 @@ Contenido solicitado por docente:
 - Validaciones de campos.
 - Validaciones frente a vulnerabilidades/caídas.
 
-#### Qué debe quedar adelantado antes de la clase del 20/10
+#### HISTÓRICO — Objetivos definidos antes de la clase del 20/10, ya ejecutados
 1. **Gestión de Usuarios**
-   - No rehacer.
-   - Consolidar el CRUD existente de trabajadores/usuarios como evidencia de Semana 11.
-   - Confirmar crear, listar/buscar, modificar, activar/desactivar y manejo de contraseña.
-   - Confirmar validaciones y permisos de Administrador.
+   - Se definió como objetivo consolidar el CRUD existente de trabajadores/usuarios como evidencia de Semana 11.
+   - Se debía confirmar crear, listar/buscar, modificar, activar/desactivar y manejo de contraseña.
+   - Se confirmaron validaciones y permisos de Administrador; posteriormente quedó completado.
 
 2. **Gestión de Puntos de Venta**
-   - No rehacer.
-   - Consolidar el CRUD existente como segunda evidencia real de Semana 11.
-   - Confirmar crear, modificar, activar/desactivar/eliminar protegido.
-   - Confirmar que un local con historial no pierde datos.
+   - Se definió como objetivo consolidar el CRUD existente como segunda evidencia real de Semana 11.
+   - Se debía confirmar crear, modificar, activar/desactivar/eliminar protegido.
+   - Se confirmó que un local con historial no pierde datos; posteriormente quedó completado.
 
 3. **Gestión de Mesas — CRUD NUEVO PRIORITARIO (COMPLETADO AL 100%)**
    - Implementado en `/administrador/mesas/` accesible exclusivamente por rol `ADMINISTRADOR`.
@@ -2494,20 +2761,20 @@ Contenido solicitado por docente:
 
 A continuación se registra el desglose completo de observaciones, brechas y acciones correctivas derivadas de la calificación del segundo informe, organizadas por criterio y prioridad técnica para la tercera entrega:
 
-### 1. [2.1.4.9] Configuración del Motor de Base de Datos (PostgreSQL / MySQL) [URGENTE - CRÍTICO]
+### 1. [2.1.4.9] Configuración del Motor de Base de Datos (PostgreSQL / MySQL) [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
 - **Observación Docente:** *"settings.py mantiene la configuración predeterminada de SQLite y no presenta la conexión requerida a MySQL. El informe propone PostgreSQL, pero esta configuración tampoco se encuentra aplicada en el proyecto entregado."*
 - **Nota del Usuario:** *"esto debemos ver urgente"*.
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Configurar en `Venta_safari/settings.py` el soporte formal para PostgreSQL / MySQL mediante variables de entorno (`DATABASE_URL` o bloque `DATABASES` dinámico).
   - Incluir el adaptador correspondiente (`psycopg2-binary` para PostgreSQL y/o `mysqlclient`/`PyMySQL` para MySQL) en `requirements.txt`.
   - Proveer un fallback condicional inteligente a SQLite para desarrollo local sin servidor activo, pero asegurando que la configuración formal por defecto del proyecto apunte a PostgreSQL/MySQL tal como lo declara el informe y el modelo físico.
   - Asegurar coherencia entre el texto del informe (que menciona PostgreSQL en infraestructura y script DDL) y `settings.py`.
 
-### 2. [2.1.3.5] Interfaz Específica para Cocina / Cocinero (KDS - Kitchen Display System) [ALTA PRIORIDAD]
+### 2. [2.1.3.5] Interfaz Específica para Cocina / Cocinero (KDS - Kitchen Display System) [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
 - **Observación Docente:** *"El prototipo presenta login, perfiles, navegación, ventas, caja, mesas, comandas, tickets, administración y reportes. Sin embargo, falta una interfaz específica para Cocina/Cocinero que permita visualizar pedidos pendientes, gestionar su preparación y comunicar al mesero cuáles están listos para ser servidos."*
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Crear la vista y plantilla dedicada para Cocina (`/cocina/` / `cocina.html` / KDS):
     - Visualización en tarjetas táctiles (tipo Kanban) de pedidos entrantes clasificados por destino (`COCINA` vs `BARRA`).
     - Flujo de estados interactivo: `PENDIENTE` -> `EN PREPARACIÓN` -> `LISTO PARA ENTREGA`.
@@ -2515,30 +2782,30 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
     - Notificación visual/comunicación al módulo de Mesero para alertar que los platos de la mesa están listos para ser retirados y servidos.
   - Agregar nuevo rol o perfil específico de Cocinero / Jefe de Cocina si aplica, o permitir acceso operativo de cocina.
 
-### 3. [2.1.5.12] Coherencia en "Cero Credenciales en Código" (SECRET_KEY en settings.py) [ALTA PRIORIDAD]
+### 3. [2.1.5.12] Coherencia en "Cero Credenciales en Código" (SECRET_KEY en settings.py) [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
 - **Observación Docente:** *"Los estándares están ampliamente desarrollados; sin embargo, el informe establece explícitamente una política de 'Cero Credenciales en Código' que prohíbe mantener SECRET_KEY directamente en los archivos, mientras que settings.py mantiene esta clave escrita en el código. Debe existir coherencia entre los estándares definidos y su aplicación."*
 - **Nota del Usuario:** *"debemos ajuntar"*.
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Extraer `SECRET_KEY` de `Venta_safari/settings.py` utilizando `os.environ.get('SECRET_KEY')` o biblioteca de variables de entorno (`python-dotenv` / `decouple`).
   - Crear archivo `.env.example` en la raíz del repositorio con variables de muestra.
   - Verificar que el archivo `.env` real esté explícitamente protegido y excluido en `.gitignore`.
   - Asegurar coherencia absoluta entre las políticas redactadas en el informe y los archivos del repositorio.
 
-### 4. [2.1.6.13] Documentación y Ejecución de Pruebas de Rendimiento (Performance Testing) [ALTA PRIORIDAD]
+### 4. [2.1.6.13] Documentación y Ejecución de Pruebas de Rendimiento (Performance Testing) [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
 - **Observación Docente:** *"Se presentan y ejecutan pruebas unitarias y de integración, pero falta desarrollar y documentar con la misma claridad un conjunto específico de pruebas de rendimiento."*
 - **Nota del Usuario:** *"debemos aclarar mas esto"*.
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Desarrollar, ejecutar y documentar formalmente pruebas de rendimiento (*Performance / Load Testing*):
     - Medición de latencia y tiempos de respuesta (ms) en endpoints críticos: Login, creación de comanda en mesero, despacho de tickets, consulta de dashboard con 15 meses de transacciones.
     - Simulación de carga concurrente (ej. 20, 50, 100 usuarios simultáneos en hora pico de Parque Safari) utilizando herramientas como Locust, k6, Apache Benchmark (`ab`) o script automatizado de benchmarking en Python.
     - Incluir en el informe una sección y tabla formal de resultados de rendimiento: tiempo de respuesta promedio, percentil 95, rendimiento de peticiones por segundo (RPS), consumo de CPU y memoria RAM.
 
-### 5. [2.1.4.8] Sincronización Completa entre Modelo Lógico (Draw.io) y Físico (models.py) [MEDIA-ALTA PRIORIDAD]
+### 5. [2.1.4.8] Sincronización Completa entre Modelo Lógico (Draw.io) y Físico (models.py) [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 7.3 / 10.0 pts (Habilitado)
 - **Observación Docente:** *"El modelo presenta correctamente entidades, claves y relaciones; sin embargo, el modelo lógico no representa completamente todas las entidades y relaciones que posteriormente aparecen implementadas en models.py y en el modelo físico."*
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Actualizar el diagrama relacional en Draw.io para que represente el 100% de las tablas declaradas en el script SQL y en `ventas/models.py`.
   - Entidades a sincronizar e incorporar en el diagrama de Draw.io:
     - `AlertaTraslado` (relacionada con `auth_user` y `punto_venta` origen/destino).
@@ -2548,34 +2815,34 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
     - `ConsumoInterno` y `DetalleConsumoInterno` (relacionada con `auth_user`, `punto_venta` y `producto`).
   - Reemplazar la imagen en el informe garantizando que modelo lógico, modelo físico y `models.py` sean un reflejo espejo 1:1.
 
-### 6. [2.1.1.2] Enlace al Proyecto de Azure DevOps en el Informe [RECORDATORIO FORMATO]
+### 6. [2.1.1.2] Enlace al Proyecto de Azure DevOps en el Informe [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
 - **Observación Docente:** *"En el informe NO se evidencia el enlace para acceder y lograr revisar el proyecto en Azure DevOps."*
 - **Nota del Usuario:** *"este fue mi error asi que recordatorio"*.
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Agregar de forma visible y destacada en el informe (en la portada, en la introducción y en la sección 2.2 de Azure DevOps) el enlace directo hipervinculado a la organización y proyecto de Azure DevOps:
     `https://dev.azure.com/[organizacion]/[proyecto]`
   - Verificar que el enlace posea permisos públicos o que el usuario docente (`Miguel Angel López Jerez`) tenga concedidos los permisos de lectura (*Stakeholder* / *Basic*).
 
-### 7. [2.1.2.3] Redacción Estrictamente Impersonal en Paradigma 4+1 [CORRECCIÓN FORMATO]
+### 7. [2.1.2.3] Redacción Estrictamente Impersonal en Paradigma 4+1 [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
 - **Observación Docente:** *"Las cinco vistas están desarrolladas; sin embargo, se utilizan expresiones en primera persona como 'nos permite' y 'nos permitirán'. La redacción del informe debe mantenerse de manera impersonal."*
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Realizar un barrido ortotipográfico y estilístico completo en el informe, erradicando toda conjugación en primera persona ("nos permite", "hicimos", "definimos", "nuestro sistema").
   - Sustituir por redacción técnica impersonal y pasiva refleja: *"el modelo permite"*, *"la arquitectura posibilita"*, *"se define"*, *"se implementó"*, *"el sistema desarrollado"*.
 
-### 8. [2.1.3.7] Plantilla Oficial de Retroalimentación de Pares [GESTIÓN ACADÉMICA]
+### 8. [2.1.3.7] Plantilla Oficial de Retroalimentación de Pares [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 1.95 / 5.0 pts (En desarrollo)
 - **Observación Docente:** *"El formato con los comentarios de las revisiones a modo de retroalimentación por parte de otros equipos, NO es la facilitada por el docente."*
 - **Nota del Usuario:** *"esto debo charlar con el docente porque si le abjunte en un archvio aparte"*.
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Aclarar con el docente la entrega previa del archivo adjunto.
   - Transcribir e insertar la información directamente dentro de la plantilla oficial de la Semana 7 facilitada por el profesor, incorporándola de manera visible en el cuerpo principal del informe.
 
-### 9. [2.1.6.15] Registro y Presentación Continua de Avances en Clases [SEGUIMIENTO]
+### 9. [2.1.6.15] Registro y Presentación Continua de Avances en Clases [PRIORIDAD INDICADA EN LA RETROALIMENTACIÓN ORIGINAL — NO PRIORIDAD ACTUAL]
 - **Puntaje Obtenido:** 3.65 / 5.0 pts (Habilitado)
 - **Observación Docente:** *"Existen semanas de clases donde no se presentan los avances requeridos por el docente."*
-- **Acción Requerida para Entrega 3:**
+- **Acción sugerida/solicitada en la retroalimentación original para una futura fase documental:**
   - Mantener al día la bitácora semanal y presentar puntualmente los avances en cada sesión de clase presencial según el calendario del curso.
 
 ---
@@ -2711,8 +2978,10 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - [x] **Mocks**: 0% datos simulados en flujos evaluables; KPIs, reportes y gráficos operan exclusivamente sobre ORM real.
 - [x] **Rendimiento**: Benchmark reproducible de 20 usuarios concurrentes validado empíricamente (166.59 RPS, 70.84 ms prom, 100% éxito).
 - [x] **Pendientes Críticos**: Ningún bloqueante funcional. Los recordatorios de evaluación e informe quedan conservados para la fase documental posterior del usuario.
-- [x] **Una sola orden vigente**: todas las órdenes anteriores están marcadas como históricas/no vigentes.
-- [x] **STOP desarrollo**: no existe ninguna tarea funcional pendiente autorizada.
+- [x] No existe ninguna orden activa anterior.
+- [x] Todo contenido imperativo histórico está contextualizado como pasado/no vigente.
+- [x] Recordatorios académicos preservados sin prioridad operativa actual.
+- [x] STOP DESARROLLO TOTAL.
 
 ---
 
@@ -2729,14 +2998,10 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - la prioridad definida por el usuario es dejar el proyecto en su mejor estado posible para revisión y retroalimentación.
 - recordatorios académicos/evaluación se mantienen, pero serán tratados posteriormente por el usuario.
 ## 8. respuesta de ChatGPT
-- orden vigente: **ORDEN DEFINITIVA PARA ANTIGRAVITY — ÚLTIMA LIMPIEZA TEXTUAL Y CIERRE TOTAL**.
-- no ejecutar órdenes históricas.
-- no desarrollar nuevas funcionalidades.
-- no modificar código funcional, modelos, vistas, templates, migraciones ni base de datos.
-- no modificar Word, Draw.io ni documentos académicos en esta fase.
-- conservar los recordatorios académicos como referencia futura.
-- una vez terminada esta limpieza textual: **STOP DESARROLLO TOTAL** hasta nueva instrucción del usuario o retroalimentación reproducible.
-## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
+- No existe ninguna orden de desarrollo vigente.
+- Proyecto congelado para revisión y retroalimentación.
+- STOP DESARROLLO TOTAL hasta nueva instrucción expresa del usuario.
+## 9. HISTÓRICO — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 > [!NOTE]
 > **HISTÓRICO — estado al 06/10/2026** (Conservado para trazabilidad académica; no representa el estado vigente actual de 220/220 tests ni los 18 RF cerrados).
@@ -2852,7 +3117,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - Centro de Alertas interactivo en cabecera de Administrador con campana reactiva y descarte AJAX.
 - Suite oficial de 20 pruebas automatizadas en 'ventas/tests.py' aprobada al 100% (20/20 OK).
 
-2. IMPLEMENTADO PERO REQUIERE CORRECCIÓN
+2. HISTÓRICO — IMPLEMENTADO PERO REQUERÍA CORRECCIÓN AL 06-OCT; RESUELTO POSTERIORMENTE
 ----------------------------------------------------------------------------------------
 - 'administrador_local': Lee ventas reales de BD, pero en get_locales_data() aún concatena tickets mock
   demo para los locales 1, 2 y 3.
@@ -2861,7 +3126,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - Terminal de Mesero: Permite cambiar de local mediante '?local_id=' en la URL en vez de aislar
   estrictamente al mesero a su 'perfil.punto_venta_actual'.
 
-3. TODAVÍA MOCK / HARDCODEADO
+3. HISTÓRICO — MOCK / HARDCODEADO AL 06-OCT; RESUELTO POSTERIORMENTE
 ----------------------------------------------------------------------------------------
 - Vendedor / Cajero: Emisión de tickets en cobro rápido almacena en 'localStorage' (safari_tickets_desarrollo)
   en vez de persistir en Venta/DetalleVenta/Ticket de SQLite.
@@ -2880,26 +3145,26 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - Publicación en GitHub (repositorio público) y paquete de distribución listo en 'importar/'.
 - Reconstrucción histórica funcional del 29 de Septiembre ('version 29 ante de retroalimentar/').
 
-5. RIESGOS DE INTEGRIDAD
+5. HISTÓRICO — RIESGOS DE INTEGRIDAD IDENTIFICADOS AL 06-OCT
 ----------------------------------------------------------------------------------------
 - Asimetría transaccional: Mesero impacta tablas reales de SQLite mientras Cajero impacta 'localStorage'.
 - Precios y totales confiados al cliente: En 'enviar_comanda', el precio se toma del JSON del cliente sin
   revalidar contra el precio oficial en tabla Producto de SQLite (requiere RF05).
 - Despacho entre locales: Un mesero podría emitir comandas en mesas de otro punto de venta vía URL.
 
-6. RIESGOS DE SEGURIDAD / REPOSITORIO
+6. HISTÓRICO — RIESGOS DE SEGURIDAD / REPOSITORIO IDENTIFICADOS AL 06-OCT
 ----------------------------------------------------------------------------------------
 - 'db.sqlite3' versionado en Git: Riesgo de sobreescritura de datos locales entre clones.
 - 'SECRET_KEY' fija y 'DEBUG = True' en 'settings.py': Requiere migrar a variables de entorno para producción.
 
-7. PRUEBAS FALTANTES
+7. HISTÓRICO — PRUEBAS QUE FALTABAN AL 06-OCT; CUBIERTAS POSTERIORMENTE
 ----------------------------------------------------------------------------------------
 - Prueba automatizada de notas libres: Verificar que 'DetallePedido.observaciones' almacene la nota enviada.
 - Prueba de validación de precios del servidor en comanda de mesero.
 - Pruebas automatizadas para la persistencia real del Cajero (cuando se migre de localStorage a SQLite).
 - Prueba de restricción de mesero a su local asignado.
 
-9. REGLA FUNCIONAL PENDIENTE — MESA / CUENTA ABIERTA
+9. HISTÓRICO — REGLA FUNCIONAL QUE ESTABA PENDIENTE AL 06-OCT; RESUELTA
 ----------------------------------------------------------------------------------------
 - Una mesa puede realizar múltiples rondas de pedidos dentro de una misma atención.
 - La primera comanda no cierra la Venta.
@@ -2909,7 +3174,7 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 - La Mesa se libera solo al cerrar/pagar la cuenta.
 - Debe impedirse más de una Venta abierta simultánea para la misma Mesa.
 
-8. SIGUIENTE PASO RECOMENDADO
+8. HISTÓRICO — SIGUIENTE PASO RECOMENDADO AL 06-OCT; YA EJECUTADO
 ----------------------------------------------------------------------------------------
 1. Sincronizar lectura de 'DetallePedido.observaciones' en 'get_locales_data()' para reflejar las notas
    en el modal de detalle del Administrador.
@@ -2919,14 +3184,8 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- **Siguiente tarea de desarrollo: NINGUNA.**
-- proyecto congelado para revisión y retroalimentación.
-- desarrollo funcional en **STOP TOTAL**.
-- esperar nueva instrucción expresa del usuario o feedback del docente/equipo.
-- no modificar código, modelos, vistas, templates, migraciones ni base de datos sin:
-  1. error reproducible;
-  2. nueva autorización expresa del usuario.
-- recordatorios académicos y fase documental permanecen conservados para una etapa futura.
+- Siguiente tarea de desarrollo: NINGUNA.
+- Esperar revisión/retroalimentación o nueva instrucción expresa del usuario.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
