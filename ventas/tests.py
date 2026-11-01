@@ -4218,3 +4218,317 @@ class SafariRF11AsignacionMesaVentaRapidaTests(TestCase):
         with self.assertRaises(ValidationError) as ctx:
             validar_modalidad_operativa('MESA', self.mesa_pv2, self.pv1)
         self.assertIn("no pertenece al local", str(ctx.exception))
+
+
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF12 (Comentarios Asociados a Productos)
+# ==============================================================================
+
+class SafariRF12ComentariosProductosTests(TestCase):
+    """
+    Suite oficial de pruebas automatizadas para RF12 - Comentarios Asociados a Productos:
+    - RF12.1: Persistencia de texto libre por producto en comandas de Cocina y Barra.
+    - RF12.2: Aislamiento estricto: la nota de un producto no se cruza a otros productos del pedido.
+    - RF12.3: Sanitización de seguridad contra XSS (OWASP ASVS) neutralizando etiquetas HTML.
+    - RF12.4: Límite de longitud (máx 200 caracteres), normalización de espacios vacíos y eliminación de bytes nulos.
+    - RF12.5: Conservación y trazabilidad independiente entre rondas de una misma mesa/cuenta.
+    - RF12.6: Impresión y reimpresión de tickets conservan íntegramente las observaciones individuales.
+    - RF12.7: Visualización segura en pantallas táctiles KDS Cocina y BDS Barra.
+    - RF12.8: Terminal POS crear_ticket soporta notas individuales por producto vía AJAX.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+
+        self.admin = User.objects.get(username='rgomez')
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.mesero = User.objects.get(username='dsilva')
+        self.cocinero = User.objects.get(username='eparedes')
+
+        self.pv1 = PuntoVenta.objects.get(id=1)
+
+        self.mesa4 = Mesa.objects.filter(punto_venta=self.pv1, identificador='Mesa 4').first()
+        if not self.mesa4:
+            self.mesa4 = Mesa.objects.create(identificador='Mesa 4', punto_venta=self.pv1, capacidad=4, estado='HABILITADA')
+        else:
+            self.mesa4.estado = 'HABILITADA'
+            self.mesa4.save()
+
+        self.prod_hamburguesa = Producto.objects.filter(nombre__icontains='Hamburguesa').first()
+        self.prod_churrasco = Producto.objects.filter(nombre__icontains='Churrasco').first()
+        self.prod_bebida = Producto.objects.filter(nombre__icontains='Coca-Cola').first()
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf12_1_persistencia_comentarios_cocina_y_barra(self):
+        """RF12.1: Comentarios de texto libre persisten asociados individualmente al producto correspondiente"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        mesa = self.mesa4
+
+        items = [
+            {
+                "nombre": self.prod_hamburguesa.nombre,
+                "cantidad": 1,
+                "precio": float(self.prod_hamburguesa.precio_base),
+                "destino": "COCINA",
+                "nota": "Término medio, papas bien doradas"
+            },
+            {
+                "nombre": self.prod_bebida.nombre,
+                "cantidad": 2,
+                "precio": float(self.prod_bebida.precio_base),
+                "destino": "BARRA",
+                "nota": "Sin hielo y con endulzante"
+            }
+        ]
+
+        resp = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        pedido = Pedido.objects.filter(venta__mesa=mesa).order_by('-id').first()
+        self.assertIsNotNone(pedido)
+
+        det_hamb = pedido.detalles.filter(producto=self.prod_hamburguesa).first()
+        self.assertIsNotNone(det_hamb)
+        self.assertEqual(det_hamb.observaciones, "Término medio, papas bien doradas")
+
+        det_beb = pedido.detalles.filter(producto=self.prod_bebida).first()
+        self.assertIsNotNone(det_beb)
+        self.assertEqual(det_beb.observaciones, "Sin hielo y con endulzante")
+
+    def test_rf12_2_aislamiento_estricto_comentarios_entre_productos(self):
+        """RF12.2: Aislamiento estricto: la nota de un producto jamás contamina ni se copia a los demás ítems"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        mesa = self.mesa4
+
+        items = [
+            {"nombre": self.prod_hamburguesa.nombre, "cantidad": 1, "precio": float(self.prod_hamburguesa.precio_base), "destino": "COCINA", "nota": "Sin mayonesa"},
+            {"nombre": self.prod_churrasco.nombre, "cantidad": 1, "precio": float(self.prod_churrasco.precio_base), "destino": "COCINA", "nota": "Sin tomate"},
+            {"nombre": self.prod_bebida.nombre, "cantidad": 1, "precio": float(self.prod_bebida.precio_base), "destino": "BARRA", "nota": ""}
+        ]
+
+        resp = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        pedido = Pedido.objects.filter(venta__mesa=mesa).order_by('-id').first()
+        detalles = {d.producto.nombre: d.observaciones for d in pedido.detalles.all()}
+
+        self.assertEqual(detalles[self.prod_hamburguesa.nombre], "Sin mayonesa")
+        self.assertEqual(detalles[self.prod_churrasco.nombre], "Sin tomate")
+        self.assertIsNone(detalles[self.prod_bebida.nombre])
+
+    def test_rf12_3_sanitizacion_xss_y_caracteres_peligrosos(self):
+        """RF12.3: Sanitización OWASP ASVS: scripts y etiquetas HTML son neutralizados y escapados de forma segura"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        mesa = self.mesa4
+
+        malicious_note = "<script>alert('XSS')</script><img src=x onerror=alert(1)>"
+        items = [
+            {"nombre": self.prod_hamburguesa.nombre, "cantidad": 1, "precio": float(self.prod_hamburguesa.precio_base), "destino": "COCINA", "nota": malicious_note}
+        ]
+
+        resp = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        pedido = Pedido.objects.filter(venta__mesa=mesa).order_by('-id').first()
+        det = pedido.detalles.first()
+
+        self.assertNotIn("<script>", det.observaciones)
+        self.assertNotIn("<img", det.observaciones)
+        self.assertIn("&lt;script&gt;", det.observaciones)
+        self.assertIn("&lt;img", det.observaciones)
+
+    def test_rf12_4_limite_longitud_y_texto_vacio(self):
+        """RF12.4: Truncado a 200 caracteres, normalización de espacios vacíos y remoción de bytes nulos"""
+        from ventas.utils import sanitizar_observacion
+
+        # 1. Truncado a 200 caracteres
+        texto_largo = "A" * 250
+        sanitizado = sanitizar_observacion(texto_largo, max_length=200)
+        self.assertEqual(len(sanitizado), 200)
+        self.assertEqual(sanitizado, "A" * 200)
+
+        # 2. Espacios vacíos convertidos a None
+        self.assertIsNone(sanitizar_observacion("   "))
+        self.assertIsNone(sanitizar_observacion(""))
+        self.assertIsNone(sanitizar_observacion(None))
+
+        # 3. Byte nulo removido
+        self.assertEqual(sanitizar_observacion("Sin sal\x00extra"), "Sin salextra")
+
+        # 4. Tildes y puntuación conservados
+        nota_espanol = "Término 3/4, con ají verde y champiñones"
+        self.assertEqual(sanitizar_observacion(nota_espanol), nota_espanol)
+
+    def test_rf12_5_conservacion_independiente_por_rondas(self):
+        """RF12.5: Las rondas sucesivas conservan de manera aislada e independiente sus notas respectivas"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        mesa = self.mesa4
+
+        # Ronda 1: hamburguesa con nota de ronda 1
+        items_ronda_1 = [
+            {"nombre": self.prod_hamburguesa.nombre, "cantidad": 1, "precio": float(self.prod_hamburguesa.precio_base), "destino": "COCINA", "nota": "Ronda 1: Sin cebolla"}
+        ]
+        self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_ronda_1)
+        }, follow=True)
+
+        venta = Venta.objects.filter(mesa=mesa, estado='ABIERTA').first()
+        self.assertEqual(venta.pedidos.count(), 1)
+        pedido1 = venta.pedidos.first()
+        det_ronda1 = pedido1.detalles.first()
+        self.assertEqual(det_ronda1.observaciones, "Ronda 1: Sin cebolla")
+
+        # Ronda 2: hamburguesa con nota diferente y bebida sin nota
+        items_ronda_2 = [
+            {"nombre": self.prod_hamburguesa.nombre, "cantidad": 1, "precio": float(self.prod_hamburguesa.precio_base), "destino": "COCINA", "nota": "Ronda 2: Con extra queso"},
+            {"nombre": self.prod_bebida.nombre, "cantidad": 1, "precio": float(self.prod_bebida.precio_base), "destino": "BARRA", "nota": ""}
+        ]
+        self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_ronda_2)
+        }, follow=True)
+
+        self.assertEqual(venta.pedidos.count(), 2)
+        pedido2 = venta.pedidos.order_by('-id').first()
+        det_ronda2_hamb = pedido2.detalles.filter(producto=self.prod_hamburguesa).first()
+        det_ronda2_beb = pedido2.detalles.filter(producto=self.prod_bebida).first()
+
+        self.assertEqual(det_ronda2_hamb.observaciones, "Ronda 2: Con extra queso")
+        self.assertIsNone(det_ronda2_beb.observaciones)
+
+        # La ronda 1 permanece inalterada
+        det_ronda1.refresh_from_db()
+        self.assertEqual(det_ronda1.observaciones, "Ronda 1: Sin cebolla")
+
+    def test_rf12_6_tickets_y_reimpresion_conservan_observaciones(self):
+        """RF12.6: La emisión y reimpresión de tickets conservan las observaciones individuales por producto"""
+        from ventas.utils import emitir_tickets_comanda, reimprimir_ticket
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='VENTA_RAPIDA',
+            mesa=None,
+            total=self.prod_hamburguesa.precio_base,
+            metodo_pago='EFECTIVO',
+            estado='PAGADA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(
+            pedido=pedido,
+            producto=self.prod_hamburguesa,
+            cantidad=1,
+            observaciones="Sin sal ni mayonesa"
+        )
+
+        # Emisión original
+        res = emitir_tickets_comanda(pedido, usuario_emisor=self.cajero)
+        ticket_cocina = res['tickets'][0]
+
+        self.assertIn("Nota: Sin sal ni mayonesa", ticket_cocina.contenido_impresion)
+
+        # Reimpresión supervisada
+        reimprimir_ticket(ticket_cocina, usuario_solicitante=self.admin)
+        ticket_cocina.refresh_from_db()
+
+        self.assertTrue(ticket_cocina.es_reimpresion)
+        self.assertIn("COPIA DE REIMPRESI", ticket_cocina.contenido_impresion)
+        self.assertIn("Nota: Sin sal ni mayonesa", ticket_cocina.contenido_impresion)
+
+    def test_rf12_7_kds_cocina_y_bds_barra_renderizan_observaciones(self):
+        """RF12.7: Pantallas de Cocina KDS y Barra BDS muestran las notas especiales de cada producto"""
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=self.mesa4,
+            total=self.prod_hamburguesa.precio_base + self.prod_bebida.precio_base,
+            metodo_pago='EFECTIVO',
+            estado='ABIERTA'
+        )
+        pedido = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(
+            pedido=pedido,
+            producto=self.prod_hamburguesa,
+            cantidad=1,
+            observaciones="Carne 3/4 bien jugosa"
+        )
+        DetallePedido.objects.create(
+            pedido=pedido,
+            producto=self.prod_bebida,
+            cantidad=1,
+            observaciones="Vaso con rodaja de limon"
+        )
+
+        # 1. KDS Cocina
+        self.client.force_login(self.cocinero)
+        resp_cocina = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_cocina.status_code, 200)
+        self.assertContains(resp_cocina, "Carne 3/4 bien jugosa")
+
+        # 2. BDS Barra
+        self.client.force_login(self.cajero)
+        resp_barra = self.client.get(reverse('barra'))
+        self.assertEqual(resp_barra.status_code, 200)
+        self.assertContains(resp_barra, "Vaso con rodaja de limon")
+
+    def test_rf12_8_pos_crear_ticket_con_observaciones_ajax(self):
+        """RF12.8: Terminal POS crear_ticket procesa notas individuales por producto vía AJAX"""
+        self.client.force_login(self.cajero)
+
+        payload = [
+            {
+                "producto_id": self.prod_hamburguesa.id,
+                "cantidad": 1,
+                "nota": "Para llevar en bolsa termica"
+            }
+        ]
+
+        resp = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+
+        v = Venta.objects.get(id=data['venta_id'])
+        ped = v.pedidos.first()
+        det = ped.detalles.first()
+        self.assertEqual(det.observaciones, "Para llevar en bolsa termica")

@@ -625,6 +625,18 @@ class DetallePedido(models.Model):
     cantidad = models.PositiveIntegerField(default=1)
     observaciones = models.CharField(max_length=200, blank=True, null=True, help_text="Ej: sin sal, sin hielo, término medio")
 
+    def clean(self):
+        super().clean()
+        if self.observaciones:
+            from ventas.utils import sanitizar_observacion
+            self.observaciones = sanitizar_observacion(self.observaciones, max_length=200)
+        else:
+            self.observaciones = None
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.cantidad}x {self.producto.nombre} (Pedido #{self.pedido.id})"
 

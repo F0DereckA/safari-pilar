@@ -14,7 +14,8 @@
   - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (127/127 suite vigente en verde al cerrar RF09 con KDS Barra)**.
   - RF10 Consumo Interno / Fiado: **COMPLETADO Y TESTEADO (137/137 suite vigente en verde al cerrar RF10)**.
   - RF11 Asignación de Mesa o Venta Rápida: **COMPLETADO Y TESTEADO (145/145 suite vigente en verde al cerrar RF11)**.
-  - RF01–RF11: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF12 Comentarios Asociados a Productos: **COMPLETADO Y TESTEADO (153/153 suite vigente en verde al cerrar RF12)**.
+  - RF01–RF12: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -552,7 +553,30 @@ Cuando hay elaboración propia, indicar si va a mesa o retiro rápido.
 
 ---
 
-# RF12 — COMENTARIOS ASOCIADOS A PRODUCTOS
+# RF12 — COMENTARIOS ASOCIADOS A PRODUCTOS — [ESTADO: COMPLETADO Y CERRADO (153/153 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF12)
+- **Sanitización Robusta (OWASP ASVS):**
+  * Función `sanitizar_observacion(texto, max_length=200)` en `ventas/utils.py`:
+    - Elimina espacios en blanco superfluos con `strip()`.
+    - Normaliza textos vacíos o conformados exclusivamente por espacios o caracteres nulos (`\x00`) a `None`.
+    - Neutraliza completamente ataques XSS mediante `html.escape(texto_str)`.
+    - Trunca de forma segura a longitud máxima de 200 caracteres, respetando tildes y caracteres especiales del idioma español.
+  * Modelo `DetallePedido` (`ventas/models.py`):
+    - Implementación de `clean()` y `save()` que ejecutan automáticamente `sanitizar_observacion`, garantizando que cualquier registro creado o modificado sea sanitizado sin excepciones a nivel de base de datos.
+- **Aislamiento Estricto y Trazabilidad Multi-ronda:**
+  * Cada producto mantiene su propia nota sin filtraciones ni cruce de comentarios entre ítems del mismo pedido.
+  * En salón con comanda multi-ronda, cada ronda genera un `Pedido` independiente; la ronda 2 no sobreescribe ni hereda notas obsoletas de la ronda 1.
+  * En frontend, reinicio de estados de notas (`notasProductos`, `notasProductosCajero`) tras el despacho para prevenir contaminación en rondas o ventas posteriores.
+- **Tickets e Impresión / KDS Cocina y BDS Barra:**
+  * `generar_contenido_ticket_cocina` y `generar_contenido_ticket_barra`: formato térmico estructurado con etiqueta `Nota: ...` y ajuste limpio de ancho.
+  * `reimprimir_ticket`: preserva íntegramente las observaciones individuales históricas de la comanda junto con el banner de reimpresión.
+  * Pantallas táctiles de Cocina (`cocina.html`) y Barra (`barra.html`): renderizado visual seguro de las notas de comanda con badge de advertencia.
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF12 (`SafariRF12ComentariosProductosTests`): 8/8 tests OK.
+  * Suite completa del sistema: 153/153 tests OK (0 fallos, 0 errores).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado.
 
 ## Auditoría
 Revisar `DetallePedido.observaciones` y UI actual.

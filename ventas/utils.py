@@ -875,3 +875,21 @@ def validar_modalidad_operativa(modalidad, mesa=None, punto_venta=None):
     elif modalidad in ['VENTA_RAPIDA', 'MOSTRADOR']:
         return 'VENTA_RAPIDA', None
     return modalidad, mesa
+
+
+def sanitizar_observacion(texto, max_length=200):
+    """
+    Sanitiza y normaliza comentarios/observaciones de productos para comandas (RF12 / OWASP ASVS):
+    - Elimina espacios en blanco superfluos al inicio y final.
+    - Neutraliza inyecciones XSS escapando entidades HTML (<, >, &, ", ').
+    - Trunca con seguridad a longitud máxima (por defecto 200 caracteres).
+    - Retorna None si el texto queda vacío o solo contenía espacios o caracteres nulos.
+    """
+    if not texto:
+        return None
+    texto_str = str(texto).replace('\x00', '').strip()
+    if not texto_str:
+        return None
+    import html
+    texto_escapado = html.escape(texto_str)
+    return texto_escapado[:max_length]
