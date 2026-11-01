@@ -9,6 +9,7 @@ Normativas Oficiales:
 from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Sum
 from .models import Producto, PrecioEspecial, DetalleVenta, RegistroPrecioEspecial
 
@@ -733,3 +734,123 @@ def reimprimir_ticket(ticket, usuario_solicitante=None):
     enviar_a_impresora(ticket, usuario=usuario_solicitante, forzar_reintento=True)
     return ticket
 
+# ==============================================================================
+# GESTIÓN DE CONSUMO INTERNO DEL PERSONAL / FIADO (RF10)
+# ==============================================================================
+
+def registrar_consumo_interno(empleado, punto_venta, items, usuario_registro=None, tipo_consumo='FIADO', observaciones='', caja=None):
+    """
+    Registra consumos de personal / fiados con deducción por planilla (RF10).
+    - Valida que el colaborador esté activo en el sistema (RF10.1).
+    - Precios oficiales tomados estrictamente de Producto.precio_base en BD (RF10.2).
+    - Separación Contable Estricta (RF10.4): No se mezcla con ventas de clientes ni suma a recaudación de caja.
+    - Integridad y Atomicidad (RF10.5): Cabecera y detalles en transacción atómica.
+    """
+    from .models import ConsumoInterno, DetalleConsumoInterno, Producto, PuntoVenta
+    from django.contrib.auth.models import User
+    from decimal import Decimal
+
+    # 1. Validar colaborador (RF10.1)
+    if isinstance(empleado, (int, str)):
+        empleado_obj = User.objects.filter(id=empleado).select_related('perfil').first()
+    else:
+        empleado_obj = empleado
+
+    if not empleado_obj or not empleado_obj.is_active:
+        raise ValidationError("El trabajador seleccionado no existe o se encuentra inactivo.")
+
+    if hasattr(empleado_obj, 'perfil') and not empleado_obj.perfil.activo:
+        raise ValidationError("El perfil del colaborador se encuentra desactivado en el sistema.")
+
+    # 2. Validar local / punto de venta
+    if isinstance(punto_venta, (int, str)):
+        pv_obj = PuntoVenta.objects.filter(id=punto_venta, activo=True).first()
+    else:
+        pv_obj = punto_venta
+
+    if not pv_obj:
+        raise ValidationError("Punto de venta o local no válido.")
+
+    # 3. Validar productos y cantidades
+    if not items or not isinstance(items, (list, tuple)):
+        raise ValidationError("Debe incluir al menos un producto en el consumo interno.")
+
+    items_preparados = []
+    for it in items:
+        p_ref = it.get('producto') or it.get('producto_id') or it.get('id')
+        if isinstance(p_ref, Producto):
+            prod = p_ref
+        elif p_ref:
+            prod = Producto.objects.filter(id=p_ref, activo=True).first()
+        else:
+            p_nom = it.get('nombre')
+            prod = Producto.objects.filter(nombre=p_nom, activo=True).first() if p_nom else None
+
+        if not prod or not prod.activo:
+            raise ValidationError("Uno de los productos solicitados no existe o está inactivo.")
+
+        try:
+            cant = int(it.get('cantidad', 1))
+            if cant <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise ValidationError(f"La cantidad para '{prod.nombre}' debe ser un entero positivo mayor a cero.")
+
+        # Precio oficial tomado de BD (RF10.2)
+        precio_unitario = Decimal(str(prod.precio_base))
+        subtotal = precio_unitario * cant
+        items_preparados.append({
+            'producto': prod,
+            'cantidad': cant,
+            'precio_unitario': precio_unitario,
+            'subtotal': subtotal
+        })
+
+    total_consumo = sum(item['subtotal'] for item in items_preparados)
+
+    # 4. Transacción atómica e integridad (RF10.5)
+    with transaction.atomic():
+        consumo = ConsumoInterno.objects.create(
+            empleado=empleado_obj,
+            punto_venta=pv_obj,
+            caja=caja,
+            registrado_por=usuario_registro,
+            tipo_consumo=tipo_consumo,
+            total=total_consumo,
+            estado='REGISTRADO',
+            observaciones=str(observaciones).strip()[:500] if observaciones else None
+        )
+
+        detalles_a_crear = [
+            DetalleConsumoInterno(
+                consumo=consumo,
+                producto=item['producto'],
+                cantidad=item['cantidad'],
+                precio_unitario=item['precio_unitario'],
+                subtotal=item['subtotal']
+            )
+            for item in items_preparados
+        ]
+        DetalleConsumoInterno.objects.bulk_create(detalles_a_crear)
+
+    return consumo
+
+
+def liquidar_consumos_por_planilla(consumos_ids, supervisor=None):
+    """
+    Marca como DESCONTADO un conjunto de consumos internos (RF10.3).
+    """
+    from .models import ConsumoInterno
+
+    if not consumos_ids:
+        return 0
+
+    actualizados = ConsumoInterno.objects.filter(
+        id__in=consumos_ids,
+        estado='REGISTRADO'
+    ).update(
+        estado='DESCONTADO',
+        descontado_por=supervisor,
+        fecha_hora_descuento=timezone.now()
+    )
+    return actualizados

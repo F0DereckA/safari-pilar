@@ -719,6 +719,9 @@
                             <button class="btn py-2 fw-bold text-dark" style="background: linear-gradient(180deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%); border: 1px solid var(--safari-yellow-dark);" onclick="simularCobro()">
                                 <i class="bi bi-cash-coin me-2"></i>Cobrar y Enviar a Cocina/Barra
                             </button>
+                            <button type="button" class="btn btn-outline-warning text-dark py-2 fw-bold border-2" onclick="abrirModalConsumoInterno()">
+                                <i class="bi bi-person-vcard text-danger me-2"></i>Consumo Interno / Fiado (RF10)
+                            </button>
                             <button class="btn btn-outline-secondary btn-sm" onclick="limpiarPedido()">
                                 <i class="bi bi-trash3 me-1"></i>Limpiar Pedido
                             </button>
@@ -819,6 +822,85 @@
                     </a>
                     <button type="button" class="btn btn-outline-secondary px-3 rounded-pill" data-bs-dismiss="modal" onclick="limpiarPedido()">
                         <i class="bi bi-plus-lg me-1"></i> Crear Otro Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Consumo Interno del Personal / Fiado (RF10) -->
+    <div class="modal fade" id="modalConsumoInterno" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white p-3">
+                    <h6 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-person-vcard text-warning me-2"></i>Registrar Consumo Interno / Fiado (RF10)
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 px-3 small rounded-3 mb-3 border-0 bg-warning bg-opacity-10 text-dark">
+                        <i class="bi bi-shield-check text-warning me-1"></i>
+                        <strong>Separación Contable (RF10.4):</strong> Este consumo se asigna directamente a la cuenta corriente del colaborador para deducción en nómina. <em>No se registra como venta de cliente ni incrementa la recaudación de caja diaria.</em>
+                    </div>
+
+                    <form id="formConsumoInterno">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-person-badge text-danger me-1"></i>Seleccionar Colaborador Activo (RF10.1):
+                            </label>
+                            <select class="form-select rounded-3" id="consumoEmpleadoId" required>
+                                <option value="">-- Seleccionar trabajador --</option>
+                                {% for t in trabajadores_activos %}
+                                <option value="{{ t.id }}">
+                                    {{ t.get_full_name|default:t.username }} ({{ t.perfil.get_rol_display|default:"Personal" }}) - {{ t.perfil.punto_venta_actual.nombre|default:"Sin local" }}
+                                </option>
+                                {% empty %}
+                                <option value="" disabled>No hay colaboradores activos registrados</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-tag text-primary me-1"></i>Tipo de Consumo:
+                            </label>
+                            <select class="form-select rounded-3" id="consumoTipo" required>
+                                <option value="FIADO" selected>Fiado / Descuento por Planilla (RF10)</option>
+                                <option value="COLACION">Colación Autorizada de Turno</option>
+                                <option value="CORTESIA">Cortesía Institucional Autorizada</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-chat-text text-secondary me-1"></i>Observaciones (Opcional):
+                            </label>
+                            <textarea class="form-control rounded-3" id="consumoObservaciones" rows="2" placeholder="Ej: Almuerzo de turno, colación autorizada..."></textarea>
+                        </div>
+
+                        <!-- Resumen de Productos a Consumir -->
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold text-muted text-uppercase">Productos del Pedido:</span>
+                                <span class="badge bg-danger rounded-pill" id="consumoCantItems">0 ítems</span>
+                            </div>
+                            <div id="consumoListaItems" class="small text-muted mb-2 font-monospace" style="max-height: 120px; overflow-y: auto;">
+                                <em>Sin ítems en el pedido</em>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="fw-bold text-dark">Total a Cargar:</span>
+                                <span class="fw-bold fs-5 text-danger font-monospace" id="consumoTotalDisplay">$0</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer p-3 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" id="btnConfirmarConsumoInterno" onclick="confirmarConsumoInterno()">
+                        <i class="bi bi-check2-circle me-1"></i> Confirmar y Registrar
                     </button>
                 </div>
             </div>
@@ -1122,6 +1204,133 @@
             const panel = document.querySelector('.order-summary-panel');
             if (panel) {
                 panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Consumo Interno del Personal / Fiado (RF10)
+        function abrirModalConsumoInterno() {
+            let total = 0;
+            let itemsCount = 0;
+            let itemsHtml = '';
+
+            for (const [id, qty] of Object.entries(cantidades)) {
+                if (qty > 0) {
+                    const prod = productos[id];
+                    if (prod) {
+                        const sub = prod.precio * qty;
+                        total += sub;
+                        itemsCount += qty;
+                        itemsHtml += `<div class="d-flex justify-content-between py-1 border-bottom border-light">
+                            <span>${qty}x ${prod.nombre}</span>
+                            <span class="fw-bold">${formatearMoneda(sub)}</span>
+                        </div>`;
+                    }
+                }
+            }
+
+            if (itemsCount === 0) {
+                swalWarningBootstrap.fire({
+                    title: "Pedido vacío",
+                    text: "Agrega al menos un producto antes de registrar consumo interno o fiado.",
+                    icon: "warning",
+                    confirmButtonText: "Entendido"
+                });
+                return;
+            }
+
+            document.getElementById('consumoCantItems').innerText = `${itemsCount} ítems`;
+            document.getElementById('consumoListaItems').innerHTML = itemsHtml;
+            document.getElementById('consumoTotalDisplay').innerText = formatearMoneda(total);
+
+            const modalEl = document.getElementById('modalConsumoInterno');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        async function confirmarConsumoInterno() {
+            const empleadoId = document.getElementById('consumoEmpleadoId').value;
+            const tipoConsumo = document.getElementById('consumoTipo').value;
+            const observaciones = document.getElementById('consumoObservaciones').value;
+
+            if (!empleadoId) {
+                swalWarningBootstrap.fire({
+                    title: "Colaborador requerido",
+                    text: "Debes seleccionar al colaborador beneficiario del consumo interno.",
+                    icon: "warning",
+                    confirmButtonText: "Aceptar"
+                });
+                return;
+            }
+
+            const items = [];
+            for (const [id, qty] of Object.entries(cantidades)) {
+                if (qty > 0) {
+                    const prod = productos[id];
+                    items.push({
+                        id: id,
+                        nombre: prod?.nombre,
+                        cantidad: qty,
+                        nota: notasProductosCajero[id] || ''
+                    });
+                }
+            }
+
+            const btnConfirmar = document.getElementById('btnConfirmarConsumoInterno');
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Registrando...';
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                const formData = new FormData();
+                formData.append('empleado_id', empleadoId);
+                formData.append('tipo_consumo', tipoConsumo);
+                formData.append('observaciones', observaciones);
+                formData.append('items_json', JSON.stringify(items));
+                formData.append('csrfmiddlewaretoken', csrfToken);
+
+                const response = await fetch("{% url 'registrar_consumo_interno' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    const modalEl = document.getElementById('modalConsumoInterno');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    swalSuccessBootstrap.fire({
+                        title: "¡Consumo Registrado!",
+                        html: `<b>${data.codigo_consumo}</b> registrado exitosamente para <b>${data.empleado}</b>.<br><br>Total: <b>${formatearMoneda(data.total)}</b> cargado para deducción en nómina.<br><small class="text-muted">Separación contable estricta: No se suma a la recaudación de caja diaria.</small>`,
+                        icon: "success",
+                        confirmButtonText: "Aceptar"
+                    });
+
+                    limpiarPedido();
+                } else {
+                    swalErrorBootstrap.fire({
+                        title: "Error al registrar",
+                        text: data.error || "No se pudo procesar el consumo interno.",
+                        icon: "error",
+                        confirmButtonText: "Reintentar"
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                swalErrorBootstrap.fire({
+                    title: "Error de comunicación",
+                    text: "Ocurrió un error al contactar al servidor. Revisa tu conexión.",
+                    icon: "error",
+                    confirmButtonText: "Cerrar"
+                });
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Confirmar y Registrar';
             }
         }
 

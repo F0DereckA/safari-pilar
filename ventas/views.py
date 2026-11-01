@@ -13,11 +13,12 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from .validators import validar_complejidad_clave
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion, ConsumoInterno, DetalleConsumoInterno
 from .utils import (
     validar_y_calcular_precio_linea, registrar_precio_especial_auditoria,
     calcular_redondeo_ley_20956, emitir_tickets_comanda, emitir_comprobante_venta,
-    reimprimir_ticket, reintentar_despacho_impresion
+    reimprimir_ticket, reintentar_despacho_impresion,
+    registrar_consumo_interno, liquidar_consumos_por_planilla
 )
 
 
@@ -1254,6 +1255,7 @@ def crear_ticket(request):
 
     productos_activos = Producto.objects.filter(activo=True).select_related('categoria').prefetch_related('precios_especiales')
     convenios_activos = PrecioEspecial.objects.filter(activo=True).select_related('producto')
+    trabajadores_activos = User.objects.filter(is_active=True, perfil__activo=True).select_related('perfil', 'perfil__punto_venta_actual').order_by('first_name', 'username')
 
     context = {
         "jornada_activa": jornada_activa,
@@ -1266,6 +1268,7 @@ def crear_ticket(request):
         "horario_oficial": "10:00 a 18:00",
         "productos_activos": productos_activos,
         "convenios_activos": convenios_activos,
+        "trabajadores_activos": trabajadores_activos,
     }
     return render(request, 'ventas/vendedor_crear_ticket.html', context)
 
@@ -2522,6 +2525,43 @@ def administrador_historial(request):
             'fecha_hora': tr.fecha_hora_reimpresion or tr.fecha_hora,
             'monto': tr.venta.total if tr.venta else None,
             'estado': 'REIMPRESO',
+        })
+
+    # 9. Eventos de Consumo Interno y Fiados del Personal (RF10)
+    consumos_qs = ConsumoInterno.objects.select_related('empleado', 'punto_venta', 'registrado_por', 'descontado_por').all()
+    for ci in consumos_qs:
+        emp_nom = ci.empleado.get_full_name() or ci.empleado.username
+        reg_nom = ci.registrado_por.get_full_name() or ci.registrado_por.username if ci.registrado_por else "Cajero"
+        if ci.estado == 'REGISTRADO':
+            badge_ci = 'badge-status-warning'
+            icono_ci = 'bi-wallet2 text-warning'
+        elif ci.estado == 'DESCONTADO':
+            badge_ci = 'badge-status-success'
+            icono_ci = 'bi-check-all text-success'
+        else:
+            badge_ci = 'badge-status-danger'
+            icono_ci = 'bi-x-circle text-danger'
+
+        desc_txt = f"{ci.get_tipo_consumo_display()} para {emp_nom} (${int(ci.total):,} CLP). Registrado por: {reg_nom}."
+        if ci.observaciones:
+            desc_txt += f" Obs: {ci.observaciones}"
+        if ci.estado == 'DESCONTADO' and ci.descontado_por:
+            desc_txt += f" (Liquidado por {ci.descontado_por.username})"
+
+        eventos.append({
+            'id_ref': f"FIA-{ci.id:04d}",
+            'tipo': 'CONSUMO_INTERNO',
+            'subtipo': f"Consumo {ci.get_tipo_consumo_display()}",
+            'badge_clase': badge_ci,
+            'icono': icono_ci,
+            'titulo': f"Consumo Personal: {emp_nom} (${int(ci.total):,} CLP)",
+            'descripcion': desc_txt,
+            'usuario': reg_nom,
+            'local': ci.punto_venta.nombre if ci.punto_venta else "Parque Safari General",
+            'local_id': str(ci.punto_venta.id) if ci.punto_venta else None,
+            'fecha_hora': ci.fecha_hora,
+            'monto': ci.total,
+            'estado': ci.get_estado_display(),
         })
 
     # Ordenar cronológicamente descendente (lo más reciente primero)
@@ -4042,3 +4082,172 @@ def reintentar_impresion_view(request, ticket_id):
         messages.error(request, f"No se pudo completar el reintento de impresión de #{ticket.codigo}: {ticket.error_impresion}")
 
     return redirect(request.META.get('HTTP_REFERER') or f"/tickets/{ticket.id}/imprimir/")
+
+
+# ==============================================================================
+# CONSUMO INTERNO DEL PERSONAL / FIADOS POR PLANILLA (RF10)
+# ==============================================================================
+
+@requiere_rol(['ADMINISTRADOR', 'CAJERO'])
+def registrar_consumo_interno_view(request):
+    """
+    Endpoint y vista para registrar consumos de colaboradores o fiados por planilla (RF10).
+    - Valida que el colaborador seleccionado esté activo (RF10.1).
+    - Aplica precios oficiales tomados de la BD en Producto.precio_base (RF10.2).
+    - Separación Contable Estricta (RF10.4): No crea registro en Venta ni suma a caja.total_recaudado.
+    - Integridad y Atomicidad (RF10.5).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido. Se requiere POST.'}, status=405)
+
+    empleado_id = request.POST.get('empleado_id')
+    tipo_consumo = request.POST.get('tipo_consumo', 'FIADO').upper()
+    observaciones = request.POST.get('observaciones', '').strip()
+    items_raw = request.POST.get('items_json', '[]')
+
+    try:
+        items = json.loads(items_raw) if isinstance(items_raw, str) else items_raw
+    except Exception:
+        items = []
+
+    if not items:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'error': 'Debes incluir al menos un producto para registrar consumo interno.'}, status=400)
+        messages.error(request, 'Debes incluir al menos un producto para registrar consumo interno.')
+        return redirect('crear_ticket')
+
+    # Determinar punto de venta y caja
+    perfil = getattr(request.user, 'perfil', None)
+    punto_venta = perfil.punto_venta_actual if perfil else None
+
+    # Si es cajero, verificar caja activa
+    hoy = timezone.localdate()
+    jornada_activa = Jornada.objects.filter(estado='ABIERTA', fecha=hoy).first()
+    caja_activa = None
+    if jornada_activa:
+        caja_activa = Caja.objects.filter(jornada=jornada_activa, cajero=request.user, estado='ABIERTA').first()
+
+    if not punto_venta and caja_activa:
+        punto_venta = caja_activa.punto_venta
+
+    if not punto_venta:
+        punto_venta = PuntoVenta.objects.filter(activo=True).first()
+
+    try:
+        consumo = registrar_consumo_interno(
+            empleado=empleado_id,
+            punto_venta=punto_venta,
+            items=items,
+            usuario_registro=request.user,
+            tipo_consumo=tipo_consumo,
+            observaciones=observaciones,
+            caja=caja_activa
+        )
+    except Exception as e:
+        err_msg = getattr(e, 'message', str(e))
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+        messages.error(request, f"Error al registrar consumo: {err_msg}")
+        return redirect('crear_ticket')
+
+    nombre_emp = consumo.empleado.get_full_name() or consumo.empleado.username
+    msg_exito = f"¡Consumo #{consumo.id:04d} registrado con éxito para {nombre_emp} por ${int(consumo.total):,} CLP! (RF10 - Descuento por Planilla)."
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+        return JsonResponse({
+            'ok': True,
+            'consumo_id': consumo.id,
+            'codigo_consumo': f"FIA-{consumo.id:04d}",
+            'empleado': nombre_emp,
+            'total': float(consumo.total),
+            'tipo_consumo': consumo.get_tipo_consumo_display(),
+            'mensaje': msg_exito
+        })
+
+    messages.success(request, msg_exito)
+    return redirect('crear_ticket')
+
+
+@requiere_rol(['ADMINISTRADOR'])
+def administrador_consumos(request):
+    """
+    Panel Administrativo para Gestión y Liquidación de Consumos Internos y Fiados (RF10.3).
+    - Monitorea saldos por colaborador y pendientes de descuento en nómina.
+    - Permite liquidar por planilla o anular consumos erróneos.
+    """
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'descontar_empleado':
+            empleado_id = request.POST.get('empleado_id')
+            emp = get_object_or_404(User, id=empleado_id)
+            consumos_pendientes = list(ConsumoInterno.objects.filter(empleado=emp, estado='REGISTRADO').values_list('id', flat=True))
+            total_liquidado = ConsumoInterno.objects.filter(id__in=consumos_pendientes).aggregate(total=Sum('total'))['total'] or 0
+
+            liquidar_consumos_por_planilla(consumos_pendientes, supervisor=request.user)
+            nombre_emp = emp.get_full_name() or emp.username
+            messages.success(request, f"Se liquidaron exitosamente {len(consumos_pendientes)} consumos por un total de ${int(total_liquidado):,} CLP para {nombre_emp}.")
+
+        elif accion == 'descontar_individual':
+            consumo_id = request.POST.get('consumo_id')
+            consumo = get_object_or_404(ConsumoInterno, id=consumo_id)
+            if consumo.estado == 'REGISTRADO':
+                liquidar_consumos_por_planilla([consumo.id], supervisor=request.user)
+                messages.success(request, f"Consumo #{consumo.id:04d} liquidado y marcado como descontado por planilla.")
+            else:
+                messages.warning(request, f"El consumo #{consumo.id:04d} ya se encuentra en estado {consumo.get_estado_display()}.")
+
+        elif accion == 'anular_individual':
+            consumo_id = request.POST.get('consumo_id')
+            consumo = get_object_or_404(ConsumoInterno, id=consumo_id)
+            consumo.estado = 'ANULADO'
+            consumo.save(update_fields=['estado'])
+            messages.warning(request, f"El consumo #{consumo.id:04d} ha sido anulado.")
+
+        return redirect('administrador_consumos')
+
+    # Filtros GET
+    filtro_estado = request.GET.get('estado', '').strip()
+    filtro_local = request.GET.get('local_id', '').strip()
+
+    consumos_qs = ConsumoInterno.objects.select_related('empleado', 'empleado__perfil', 'punto_venta', 'registrado_por', 'descontado_por').prefetch_related('detalles__producto').all()
+
+    if filtro_estado:
+        consumos_qs = consumos_qs.filter(estado=filtro_estado)
+
+    if filtro_local and filtro_local.isdigit():
+        consumos_qs = consumos_qs.filter(punto_venta_id=int(filtro_local))
+
+    # KPIs Globales
+    total_pendiente = ConsumoInterno.objects.filter(estado='REGISTRADO').aggregate(t=Sum('total'))['t'] or Decimal('0.00')
+    total_descontado = ConsumoInterno.objects.filter(estado='DESCONTADO').aggregate(t=Sum('total'))['t'] or Decimal('0.00')
+    empleados_con_deuda = ConsumoInterno.objects.filter(estado='REGISTRADO').values('empleado').distinct().count()
+
+    # Resumen por Colaborador
+    colaboradores_perfiles = PerfilEmpleado.objects.filter(usuario__is_active=True).select_related('usuario', 'punto_venta_actual').order_by('usuario__first_name', 'usuario__username')
+    resumen_colaboradores = []
+    for p in colaboradores_perfiles:
+        deuda = p.total_fiado_pendiente()
+        resumen_colaboradores.append({
+            'usuario': p.usuario,
+            'rut': getattr(p, 'rut', '') or 'Sin registrar',
+            'rol': p.get_rol_display(),
+            'local_nombre': p.punto_venta_actual.nombre if p.punto_venta_actual else 'Sin Asignar',
+            'total_pendiente': deuda
+        })
+
+    # Ordenar: primero los que tienen deuda pendiente descendente
+    resumen_colaboradores.sort(key=lambda x: (x['total_pendiente'] <= 0, -x['total_pendiente'], x['usuario'].username))
+
+    locales = PuntoVenta.objects.filter(activo=True).order_by('id')
+
+    context = {
+        'total_pendiente': total_pendiente,
+        'total_descontado': total_descontado,
+        'empleados_con_deuda': empleados_con_deuda,
+        'consumos': consumos_qs,
+        'resumen_colaboradores': resumen_colaboradores,
+        'locales': locales,
+    }
+    return render(request, 'ventas/administrador_consumos.html', context)
+

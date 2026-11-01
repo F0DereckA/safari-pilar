@@ -62,6 +62,13 @@ class PerfilEmpleado(models.Model):
             self.bloqueado_hasta = None
             self.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
 
+    def total_fiado_pendiente(self):
+        """Calcula el total acumulado pendiente de descuento por planilla (RF10.3)"""
+        from django.db.models import Sum
+        from decimal import Decimal
+        res = self.usuario.consumos_internos.filter(estado='REGISTRADO').aggregate(total=Sum('total'))['total']
+        return res or Decimal('0.00')
+
     def __str__(self):
         nombre = self.usuario.get_full_name() or self.usuario.username
         local = f" - {self.punto_venta_actual.nombre}" if self.punto_venta_actual else " (Sin Local)"
@@ -731,18 +738,34 @@ class Entrega(models.Model):
 # 16. CONSUMO INTERNO DE TRABAJADORES (RF12 - Registro de Fiado / Consumo Personal)
 # ==============================================================================
 class ConsumoInterno(models.Model):
-    """Registro de colaciones o consumos de colaboradores para descuento de personal"""
+    """Registro de colaciones o consumos de colaboradores para descuento de personal / fiado (RF10)"""
     ESTADOS = [
         ('REGISTRADO', 'Registrado / Pendiente Descuento'),
         ('DESCONTADO', 'Descontado por Planilla'),
         ('ANULADO', 'Anulado'),
     ]
-    empleado = models.ForeignKey(User, on_delete=models.PROTECT, related_name='consumos_internos')
-    punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.PROTECT, related_name='consumos_internos')
+    TIPOS_CONSUMO = [
+        ('FIADO', 'Fiado / Descuento Planilla'),
+        ('COLACION', 'Colación Autorizada'),
+        ('CORTESIA', 'Cortesía Institucional'),
+    ]
+    empleado = models.ForeignKey(User, on_delete=models.PROTECT, related_name='consumos_internos', help_text="Trabajador beneficiario")
+    punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.PROTECT, related_name='consumos_internos', help_text="Local donde se consumió")
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='REGISTRADO')
+    tipo_consumo = models.CharField(max_length=20, choices=TIPOS_CONSUMO, default='FIADO', help_text="Modalidad de consumo (RF10.2)")
+    registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='consumos_registrados', help_text="Cajero/Admin que registró (RF10.2)")
+    caja = models.ForeignKey('Caja', on_delete=models.SET_NULL, null=True, blank=True, related_name='consumos_internos', help_text="Caja operativa del turno")
     fecha_hora = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True, null=True)
+    descontado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='consumos_liquidados', help_text="Supervisor que liquidó")
+    fecha_hora_descuento = models.DateTimeField(null=True, blank=True)
+
+    def recalcular_total(self):
+        total_calc = sum(d.subtotal for d in self.detalles.all())
+        self.total = total_calc
+        self.save(update_fields=['total'])
+        return self.total
 
     def __str__(self):
         nombre = self.empleado.get_full_name() or self.empleado.username

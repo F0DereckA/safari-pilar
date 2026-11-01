@@ -15,7 +15,10 @@ from ventas.models import (
     PuntoVenta, PerfilEmpleado, AlertaTraslado, Jornada, Caja, Mesa, Venta,
     DetalleVenta, Ticket, Pedido, DetallePedido, Entrega, Categoria, Producto, Menu,
     PrecioEspecial, RegistroPrecioEspecial, ReasignacionMesa,
-    PuntoImpresion, RegistroImpresion
+    PuntoImpresion, RegistroImpresion, ConsumoInterno, DetalleConsumoInterno
+)
+from ventas.utils import (
+    registrar_consumo_interno, liquidar_consumos_por_planilla
 )
 
 
@@ -3496,3 +3499,313 @@ class SafariRF09GestionImpresionTests(TestCase):
         p.refresh_from_db()
         self.assertEqual(p.estado, 'ENTREGADO')
         self.assertEqual(Entrega.objects.filter(pedido=p).count(), 1)
+
+
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF10 (Consumo Interno / Fiado)
+# ==============================================================================
+
+class SafariRF10ConsumoInternoTests(TestCase):
+    """
+    Suite oficial de pruebas automatizadas para RF10 - Consumo Interno del Personal / Fiado:
+    - RF10.1: Selección de colaborador y validación estricta de estado activo.
+    - RF10.2: Registro con productos, cantidades, precios oficiales de BD y usuario emisor.
+    - RF10.3: Control de acumulado por colaborador, historial y liquidación por nómina.
+    - RF10.4: Separación Contable Estricta: cero impacto en Venta/DetalleVenta y cero inflación en caja.
+    - RF10.5: Transacción atómica e integridad encabezado + detalle.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+
+        self.admin = User.objects.get(username='rgomez')
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.mesero = User.objects.get(username='dsilva')
+        self.cocinero = User.objects.get(username='eparedes')
+
+        self.pv1 = PuntoVenta.objects.get(id=1)
+        self.prod_hamburguesa = Producto.objects.filter(nombre__icontains='Hamburguesa').first()
+        self.prod_bebida = Producto.objects.filter(nombre__icontains='Coca-Cola').first()
+
+        # Jornada y Caja para pruebas POS
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf10_1_registro_valido_consumo_interno(self):
+        """RF10.1 & RF10.2: Registro exitoso de consumo para colaborador activo con precios oficiales de BD"""
+        items = [
+            {'producto_id': self.prod_hamburguesa.id, 'cantidad': 1},
+            {'producto_id': self.prod_bebida.id, 'cantidad': 2}
+        ]
+        consumo = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=items,
+            usuario_registro=self.cajero,
+            tipo_consumo='FIADO',
+            observaciones="Almuerzo de turno",
+            caja=self.caja
+        )
+
+        total_esperado = self.prod_hamburguesa.precio_base * 1 + self.prod_bebida.precio_base * 2
+
+        self.assertIsNotNone(consumo.id)
+        self.assertEqual(consumo.empleado, self.mesero)
+        self.assertEqual(consumo.punto_venta, self.pv1)
+        self.assertEqual(consumo.registrado_por, self.cajero)
+        self.assertEqual(consumo.tipo_consumo, 'FIADO')
+        self.assertEqual(consumo.estado, 'REGISTRADO')
+        self.assertEqual(consumo.total, total_esperado)
+        self.assertEqual(consumo.detalles.count(), 2)
+
+    def test_rf10_2_rechazo_trabajador_inactivo_o_inexistente(self):
+        """RF10.1: Rechaza registro de consumo para trabajador inactivo o perfil desactivado"""
+        from django.core.exceptions import ValidationError
+
+        # Desactivar usuario
+        self.mesero.is_active = False
+        self.mesero.save()
+
+        items = [{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}]
+        with self.assertRaises(ValidationError) as ctx:
+            registrar_consumo_interno(
+                empleado=self.mesero,
+                punto_venta=self.pv1,
+                items=items,
+                usuario_registro=self.cajero
+            )
+        self.assertIn("inactivo", str(ctx.exception).lower())
+
+        # Reactivar usuario pero desactivar perfil
+        self.mesero.is_active = True
+        self.mesero.save()
+        self.mesero.perfil.activo = False
+        self.mesero.perfil.save()
+
+        with self.assertRaises(ValidationError) as ctx:
+            registrar_consumo_interno(
+                empleado=self.mesero,
+                punto_venta=self.pv1,
+                items=items,
+                usuario_registro=self.cajero
+            )
+        self.assertIn("desactivado", str(ctx.exception).lower())
+
+    def test_rf10_3_precios_oficiales_bd_y_proteccion_manipulacion(self):
+        """RF10.2: Los precios se toman siempre de Producto.precio_base en BD ignorando manipulación"""
+        # Cliente intenta pasar precio falso de $10
+        items = [{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1, 'precio': 10}]
+        consumo = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=items,
+            usuario_registro=self.cajero
+        )
+        self.assertEqual(consumo.total, self.prod_hamburguesa.precio_base)
+        det = consumo.detalles.first()
+        self.assertEqual(det.precio_unitario, self.prod_hamburguesa.precio_base)
+        self.assertEqual(det.subtotal, self.prod_hamburguesa.precio_base)
+
+    def test_rf10_4_rechazo_cantidad_invalida_y_producto_inactivo(self):
+        """RF10.2: Rechaza cantidades menores o iguales a cero y productos inactivos"""
+        from django.core.exceptions import ValidationError
+
+        # Cantidad cero
+        with self.assertRaises(ValidationError):
+            registrar_consumo_interno(
+                empleado=self.mesero,
+                punto_venta=self.pv1,
+                items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 0}],
+                usuario_registro=self.cajero
+            )
+
+        # Cantidad negativa
+        with self.assertRaises(ValidationError):
+            registrar_consumo_interno(
+                empleado=self.mesero,
+                punto_venta=self.pv1,
+                items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': -3}],
+                usuario_registro=self.cajero
+            )
+
+        # Producto inactivo
+        self.prod_hamburguesa.activo = False
+        self.prod_hamburguesa.save()
+        with self.assertRaises(ValidationError):
+            registrar_consumo_interno(
+                empleado=self.mesero,
+                punto_venta=self.pv1,
+                items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}],
+                usuario_registro=self.cajero
+            )
+
+    def test_rf10_5_separacion_contable_estricta(self):
+        """RF10.4: Separación Contable: No crea registro en Venta ni incrementa ventas en caja"""
+        ventas_antes = Venta.objects.count()
+        detalles_venta_antes = DetalleVenta.objects.count()
+        ventas_caja_antes = self.caja.ventas.count()
+
+        items = [{'producto_id': self.prod_hamburguesa.id, 'cantidad': 2}]
+        consumo = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=items,
+            usuario_registro=self.cajero,
+            caja=self.caja
+        )
+
+        self.caja.refresh_from_db()
+        self.assertEqual(Venta.objects.count(), ventas_antes)
+        self.assertEqual(DetalleVenta.objects.count(), detalles_venta_antes)
+        self.assertEqual(self.caja.ventas.count(), ventas_caja_antes)
+        self.assertEqual(ConsumoInterno.objects.filter(id=consumo.id).count(), 1)
+
+    def test_rf10_6_calculo_acumulado_por_empleado(self):
+        """RF10.3: Cálculo en tiempo real del fiado acumulado pendiente por colaborador"""
+        self.assertEqual(self.mesero.perfil.total_fiado_pendiente(), Decimal('0.00'))
+
+        # Registrar consumo 1 (1x hamburguesa)
+        monto1 = self.prod_hamburguesa.precio_base * 1
+        registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}],
+            usuario_registro=self.cajero
+        )
+        self.assertEqual(self.mesero.perfil.total_fiado_pendiente(), monto1)
+
+        # Registrar consumo 2 (2x bebida)
+        monto2 = self.prod_bebida.precio_base * 2
+        registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_bebida.id, 'cantidad': 2}],
+            usuario_registro=self.cajero
+        )
+        self.assertEqual(self.mesero.perfil.total_fiado_pendiente(), monto1 + monto2)
+
+    def test_rf10_7_liquidacion_descuento_por_planilla(self):
+        """RF10.3: Liquidación por nómina / planilla marca consumos como DESCONTADO y limpia saldo"""
+        c1 = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}],
+            usuario_registro=self.cajero
+        )
+        c2 = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_bebida.id, 'cantidad': 1}],
+            usuario_registro=self.cajero
+        )
+        monto_total = self.prod_hamburguesa.precio_base * 1 + self.prod_bebida.precio_base * 1
+        self.assertEqual(self.mesero.perfil.total_fiado_pendiente(), monto_total)
+
+        # Liquidar consumos
+        num_act = liquidar_consumos_por_planilla([c1.id, c2.id], supervisor=self.admin)
+        self.assertEqual(num_act, 2)
+
+        c1.refresh_from_db()
+        c2.refresh_from_db()
+        self.assertEqual(c1.estado, 'DESCONTADO')
+        self.assertEqual(c1.descontado_por, self.admin)
+        self.assertIsNotNone(c1.fecha_hora_descuento)
+        self.assertEqual(c2.estado, 'DESCONTADO')
+
+        # El saldo pendiente del empleado debe ser 0 ahora
+        self.assertEqual(self.mesero.perfil.total_fiado_pendiente(), Decimal('0.00'))
+
+    def test_rf10_8_endpoint_pos_registrar_consumo_interno_ajax(self):
+        """RF10.2: Endpoint POST para registrar fiado desde terminal POS de cajero"""
+        self.client.force_login(self.cajero)
+
+        payload = {
+            'empleado_id': self.mesero.id,
+            'tipo_consumo': 'FIADO',
+            'observaciones': 'Almuerzo emitido desde POS',
+            'items_json': json.dumps([
+                {'id': self.prod_hamburguesa.id, 'cantidad': 1},
+                {'id': self.prod_bebida.id, 'cantidad': 1}
+            ])
+        }
+
+        resp = self.client.post(
+            reverse('registrar_consumo_interno'),
+            payload,
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('consumo_id', data)
+        monto_esperado = float(self.prod_hamburguesa.precio_base * 1 + self.prod_bebida.precio_base * 1)
+        self.assertEqual(data['total'], monto_esperado)
+        self.assertIn('FIA-', data['codigo_consumo'])
+
+    def test_rf10_9_panel_administrador_consumos_y_liquidacion(self):
+        """RF10.3: Panel de administración visualiza saldos y procesa acciones de liquidación y anulación"""
+        c = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}],
+            usuario_registro=self.cajero
+        )
+
+        self.client.force_login(self.admin)
+
+        # 1. Acceso a vista panel
+        resp_get = self.client.get(reverse('administrador_consumos'))
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertContains(resp_get, "CONSUMO INTERNO DEL PERSONAL")
+        self.assertContains(resp_get, self.mesero.username)
+
+        # 2. Acción liquidar empleado
+        resp_post = self.client.post(reverse('administrador_consumos'), {
+            'accion': 'descontar_empleado',
+            'empleado_id': self.mesero.id
+        })
+        self.assertEqual(resp_post.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.estado, 'DESCONTADO')
+
+        # 3. Acción anular
+        c_anular = registrar_consumo_interno(
+            empleado=self.cocinero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_bebida.id, 'cantidad': 1}],
+            usuario_registro=self.cajero
+        )
+        self.client.post(reverse('administrador_consumos'), {
+            'accion': 'anular_individual',
+            'consumo_id': c_anular.id
+        })
+        c_anular.refresh_from_db()
+        self.assertEqual(c_anular.estado, 'ANULADO')
+
+    def test_rf10_10_trazabilidad_historial_general(self):
+        """RF10.3: Historial consolidado muestra eventos de consumo interno con trazabilidad completa"""
+        consumo = registrar_consumo_interno(
+            empleado=self.mesero,
+            punto_venta=self.pv1,
+            items=[{'producto_id': self.prod_hamburguesa.id, 'cantidad': 1}],
+            usuario_registro=self.cajero,
+            tipo_consumo='FIADO'
+        )
+
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('administrador_historial'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f"FIA-{consumo.id:04d}")
+        self.assertContains(resp, "Consumo Personal")

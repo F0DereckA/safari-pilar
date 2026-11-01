@@ -30,6 +30,9 @@ urlpatterns = [
     path('tickets/<int:ticket_id>/reintentar/', views.reintentar_impresion_view, name='reintentar_impresion'),
     path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
     path('administrador/backup/', views.administrador_backup, name='administrador_backup'),
+    # Consumo Interno de Colaboradores / Fiados (RF10)
+    path('consumo-interno/registrar/', views.registrar_consumo_interno_view, name='registrar_consumo_interno'),
+    path('administrador/consumos/', views.administrador_consumos, name='administrador_consumos'),
 
     # Seguridad de Contrasenas y Expiracion Semestral (Tarea 1)
     path('cambiar-clave-expirada/', views.cambiar_clave_expirada, name='cambiar_clave_expirada'),

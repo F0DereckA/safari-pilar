@@ -12,7 +12,8 @@
   - RF07 Gestión de Precios: **COMPLETADO Y TESTEADO (107/107 suite vigente en verde al cerrar RF07)**.
   - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
   - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (127/127 suite vigente en verde al cerrar RF09 con KDS Barra)**.
-  - RF01–RF09: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF10 Consumo Interno / Fiado: **COMPLETADO Y TESTEADO (137/137 suite vigente en verde al cerrar RF10)**.
+  - RF01–RF10: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -390,7 +391,35 @@ Definir como mínimo:
 
 ---
 
-# RF10 — CONSUMO INTERNO DEL PERSONAL / FIADO
+# RF10 — CONSUMO INTERNO DEL PERSONAL / FIADO — [ESTADO: COMPLETADO Y CERRADO (137/137 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF10)
+- **Fecha de Cierre:** 2026-11-01
+- **Migración Aplicada:** `0017_consumointerno_caja_consumointerno_descontado_por_and_more.py`
+- **Modelos Actualizados (`ventas/models.py`):**
+  * `ConsumoInterno`: campos añadidos `tipo_consumo` (`FIADO`, `COLACION`, `CORTESIA`), `registrado_por` (User FK), `caja` (Caja FK), `descontado_por` (User FK), `fecha_hora_descuento`. Método `recalcular_total()` para asegurar coherencia financiera.
+  * `PerfilEmpleado`: método `total_fiado_pendiente()` para cálculo acumulado en tiempo real de deuda por nómina (RF10.3).
+  * `ConsumoInternoAdmin` (`ventas/admin.py`): filtros avanzados por tipo, estado, punto de venta y fechas.
+- **Capa y Servicio Lógico Financiero (`ventas/utils.py`):**
+  * `registrar_consumo_interno`: transacción atómica completa (`with transaction.atomic()`), validación estricta de colaborador activo (RF10.1), obtención de precios unitarios estrictamente desde `Producto.precio_base` en la BD (RF10.2) protegiendo contra manipulación de precios desde el cliente o navegador, rechazo de cantidades <= 0 y productos inactivos.
+  * **Regla de Oro Contable (RF10.4):** Separación absoluta entre ventas a clientes y consumos del personal. `ConsumoInterno` **nunca crea registros en `Venta` ni `DetalleVenta`** y **nunca infla el total recaudado ni arqueo de caja** (`caja.total_recaudado` permanece intacto).
+  * `liquidar_consumos_por_planilla`: servicio de liquidación en lote o individual que transiciona estados a `DESCONTADO` y estampa al supervisor y marca de tiempo (RF10.3).
+- **Vistas, Endpoints y Plantillas:**
+  * Modal POS en `vendedor_crear_ticket.html`: botón dedicado `#btnConsumoInterno` y modal `#modalConsumoInterno` con dropdown de `trabajadores_activos` (nombre, rol y local), tipos de consumo, observaciones, y confirmación asíncrona vía AJAX.
+  * Endpoint POS: `registrar_consumo_interno_view` (`/consumo-interno/registrar/`) con respuesta JSON/HTTP y control de roles (`ADMINISTRADOR`, `CAJERO`).
+  * Panel Administrativo: `administrador_consumos` (`/administrador/consumos/`, `administrador_consumos.html`) con KPIs (fiado pendiente, total liquidado, colaboradores con deuda), tabla de saldos por colaborador con botón directo de liquidación por nómina, historial filtrable y opciones de anulación.
+  * Trazabilidad en Bitácora: integración de eventos tipo `CONSUMO_INTERNO` en `administrador_historial` con badges y montos.
+  * Menú de Navegación: enlace directo integrado en `administrador.html`.
+- **Resultados de Pruebas Automatizadas:**
+  * Tests específicos RF10 (`SafariRF10ConsumoInternoTests`): 10/10 tests OK.
+  * Suite completa (`python manage.py test ventas`): **137/137 tests pasados exitosamente en 281.2s (0 fallos, 0 errores)**.
+  * `python manage.py check`: 0 issues.
+- **Regresión Manual de 4 Roles:**
+  * Administrador (`rgomez`): 200 OK.
+  * Cajero (`cvalenzuela`): 200 OK.
+  * Mesero (`dsilva`): 200 OK.
+  * Cocinero (`eparedes`): 200 OK.
+  * RF05 (Reasignación de Mesas): intacto y verificado.
 
 ## Auditoría
 Revisar:

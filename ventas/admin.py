@@ -124,9 +124,9 @@ class DetalleConsumoInternoInline(admin.TabularInline):
 
 @admin.register(ConsumoInterno)
 class ConsumoInternoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'empleado', 'punto_venta', 'total', 'estado', 'fecha_hora')
-    list_filter = ('estado', 'punto_venta')
-    search_fields = ('empleado__username', 'empleado__first_name', 'empleado__last_name')
+    list_display = ('id', 'empleado', 'tipo_consumo', 'punto_venta', 'total', 'estado', 'registrado_por', 'descontado_por', 'fecha_hora')
+    list_filter = ('estado', 'tipo_consumo', 'punto_venta', 'fecha_hora')
+    search_fields = ('empleado__username', 'empleado__first_name', 'empleado__last_name', 'empleado__perfil__rut', 'observaciones')
     inlines = [DetalleConsumoInternoInline]
 
 @admin.register(AlertaTraslado)
