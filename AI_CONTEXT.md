@@ -6,25 +6,34 @@
 - tecnologías principales: Python 3.14.6, Django 6.1, Bootstrap 5.3, Bootstrap Icons 1.11, JavaScript (Vanilla), CSS3 modular, SQLite
 
 ## 2. objetivo actual
-- tarea actual: **CONSOLIDACIÓN FINAL DEL PROYECTO — Auditoría RF01–RF18 + limpieza documental + preparación de evidencias para Entrega 3**.
+- tarea actual: **PREPARACIÓN PARA REVISIÓN Y RETROALIMENTACIÓN — limpieza final, coherencia técnica, estabilidad y calidad del proyecto**.
 - estado funcional vigente:
   - RF01–RF18: **COMPLETADOS AL 100%**.
-  - RF18 Reportes y Estadísticas: **COMPLETADO Y TESTEADO**.
-  - suite vigente reportada: **220/220 pruebas en verde**.
-  - `python manage.py check`: 0 incidencias según último cierre reportado.
-  - regresión de roles: ADMINISTRADOR, CAJERO, MESERO y COCINERO verificada.
-- regla principal desde este punto:
-  - **NO agregar nuevas funcionalidades**;
-  - **NO volver a implementar RF ya cerrados**;
-  - **NO desarrollar RF19–RF24**;
-  - **NO ampliar huéspedes/cabañas/desayuno/ofertas**;
-  - priorizar auditoría, limpieza, coherencia técnica y evidencia académica.
-- objetivo de esta fase:
-  1. reconciliar el `AI_CONTEXT.md` para que el estado vigente no se contradiga con bloques históricos;
-  2. ejecutar auditoría final RF01–RF18;
-  3. verificar motor de BD, seguridad, mocks residuales, migraciones y configuración;
-  4. preparar evidencias técnicas y documentales para Entrega 3;
-  5. recién después actualizar informe/diagramas cuando el usuario lo autorice.
+  - suite vigente confirmada: **220/220 pruebas aprobadas**.
+  - `python manage.py check`: **0 incidencias**.
+  - 4 roles operativos verificados: ADMINISTRADOR, CAJERO, MESERO y COCINERO.
+  - 20 migraciones de la app `ventas` aplicadas.
+  - motor activo actual: **SQLite**.
+  - 25 modelos/tablas vigentes en la app `ventas`.
+- prioridad actual:
+  1. dejar el repositorio limpio y coherente;
+  2. eliminar contradicciones del `AI_CONTEXT.md`;
+  3. corregir deudas técnicas seguras que no alteren el alcance;
+  4. verificar nuevamente estabilidad completa;
+  5. preparar el proyecto para ser revisado por docente/equipo y recibir retroalimentación.
+- NO es prioridad actual:
+  - rehacer el informe;
+  - modificar Word;
+  - modificar Draw.io;
+  - resolver todavía recordatorios académicos de la evaluación anterior;
+  - forzar migración a PostgreSQL/MySQL solo por documentación.
+- los recordatorios de evaluación y Entrega 3 deben conservarse intactos como referencia futura del usuario, pero no deben gobernar la siguiente acción técnica.
+- prohibido:
+  - agregar nuevas funcionalidades;
+  - reabrir RF cerrados sin error reproducible;
+  - desarrollar RF19–RF24;
+  - ampliar huéspedes/cabañas/desayuno/ofertas;
+  - introducir cambios de arquitectura innecesarios antes de la revisión.
 ---
 
 
@@ -198,6 +207,276 @@ Después de eso:
 
 ---
 
+# ORDEN ACTUAL PARA ANTIGRAVITY — PREPARAR PROYECTO PARA REVISIÓN Y RETROALIMENTACIÓN
+
+> [!IMPORTANT]
+> Esta es la orden vigente. El objetivo es dejar el proyecto lo más limpio, estable, consistente y presentable posible para una revisión técnica. No agregar funciones nuevas ni trabajar todavía el informe académico.
+
+## FASE 1 — LIMPIEZA Y COHERENCIA DEL AI_CONTEXT
+
+1. Corregir el encabezado de RF09:
+   - reemplazar `125/125` por **127/127**, que coincide con el cierre real del propio bloque.
+2. Marcar el bloque `PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN` como:
+   - **HISTÓRICO — PLAN YA EJECUTADO / NO ES ORDEN VIGENTE**.
+3. Marcar cualquier instrucción antigua del tipo:
+   - “detener antes de RF08”;
+   - “siguiente paso RF07”;
+   - “RF05 pendiente”;
+   - “Semana 10/11 prioridad”;
+   como **histórico/no vigente** cuando aún aparezca.
+4. Mantener el estado vigente global:
+   - RF01–RF18 completos;
+   - 220/220 pruebas;
+   - 0 incidencias en `check`.
+5. Mantener los conteos anteriores de pruebas solo como historial cronológico.
+6. No borrar evidencia histórica útil, pero impedir que pueda confundirse con el estado actual.
+
+## FASE 2 — CORRECCIÓN DE MATRIZ DE EVIDENCIAS
+
+Corregir textos que se alejan del alcance oficial:
+
+1. RF07:
+   - reemplazar expresiones centradas en `huésped`, `cabaña` o `desayuno`;
+   - usar **Convenio / Beneficio Autorizado / Precio Especial**.
+   - evidencia sugerida: aplicación de convenio o valor especial autorizado + trazabilidad.
+2. RF10:
+   - eliminar frases que sugieran que el consumo interno se “descuenta en caja” como una venta normal;
+   - describirlo como:
+     - registro de consumo interno;
+     - saldo acumulado del trabajador;
+     - historial;
+     - liquidación/descuento posterior por planilla cuando corresponda.
+3. Revisar RF01–RF18 completos y corregir cualquier evidencia sugerida que:
+   - no exista realmente;
+   - mezcle módulos extras;
+   - contradiga la implementación vigente.
+4. No inventar nombres de tests, rutas o funciones. Si un dato no puede comprobarse, marcarlo para revisión.
+
+## FASE 3 — HIGIENE DEL REPOSITORIO
+
+### 3.1 `db.sqlite3`
+- Actualmente está rastreado por Git.
+- Corregir de forma segura:
+  1. agregar `db.sqlite3` a `.gitignore` si no está;
+  2. ejecutar `git rm --cached db.sqlite3`;
+  3. confirmar que el archivo local físico NO se elimine;
+  4. verificar con `git status`;
+  5. no borrar datos locales.
+- Registrar el resultado exacto en `AI_CONTEXT.md`.
+
+### 3.2 Secretos
+- Confirmar:
+  - `.env` ignorado;
+  - `.env.example` presente;
+  - `SECRET_KEY` cargada desde variables de entorno;
+  - ningún secreto real rastreado por Git.
+- No publicar valores reales dentro de `AI_CONTEXT.md`.
+
+### 3.3 Archivos temporales
+- Auditar el repositorio por:
+  - `__pycache__`;
+  - `.pyc`;
+  - logs;
+  - ZIPs;
+  - copias antiguas;
+  - temporales;
+  - bases de datos de prueba.
+- No borrar versiones históricas expresamente conservadas por el usuario; solo confirmar que estén correctamente excluidas del repositorio principal cuando corresponda.
+
+## FASE 4 — AUDITORÍA DE CÓDIGO Y DATOS SIN CAMBIAR FUNCIONALIDAD
+
+Revisar y corregir únicamente problemas seguros y reproducibles:
+
+1. imports no usados;
+2. funciones muertas/deprecadas;
+3. rutas duplicadas;
+4. consultas ORM claramente redundantes;
+5. variables o comentarios obsoletos;
+6. referencias a mocks antiguos;
+7. `localStorage` antiguo que ya no participe del flujo vigente;
+8. hardcodes residuales en flujos evaluables;
+9. mensajes técnicos expuestos al usuario;
+10. inconsistencias de nombres entre Cajero/Vendedor, Mesero/Salón, Cocina/KDS y Barra/BDS/KDS.
+11. verificar que los datos principales provengan de BD:
+    - ventas;
+    - detalles;
+    - pedidos;
+    - tickets;
+    - entregas;
+    - mesas;
+    - consumos internos;
+    - reportes.
+12. no hacer refactor amplio si la mejora no es necesaria para estabilidad o claridad.
+
+## FASE 5 — AUDITORÍA FUNCIONAL DE REGRESIÓN
+
+Ejecutar nuevamente:
+
+1. `python manage.py check`
+2. `python manage.py test ventas`
+3. `python manage.py showmigrations`
+
+Luego validar manualmente:
+
+### ADMINISTRADOR
+- login;
+- dashboard;
+- locales;
+- trabajadores;
+- mesas;
+- productos;
+- menús;
+- historial;
+- reportes.
+
+### CAJERO
+- login;
+- jornada;
+- caja;
+- venta rápida;
+- venta en mesa si corresponde;
+- precio especial;
+- ticket/comprobante;
+- consumo interno.
+
+### MESERO
+- login;
+- mesas;
+- cuenta abierta;
+- múltiples rondas;
+- notas por producto;
+- reasignación de mesa;
+- cierre/cobro;
+- entrega.
+
+### COCINERO / KDS
+- pedidos entrantes;
+- transición de estados;
+- aislamiento Cocina/Barra;
+- notas;
+- marcado LISTO;
+- comunicación con salón.
+
+Registrar cada resultado como:
+- `[OK]`
+- `[CORREGIDO]`
+- `[PENDIENTE]`
+- `[NO APLICA]`
+
+## FASE 6 — CASOS CRÍTICOS QUE DEBEN QUEDAR VERIFICADOS
+
+Verificar que el sistema se comporte correctamente ante:
+
+1. doble clic;
+2. doble POST;
+3. usuario sin permiso;
+4. sesión expirada;
+5. ID inexistente;
+6. producto inactivo;
+7. mesa ocupada;
+8. mesa inactiva;
+9. traslado de mesa a otro local;
+10. venta con precio manipulado desde navegador;
+11. precio especial inválido;
+12. pedido vacío;
+13. ticket vacío;
+14. impresora en fallo;
+15. reimpresión;
+16. entrega duplicada;
+17. entrega antes de LISTO;
+18. consumo interno duplicado;
+19. cierre de mesa con cuenta abierta;
+20. dos usuarios actuando sobre la misma mesa/venta;
+21. cambio de día/jornada;
+22. reportes sin datos;
+23. rango de fechas inválido;
+24. producto histórico desactivado;
+25. error de BD o excepción durante una transacción atómica.
+
+No crear funciones nuevas para estos casos si ya están cubiertos; solo comprobar y corregir regresiones reales.
+
+## FASE 7 — BASE DE DATOS
+
+- Mantener **SQLite como motor activo de desarrollo** durante esta preparación para revisión.
+- NO migrar a PostgreSQL/MySQL ahora si eso puede introducir riesgo.
+- Mantener preparada la configuración externa existente mediante variables de entorno.
+- El recordatorio académico sobre PostgreSQL/MySQL queda conservado para una fase posterior decidida por el usuario.
+- No afirmar que PostgreSQL está activo si no lo está.
+
+## FASE 8 — RENDIMIENTO
+
+- Conservar como resultado real vigente:
+  - 20 usuarios concurrentes;
+  - 100 peticiones;
+  - 100% éxito;
+  - 162.72 RPS;
+  - promedio 77.69 ms;
+  - P95 535.43 ms.
+- No inventar datos de 50/100 usuarios.
+- Si el script de benchmark puede ejecutarse nuevamente sin riesgo:
+  - repetirlo una vez como regresión;
+  - comparar resultados;
+  - registrar el nuevo resultado.
+- No hacer optimizaciones especulativas si el rendimiento actual es correcto.
+
+## FASE 9 — PREPARACIÓN PARA REVISIÓN
+
+Crear dentro del `AI_CONTEXT.md` una sección breve llamada:
+
+`## CHECKLIST PARA REVISIÓN Y RETROALIMENTACIÓN`
+
+Debe contener:
+- estado RF01–RF18;
+- suite exacta;
+- migraciones;
+- motor BD;
+- 4 roles;
+- 25 modelos;
+- seguridad;
+- repositorio limpio;
+- mocks;
+- rendimiento;
+- pendientes reales, si quedan.
+
+Debe ser corta, clara y servir para que el equipo/docente pueda entender el estado actual rápidamente.
+
+## FASE 10 — RECORDATORIOS ACADÉMICOS
+
+- Mantener intactos los bloques de:
+  - retroalimentación del Informe 2;
+  - PostgreSQL/MySQL;
+  - modelo lógico/físico;
+  - Azure DevOps;
+  - redacción impersonal;
+  - plantilla de pares;
+  - pruebas de rendimiento para informe;
+  - Entrega 3.
+- Marcar esos bloques como:
+  - **RECORDATORIO PARA FASE DOCUMENTAL / NO PRIORIDAD ACTUAL**.
+- No ejecutarlos ni modificar documentos académicos todavía.
+
+## CRITERIO DE CIERRE
+
+Antes de detenerse, Antigravity debe devolver:
+
+1. `AI_CONTEXT.md` reconciliado y coherente.
+2. RF09 corregido a 127/127.
+3. Plan Maestro antiguo marcado como histórico.
+4. Matriz RF07/RF10 corregida.
+5. `db.sqlite3` fuera del índice de Git, pero conservado localmente.
+6. `.env` protegido y secretos fuera de Git.
+7. `python manage.py check` limpio.
+8. suite completa en verde con conteo exacto.
+9. migraciones confirmadas.
+10. regresión manual de 4 roles.
+11. lista de cualquier problema real detectado/corregido.
+12. checklist final para revisión.
+13. ningún cambio en Word/Draw.io/informe.
+14. ningún RF nuevo.
+15. detener y devolver el archivo para revisión de ChatGPT/usuario.
+
+---
+
 # INFORME DE RESULTADOS DE LA CONSOLIDACIÓN FINAL (01/11/2026)
 
 ### 1. Estado Técnico Verificado
@@ -216,7 +495,7 @@ Después de eso:
   - `DEBUG`: `True` en entorno de desarrollo local.
   - Archivo `.env`: Existente en raíz, ignorado por `.gitignore`, **nunca commiteado en el historial de Git**.
   - Archivo `.env.example`: Disponible con plantilla de variables.
-  - Archivo `db.sqlite3`: **Rastreado actualmente en Git** (deuda técnica a desacoplar mediante `git rm --cached` en fase de despliegue).
+  - Archivo `db.sqlite3`: **Desvinculado exitosamente del seguimiento de Git** mediante `git rm --cached db.sqlite3` y protegido en `.gitignore`. El archivo físico local se mantiene intacto y plenamente operativo.
 - **Mocks y Datos Simulados**: **0% mocks**. Erradicación total en RF18 y en todos los controladores; gráficos, KPIs y reportes operan 100% sobre ORM real.
 - **Control de Acceso y Roles (RBAC)**: Verificado al 100% en `scratch/verificar_rf18.py` para los 4 roles (Administrador, Cajero, Mesero, Cocina).
 
@@ -229,7 +508,7 @@ Después de eso:
 - `[OK]` Script anti doble envío en botones críticos.
 - `[OK]` Políticas de seguridad de contraseñas (cero texto plano, hashing PBKDF2/SHA-256, cambio obligatorio al primer login).
 - `[OK]` Aislamiento estricto de roles (RBAC) y bloqueo de rutas no autorizadas.
-- `[PENDIENTE]` `db.sqlite3` sigue bajo seguimiento en Git (debe ejecutarse `git rm --cached db.sqlite3` cuando se configure entorno multi-usuario/producción).
+- `[OK / CORREGIDO]` Archivo `db.sqlite3` desvinculado del índice de Git (commit `4e8d544`) y protegido en `.gitignore`; base de datos física local preservada intacta.
 - `[PENDIENTE]` Despliegue en motor relacional externo (PostgreSQL) si el docente exige evidencia de motor cliente-servidor para Entrega 3.
 
 ### 3. Modelo de Datos Real — 25 Entidades / Tablas en `ventas`
@@ -265,12 +544,15 @@ El modelo de datos actual consta de **25 modelos** (superando las 19 entidades i
 
 ### 4. Pruebas de Rendimiento Reales (Benchmark Empírico)
 Ejecutadas con `scratch/benchmark_rendimiento.py` sobre el servidor de desarrollo activo (`http://127.0.0.1:8000/`) con **20 usuarios concurrentes simultáneos (100 peticiones HTTP)**:
-- **Peticiones exitosas**: 100 / 100 (**Tasa de éxito 100.0% HTTP 200**).
-- **Rendimiento de procesamiento**: **162.72 peticiones por segundo (RPS)**.
-- **Latencia promedio**: **77.69 ms**.
-- **Latencia mediana**: **21.08 ms**.
-- **Percentil 95 (P95)**: **535.43 ms**.
-- **Latencia mínima / máxima**: 8.44 ms / 604.07 ms.
+- **Corrida 1 (Línea Base)**:
+  - Rendimiento: **162.72 RPS**.
+  - Latencia promedio: **77.69 ms** (mediana: 21.08 ms, P95: 535.43 ms).
+  - Tasa de éxito: **100.0%** (100/100 HTTP 200).
+- **Corrida 2 (Regresión de Verificación FASE 8)**:
+  - Rendimiento: **166.59 RPS**.
+  - Latencia promedio: **70.84 ms** (mediana: 16.03 ms, P95: 524.29 ms).
+  - Tasa de éxito: **100.0%** (100/100 HTTP 200).
+  - Latencia mínima / máxima: 1.09 ms / 535.48 ms.
 - *Nota formal*: Únicamente se reportan datos medidos empíricamente sobre el entorno actual. No se fabrican cifras para 50 o 100 usuarios.
 
 ### 5. Matriz de Evidencias Técnicas RF01–RF18 para Entrega 3
@@ -283,10 +565,10 @@ Ejecutadas con `scratch/benchmark_rendimiento.py` sobre el servidor de desarroll
 | **RF04** | Gestión de Mesas por Local | **100% OK** | `/administrador/mesas/`, `/salon/` | `Mesa`, `PuntoVenta` | `SafariMesasCRUDTests` | Captura listado de mesas por local, estados Libre/Ocupada/Inactiva. |
 | **RF05** | Reasignación de Mesas | **100% OK** | `/salon/` (`reasignar_mesa`) | `ReasignacionMesa`, `Mesa`, `Venta` | `SafariRF05ReasignacionMesasTests` (9 tests) | Captura modal traslado de mesa, traspaso de comanda y log en historial admin. |
 | **RF06** | Registro de Ventas y Cobro POS | **100% OK** | `/vendedor/` (`crear_ticket`) | `Venta`, `DetalleVenta`, `Caja` | `SafariVentaPOSTests` | Captura pantalla POS con carro de compras, cálculo de IVA y redondeo Ley 20.956. |
-| **RF07** | Gestión de Precios Especiales y Convenios | **100% OK** | `/vendedor/`, `/administrador/convenios/`| `PrecioEspecial`, `RegistroPrecioEspecial`, `DetalleVenta` | `SafariRF07GestionPreciosVentaTests` (14 tests) | Captura selector de convenio funcionario/huésped, descuento visual y log de auditoría. |
+| **RF07** | Gestión de Precios Especiales y Convenios | **100% OK** | `/vendedor/`, `/administrador/convenios/`| `PrecioEspecial`, `RegistroPrecioEspecial`, `DetalleVenta` | `SafariRF07GestionPreciosVentaTests` (14 tests) | Captura de aplicación de Convenio / Beneficio Autorizado o Precio Especial, mostrando el valor aplicado y su trazabilidad en auditoría. |
 | **RF08** | Generación de Tickets con Código Único | **100% OK** | `/ticket/<id>/imprimir/` | `Ticket`, `Venta`, `Pedido` | `SafariRF08GeneracionTicketsTests` (9 tests) | Captura ticket térmico digital con QR, desglose CLP y marca de reimpresión. |
 | **RF09** | Gestión de Impresión Descentralizada | **100% OK** | `/kds-barra/`, `/cocina/` | `PuntoImpresion`, `RegistroImpresion`, `Ticket` | `SafariRF09GestionImpresionKdsBarraTests` (11 tests)| Captura despacho separado de comanda Cocina vs Barra KDS con alertas visuales. |
-| **RF10** | Consumo Interno / Fiado | **100% OK** | `/vendedor/consumo-interno/` | `ConsumoInterno`, `DetalleConsumoInterno`, `Caja` | `SafariRF10ConsumoInternoFiadoTests` (10 tests) | Captura registro de consumo a funcionario, descuento en caja y límite de consumo. |
+| **RF10** | Consumo Interno / Fiado | **100% OK** | `/vendedor/consumo-interno/` | `ConsumoInterno`, `DetalleConsumoInterno`, `Caja` | `SafariRF10ConsumoInternoFiadoTests` (10 tests) | Captura de registro de consumo interno, saldo acumulado por trabajador, historial y liquidación posterior por planilla cuando corresponda. |
 | **RF11** | Asignación de Mesa o Venta Rápida | **100% OK** | `/vendedor/crear-ticket/` | `Venta`, `Mesa`, `PuntoVenta` | `SafariRF11ModalidadVentaMesaRapidaTests` (8 tests) | Captura conmutador de modalidades Mesa / Venta Rápida / Llevar en POS y Mesero. |
 | **RF12** | Comentarios Asociados a Productos | **100% OK** | `/vendedor/`, `/salon/`, `/cocina/` | `DetalleVenta`, `DetallePedido`, `Pedido` | `SafariRF12ComentariosProductosTests` (8 tests) | Captura de notas libres ("sin cebolla", "bien cocido") reflejadas en comandas KDS. |
 | **RF13** | Registro de Entrega de Productos | **100% OK** | `/cocina/` (`confirmar_entrega`) | `Entrega`, `Pedido`, `Ticket`, `User` | `SafariRF13RegistroEntregaProductosTests` (8 tests)| Captura botón de despacho comensal, registro del colaborador que entrega y hora exacta. |
@@ -298,7 +580,7 @@ Ejecutadas con `scratch/benchmark_rendimiento.py` sobre el servidor de desarroll
 
 ---
 
-### PLAN MAESTRO RF07–RF18 — ORDEN COMPLETO DE INICIO A FIN
+### PLAN MAESTRO RF07–RF18 — HISTÓRICO / PLAN YA EJECUTADO
 
 > [!IMPORTANT]
 > Este bloque reemplaza cualquier “siguiente paso” parcial anterior. Antigravity debe trabajar RF por RF, en el orden indicado. No ejecutar todo de una sola vez. Cada RF se considera cerrado solo cuando cumple su criterio de aceptación y la suite completa continúa en verde.
@@ -559,7 +841,7 @@ Debe incluir, si existe:
 
 ---
 
-# RF09 — GESTIÓN DE IMPRESIÓN — [ESTADO: COMPLETADO Y CERRADO (125/125 OK)]
+# RF09 — GESTIÓN DE IMPRESIÓN — [ESTADO: COMPLETADO Y CERRADO (127/127 OK)]
 
 ### Resumen de Cierre y Verificación Oficial (RF09)
 - **Fecha de Cierre:** 2026-11-01
@@ -1789,7 +2071,7 @@ Contenido solicitado por docente:
 - Sin regresiones: KDS Cocina, Mesa/Cuenta Abierta, Caja, roles y responsive móvil 100% estables.
 
 ---
-### RECORDATORIO URGENTE PARA EL SIGUIENTE INFORME (ENTREGA 3 - PUNTO 4 Y DOCUMENTACIÓN)
+### RECORDATORIO PARA FASE DOCUMENTAL / NO PRIORIDAD ACTUAL — ENTREGA 3
 > [!IMPORTANT]
 > **No modificar documentos Word antiguos.** Todo lo listado a continuación se aplicará directamente sobre el **NUEVO INFORME** de la Entrega 3 cuando el usuario indique su inicio:
 >
@@ -1825,7 +2107,7 @@ Contenido solicitado por docente:
 
 ---
 
-### Calificación Oficial Informe 2: **78,70 / 100,00**
+### RECORDATORIO ACADÉMICO / NO PRIORIDAD ACTUAL — Calificación Oficial Informe 2: **78,70 / 100,00**
 * **Fecha de Calificación:** Lunes, 12 de octubre de 2026, 17:33 hrs.
 * **Evaluador:** Prof. Miguel Angel López Jerez (INACAP).
 * **Comentario Textual de Retroalimentación del Docente:**
@@ -2021,33 +2303,51 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - motivo: Solicitud expresa del usuario de disponer de la versión funcional completa del 29 de septiembre (previa a la retroalimentación) para tomar capturas de pantalla y documentar el avance.
   - resultado: Se reconstruyó de forma fidedigna el estado del código al 29-Sep (restauración del banner `SUPERVISIÓN DE LOCALES Y PERSONAL`, Centro de Alertas como bloque en el cuerpo, alertas nativas `confirm()`, recarga completa por POST, seeding en el ciclo HTTP y validación con `test_fase2a.py` al 100% OK). Se dispuso en el proyecto y directamente en el Escritorio con instrucciones para correr en el puerto 8001.
 
+## CHECKLIST PARA REVISIÓN Y RETROALIMENTACIÓN
+
+- [x] **Estado RF01–RF18**: 100% implementados, testeados y cerrados conforme al alcance oficial.
+- [x] **Suite de Pruebas**: 220 de 220 pruebas automatizadas en verde (0 fallos, 0 errores en 388.5s).
+- [x] **Chequeo de Sistema**: `python manage.py check` con 0 incidencias (código limpio).
+- [x] **Migraciones**: 20 migraciones de la app `ventas` aplicadas al 100% en base de datos.
+- [x] **Motor de Base de Datos**: SQLite activo y operativo para desarrollo local; `.env` listo para PostgreSQL si se requiere en despliegue.
+- [x] **4 Roles Operativos**: Verificados en HTTP 200 y protegidos con RBAC (`ADMINISTRADOR`, `CAJERO`, `MESERO`, `COCINA`).
+- [x] **Modelos / Tablas**: 25 modelos auditados y mapeados 1:1 con PK, FKs y restricciones de integridad.
+- [x] **Seguridad**: Contraseñas con hashing PBKDF2/SHA-256, cero texto plano, cambio forzoso de clave en primer login, `.env` protegido por `.gitignore`.
+- [x] **Higiene de Repositorio**: `db.sqlite3` fuera del índice de Git (untracked) y preservado localmente; cero credenciales o secretos rastreados.
+- [x] **Mocks**: 0% datos simulados en flujos evaluables; KPIs, reportes y gráficos operan exclusivamente sobre ORM real.
+- [x] **Rendimiento**: Benchmark reproducible de 20 usuarios concurrentes validado empíricamente (166.59 RPS, 70.84 ms prom, 100% éxito).
+- [x] **Pendientes Críticos**: Ningún bloqueante funcional. Los recordatorios de evaluación e informe quedan conservados para la fase documental posterior del usuario.
+
+---
+
 ## 6. errores actuales y observaciones pendientes
-- no existen RF funcionales pendientes entre RF01 y RF18 según el último cierre reportado.
-- pendientes actuales de consolidación:
-  1. reconciliar bloques históricos del `AI_CONTEXT.md`;
-  2. confirmar nuevamente el conteo exacto de la suite completa;
-  3. confirmar motor de BD realmente activo;
-  4. verificar estado actual de `SECRET_KEY`, `DEBUG`, `.env`, `.gitignore` y `db.sqlite3`;
-  5. auditar mocks/fallbacks residuales en rutas evaluables;
-  6. contar modelos/tablas actuales reales antes de actualizar el modelo lógico/físico;
-  7. verificar evidencia formal de pruebas de rendimiento;
-  8. preparar matriz de evidencias RF01–RF18;
-  9. validar enlace de Azure DevOps para Entrega 3;
-  10. mantener congelados módulos de huéspedes/cabañas/desayuno/ofertas.
-- inconsistencia documental conocida:
-  - RF09 aparece en un encabezado antiguo como 125/125, pero su cierre reporta 127/127; usar 127/127 como cierre coherente hasta nueva ejecución.
-- política de seguridad:
-  - expiración de contraseña de 180 días = política interna del proyecto;
-  - no presentarla como obligación específica de ISO/IEC 27400.
+- RF01–RF18: sin pendientes funcionales conocidos según el último cierre.
+- prioridad actual: **calidad para revisión y retroalimentación**, no desarrollo de nuevas funciones ni documentación académica.
+- acciones técnicas vigentes:
+  1. reconciliar completamente `AI_CONTEXT.md`;
+  2. corregir encabezado RF09 a 127/127;
+  3. marcar planes antiguos como históricos;
+  4. corregir matriz RF07/RF10 y cualquier evidencia que no represente exactamente la implementación;
+  5. sacar `db.sqlite3` del índice Git sin borrar el archivo local;
+  6. confirmar `.env`, `.env.example`, `.gitignore` y secretos;
+  7. auditar restos de mocks/hardcodes/localStorage ya obsoletos;
+  8. ejecutar regresión completa y suite;
+  9. dejar checklist corto para revisión.
+- SQLite continúa siendo el motor activo de desarrollo.
+- PostgreSQL/MySQL se conserva como recordatorio académico futuro y no es prioridad actual.
+- huéspedes/cabañas/desayuno/ofertas continúan congelados y fuera del núcleo evaluable.
+- los recordatorios de evaluación anterior se conservan para que el usuario los revise posteriormente; no deben ejecutarse en esta fase.
 ## 7. dudas para ChatGPT
-- no hay dudas funcionales RF pendientes.
-- se solicita a Antigravity ejecutar la orden de consolidación final y devolver el contexto reconciliado con evidencias reales.
+- no hay dudas funcionales activas.
+- la prioridad definida por el usuario es dejar el proyecto en su mejor estado posible para revisión y retroalimentación.
+- recordatorios académicos/evaluación se mantienen, pero serán tratados posteriormente por el usuario.
 ## 8. respuesta de ChatGPT
-- orden vigente: ejecutar exclusivamente la **ORDEN ACTUAL PARA ANTIGRAVITY — CONSOLIDACIÓN FINAL**.
-- no desarrollar nuevas funciones.
-- no reabrir RF cerrados salvo que la auditoría detecte una regresión reproducible.
-- no modificar el informe oficial, Word o Draw.io todavía.
-- al terminar la auditoría, actualizar este archivo y devolverlo para revisión.
+- ejecutar únicamente la orden **PREPARAR PROYECTO PARA REVISIÓN Y RETROALIMENTACIÓN** registrada al inicio.
+- corregir inconsistencias, higiene de repositorio, seguridad, regresión y claridad del contexto.
+- no agregar funciones.
+- no migrar de motor BD por obligación académica en esta fase.
+- no modificar Word, Draw.io ni documentos de evaluación.
+- conservar los recordatorios académicos como referencia futura.
 ## 9. orden actual ejecutada — Auditoría de Convergencia y Mapa de Convergencia 06-Oct
 
 > [!NOTE]
@@ -2231,21 +2531,20 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
 ```
 
 ## 10. siguiente tarea
-- estado actual: **RF01–RF18 completados; suite vigente reportada 220/220**.
-- próxima acción: **CONSOLIDACIÓN FINAL Y AUDITORÍA TÉCNICA RF01–RF18**.
-- ejecutar en este orden:
-  1. reconciliar `AI_CONTEXT.md`;
-  2. ejecutar `manage.py check`;
-  3. ejecutar `manage.py test ventas`;
-  4. ejecutar `manage.py showmigrations`;
-  5. identificar motor BD real;
-  6. auditar seguridad/configuración;
-  7. auditar mocks residuales;
-  8. contar modelos/tablas actuales;
-  9. preparar matriz de evidencias RF01–RF18;
-  10. registrar pendientes reales;
-  11. detener y devolver `AI_CONTEXT.md`.
-- no iniciar nuevas funcionalidades.
+- estado actual: **RF01–RF18 completados, 220/220 pruebas vigentes**.
+- próxima acción: **PREPARACIÓN PARA REVISIÓN Y RETROALIMENTACIÓN**.
+- ejecutar:
+  1. limpiar/reconciliar `AI_CONTEXT.md`;
+  2. corregir RF09 y matriz de evidencias;
+  3. limpiar seguimiento Git de `db.sqlite3` sin borrar BD local;
+  4. verificar secretos y archivos de entorno;
+  5. auditar residuos de mocks/hardcodes/legacy;
+  6. ejecutar `check`, suite y migraciones;
+  7. realizar regresión manual de los 4 roles;
+  8. crear checklist final de revisión;
+  9. actualizar este contexto;
+  10. detener y devolverlo.
+- no trabajar aún en los recordatorios de evaluación/Entrega 3.
 ## 11. historial breve
 - fecha: 2026-10-31
   - resumen: **RF05 — Reasignación de Mesas y Trazabilidad Operativa de Cuentas Abiertas (Completado al 100%)**:
@@ -2310,6 +2609,15 @@ A continuación se registra el desglose completo de observaciones, brechas y acc
   - resumen: Se incorpora regla operativa de Mesa/Cuenta Abierta: una mesa puede generar múltiples pedidos/comandas durante la misma atención; todas las rondas pertenecen a una única Venta abierta y la mesa se libera únicamente cuando el cliente solicita la cuenta y se completa el cierre/pago.
 
 ## 12. reglas permanentes
+- prioridad vigente: preparación para revisión y retroalimentación, estabilidad, limpieza y coherencia técnica
+- RF01–RF18 permanecen cerrados salvo regresión reproducible
+- suite vigente: 220/220; conteos anteriores son históricos
+- no agregar nuevas funcionalidades antes de la revisión
+- RF19–RF24 permanecen excluidos
+- huéspedes/cabañas/desayuno/ofertas permanecen congelados
+- recordatorios académicos/evaluación deben conservarse pero no son prioridad actual
+- no modificar Word, Draw.io ni informe sin autorización expresa del usuario
+
 - RF01–RF18 se consideran funcionalmente completados según el último cierre reportado; no reabrirlos salvo regresión reproducible
 - suite vigente reportada: 220/220 pruebas; conteos menores se consideran históricos
 - prioridad actual: auditoría final, coherencia técnica, evidencias y preparación documental
