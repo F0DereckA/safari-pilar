@@ -16,6 +16,14 @@ class SafariErrorHandlingMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
+        # Si la respuesta ya es JSON (por ejemplo, endpoints API / AJAX con JsonResponse), preservarla intacta
+        if 'application/json' in response.get('Content-Type', '').lower():
+            if 'Referrer-Policy' not in response:
+                response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+            if 'Permissions-Policy' not in response:
+                response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+            return response
+
         # Si el código de respuesta es 404 y no es un archivo estático ni favicon
         if response.status_code == 404:
             static_url = getattr(settings, 'STATIC_URL', '/static/')

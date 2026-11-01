@@ -1173,13 +1173,43 @@ def crear_ticket(request):
                 subtotal_bruto += calc['subtotal']
                 lineas_calculadas.append((prod, calc, it.get('nota', '')))
 
+            modalidad = request.POST.get('modalidad', 'VENTA_RAPIDA').upper()
+            if modalidad not in ['VENTA_RAPIDA', 'MESA', 'MOSTRADOR']:
+                modalidad = 'VENTA_RAPIDA'
+            mesa_id = request.POST.get('mesa_id')
+
+            mesa_obj = None
+            if modalidad == 'MESA':
+                if not mesa_id:
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'ok': False, 'error': 'Debe seleccionar una mesa válida para atención en salón (RF11.1).'}, status=400)
+                    messages.error(request, 'Debe seleccionar una mesa válida para atención en salón.')
+                    return redirect('crear_ticket')
+
+                mesa_obj = Mesa.objects.select_for_update().filter(id=mesa_id, punto_venta=caja.punto_venta).first()
+                if not mesa_obj:
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'ok': False, 'error': 'La mesa seleccionada no existe o no pertenece a este local.'}, status=400)
+                    messages.error(request, 'La mesa seleccionada no pertenece a este local.')
+                    return redirect('crear_ticket')
+
+                if Venta.objects.filter(mesa=mesa_obj, estado='ABIERTA').exists():
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'ok': False, 'error': f"La mesa {mesa_obj.identificador} ya tiene una cuenta abierta en salón."}, status=400)
+                    messages.error(request, f"La mesa {mesa_obj.identificador} ya tiene una cuenta abierta en salón.")
+                    return redirect('crear_ticket')
+            else:
+                modalidad = 'VENTA_RAPIDA'
+                mesa_obj = None
+
             monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(subtotal_bruto, metodo_pago)
 
             venta = Venta.objects.create(
                 caja=caja,
                 cajero=request.user,
                 punto_venta=caja.punto_venta,
-                modalidad='MOSTRADOR',
+                modalidad=modalidad,
+                mesa=mesa_obj,
                 metodo_pago=metodo_pago,
                 total=monto_final,
                 total_sin_redondeo=subtotal_bruto,
@@ -1247,6 +1277,8 @@ def crear_ticket(request):
                     'total_sin_redondeo': float(venta.total_sin_redondeo or venta.total),
                     'redondeo': float(venta.redondeo_ley_20956 or 0),
                     'tickets': tickets_generados,
+                    'modalidad': venta.modalidad,
+                    'ubicacion': venta.get_ubicacion_despacho(),
                     'mensaje': f"¡Venta POS #{venta.id} registrada exitosamente por ${int(venta.total):,} CLP!"
                 })
 
@@ -1256,8 +1288,10 @@ def crear_ticket(request):
     productos_activos = Producto.objects.filter(activo=True).select_related('categoria').prefetch_related('precios_especiales')
     convenios_activos = PrecioEspecial.objects.filter(activo=True).select_related('producto')
     trabajadores_activos = User.objects.filter(is_active=True, perfil__activo=True).select_related('perfil', 'perfil__punto_venta_actual').order_by('first_name', 'username')
+    mesas_disponibles = Mesa.objects.filter(punto_venta=punto_venta, estado='HABILITADA').order_by('identificador') if punto_venta else Mesa.objects.none()
 
     context = {
+        "mesas_disponibles": mesas_disponibles,
         "jornada_activa": jornada_activa,
         "caja_activa": caja_activa,
         "punto_venta": punto_venta,
@@ -2827,7 +2861,14 @@ def mesero(request):
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
         elif accion == 'enviar_comanda':
+            if not mesa_id:
+                messages.error(request, "Debe seleccionar una mesa válida para emitir pedidos en salón (RF11.1).")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
             mesa_obj = Mesa.objects.filter(id=mesa_id).first()
+            if not mesa_obj or mesa_obj.punto_venta_id != local_actual.id:
+                messages.error(request, "La mesa seleccionada no existe o no pertenece al local gastronómico actual.")
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
             items_raw = request.POST.get('items_json', '[]')
             try:

@@ -662,9 +662,33 @@
                             <span>Subtotal Alimentos:</span>
                             <span id="subtotalDisplay">$0</span>
                         </div>
-                        <div class="d-flex justify-content-between text-muted small mb-3">
-                            <span>Mesa / Para Llevar:</span>
-                            <span class="text-success fw-semibold">Entrega en Mostrador</span>
+                        <!-- Modalidad Operativa (RF11: Asignación de Mesa o Venta Rápida) -->
+                        <div class="mb-3 p-2 bg-light rounded-3 border">
+                            <label class="form-label small fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-geo-alt-fill text-danger me-1"></i> Modalidad de Entrega (RF11):</span>
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-0" style="font-size: 0.68rem;" id="badgeModalidadTexto">Venta Rápida</span>
+                            </label>
+                            <div class="btn-group w-100 mb-2" role="group">
+                                <input type="radio" class="btn-check" name="pos_modalidad" id="modalidad_rapida" value="VENTA_RAPIDA" checked onchange="cambiarModalidadOperativa('VENTA_RAPIDA')">
+                                <label class="btn btn-outline-warning text-dark btn-sm fw-bold" for="modalidad_rapida">
+                                    <i class="bi bi-bag-check me-1"></i> Retiro / Mostrador
+                                </label>
+                                <input type="radio" class="btn-check" name="pos_modalidad" id="modalidad_mesa" value="MESA" onchange="cambiarModalidadOperativa('MESA')">
+                                <label class="btn btn-outline-danger btn-sm fw-bold" for="modalidad_mesa">
+                                    <i class="bi bi-grid-3x3-gap me-1"></i> Mesa (Salón)
+                                </label>
+                            </div>
+                            <div id="selectorMesaBox" class="d-none mt-1">
+                                <label class="form-label small text-muted mb-1" style="font-size: 0.75rem;">Mesa asignada para comensales:</label>
+                                <select class="form-select form-select-sm rounded-3" id="pos_mesa_id" onchange="actualizarResumen()">
+                                    <option value="">-- Seleccionar Mesa --</option>
+                                    {% for m in mesas_disponibles %}
+                                    <option value="{{ m.id }}">{{ m.identificador }} (Capacidad: {{ m.capacidad }} pers.)</option>
+                                    {% empty %}
+                                    <option value="" disabled>No hay mesas libres en este local</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
 
                                                 <!-- Verificación QR Cabañas / Descuento Huéspedes (Tarea 7) -->
@@ -1367,7 +1391,41 @@
         }
 
         // Simular cobro y guardar en Tickets en Desarrollo
+        function cambiarModalidadOperativa(modalidad) {
+            const selectorBox = document.getElementById('selectorMesaBox');
+            const badgeTxt = document.getElementById('badgeModalidadTexto');
+            if (modalidad === 'MESA') {
+                if (selectorBox) selectorBox.classList.remove('d-none');
+                if (badgeTxt) {
+                    badgeTxt.innerText = 'Consumo en Salón';
+                    badgeTxt.className = 'badge bg-danger-subtle text-danger border px-2 py-0';
+                }
+            } else {
+                if (selectorBox) selectorBox.classList.add('d-none');
+                const mesaSelect = document.getElementById('pos_mesa_id');
+                if (mesaSelect) mesaSelect.value = '';
+                if (badgeTxt) {
+                    badgeTxt.innerText = 'Venta Rápida';
+                    badgeTxt.className = 'badge bg-secondary-subtle text-secondary border px-2 py-0';
+                }
+            }
+            actualizarResumen();
+        }
+
         function simularCobro() {
+            const modalidadCobro = document.querySelector('input[name="pos_modalidad"]:checked')?.value || 'VENTA_RAPIDA';
+            const mesaIdCobro = document.getElementById('pos_mesa_id')?.value || '';
+
+            if (modalidadCobro === 'MESA' && !mesaIdCobro) {
+                swalWarningBootstrap.fire({
+                    title: "Mesa Requerida (RF11.1)",
+                    text: "Debes seleccionar una mesa disponible para la modalidad de consumo en salón.",
+                    icon: "warning",
+                    confirmButtonText: "Entendido"
+                });
+                return;
+            }
+
             let total = 0;
             const itemsComprados = [];
             let tieneCocina = false;

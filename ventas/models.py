@@ -438,8 +438,9 @@ class Mesa(models.Model):
 class Venta(models.Model):
     """Venta gastronómica asociada a una caja, cajero y modalidad (Mesa o Venta Rápida)"""
     MODALIDADES = [
-        ('VENTA_RAPIDA', 'Venta Rápida / Mostrador'),
-        ('MESA', 'Consumo en Mesa'),
+        ('VENTA_RAPIDA', 'Venta Rápida / Retiro en Mostrador'),
+        ('MOSTRADOR', 'Venta Rápida / Mostrador'),
+        ('MESA', 'Consumo en Mesa (Salón)'),
     ]
     METODOS_PAGO = [
         ('EFECTIVO', 'Efectivo'),
@@ -463,6 +464,50 @@ class Venta(models.Model):
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PAGADA')
     fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        from django.core.exceptions import ValidationError
+
+        # Normalizar alias de venta rápida
+        if self.modalidad in ['MOSTRADOR', 'LLEVAR', 'RETIRO']:
+            self.modalidad = 'VENTA_RAPIDA'
+
+        if self.modalidad == 'MESA':
+            if not self.mesa:
+                raise ValidationError("Una venta con modalidad 'MESA' requiere obligatoriamente una mesa asignada (RF11.1).")
+            if self.punto_venta and self.mesa.punto_venta_id != self.punto_venta_id:
+                raise ValidationError("La mesa asignada debe pertenecer al mismo punto de venta de la operación.")
+            # Si la cuenta está abierta, validar que no haya otra cuenta abierta distinta en la misma mesa
+            if self.estado == 'ABIERTA' and self.mesa_id:
+                otra_abierta = Venta.objects.filter(
+                    mesa_id=self.mesa_id,
+                    estado='ABIERTA'
+                ).exclude(pk=self.pk).first()
+                if otra_abierta:
+                    raise ValidationError(f"La mesa {self.mesa.identificador} ya tiene una cuenta abierta en curso (Venta #{otra_abierta.id}).")
+        elif self.modalidad == 'VENTA_RAPIDA':
+            # Venta rápida / retiro no bloquea ni ocupa mesa física (RF11.3)
+            if self.mesa is not None:
+                self.mesa = None
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def es_consumo_en_mesa(self):
+        """Indica si la comanda corresponde a servicio en salón con mesa asignada (RF11.1)"""
+        return self.modalidad == 'MESA' and self.mesa is not None
+
+    def es_venta_rapida(self):
+        """Indica si la comanda corresponde a retiro rápido / mostrador (RF11.3)"""
+        return self.modalidad in ['VENTA_RAPIDA', 'MOSTRADOR']
+
+    def get_ubicacion_despacho(self):
+        """Retorna la ubicación operativa formal para comandas y despacho KDS/BDS (RF11)"""
+        if self.es_consumo_en_mesa():
+            return f"Mesa {self.mesa.identificador} (Salón)"
+        return "Retiro Rápido / Mostrador"
 
     def __str__(self):
         return f"Venta #{self.id} (${self.total:,.0f}) - {self.get_modalidad_display()}"

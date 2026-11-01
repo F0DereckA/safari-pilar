@@ -937,7 +937,7 @@ class SafariFase2A1Tests(TestCase):
     # 36. Defensa de Entrada de Datos: Sanitización de Cantidades y Precios Negativos
     def test_defensa_cantidades_y_precios_negativos(self):
         self.client.force_login(self.mesero_user)
-        pv = PuntoVenta.objects.first()
+        pv = getattr(self.mesero_user.perfil, 'punto_venta_actual', None) or PuntoVenta.objects.first()
         mesa = Mesa.objects.filter(punto_venta=pv).first()
 
         # Intento de inyectar comanda con cantidades negativas y precios negativos
@@ -3809,3 +3809,412 @@ class SafariRF10ConsumoInternoTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, f"FIA-{consumo.id:04d}")
         self.assertContains(resp, "Consumo Personal")
+
+
+# ==============================================================================
+# ==============================================================================
+# ==============================================================================
+# ==============================================================================
+# ==============================================================================
+# ==============================================================================
+# SUITE OFICIAL DE PRUEBAS AUTOMATIZADAS RF11 (Asignación de Mesa o Venta Rápida)
+# ==============================================================================
+
+class SafariRF11AsignacionMesaVentaRapidaTests(TestCase):
+    """
+    Suite oficial de pruebas automatizadas para RF11 - Asignación de Mesa o Venta Rápida:
+    - RF11.1: Asignación obligatoria de mesa válida en salón.
+    - RF11.2: Venta rápida para llevar o mostrador sin ocupar mesas físicas.
+    - RF11.3: Prevención de colisión de cuentas abiertas en la misma mesa.
+    - RF11.4: Soporte completo para comanda de cocina/barra en venta rápida con aviso de mostrador.
+    - RF11.5: Endpoint POS crear_ticket y vista mesero con validación operativa integral.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+
+        self.admin = User.objects.get(username='rgomez')
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.mesero = User.objects.get(username='dsilva')
+        self.cocinero = User.objects.get(username='eparedes')
+
+        self.pv1 = PuntoVenta.objects.get(id=1)
+        self.pv2 = PuntoVenta.objects.get(id=2)
+
+        self.mesa1 = Mesa.objects.filter(punto_venta=self.pv1, identificador='Mesa 1').first()
+        self.mesa4 = Mesa.objects.filter(punto_venta=self.pv1, identificador='Mesa 4').first()
+        if not self.mesa4:
+            self.mesa4 = Mesa.objects.create(identificador='Mesa 4', punto_venta=self.pv1, capacidad=4, estado='HABILITADA')
+        else:
+            self.mesa4.estado = 'HABILITADA'
+            self.mesa4.save()
+
+        self.mesa_pv2 = Mesa.objects.filter(punto_venta=self.pv2).first()
+
+        self.prod_hamburguesa = Producto.objects.filter(nombre__icontains='Hamburguesa').first()
+        self.prod_bebida = Producto.objects.filter(nombre__icontains='Coca-Cola').first()
+
+        hoy = timezone.localdate()
+        self.jornada, _ = Jornada.objects.get_or_create(
+            fecha=hoy,
+            defaults={'usuario_apertura': self.admin, 'estado': 'ABIERTA'}
+        )
+        self.caja, _ = Caja.objects.get_or_create(
+            jornada=self.jornada,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            defaults={'monto_apertura': Decimal('50000.00'), 'estado': 'ABIERTA'}
+        )
+
+    def test_rf11_1_venta_rapida_sin_mesa_no_bloquea_mesas(self):
+        """RF11.2: Venta rápida no asocia mesa física y nunca bloquea ni ocupa mesas del salón"""
+        mesas_libres_antes = Mesa.objects.filter(punto_venta=self.pv1, estado='HABILITADA').count()
+
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='VENTA_RAPIDA',
+            mesa=None,
+            total=Decimal('8900.00'),
+            metodo_pago='EFECTIVO',
+            estado='PAGADA'
+        )
+
+        self.assertIsNone(venta.mesa)
+        self.assertTrue(venta.es_venta_rapida())
+        self.assertFalse(venta.es_consumo_en_mesa())
+        self.assertEqual(venta.get_ubicacion_despacho(), "Retiro Rápido / Mostrador")
+
+        # Verificar que las mesas habilitadas se mantuvieron intactas
+        mesas_libres_despues = Mesa.objects.filter(punto_venta=self.pv1, estado='HABILITADA').count()
+        self.assertEqual(mesas_libres_antes, mesas_libres_despues)
+
+        # Si por error se pasa una mesa a VENTA_RAPIDA, clean() la desacopla limpiando a None
+        venta_con_mesa_erronea = Venta(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='VENTA_RAPIDA',
+            mesa=self.mesa4,
+            total=Decimal('2000.00'),
+            metodo_pago='EFECTIVO'
+        )
+        venta_con_mesa_erronea.clean()
+        self.assertIsNone(venta_con_mesa_erronea.mesa)
+
+        # Normalización de alias
+        for alias in ['MOSTRADOR', 'LLEVAR', 'RETIRO']:
+            v_alias = Venta(
+                caja=self.caja,
+                cajero=self.cajero,
+                punto_venta=self.pv1,
+                modalidad=alias,
+                mesa=self.mesa4
+            )
+            v_alias.clean()
+            self.assertEqual(v_alias.modalidad, 'VENTA_RAPIDA')
+            self.assertIsNone(v_alias.mesa)
+
+    def test_rf11_2_consumo_mesa_requiere_mesa_valida(self):
+        """RF11.1: Modalidad MESA exige obligatoriamente una mesa física del mismo punto de venta"""
+        from django.core.exceptions import ValidationError
+
+        # 1. Falta mesa -> ValidationError
+        venta_sin_mesa = Venta(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=None,
+            total=Decimal('5000.00')
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            venta_sin_mesa.clean()
+        self.assertIn("requiere obligatoriamente una mesa asignada", str(ctx.exception))
+
+        # 2. Mesa pertenece a otro local -> ValidationError
+        venta_mesa_ajena = Venta(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=self.mesa_pv2,
+            total=Decimal('5000.00')
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            venta_mesa_ajena.clean()
+        self.assertIn("mismo punto de venta", str(ctx.exception))
+
+        # 3. Mesa válida en el mismo local -> Pasa clean y métodos devuelven valores correctos
+        venta_valida = Venta(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=self.mesa4,
+            total=Decimal('5000.00')
+        )
+        venta_valida.clean()
+        self.assertTrue(venta_valida.es_consumo_en_mesa())
+        self.assertFalse(venta_valida.es_venta_rapida())
+        self.assertEqual(venta_valida.get_ubicacion_despacho(), f"Mesa {self.mesa4.identificador} (Salón)")
+
+    def test_rf11_3_rechazo_mesa_ocupada_por_otra_cuenta_abierta(self):
+        """RF11.3: Prevención de colisión: No se pueden abrir dos cuentas abiertas simultáneas en la misma mesa"""
+        from django.core.exceptions import ValidationError
+
+        # Primera cuenta abierta en mesa 4
+        venta_1 = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=self.mesa4,
+            estado='ABIERTA',
+            total=Decimal('10000.00')
+        )
+
+        # Segunda cuenta que intenta abrirse en la misma mesa mientras la primera sigue ABIERTA
+        venta_2 = Venta(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='MESA',
+            mesa=self.mesa4,
+            estado='ABIERTA',
+            total=Decimal('5000.00')
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            venta_2.clean()
+        self.assertIn("ya tiene una cuenta abierta", str(ctx.exception))
+
+        # Si la venta 1 se paga y cierra, la mesa puede recibir una nueva cuenta abierta
+        venta_1.estado = 'PAGADA'
+        venta_1.save()
+
+        # Ahora venta_2 pasa la validación sin conflicto
+        venta_2.clean()
+        venta_2.save()
+        self.assertEqual(venta_2.estado, 'ABIERTA')
+
+    def test_rf11_4_flujo_mesa_cuenta_abierta_multiples_rondas_y_cierre(self):
+        """RF11.1 & RF11.3: Flujo mesero: apertura en mesa, comanda multi-ronda y liberación de mesa"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        mesa = self.mesa4
+
+        # Ronda 1: hamburguesa a cocina
+        items_ronda_1 = [
+            {"nombre": self.prod_hamburguesa.nombre, "cantidad": 2, "precio": float(self.prod_hamburguesa.precio_base), "destino": "COCINA", "nota": "Sin cebolla"}
+        ]
+        resp1 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_ronda_1)
+        }, follow=True)
+        self.assertEqual(resp1.status_code, 200)
+
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+
+        venta_abierta = Venta.objects.filter(mesa=mesa, estado='ABIERTA').first()
+        self.assertIsNotNone(venta_abierta)
+        self.assertEqual(venta_abierta.modalidad, 'MESA')
+        subtotal_esperado_ronda1 = self.prod_hamburguesa.precio_base * 2
+        self.assertEqual(venta_abierta.total, subtotal_esperado_ronda1)
+
+        # Ronda 2: agregar bebidas en la misma mesa
+        items_ronda_2 = [
+            {"nombre": self.prod_bebida.nombre, "cantidad": 2, "precio": float(self.prod_bebida.precio_base), "destino": "BARRA", "nota": "Heladas"}
+        ]
+        resp2 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': mesa.id,
+            'items_json': json.dumps(items_ronda_2)
+        }, follow=True)
+        self.assertEqual(resp2.status_code, 200)
+
+        # La venta abierta sigue siendo la misma, incrementando su total
+        venta_abierta.refresh_from_db()
+        total_esperado = subtotal_esperado_ronda1 + (self.prod_bebida.precio_base * 2)
+        self.assertEqual(venta_abierta.total, total_esperado)
+        self.assertEqual(venta_abierta.pedidos.count(), 2)
+
+        # Cierre y cobro de la cuenta en salón
+        self.client.force_login(self.mesero)
+        resp_cierre = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'cerrar_cuenta_mesa',
+            'mesa_id': mesa.id,
+            'metodo_pago': 'EFECTIVO'
+        }, follow=True)
+        self.assertEqual(resp_cierre.status_code, 200)
+
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'HABILITADA')
+        venta_abierta.refresh_from_db()
+        self.assertEqual(venta_abierta.estado, 'PAGADA')
+
+    def test_rf11_5_elaboracion_propia_en_venta_rapida(self):
+        """RF11.4: Productos con preparación en cocina o barra para VENTA_RAPIDA emiten aviso de Mostrador"""
+        from ventas.utils import generar_contenido_ticket_cocina
+
+        mesas_ocupadas_antes = Mesa.objects.filter(punto_venta=self.pv1, estado='OCUPADA').count()
+
+        # Crear venta rápida con hamburguesa caliente que requiere comanda a cocina
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.cajero,
+            punto_venta=self.pv1,
+            modalidad='VENTA_RAPIDA',
+            mesa=None,
+            total=self.prod_hamburguesa.precio_base,
+            metodo_pago='EFECTIVO',
+            estado='PAGADA'
+        )
+
+        detalle = DetalleVenta.objects.create(
+            venta=venta,
+            producto=self.prod_hamburguesa,
+            cantidad=1,
+            precio_aplicado=self.prod_hamburguesa.precio_base,
+            subtotal=self.prod_hamburguesa.precio_base
+        )
+
+        pedido = Pedido.objects.create(
+            venta=venta,
+            estado='PENDIENTE',
+            observaciones="Venta rápida mostrador"
+        )
+
+        dp = DetallePedido.objects.create(
+            pedido=pedido,
+            producto=self.prod_hamburguesa,
+            cantidad=1,
+            observaciones="Para llevar en mostrador"
+        )
+
+        # Verificar ticket digital generado para cocina
+        ticket_cocina = generar_contenido_ticket_cocina(pedido, items_cocina=[dp])
+
+        self.assertIn("Mostrador", ticket_cocina)
+        self.assertNotIn("Mesa 1", ticket_cocina)
+        self.assertNotIn("Mesa 4", ticket_cocina)
+
+        # Las mesas permanecen sin alterar
+        mesas_ocupadas_despues = Mesa.objects.filter(punto_venta=self.pv1, estado='OCUPADA').count()
+        self.assertEqual(mesas_ocupadas_despues, mesas_ocupadas_antes)
+
+    def test_rf11_6_pos_crear_ticket_modalidad_rapida_y_mesa_ajax(self):
+        """RF11.5: Endpoint vendedor_crear_ticket soporta selector explícito de modalidad MESA y VENTA_RAPIDA"""
+        self.client.force_login(self.cajero)
+
+        # 1. Venta Rápida exitosa vía AJAX
+        payload_rapida = [
+            {"producto_id": self.prod_bebida.id, "cantidad": 1}
+        ]
+        resp1 = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload_rapida),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'VENTA_RAPIDA'
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp1.status_code, 200)
+        data1 = resp1.json()
+        self.assertTrue(data1['ok'])
+        self.assertEqual(data1['modalidad'], 'VENTA_RAPIDA')
+        self.assertIn("Mostrador", data1['ubicacion'])
+
+        v1 = Venta.objects.get(id=data1['venta_id'])
+        self.assertIsNone(v1.mesa)
+        self.assertEqual(v1.modalidad, 'VENTA_RAPIDA')
+
+        # 2. Venta Mesa en caja exitosa vía AJAX
+        payload_mesa = [
+            {"producto_id": self.prod_hamburguesa.id, "cantidad": 1}
+        ]
+        resp2 = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload_mesa),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'MESA',
+            'mesa_id': self.mesa4.id
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp2.status_code, 200)
+        data2 = resp2.json()
+        self.assertTrue(data2['ok'])
+        self.assertEqual(data2['modalidad'], 'MESA')
+        self.assertIn(f"Mesa {self.mesa4.identificador}", data2['ubicacion'])
+
+        v2 = Venta.objects.get(id=data2['venta_id'])
+        self.assertEqual(v2.mesa, self.mesa4)
+        self.assertEqual(v2.modalidad, 'MESA')
+
+        # 3. Intento de Venta Mesa sin especificar mesa_id -> Error 400
+        resp3 = self.client.post(reverse('crear_ticket'), {
+            'items_json': json.dumps(payload_mesa),
+            'metodo_pago': 'EFECTIVO',
+            'modalidad': 'MESA',
+            'mesa_id': ''
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp3.status_code, 400)
+        data3 = resp3.json()
+        self.assertFalse(data3['ok'])
+        self.assertIn("Debe seleccionar una mesa", data3['error'])
+
+    def test_rf11_7_mesero_exige_mesa_valida_y_no_permite_salon_sin_mesa(self):
+        """RF11.1: Mesero en salón no puede emitir comanda sin mesa o con mesa ajena"""
+        self.client.force_login(self.mesero)
+        local = self.pv1
+        items = [
+            {"nombre": self.prod_bebida.nombre, "cantidad": 1, "precio": float(self.prod_bebida.precio_base), "destino": "BARRA", "nota": ""}
+        ]
+
+        # 1. Mesero sin mesa_id
+        resp1 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': '',
+            'items_json': json.dumps(items)
+        }, follow=True)
+        self.assertContains(resp1, "Debe seleccionar una mesa")
+
+        # 2. Mesero con mesa_id de otro local
+        resp2 = self.client.post(reverse('mesero') + f"?local_id={local.id}", {
+            'accion': 'enviar_comanda',
+            'mesa_id': self.mesa_pv2.id,
+            'items_json': json.dumps(items)
+        }, follow=True)
+        self.assertContains(resp2, "no pertenece al local")
+
+    def test_rf11_8_validar_modalidad_operativa_helper(self):
+        """RF11.1 & RF11.2: Validación estricta mediante helper validar_modalidad_operativa"""
+        from ventas.utils import validar_modalidad_operativa
+        from django.core.exceptions import ValidationError
+
+        # Venta rápida válida
+        mod, m = validar_modalidad_operativa('VENTA_RAPIDA', None, self.pv1)
+        self.assertEqual(mod, 'VENTA_RAPIDA')
+        self.assertIsNone(m)
+
+        # Alias de venta rápida normalizado
+        mod, m = validar_modalidad_operativa('MOSTRADOR', self.mesa4, self.pv1)
+        self.assertEqual(mod, 'VENTA_RAPIDA')
+        self.assertIsNone(m)
+
+        # Mesa válida
+        mod, m = validar_modalidad_operativa('MESA', self.mesa4, self.pv1)
+        self.assertEqual(mod, 'MESA')
+        self.assertEqual(m, self.mesa4)
+
+        # Mesa requerida no proporcionada -> ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            validar_modalidad_operativa('MESA', None, self.pv1)
+        self.assertIn("requiere obligatoriamente una mesa asignada", str(ctx.exception))
+
+        # Mesa de otro local -> ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            validar_modalidad_operativa('MESA', self.mesa_pv2, self.pv1)
+        self.assertIn("no pertenece al local", str(ctx.exception))

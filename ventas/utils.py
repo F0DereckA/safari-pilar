@@ -267,7 +267,10 @@ def generar_contenido_ticket_cocina(pedido, items_cocina, es_reimpresion=False, 
     """
     venta = pedido.venta
     local_nom = venta.punto_venta.nombre if venta.punto_venta else "Restaurante Parque Safari"
-    mesa_txt = f"Mesa: {venta.mesa.identificador}" if (venta.modalidad == 'MESA' and venta.mesa) else "Venta Rápida / Mostrador"
+    if venta.modalidad == 'MESA' and venta.mesa:
+        mesa_txt = f"Mesa: {venta.mesa.identificador} (Salón)"
+    else:
+        mesa_txt = "Retiro Rápido / Mostrador"
     rondas_total = venta.pedidos.count()
     num_ronda = list(venta.pedidos.order_by('id').values_list('id', flat=True)).index(pedido.id) + 1 if pedido.id else rondas_total
     hora_str = timezone.localtime(pedido.creado_en).strftime("%d/%m/%Y %H:%M:%S") if pedido.creado_en else timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
@@ -313,7 +316,10 @@ def generar_contenido_ticket_barra(pedido, items_barra, es_reimpresion=False, nu
     """
     venta = pedido.venta
     local_nom = venta.punto_venta.nombre if venta.punto_venta else "Barra Parque Safari"
-    mesa_txt = f"Mesa: {venta.mesa.identificador}" if (venta.modalidad == 'MESA' and venta.mesa) else "Venta Rápida / Mostrador"
+    if venta.modalidad == 'MESA' and venta.mesa:
+        mesa_txt = f"Mesa: {venta.mesa.identificador} (Salón)"
+    else:
+        mesa_txt = "Retiro Rápido / Mostrador"
     rondas_total = venta.pedidos.count()
     num_ronda = list(venta.pedidos.order_by('id').values_list('id', flat=True)).index(pedido.id) + 1 if pedido.id else rondas_total
     hora_str = timezone.localtime(pedido.creado_en).strftime("%d/%m/%Y %H:%M:%S") if pedido.creado_en else timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
@@ -854,3 +860,18 @@ def liquidar_consumos_por_planilla(consumos_ids, supervisor=None):
         fecha_hora_descuento=timezone.now()
     )
     return actualizados
+
+def validar_modalidad_operativa(modalidad, mesa=None, punto_venta=None):
+    """
+    Valida la coherencia de modalidad de atención según requerimiento RF11:
+    - MESA exige obligatoriamente una mesa física asignada y perteneciente al mismo local.
+    - VENTA_RAPIDA / MOSTRADOR no debe ocupar mesa (mesa=None).
+    """
+    if modalidad == 'MESA':
+        if not mesa:
+            raise ValidationError("La modalidad de consumo en salón requiere obligatoriamente una mesa asignada (RF11.1).")
+        if punto_venta and hasattr(punto_venta, 'id') and mesa.punto_venta_id != punto_venta.id:
+            raise ValidationError("La mesa seleccionada no pertenece al local gastronómico de la operación.")
+    elif modalidad in ['VENTA_RAPIDA', 'MOSTRADOR']:
+        return 'VENTA_RAPIDA', None
+    return modalidad, mesa

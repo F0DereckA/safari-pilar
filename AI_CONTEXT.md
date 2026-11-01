@@ -13,7 +13,8 @@
   - RF08 Generación de Tickets: **COMPLETADO Y TESTEADO (116/116 suite vigente en verde al cerrar RF08)**.
   - RF09 Gestión de Impresión: **COMPLETADO Y TESTEADO (127/127 suite vigente en verde al cerrar RF09 con KDS Barra)**.
   - RF10 Consumo Interno / Fiado: **COMPLETADO Y TESTEADO (137/137 suite vigente en verde al cerrar RF10)**.
-  - RF01–RF10: implementaciones estables y blindadas; no modificar sin auditoría previa.
+  - RF11 Asignación de Mesa o Venta Rápida: **COMPLETADO Y TESTEADO (145/145 suite vigente en verde al cerrar RF11)**.
+  - RF01–RF11: implementaciones estables y blindadas; no modificar sin auditoría previa.
 - objetivo: completar de forma incremental, verificable y sin regresiones los RF07–RF18 definidos por el docente.
 - método obligatorio para cada RF:
   1. auditar estado real;
@@ -482,7 +483,26 @@ Revisar:
 
 ---
 
-# RF11 — ASIGNACIÓN DE MESA O VENTA RÁPIDA
+# RF11 — ASIGNACIÓN DE MESA O VENTA RÁPIDA — [ESTADO: COMPLETADO Y CERRADO (145/145 OK)]
+
+### Resumen de Cierre y Verificación Oficial (RF11)
+- **Modelos y Normalización:**
+  * `Venta.modalidad`: opciones formales `VENTA_RAPIDA` ("Venta Rápida / Retiro en Mostrador"), `MOSTRADOR` (alias) y `MESA` ("Consumo en Mesa (Salón)").
+  * Validación centralizada en `Venta.clean()` y `validar_modalidad_operativa`:
+    - Modalidad `MESA` exige estrictamente `mesa` no nula, perteneciente al mismo `PuntoVenta` de la transacción.
+    - Prevención de colisión de cuentas abiertas: rechazo inmediato si otra venta abierta ya se encuentra asignada a dicha mesa.
+    - Modalidad `VENTA_RAPIDA`: desacopla cualquier mesa física asignada (`self.mesa = None`), normaliza alias (`MOSTRADOR`, `LLEVAR`, `RETIRO`), y garantiza que las mesas físicas del local permanezcan intactas en su estado (`HABILITADA`).
+    - Métodos de conveniencia añadidos al modelo `Venta`: `es_consumo_en_mesa()`, `es_venta_rapida()` y `get_ubicacion_despacho()`.
+- **Integración de Vistas y Plantillas:**
+  * POS Cajero (`crear_ticket` / `vendedor_crear_ticket.html`): incorporación de selector de modalidad visual interactivo (Venta Rápida / Mostrador vs. Consumo en Mesa) con selector dinámico de mesas disponibles (`mesas_disponibles`).
+  * Validación server-side ante intentos de cobrar en mesa sin selección (HTTP 400 JsonResponse).
+  * Salón Mesero (`mesero`): validación estricta de mesa requerida y pertenencia al punto de venta para comanda inicial y multi-ronda. Cobro y cierre mediante `cerrar_cuenta_mesa` liberando la mesa a `HABILITADA`.
+  * Comandas KDS y Digital Tickets (`generar_contenido_ticket_cocina` / `generar_contenido_ticket_barra`): soporte completo para artículos calientes de cocina y preparados de barra en venta rápida, imprimiendo/visualizando el aviso claro "Retiro Rápido / Mostrador".
+- **Pruebas Automatizadas y Calidad:**
+  * Tests específicos RF11 (`SafariRF11AsignacionMesaVentaRapidaTests`): 8/8 tests OK.
+  * Suite completa del sistema: 145/145 tests OK (0 fallos, 0 errores).
+  * System check `py manage.py check`: 0 incidencias.
+  * Verificación manual de los 4 roles (Administrador, Cajero, Mesero, Cocinero): 100% verificado.
 
 ## Objetivo oficial
 Cuando hay elaboración propia, indicar si va a mesa o retiro rápido.
