@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Safari Pilar - Código QR</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+        }
+        .card-qr {
+            background: #ffffff;
+            color: #333333;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            padding: 40px 30px;
+            text-align: center;
+            max-width: 420px;
+            width: 100%;
+        }
+        .qr-image {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            border: 4px solid #f1f8e9;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .badge-url {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            font-size: 1.1rem;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 600;
+            word-break: break-all;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="card-qr">
+        <h2 class="fw-bold text-success mb-1">🦁 Parque Safari</h2>
+        <p class="text-muted small">Escanea para ingresar al Sistema Gastronómico</p>
+        
+        <img src="qr_acceso_safari.png" alt="Código QR de Acceso" class="qr-image">
+        
+        <div class="mt-2">
+            <span class="badge-url">http://10.14.50.149:8000/</span>
+        </div>
+        
+        <div class="alert alert-info mt-3 py-2 small mb-0">
+            📲 Recuerda que los dispositivos deben estar conectados a la misma red Wi-Fi.
+        </div>
+    </div>
+</body>
+</html>
