@@ -542,6 +542,11 @@ def login_view(request):
                     )
                 return redirect('cambiar_clave_expirada')
 
+            # Redirección directa si se especificó un destino explícito autorizado (ej: KDS Cocina o BDS Barra)
+            next_url = request.POST.get('next', '').strip()
+            if next_url in ('/cocina/', '/barra/', '/mesero/', '/vendedor/', '/administrador/'):
+                return redirect(next_url)
+
             rol = obtener_rol_usuario(user)
             if rol == 'ADMINISTRADOR':
                 messages.success(request, f"Bienvenido(a) Administrador(a) {user.get_full_name() or user.username}.")
