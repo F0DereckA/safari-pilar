@@ -7933,3 +7933,170 @@ class AuditoriaSeguridadRomperSistemaTests(TestCase):
         self.assertEqual(self.prod.tipo_oferta, 'SEGUNDA_1')
         self.assertEqual(self.prod.precio_oferta, Decimal('1'))
 
+
+
+    def test_11_administrador_campana_descuento_tarjeta_debito_y_topes(self):
+        """Prueba: Administrador crea campaña con descuento por medio de pago (Tarjeta Débito), compra mínima y tope CLP"""
+        from ventas.models import OfertaTemporada
+        self.client.force_login(self.admin)
+
+        resp = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'crear',
+            'nombre': '15% Descuento Débito Santander',
+            'descripcion': 'Beneficio exclusivo con tarjeta débito Banco Santander',
+            'tipo_campana': 'MEDIO_PAGO',
+            'descuento_porcentaje': '15',
+            'medio_pago_requerido': 'DEBITO',
+            'banco_convenio': 'Banco Santander',
+            'monto_minimo_compra': '5000',
+            'tope_descuento_clp': '3000',
+            'limite_usos': '50',
+            'fecha_inicio': timezone.now().date(),
+            'fecha_fin': timezone.now().date() + timedelta(days=15),
+            'activa': 'on'
+        }, follow=True)
+
+        self.assertContains(resp, "creada y configurada exitosamente")
+        camp = OfertaTemporada.objects.get(nombre='15% Descuento Débito Santander')
+        self.assertTrue(camp.activa)
+        self.assertEqual(camp.tipo_campana, 'MEDIO_PAGO')
+        self.assertEqual(camp.medio_pago_requerido, 'DEBITO')
+        self.assertEqual(camp.banco_convenio, 'Banco Santander')
+        self.assertEqual(camp.tope_descuento_clp, Decimal('3000'))
+
+        # Verificación del cálculo con tope y medio de pago
+        desc_valido = camp.calcular_descuento(Decimal('30000'), medio_pago='DEBITO')
+        # 15% de 30.000 = 4.500, pero tope es 3.000
+        self.assertEqual(desc_valido, Decimal('3000'))
+
+        # Si paga en efectivo no aplica
+        desc_efectivo = camp.calcular_descuento(Decimal('30000'), medio_pago='EFECTIVO')
+        self.assertEqual(desc_efectivo, Decimal('0'))
+
+    def test_12_administrador_editar_y_eliminar_campana(self):
+        """Prueba: Administrador edita y elimina permanentemente una campaña comercial"""
+        from ventas.models import OfertaTemporada
+        self.client.force_login(self.admin)
+
+        camp = OfertaTemporada.objects.create(
+            nombre='Campaña Temporal a Borrar',
+            descuento_porcentaje=Decimal('10'),
+            fecha_inicio=timezone.now().date(),
+            fecha_fin=timezone.now().date() + timedelta(days=5),
+            activa=True
+        )
+
+        # 1. Editar
+        resp_edit = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'editar_campana',
+            'oferta_id': camp.id,
+            'nombre': 'Campaña Temporal Modificada',
+            'tipo_campana': 'GENERAL',
+            'descuento_porcentaje': '20',
+            'medio_pago_requerido': 'TODOS',
+            'monto_minimo_compra': '0',
+            'tope_descuento_clp': '0',
+            'limite_usos': '10',
+            'activa': 'on'
+        }, follow=True)
+        camp.refresh_from_db()
+        self.assertEqual(camp.nombre, 'Campaña Temporal Modificada')
+        self.assertEqual(camp.descuento_porcentaje, Decimal('20'))
+
+        # 2. Eliminar
+        resp_del = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'eliminar_campana',
+            'oferta_id': camp.id,
+        }, follow=True)
+        self.assertContains(resp_del, "eliminada permanentemente")
+        self.assertFalse(OfertaTemporada.objects.filter(id=camp.id).exists())
+
+    def test_13_administrador_promo_producto_precio_custom_y_limite_comanda(self):
+        """Prueba: Administrador configura promo 2da unidad a $500 pesos con límite por comanda"""
+        self.client.force_login(self.admin)
+
+        resp = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'guardar_promo_producto',
+            'producto_id': self.prod.id,
+            'tipo_oferta': 'SEGUNDA_1',
+            'precio_oferta': '500',
+            'limite_oferta_por_ticket': '1',
+            'descripcion_oferta': '¡Segunda unidad a $500 pesos (máx 1 por mesa)!'
+        }, follow=True)
+
+        self.assertContains(resp, "configurada exitosamente")
+        self.prod.refresh_from_db()
+        self.assertTrue(self.prod.en_oferta)
+        self.assertEqual(self.prod.tipo_oferta, 'SEGUNDA_1')
+        self.assertEqual(self.prod.precio_oferta, Decimal('500'))
+        self.assertEqual(self.prod.limite_oferta_por_ticket, 1)
+
+        # Verificación del cálculo con límite de ticket:
+        # self.prod.precio_base = 5000 (o el que tenga)
+        # 4 unidades (2 pares):
+        # Como el límite es 1 par promo: 1 par a (base + 500) + 1 par a (2 * base)
+        total, ahorro, texto = self.prod.calcular_total_promocion(4)
+        esperado = (self.prod.precio_base + Decimal('500')) + (2 * self.prod.precio_base)
+        self.assertEqual(total, esperado)
+        self.assertEqual(ahorro, self.prod.precio_base - Decimal('500'))
+
+    def test_14_administrador_toggle_y_eliminar_promo_producto(self):
+        """Prueba: Administrador pausa y luego elimina una promoción de producto"""
+        self.client.force_login(self.admin)
+
+        # Configurar promo
+        self.prod.en_oferta = True
+        self.prod.tipo_oferta = '2X1'
+        self.prod.save()
+
+        # Toggle (pausar)
+        self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'toggle_promo_producto',
+            'producto_id': self.prod.id
+        })
+        self.prod.refresh_from_db()
+        self.assertFalse(self.prod.en_oferta)
+
+        # Eliminar
+        self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'eliminar_promo_producto',
+            'producto_id': self.prod.id
+        })
+        self.prod.refresh_from_db()
+        self.assertFalse(self.prod.en_oferta)
+        self.assertEqual(self.prod.tipo_oferta, 'NINGUNA')
+        self.assertIsNone(self.prod.precio_oferta)
+
+    def test_15_descuento_automatico_medio_pago_en_caja_pos(self):
+        """Prueba: Cobro en caja POS aplica automáticamente descuento de campaña activa al pagar con Tarjeta Débito"""
+        from ventas.models import OfertaTemporada, Venta
+
+        camp = OfertaTemporada.objects.create(
+            nombre='Promo 20% Tarjeta Débito',
+            tipo_campana='MEDIO_PAGO',
+            descuento_porcentaje=Decimal('20'),
+            medio_pago_requerido='DEBITO',
+            fecha_inicio=timezone.now().date(),
+            fecha_fin=timezone.now().date() + timedelta(days=10),
+            activa=True
+        )
+
+        self.client.force_login(self.cajero)
+        payload = {
+            'modalidad': 'VENTA_RAPIDA',
+            'metodo_pago': 'DEBITO', 'pos_metodo_pago': 'DEBITO',
+            'modo_cuenta': 'PAGADA',
+            'items_json': json.dumps([{'id': self.prod.id, 'cantidad': 2, 'precio': int(self.prod.precio_base)}])
+        }
+
+        resp = self.client.post(reverse('crear_ticket'), payload)
+        self.assertEqual(resp.status_code, 302)
+
+        venta = Venta.objects.filter(cajero=self.cajero, metodo_pago='DEBITO').order_by('-id').first()
+        self.assertIsNotNone(venta)
+        # Subtotal bruto = 2 * self.prod.precio_base
+        # Descuento 20%
+        subtotal_esperado = (2 * self.prod.precio_base) * Decimal('0.80')
+        self.assertEqual(venta.total, subtotal_esperado)
+        camp.refresh_from_db()
+        self.assertEqual(camp.usos_actuales, 1)

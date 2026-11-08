@@ -278,9 +278,10 @@ class Producto(models.Model):
     activo = models.BooleanField(default=True)
     en_oferta = models.BooleanField(default=False, help_text="Indica si el producto tiene promoción u oferta activa")
     tipo_oferta = models.CharField(max_length=20, choices=TIPOS_OFERTA, default='NINGUNA', help_text="Tipo de promoción (3x2, 2da a $1 peso, etc.)")
-    precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional fijo o precio de la 2da unidad (ej. $1)")
+    precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional fijo o precio de la 2da unidad (ej. $1, $5, $500)")
     descuento_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Porcentaje de descuento para tipo DESCUENTO_PCT")
     descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Lleva 3 y paga 2!, ¡Segunda hamburguesa a $1!")
+    limite_oferta_por_ticket = models.PositiveIntegerField(default=0, help_text="Límite de unidades en promoción por comanda (0 = sin límite)")
     destino_operativo = models.CharField(
         max_length=20,
         choices=[
@@ -400,13 +401,17 @@ class Producto(models.Model):
             return total, ahorro, texto
 
         elif self.tipo_oferta == 'SEGUNDA_1':
-            precio_segunda = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta > 0) else Decimal('1')
+            precio_segunda = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta >= 0) else Decimal('1')
             pares = cant // 2
             sobrante = cant % 2
-            # Cada par paga 1 al precio base y 1 a $1 peso
-            total = (pares * (p_base + precio_segunda)) + (sobrante * p_base)
+            if self.limite_oferta_por_ticket > 0:
+                pares_promo = min(pares, self.limite_oferta_por_ticket)
+                pares_normal = pares - pares_promo
+                total = (pares_promo * (p_base + precio_segunda)) + (pares_normal * 2 * p_base) + (sobrante * p_base)
+            else:
+                total = (pares * (p_base + precio_segunda)) + (sobrante * p_base)
             ahorro = total_sin_promo - total
-            texto = f"Promo 2da unidad a ${precio_segunda:,.0f} aplicada" if pares > 0 else "Lleva 2da a $1 peso"
+            texto = f"Promo 2da unidad a ${precio_segunda:,.0f} aplicada" if pares > 0 else f"2da unidad a ${precio_segunda:,.0f}"
             return total, ahorro, texto
 
         elif self.tipo_oferta == 'PRECIO_FIJO' and self.precio_oferta is not None and self.precio_oferta > 0:
@@ -1368,19 +1373,69 @@ class ConsumoHuesped(models.Model):
 # 21. OFERTAS DE TEMPORADA (Activacion / Desactivacion por Administrador)
 # ==============================================================================
 class OfertaTemporada(models.Model):
-    """Campanas y ofertas de temporada gestionadas por el Administrador"""
+    """Campanas, promociones y ofertas gestionadas por el Administrador con reglas flexibles"""
+    TIPOS_CAMPANA = [
+        ('GENERAL', 'Descuento General de Temporada'),
+        ('MEDIO_PAGO', 'Descuento por Medio de Pago (Tarjeta/Efectivo)'),
+        ('SEGUNDA_UNIDAD', 'Segunda Unidad a Precio Especial'),
+        ('HAPPY_HOUR', 'Happy Hour / Franja Horaria'),
+    ]
+
+    MEDIOS_PAGO_CHOICES = [
+        ('TODOS', 'Todos los medios de pago'),
+        ('DEBITO', 'Tarjeta de Débito (Redcompra)'),
+        ('CREDITO', 'Tarjeta de Crédito (Transbank/Bancos)'),
+        ('EFECTIVO', 'Efectivo'),
+        ('TRANSFERENCIA', 'Transferencia Bancaria'),
+    ]
+
     nombre = models.CharField(max_length=120)
     descripcion = models.TextField(blank=True, null=True)
+    tipo_campana = models.CharField(max_length=25, choices=TIPOS_CAMPANA, default='GENERAL')
     descuento_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Porcentaje de descuento global (0 - 100)")
+    medio_pago_requerido = models.CharField(max_length=25, choices=MEDIOS_PAGO_CHOICES, default='TODOS', help_text="Medio de pago requerido para activar la promoción")
+    banco_convenio = models.CharField(max_length=100, blank=True, null=True, help_text="Banco o tarjeta específica (ej. BancoEstado, Santander, Tarjeta Safari)")
+    precio_segunda_unidad = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio fijo de la segunda unidad (ej: 1, 5, 500)")
+    monto_minimo_compra = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Monto mínimo de ticket para aplicar")
+    tope_descuento_clp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Tope máximo de descuento en pesos (0 = sin tope)")
+    limite_usos = models.PositiveIntegerField(default=0, help_text="Límite máximo de usos permitidos (0 = ilimitado)")
+    usos_actuales = models.PositiveIntegerField(default=0, help_text="Usos registrados hasta el momento")
+    hora_inicio = models.TimeField(null=True, blank=True, help_text="Hora inicio para Happy Hour")
+    hora_fin = models.TimeField(null=True, blank=True, help_text="Hora fin para Happy Hour")
+    dias_aplicables = models.CharField(max_length=50, default='TODOS', help_text="Días aplicables (TODOS, o LUN,MIE,VIE)")
     fecha_inicio = models.DateField(default=timezone.now)
     fecha_fin = models.DateField()
     activa = models.BooleanField(default=False, help_text="Interruptor maestro de activacion")
     categoria_aplicable = models.ForeignKey('Categoria', on_delete=models.SET_NULL, null=True, blank=True, related_name='ofertas_temporada', help_text="Categoria especifica o en blanco para toda la carta")
+    producto_especifico = models.ForeignKey('Producto', on_delete=models.SET_NULL, null=True, blank=True, related_name='ofertas_asociadas', help_text="Producto específico si aplica")
     creada_en = models.DateTimeField(auto_now_add=True)
 
     def es_vigente(self):
         hoy = timezone.now().date()
-        return self.activa and (self.fecha_inicio <= hoy <= self.fecha_fin)
+        if not self.activa:
+            return False
+        if not (self.fecha_inicio <= hoy <= self.fecha_fin):
+            return False
+        if self.limite_usos > 0 and self.usos_actuales >= self.limite_usos:
+            return False
+        return True
+
+    def calcular_descuento(self, total_monto, medio_pago='TODOS'):
+        """Calcula el descuento aplicable a un monto dado respetando topes y medios de pago"""
+        if not self.es_vigente():
+            return Decimal('0')
+        if self.medio_pago_requerido != 'TODOS' and medio_pago != 'TODOS' and self.medio_pago_requerido != medio_pago:
+            return Decimal('0')
+        if self.monto_minimo_compra > 0 and total_monto < self.monto_minimo_compra:
+            return Decimal('0')
+        
+        descuento = Decimal('0')
+        if self.descuento_porcentaje > 0:
+            descuento = total_monto * (self.descuento_porcentaje / Decimal('100'))
+        
+        if self.tope_descuento_clp > 0 and descuento > self.tope_descuento_clp:
+            descuento = self.tope_descuento_clp
+        return descuento
 
     def __str__(self):
         estado = "ACTIVA" if self.activa else "INACTIVA"

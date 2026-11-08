@@ -1642,7 +1642,7 @@ def vendedor(request):
 
 
 
-                metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO').upper()
+                metodo_pago = (request.POST.get('metodo_pago') or request.POST.get('pos_metodo_pago') or 'EFECTIVO').upper()
 
                 if metodo_pago not in ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA']:
 
@@ -3198,6 +3198,22 @@ def crear_ticket(request):
 
             subtotal_efectivo = max(Decimal('0'), subtotal_bruto - monto_bonificado_dec)
 
+            # Descuento comercial por Medio de Pago (Tarjeta Débito, Crédito, Banco) o Campaña de Temporada
+            descuento_medio_pago = Decimal('0')
+            campana_promo_aplicada = None
+            for camp in OfertaTemporada.objects.filter(activa=True):
+                if camp.es_vigente():
+                    if camp.medio_pago_requerido in ['TODOS', metodo_pago]:
+                        desc_cand = camp.calcular_descuento(subtotal_efectivo, medio_pago=metodo_pago)
+                        if desc_cand > descuento_medio_pago:
+                            descuento_medio_pago = desc_cand
+                            campana_promo_aplicada = camp
+
+            if descuento_medio_pago > Decimal('0'):
+                subtotal_efectivo = max(Decimal('0'), subtotal_efectivo - descuento_medio_pago)
+                if campana_promo_aplicada:
+                    OfertaTemporada.objects.filter(id=campana_promo_aplicada.id).update(usos_actuales=models.F('usos_actuales') + 1)
+
 
 
             es_ronda_adicional = False
@@ -3627,7 +3643,7 @@ def crear_ticket(request):
             'descuento_pct': float(p.descuento_pct or 0) if p.en_oferta else 0,
 
             'desc_oferta': p.descripcion_oferta or '',
-
+            'limite_oferta_por_ticket': getattr(p, 'limite_oferta_por_ticket', 0),
         })
 
 
@@ -3669,6 +3685,30 @@ def crear_ticket(request):
         "convenios_activos": convenios_activos,
 
         "trabajadores_activos": trabajadores_activos,
+        "ofertas_pos_list": [
+            {
+                'id': o.id,
+                'nombre': o.nombre,
+                'tipo_campana': o.tipo_campana,
+                'medio_pago_requerido': o.medio_pago_requerido,
+                'banco_convenio': o.banco_convenio or '',
+                'descuento_porcentaje': float(o.descuento_porcentaje),
+                'monto_minimo_compra': float(o.monto_minimo_compra),
+                'tope_descuento_clp': float(o.tope_descuento_clp),
+            } for o in OfertaTemporada.objects.filter(activa=True) if o.es_vigente()
+        ],
+        "ofertas_pos_json": json.dumps([
+            {
+                'id': o.id,
+                'nombre': o.nombre,
+                'tipo_campana': o.tipo_campana,
+                'medio_pago_requerido': o.medio_pago_requerido,
+                'banco_convenio': o.banco_convenio or '',
+                'descuento_porcentaje': float(o.descuento_porcentaje),
+                'monto_minimo_compra': float(o.monto_minimo_compra),
+                'tope_descuento_clp': float(o.tope_descuento_clp),
+            } for o in OfertaTemporada.objects.filter(activa=True) if o.es_vigente()
+        ]),
 
     }
 
@@ -9648,146 +9688,228 @@ def administrador_convenios(request):
 @requiere_rol(['ADMINISTRADOR'])
 
 def administrador_ofertas_temporada(request):
-
-    """Panel para que el Administrador active o desactive ofertas de temporada en vivo"""
-
+    """
+    Panel integral de Administración de Promociones, Descuentos por Tarjetas/Bancos
+    y Campañas de Temporada (Parque Safari).
+    Permite:
+    - Crear, editar, pausar/activar y eliminar campañas de temporada y convenios con tarjetas.
+    - Configurar límites comerciales: tope de descuento CLP, compra mínima, límite de usos.
+    - Administrar promociones por producto (2da unidad a $1/$5/$500 o precio custom, 2x1, 3x2, % dto).
+    - Asignar límites de promociones por comanda/ticket para control de costos.
+    """
     rol = obtener_rol_usuario(request.user)
-
     if rol != 'ADMINISTRADOR':
-
         messages.error(request, "Acceso restringido al personal de Administración.")
-
         return redirect('index')
 
-
-
     if request.method == 'POST':
-
         accion = request.POST.get('accion')
 
+        # 1. Crear Campaña de Temporada / Medio de Pago
         if accion == 'crear':
-
             nombre = request.POST.get('nombre', '').strip()
-
             descripcion = request.POST.get('descripcion', '').strip()
-
-            descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', '0'))
-
+            tipo_campana = request.POST.get('tipo_campana', 'GENERAL')
+            descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', '0') or '0')
+            medio_pago_requerido = request.POST.get('medio_pago_requerido', 'TODOS')
+            banco_convenio = request.POST.get('banco_convenio', '').strip()
+            monto_minimo_compra = Decimal(request.POST.get('monto_minimo_compra', '0') or '0')
+            tope_descuento_clp = Decimal(request.POST.get('tope_descuento_clp', '0') or '0')
+            limite_usos = int(request.POST.get('limite_usos', '0') or '0')
             fecha_inicio = request.POST.get('fecha_inicio') or timezone.now().date()
-
             fecha_fin = request.POST.get('fecha_fin')
-
             activa = request.POST.get('activa') == 'on'
 
+            cat_id = request.POST.get('categoria_aplicable')
+            categoria_obj = Categoria.objects.filter(id=cat_id).first() if cat_id else None
 
+            if not nombre:
+                messages.error(request, "Debe ingresar un nombre para la campaña.")
+                return redirect('administrador_ofertas_temporada')
+
+            if not fecha_fin:
+                messages.error(request, "Debe especificar la fecha de término de la campaña.")
+                return redirect('administrador_ofertas_temporada')
 
             OfertaTemporada.objects.create(
-
                 nombre=nombre,
-
                 descripcion=descripcion,
-
+                tipo_campana=tipo_campana,
                 descuento_porcentaje=descuento_porcentaje,
-
+                medio_pago_requerido=medio_pago_requerido,
+                banco_convenio=banco_convenio,
+                monto_minimo_compra=monto_minimo_compra,
+                tope_descuento_clp=tope_descuento_clp,
+                limite_usos=limite_usos,
                 fecha_inicio=fecha_inicio,
-
                 fecha_fin=fecha_fin,
-
-                activa=activa
-
+                activa=activa,
+                categoria_aplicable=categoria_obj
             )
-
-            messages.success(request, f"Oferta de temporada '{nombre}' configurada exitosamente.")
-
+            messages.success(request, f"Campaña '{nombre}' creada y configurada exitosamente.")
             return redirect('administrador_ofertas_temporada')
 
-
-
-        elif accion == 'toggle':
-
+        # 2. Editar Campaña
+        elif accion == 'editar_campana':
             oferta_id = request.POST.get('oferta_id')
-
             o = get_object_or_404(OfertaTemporada, id=oferta_id)
+            o.nombre = request.POST.get('nombre', o.nombre).strip()
+            o.descripcion = request.POST.get('descripcion', '').strip()
+            o.tipo_campana = request.POST.get('tipo_campana', o.tipo_campana)
+            o.descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', str(o.descuento_porcentaje)) or '0')
+            o.medio_pago_requerido = request.POST.get('medio_pago_requerido', o.medio_pago_requerido)
+            o.banco_convenio = request.POST.get('banco_convenio', '').strip()
+            o.monto_minimo_compra = Decimal(request.POST.get('monto_minimo_compra', '0') or '0')
+            o.tope_descuento_clp = Decimal(request.POST.get('tope_descuento_clp', '0') or '0')
+            o.limite_usos = int(request.POST.get('limite_usos', '0') or '0')
+            if request.POST.get('fecha_inicio'):
+                o.fecha_inicio = request.POST.get('fecha_inicio')
+            if request.POST.get('fecha_fin'):
+                o.fecha_fin = request.POST.get('fecha_fin')
+            o.activa = request.POST.get('activa') == 'on'
 
-            o.activa = not o.activa
+            cat_id = request.POST.get('categoria_aplicable')
+            o.categoria_aplicable = Categoria.objects.filter(id=cat_id).first() if cat_id else None
 
-            o.save(update_fields=['activa'])
-
-            estado = "activada" if o.activa else "desactivada"
-
-            messages.success(request, f"Oferta '{o.nombre}' {estado} correctamente.")
-
+            o.save()
+            messages.success(request, f"Campaña '{o.nombre}' actualizada exitosamente.")
             return redirect('administrador_ofertas_temporada')
 
+        # 3. Eliminar Campaña Permanentemente
+        elif accion == 'eliminar_campana':
+            oferta_id = request.POST.get('oferta_id')
+            o = get_object_or_404(OfertaTemporada, id=oferta_id)
+            nom = o.nombre
+            o.delete()
+            messages.success(request, f"Campaña '{nom}' eliminada permanentemente del sistema.")
+            return redirect('administrador_ofertas_temporada')
 
+        # 4. Toggle Pausar/Activar Campaña
+        elif accion == 'toggle':
+            oferta_id = request.POST.get('oferta_id')
+            o = get_object_or_404(OfertaTemporada, id=oferta_id)
+            o.activa = not o.activa
+            o.save(update_fields=['activa'])
+            estado = "activada" if o.activa else "pausada"
+            messages.success(request, f"Campaña '{o.nombre}' {estado} correctamente.")
+            return redirect('administrador_ofertas_temporada')
 
-        elif accion == 'activar_promo_moneda_1':
-
+        # 5. Guardar / Editar Promoción de Producto (2da Unidad $X, 2x1, 3x2, % Dto)
+        elif accion == 'guardar_promo_producto':
             producto_id = request.POST.get('producto_id')
-
             prod = get_object_or_404(Producto, id=producto_id)
+            tipo_oferta = request.POST.get('tipo_oferta', 'SEGUNDA_1')
+            precio_oferta_raw = request.POST.get('precio_oferta')
+            descuento_pct_raw = request.POST.get('descuento_pct', '0')
+            limite_ticket_raw = request.POST.get('limite_oferta_por_ticket', '0')
+            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
 
             prod.en_oferta = True
+            prod.tipo_oferta = tipo_oferta
+            prod.limite_oferta_por_ticket = max(0, int(limite_ticket_raw or '0'))
 
-            prod.tipo_oferta = 'SEGUNDA_1'
+            if tipo_oferta == 'SEGUNDA_1':
+                try:
+                    val_segunda = Decimal(str(precio_oferta_raw or '1'))
+                except Exception:
+                    val_segunda = Decimal('1')
+                prod.precio_oferta = val_segunda
+                if not descripcion_oferta:
+                    descripcion_oferta = f"Segunda unidad a ${val_segunda:,.0f} CLP"
+            elif tipo_oferta == '2X1':
+                prod.precio_oferta = None
+                if not descripcion_oferta:
+                    descripcion_oferta = "Promoción 2x1 (Lleva 2 y Paga 1)"
+            elif tipo_oferta == '3X2':
+                prod.precio_oferta = None
+                if not descripcion_oferta:
+                    descripcion_oferta = "Promoción 3x2 (Lleva 3 y Paga 2)"
+            elif tipo_oferta == 'PRECIO_FIJO':
+                try:
+                    val_fijo = Decimal(str(precio_oferta_raw or prod.precio_base))
+                except Exception:
+                    val_fijo = prod.precio_base
+                prod.precio_oferta = val_fijo
+                if not descripcion_oferta:
+                    descripcion_oferta = f"Precio Especial: ${val_fijo:,.0f} CLP"
+            elif tipo_oferta == 'DESCUENTO_PCT':
+                try:
+                    val_pct = Decimal(str(descuento_pct_raw or '10'))
+                except Exception:
+                    val_pct = Decimal('10')
+                prod.descuento_pct = val_pct
+                if not descripcion_oferta:
+                    descripcion_oferta = f"{val_pct}% Descuento Especial"
 
-            prod.precio_oferta = Decimal('1')
-
-            prod.descripcion_oferta = 'Segunda unidad a $1 peso con moneda física (Ley 20.956)'
-
+            prod.descripcion_oferta = descripcion_oferta
             prod.save()
-
-            messages.success(request, f"¡Promoción oficial activada para '{prod.nombre}': 2da unidad a $1 peso con moneda física!")
-
+            messages.success(request, f"¡Promoción configurada exitosamente para '{prod.nombre}'!")
             return redirect('administrador_ofertas_temporada')
 
+        # 6. Toggle Activar/Pausar Promoción de Producto
+        elif accion == 'toggle_promo_producto':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+            prod.en_oferta = not prod.en_oferta
+            prod.save(update_fields=['en_oferta'])
+            estado = "activada" if prod.en_oferta else "pausada"
+            messages.success(request, f"Promoción para '{prod.nombre}' {estado}.")
+            return redirect('administrador_ofertas_temporada')
 
+        # 7. Eliminar Promoción de Producto (quitar oferta)
+        elif accion == 'eliminar_promo_producto':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+            prod.en_oferta = False
+            prod.tipo_oferta = 'NINGUNA'
+            prod.precio_oferta = None
+            prod.descuento_pct = Decimal('0')
+            prod.limite_oferta_por_ticket = 0
+            prod.descripcion_oferta = None
+            prod.save()
+            messages.info(request, f"Promoción eliminada para '{prod.nombre}'. El producto vuelve a su tarifa estándar.")
+            return redirect('administrador_ofertas_temporada')
+
+        # 8. Compatibilidad histórica: activar/desactivar promo moneda 1
+        elif accion == 'activar_promo_moneda_1':
+            producto_id = request.POST.get('producto_id')
+            prod = get_object_or_404(Producto, id=producto_id)
+            prod.en_oferta = True
+            prod.tipo_oferta = 'SEGUNDA_1'
+            prod.precio_oferta = Decimal('1')
+            prod.descripcion_oferta = 'Segunda unidad a $1 peso con moneda física (Ley 20.956)'
+            prod.save()
+            messages.success(request, f"¡Promoción oficial activada para '{prod.nombre}': 2da unidad a $1 peso con moneda física!")
+            return redirect('administrador_ofertas_temporada')
 
         elif accion == 'desactivar_promo_moneda_1':
-
             producto_id = request.POST.get('producto_id')
-
             prod = get_object_or_404(Producto, id=producto_id)
-
             prod.en_oferta = False
-
             prod.tipo_oferta = 'NINGUNA'
-
             prod.precio_oferta = None
-
             prod.descripcion_oferta = None
-
             prod.save()
-
             messages.info(request, f"Promoción de moneda física desactivada para '{prod.nombre}'.")
-
             return redirect('administrador_ofertas_temporada')
 
-
-
     ofertas = OfertaTemporada.objects.all().order_by('-fecha_inicio')
-
-    productos_promo_monedas = Producto.objects.filter(en_oferta=True, tipo_oferta='SEGUNDA_1')
-
+    productos_en_oferta = Producto.objects.filter(en_oferta=True).order_by('nombre')
     todos_productos = Producto.objects.filter(activo=True).order_by('nombre')
+    categorias = Categoria.objects.filter(activo=True)
 
     context = {
-
         'ofertas': ofertas,
-
         'activas_count': ofertas.filter(activa=True).count(),
-
-        'categorias': Categoria.objects.filter(activo=True),
-
-        'productos_promo_monedas': productos_promo_monedas,
-
+        'productos_en_oferta': productos_en_oferta,
+        'productos_oferta_count': productos_en_oferta.count(),
         'todos_productos': todos_productos,
-
+        'categorias': categorias,
+        'tipos_campana_choices': OfertaTemporada.TIPOS_CAMPANA,
+        'medios_pago_choices': OfertaTemporada.MEDIOS_PAGO_CHOICES,
+        'tipos_oferta_producto_choices': Producto.TIPOS_OFERTA,
     }
-
     return render(request, 'ventas/administrador/administrador_ofertas_temporada.html', context)
-
-
 
 
 

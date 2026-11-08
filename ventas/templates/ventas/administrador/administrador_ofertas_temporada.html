@@ -1,526 +1,768 @@
 {% load static %}
-
 {% load safari_tags %}
-
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Venta Safari - Ofertas de Temporada</title>
-
+    <title>Venta Safari - Centro de Promociones y Ofertas</title>
     <!-- Bootstrap 5 CSS -->
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <!-- Bootstrap Icons -->
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
     <!-- Google Fonts: Oswald & Nunito -->
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
-
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-
     
-
     <!-- Estilos Externos Modulares -->
-
     <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=3.2">
-
     <link rel="stylesheet" href="{% static 'css/administrador/admin_base.css' %}?v=3.6">
-
-
-
-    <link rel="stylesheet" href="{% static 'css/administrador/ofertas_temporada.css' %}">
-
+    <link rel="stylesheet" href="{% static 'css/administrador/ofertas_temporada.css' %}?v=2.0">
 </head>
-
 <body class="d-flex flex-column min-vh-100">
 
-
-
     <!-- Cenefa tribal superior -->
-
     <div class="tribal-divider"></div>
 
-
-
     <!-- Barra de Navegación del Administrador -->
-
     {% include 'ventas/administrador/include_admin_header.html' with active_subclase='ofertas' %}
 
-
-
     <!-- Contenido Principal -->
-
     <main class="container-fluid px-4 py-4 flex-grow-1">
 
-
-
         {% if messages %}
-
             {% for message in messages %}
-
                 <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
-
-                    {{ message }}
-
+                    <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-
                 </div>
-
             {% endfor %}
-
         {% endif %}
 
-
-
-                <!-- SECCIÓN DESTACADA: CAMPAÑA OFICIAL MONEDAS DE $1 Y $5 PESOS (SEGUNDA UNIDAD A $1 CLP) -->
-
-        <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="border-left: 6px solid #f59e0b !important; background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);">
-
-            <div class="card-body p-4">
-
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-
-                    <div class="d-flex align-items-center gap-3">
-
-                        <div class="rounded-circle p-3 d-flex align-items-center justify-content-center shadow-xs" style="width: 58px; height: 58px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; font-size: 1.8rem;">
-
-                            <i class="bi bi-coin"></i>
-
-                        </div>
-
-                        <div>
-
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-
-                                <h4 class="mb-0 fw-bold text-dark font-oswald text-uppercase">Campaña Oficial: Monedas Físicas de $1 y $5 Pesos</h4>
-
-                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1 fw-bold">
-
-                                    <i class="bi bi-stars me-1"></i>Promo Segunda Unidad a $1 CLP
-
-                                </span>
-
-                            </div>
-
-                            <p class="text-muted small mb-0 mt-1" style="max-width: 850px;">
-
-                                <strong>Marco Legal y Excepción (Ley N° 20.956):</strong> Si el cliente presenta una moneda física histórica de $1 o $5 pesos en caja, se le otorga la <strong>segunda hamburguesa (o plato en promoción) a solo $1 peso</strong>. En efectivo se cobra el valor exacto sin aplicar el redondeo a la decena para no eliminar el peso promocional. La moneda física se deposita en la gaveta y se cuadra en el arqueo diario con el contador <code>monedas_1</code>.
-
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    <button class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalPromoMoneda1" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; border: none;">
-
-                        <i class="bi bi-plus-circle-fill"></i> Activar Producto en Promo $1
-
-                    </button>
-
+        <!-- Encabezado de Página -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h3 class="mb-0 fw-bold text-dark font-oswald text-uppercase">
+                        <i class="bi bi-tags-fill text-danger me-2"></i>Centro de Promociones & Descuentos
+                    </h3>
+                    <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold">
+                        <i class="bi bi-shield-check me-1"></i>Módulo Administrador Realista
+                    </span>
                 </div>
+                <p class="text-muted small mb-0 mt-1">
+                    Gestiona libremente promociones de segunda unidad ($1, $5, $500 o precio a medida), 2x1, 3x2, descuentos por medios de pago (tarjetas/bancos), límites de consumo y campañas estacionales.
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-warning rounded-pill px-3 py-2 fw-bold shadow-xs text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Nueva Promo por Producto
+                </button>
+                <button class="btn btn-danger rounded-pill px-3 py-2 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
+                    <i class="bi bi-credit-card-2-front-fill me-1"></i> Nueva Campaña / Tarjetas
+                </button>
+            </div>
+        </div>
 
-
-
-                <!-- Lista de productos participantes activos -->
-
-                <div class="mt-4 pt-3 border-top border-warning border-opacity-25">
-
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-
-                        <h6 class="fw-bold text-dark small text-uppercase mb-0">
-
-                            <i class="bi bi-check-circle-fill text-success me-1"></i> Productos Participantes Activos ({{ productos_promo_monedas.count }}):
-
-                        </h6>
-
+        <!-- Indicadores KPI -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-kpi-card shadow-xs">
+                    <div class="stat-kpi-icon bg-warning bg-opacity-15 text-warning">
+                        <i class="bi bi-coin"></i>
                     </div>
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Promos en Productos</span>
+                        <h4 class="mb-0 fw-bold font-oswald text-dark">{{ productos_oferta_count }} Activas</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-kpi-card shadow-xs">
+                    <div class="stat-kpi-icon bg-danger bg-opacity-15 text-danger">
+                        <i class="bi bi-credit-card"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Campañas & Tarjetas</span>
+                        <h4 class="mb-0 fw-bold font-oswald text-dark">{{ activas_count }} / {{ ofertas.count }} en Vivo</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-kpi-card shadow-xs">
+                    <div class="stat-kpi-icon bg-success bg-opacity-15 text-success">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Control de Redondeo</span>
+                        <h4 class="mb-0 fw-bold font-oswald text-success">Ley N° 20.956</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-kpi-card shadow-xs">
+                    <div class="stat-kpi-icon bg-primary bg-opacity-15 text-primary">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Límites Comerciales</span>
+                        <h4 class="mb-0 fw-bold font-oswald text-dark">Topes Activos</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    {% if productos_promo_monedas %}
+        <!-- Navegación por Pestañas -->
+        <ul class="nav nav-tabs nav-tabs-safari mb-4" id="promosTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active d-flex align-items-center gap-2" id="productos-tab" data-bs-toggle="tab" data-bs-target="#tab-productos" type="button" role="tab">
+                    <i class="bi bi-basket2-fill"></i>
+                    <span>Promociones por Producto (2da Unidad $X, 2x1, 3x2, % Dto)</span>
+                    <span class="badge bg-warning text-dark rounded-pill">{{ productos_oferta_count }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link d-flex align-items-center gap-2" id="campanas-tab" data-bs-toggle="tab" data-bs-target="#tab-campanas" type="button" role="tab">
+                    <i class="bi bi-credit-card-2-front-fill"></i>
+                    <span>Campañas de Temporada & Descuentos por Tarjetas / Bancos</span>
+                    <span class="badge bg-danger text-white rounded-pill">{{ ofertas.count }}</span>
+                </button>
+            </li>
+        </ul>
 
-                    <div class="row g-3">
+        <!-- Contenido de Pestañas -->
+        <div class="tab-content" id="promosTabContent">
 
-                        {% for p in productos_promo_monedas %}
+            <!-- PESTAÑA 1: PROMOCIONES POR PRODUCTO -->
+            <div class="tab-pane fade show active" id="tab-productos" role="tabpanel">
+                <div class="card card-safari border-0 shadow-sm overflow-hidden mb-4">
+                    <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark font-oswald text-uppercase">
+                                <i class="bi bi-stars text-warning me-2"></i>Catálogo con Promociones Activas
+                            </h5>
+                            <span class="text-muted small">Configuración de precio de segunda unidad, 2x1, 3x2 y límite por comanda</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                            <i class="bi bi-plus-lg me-1"></i> Asignar Promoción a Producto
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-promos mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Precio Base</th>
+                                        <th>Modalidad de Promoción</th>
+                                        <th>Límite por Ticket</th>
+                                        <th>Estado</th>
+                                        <th class="text-end">Acciones de Administración</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in productos_en_oferta %}
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold text-dark d-block">{{ p.nombre }}</span>
+                                            <span class="badge bg-light text-muted border">{{ p.categoria.nombre|default:"General" }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-secondary">${{ p.precio_base|floatformat:0 }} CLP</span>
+                                        </td>
+                                        <td>
+                                            {% if p.tipo_oferta == 'SEGUNDA_1' %}
+                                                <span class="badge bg-warning text-dark badge-promo-kind">
+                                                    <i class="bi bi-coin me-1"></i>2da Unidad a ${{ p.precio_oferta|default:"1"|floatformat:0 }} CLP
+                                                </span>
+                                            {% elif p.tipo_oferta == '2X1' %}
+                                                <span class="badge bg-primary text-white badge-promo-kind">
+                                                    <i class="bi bi-gift-fill me-1"></i>Lleva 2 y Paga 1 (2x1)
+                                                </span>
+                                            {% elif p.tipo_oferta == '3X2' %}
+                                                <span class="badge bg-info text-dark badge-promo-kind">
+                                                    <i class="bi bi-collection-fill me-1"></i>Lleva 3 y Paga 2 (3x2)
+                                                </span>
+                                            {% elif p.tipo_oferta == 'DESCUENTO_PCT' %}
+                                                <span class="badge bg-success text-white badge-promo-kind">
+                                                    <i class="bi bi-percent me-1"></i>{{ p.descuento_pct|floatformat:0 }}% Descuento
+                                                </span>
+                                            {% elif p.tipo_oferta == 'PRECIO_FIJO' %}
+                                                <span class="badge bg-dark text-white badge-promo-kind">
+                                                    <i class="bi bi-tag-fill me-1"></i>Precio Fijo: ${{ p.precio_oferta|floatformat:0 }} CLP
+                                                </span>
+                                            {% endif %}
+                                            <small class="text-muted d-block mt-1">{{ p.descripcion_oferta|default:"Promoción vigente" }}</small>
+                                        </td>
+                                        <td>
+                                            {% if p.limite_oferta_por_ticket > 0 %}
+                                                <span class="badge badge-limit">
+                                                    <i class="bi bi-shield-check me-1"></i>Máx. {{ p.limite_oferta_por_ticket }} por comanda
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-light text-muted border">Sin límite</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if p.en_oferta %}
+                                                <span class="badge bg-success bg-opacity-15 text-success fw-bold px-2 py-1">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>Activa
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary bg-opacity-15 text-secondary fw-bold px-2 py-1">
+                                                    <i class="bi bi-pause-circle-fill me-1"></i>Pausada
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-inline-flex gap-1">
+                                                <!-- Pausar / Activar -->
+                                                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline m-0">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="accion" value="toggle_promo_producto">
+                                                    <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="{% if p.en_oferta %}Pausar promoción{% else %}Reanudar promoción{% endif %}">
+                                                        <i class="bi {% if p.en_oferta %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+                                                    </button>
+                                                </form>
 
-                        <div class="col-md-6 col-lg-4">
+                                                <!-- Editar Promo -->
+                                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5" 
+                                                        data-bs-toggle="modal" data-bs-target="#modalEditarPromoProducto"
+                                                        data-id="{{ p.id }}"
+                                                        data-nombre="{{ p.nombre }}"
+                                                        data-tipo="{{ p.tipo_oferta }}"
+                                                        data-precio="{{ p.precio_oferta|default:'1'|floatformat:0 }}"
+                                                        data-pct="{{ p.descuento_pct|default:'0'|floatformat:0 }}"
+                                                        data-limite="{{ p.limite_oferta_por_ticket|default:'0' }}"
+                                                        data-desc="{{ p.descripcion_oferta|default:'' }}"
+                                                        title="Editar parámetros de la promoción">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
 
-                            <div class="p-3 rounded-4 bg-white border border-warning shadow-xs d-flex justify-content-between align-items-center">
+                                                <!-- Eliminar Promo -->
+                                                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline m-0" onsubmit="return confirm('¿Seguro que deseas eliminar la promoción de {{ p.nombre }}? El producto volverá a su precio estándar.')">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="accion" value="eliminar_promo_producto">
+                                                    <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar promoción">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-muted">
+                                            <i class="bi bi-tag text-warning fs-1 d-block mb-2"></i>
+                                            <h5 class="fw-bold">No hay productos en promoción actualmente</h5>
+                                            <p class="small mb-3">Configura tu primera promo de 2da unidad a $1, $5, $500, 2x1 o porcentaje de descuento.</p>
+                                            <button class="btn btn-warning rounded-pill px-4 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                                                <i class="bi bi-plus-circle-fill me-1"></i> Asignar Primera Promoción
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
+            <!-- PESTAÑA 2: CAMPAÑAS DE TEMPORADA & TARJETAS / BANCOS -->
+            <div class="tab-pane fade" id="tab-campanas" role="tabpanel">
+                <div class="row g-4">
+                    {% for o in ofertas %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="campaign-card {% if not o.activa %}inactive{% endif %}">
+                            <div class="campaign-card-header">
                                 <div>
+                                    <span class="badge {% if o.activa and o.es_vigente %}bg-success{% elif o.activa %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill px-3 py-1">
+                                        {% if o.activa and o.es_vigente %}En Vivo{% elif o.activa %}Fuera de Vigencia{% else %}Pausada{% endif %}
+                                    </span>
+                                    {% if o.tipo_campana == 'MEDIO_PAGO' %}
+                                        <span class="badge badge-bank ms-1">
+                                            <i class="bi bi-credit-card-2-back me-1"></i>{{ o.get_medio_pago_requerido_display }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="fs-4 fw-bold text-danger font-oswald">
+                                    {{ o.descuento_porcentaje|floatformat:0 }}% OFF
+                                </div>
+                            </div>
+                            <div class="campaign-card-body">
+                                <h5 class="fw-bold text-dark mb-1">{{ o.nombre }}</h5>
+                                <p class="text-secondary small mb-3 flex-grow-1">{{ o.descripcion|default:"Campaña comercial oficial de Parque Safari." }}</p>
 
-                                    <span class="fw-bold text-dark d-block">{{ p.nombre }}</span>
+                                {% if o.banco_convenio %}
+                                <div class="small text-primary fw-bold mb-2">
+                                    <i class="bi bi-building me-1"></i>Convenio Banco: {{ o.banco_convenio }}
+                                </div>
+                                {% endif %}
 
-                                    <small class="text-muted">1ra: ${{ p.precio_base|floatformat:0 }} • <strong class="text-danger">2da: $1 CLP</strong></small>
-
+                                <div class="bg-light p-2.5 rounded-3 mb-3 small">
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Compra Mínima:</span>
+                                        <strong>{% if o.monto_minimo_compra > 0 %}${{ o.monto_minimo_compra|floatformat:0 }} CLP{% else %}Sin mínimo{% endif %}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary mb-1">
+                                        <span>Tope Descuento:</span>
+                                        <strong>{% if o.tope_descuento_clp > 0 %}${{ o.tope_descuento_clp|floatformat:0 }} CLP{% else %}Sin tope{% endif %}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-secondary">
+                                        <span>Usos Registrados:</span>
+                                        <strong>{{ o.usos_actuales }}{% if o.limite_usos > 0 %} / {{ o.limite_usos }}{% else %} (Ilimitados){% endif %}</strong>
+                                    </div>
                                 </div>
 
-                                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="m-0">
-
-                                    {% csrf_token %}
-
-                                    <input type="hidden" name="accion" value="desactivar_promo_moneda_1">
-
-                                    <input type="hidden" name="producto_id" value="{{ p.id }}">
-
-                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" title="Quitar de la promoción">
-
-                                        <i class="bi bi-x-circle me-1"></i> Quitar
-
+                                <div class="small text-muted border-top pt-2">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ o.fecha_inicio|date:"d/m/Y" }} al {{ o.fecha_fin|date:"d/m/Y" }}
+                                </div>
+                            </div>
+                            <div class="campaign-card-footer">
+                                <div class="d-flex align-items-center gap-2">
+                                    <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="toggle">
+                                        <input type="hidden" name="oferta_id" value="{{ o.id }}">
+                                        <div class="form-check form-switch m-0" title="Activar / Desactivar Campaña">
+                                            <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" {% if o.activa %}checked{% endif %}>
+                                        </div>
+                                    </form>
+                                    <span class="small fw-bold text-muted">{% if o.activa %}Activa{% else %}Pausada{% endif %}</span>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <!-- Botón Editar -->
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5" 
+                                            data-bs-toggle="modal" data-bs-target="#modalEditarCampana"
+                                            data-id="{{ o.id }}"
+                                            data-nombre="{{ o.nombre }}"
+                                            data-descripcion="{{ o.descripcion|default:'' }}"
+                                            data-tipo="{{ o.tipo_campana }}"
+                                            data-pct="{{ o.descuento_porcentaje|floatformat:0 }}"
+                                            data-medio="{{ o.medio_pago_requerido }}"
+                                            data-banco="{{ o.banco_convenio|default:'' }}"
+                                            data-minimo="{{ o.monto_minimo_compra|floatformat:0 }}"
+                                            data-tope="{{ o.tope_descuento_clp|floatformat:0 }}"
+                                            data-limite="{{ o.limite_usos }}"
+                                            data-inicio="{{ o.fecha_inicio|date:'Y-m-d' }}"
+                                            data-fin="{{ o.fecha_fin|date:'Y-m-d' }}"
+                                            data-activa="{% if o.activa %}true{% else %}false{% endif %}"
+                                            title="Editar campaña">
+                                        <i class="bi bi-pencil-square"></i>
                                     </button>
 
-                                </form>
-
+                                    <!-- Botón Eliminar -->
+                                    <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="m-0" onsubmit="return confirm('¿Seguro que deseas eliminar permanentemente la campaña \'{{ o.nombre }}\'? Esta acción no se puede deshacer.')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="eliminar_campana">
+                                        <input type="hidden" name="oferta_id" value="{{ o.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar campaña">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-
                         </div>
-
-                        {% endfor %}
-
                     </div>
-
-                    {% else %}
-
-                    <div class="p-3 rounded-4 bg-white border border-dashed text-center text-muted small">
-
-                        <i class="bi bi-info-circle text-warning fs-5 me-1"></i> Actualmente no hay productos asignados a la promo de $1 peso. Haz clic en "Activar Producto en Promo $1" para habilitar la Hamburguesa Safari u otro producto de la carta.
-
-                    </div>
-
-                    {% endif %}
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <div class="d-flex justify-content-between align-items-center mb-3">
-
-            <h5 class="fw-bold text-dark font-oswald text-uppercase mb-0">
-
-                <i class="bi bi-calendar-range text-danger me-1"></i> Campañas y Ofertas Generales de Temporada
-
-            </h5>
-
-            <button class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaOferta">
-
-                <i class="bi bi-plus-circle me-1"></i> Nueva Campaña de Temporada
-
-            </button>
-
-        </div>
-
-        <div class="row g-4">
-
-            {% for o in ofertas %}
-
-            <div class="col-md-6 col-lg-4">
-
-                <div class="card card-safari p-4 h-100 position-relative {% if not o.activa %}opacity-75 bg-light{% endif %}">
-
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-
-                        <span class="badge {% if o.activa and o.es_vigente %}bg-success{% elif o.activa %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6 px-3 py-1">
-
-                            {% if o.activa and o.es_vigente %}En Vivo{% elif o.activa %}Programada{% else %}Desactivada{% endif %}
-
-                        </span>
-
-                        <div class="fs-4 fw-bold text-danger font-oswald">
-
-                            {{ o.descuento_porcentaje|floatformat:0 }}% OFF
-
-                        </div>
-
-                    </div>
-
-
-
-                    <h5 class="fw-bold text-dark mt-2 mb-1">{{ o.nombre }}</h5>
-
-                    <p class="text-secondary small mb-3 flex-grow-1">{{ o.descripcion|default:"Sin descripción detallada." }}</p>
-
-
-
-                    <div class="small text-secondary mb-3 border-top pt-2">
-
-                        <i class="bi bi-calendar-event me-1"></i>Vigencia: {{ o.fecha_inicio|date:"d/m/Y" }} al {{ o.fecha_fin|date:"d/m/Y" }}
-
-                    </div>
-
-
-
-                    <div class="d-flex justify-content-between align-items-center border-top pt-3">
-
-                        <span class="small fw-bold text-muted">Interruptor Maestro:</span>
-
-                        <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline">
-
-                            {% csrf_token %}
-
-                            <input type="hidden" name="accion" value="toggle">
-
-                            <input type="hidden" name="oferta_id" value="{{ o.id }}">
-
-                            <div class="form-check form-switch m-0">
-
-                                <input class="form-check-input fs-5" type="checkbox" role="switch" onchange="this.form.submit()" {% if o.activa %}checked{% endif %}>
-
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="card card-safari p-5 text-center text-secondary">
+                            <i class="bi bi-credit-card-2-front fs-1 text-danger opacity-50 mb-3 d-block"></i>
+                            <h4 class="fw-bold">No hay campañas de temporada configuradas</h4>
+                            <p>Crea campañas para fechas festivas, convenios con tarjetas bancarias (Débito/Crédito) o Happy Hour.</p>
+                            <div>
+                                <button class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
+                                    <i class="bi bi-plus-circle me-1"></i> Crear Primera Campaña
+                                </button>
                             </div>
-
-                        </form>
-
+                        </div>
                     </div>
-
+                    {% endfor %}
                 </div>
-
             </div>
-
-            {% empty %}
-
-            <div class="col-12">
-
-                <div class="card card-safari p-5 text-center text-secondary">
-
-                    <i class="bi bi-tag fs-1 text-danger opacity-50 mb-3 d-block"></i>
-
-                    <h4>No hay ofertas de temporada configuradas</h4>
-
-                    <p>Crea campañas para fechas festivas, vacaciones o promociones especiales del parque.</p>
-
-                    <div>
-
-                        <button class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaOferta">
-
-                            <i class="bi bi-plus-circle me-1"></i> Crear Primera Oferta
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            {% endfor %}
-
         </div>
 
     </main>
 
-
-
-    <!-- Modal Crear Oferta de Temporada -->
-
-    <div class="modal fade" id="modalNuevaOferta" tabindex="-1" aria-hidden="true">
-
+    <!-- MODAL 1: NUEVA PROMOCIÓN POR PRODUCTO -->
+    <div class="modal fade" id="modalNuevaPromoProducto" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-
-            <div class="modal-content card-safari overflow-hidden border-0">
-
-                <div class="modal-header bg-danger text-white">
-
-                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-tag-fill me-2"></i>Nueva Oferta de Temporada</h5>
-
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header bg-warning text-dark py-3 px-4">
+                    <h5 class="modal-title font-oswald text-uppercase fw-bold">
+                        <i class="bi bi-tag-fill me-2"></i>Asignar Promoción a Producto
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
                 <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
-
                     {% csrf_token %}
-
-                    <input type="hidden" name="accion" value="crear">
-
+                    <input type="hidden" name="accion" value="guardar_promo_producto">
                     <div class="modal-body p-4">
-
+                        <!-- Producto -->
                         <div class="mb-3">
-
-                            <label class="form-label small fw-bold text-secondary">Nombre de la Campaña u Oferta:</label>
-
-                            <input type="text" name="nombre" class="form-control" required placeholder="Ej: Temporada de Invierno, Promo Primavera">
-
+                            <label class="form-label small fw-bold text-dark">Producto Gastronómico:</label>
+                            <select name="producto_id" class="form-select rounded-3" required>
+                                <option value="">-- Seleccionar producto de la carta --</option>
+                                {% for prod in todos_productos %}
+                                <option value="{{ prod.id }}">
+                                    {{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }} CLP) - {{ prod.categoria.nombre|default:"General" }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
 
-
-
+                        <!-- Tipo de Promoción -->
                         <div class="mb-3">
-
-                            <label class="form-label small fw-bold text-secondary">Descripción para el Equipo:</label>
-
-                            <textarea name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación de la oferta..."></textarea>
-
+                            <label class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
+                            <select name="tipo_oferta" id="promoTipoOferta" class="form-select rounded-3" required>
+                                <option value="SEGUNDA_1" selected>Segunda Unidad a Precio Especial ($1, $5, $500 o a medida)</option>
+                                <option value="2X1">Lleva 2 y Paga 1 (2x1)</option>
+                                <option value="3X2">Lleva 3 y Paga 2 (3x2)</option>
+                                <option value="DESCUENTO_PCT">Descuento Porcentual (%)</option>
+                                <option value="PRECIO_FIJO">Precio Promocional Fijo</option>
+                            </select>
                         </div>
 
-
-
-                        <div class="mb-3">
-
-                            <label class="form-label small fw-bold text-secondary">Porcentaje de Descuento (%):</label>
-
+                        <!-- Precio de Segunda Unidad / Precio Fijo -->
+                        <div class="mb-3" id="campoPrecioOferta">
+                            <label class="form-label small fw-bold text-dark" id="labelPrecioOferta">Precio de la 2da Unidad (CLP):</label>
                             <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="precio_oferta" id="promoPrecioOferta" class="form-control" value="1" min="0" step="1">
+                                <span class="input-group-text">CLP</span>
+                            </div>
+                            <!-- Presets Rápidos -->
+                            <div class="d-flex gap-1 mt-2 flex-wrap">
+                                <button type="button" class="btn btn-xs btn-outline-warning text-dark btn-preset-precio" data-valor="1">$1 (Ley 20.956)</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="5">$5 Moneda</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="500">$500</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="990">$990</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="1500">$1.500</button>
+                            </div>
+                        </div>
 
-                                <input type="number" name="descuento_porcentaje" class="form-control" required min="1" max="100" value="15">
-
+                        <!-- Descuento Porcentual -->
+                        <div class="mb-3 d-none" id="campoDescuentoPct">
+                            <label class="form-label small fw-bold text-dark">Porcentaje de Descuento (%):</label>
+                            <div class="input-group">
+                                <input type="number" name="descuento_pct" id="promoDescuentoPct" class="form-control" value="15" min="1" max="99">
                                 <span class="input-group-text">%</span>
-
                             </div>
-
                         </div>
 
+                        <!-- Límite por Ticket / Mesa -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Límite de Promociones por Ticket / Comanda:</label>
+                            <input type="number" name="limite_oferta_por_ticket" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                            <div class="form-text small">Indica cuántas promociones se pueden aplicar como máximo por comanda (0 para ilimitadas).</div>
+                        </div>
 
+                        <!-- Etiqueta Comercial Visible -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Descripción Comercial / Etiqueta Visible:</label>
+                            <input type="text" name="descripcion_oferta" class="form-control" placeholder="Ej: ¡2da hamburguesa por solo $1 peso con moneda física!">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold text-dark shadow-sm">
+                            <i class="bi bi-check-circle-fill me-1"></i> Guardar Promoción
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                        <div class="row g-2 mb-3">
+    <!-- MODAL 2: EDITAR PROMOCIÓN DE PRODUCTO -->
+    <div class="modal fade" id="modalEditarPromoProducto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header bg-primary text-white py-3 px-4">
+                    <h5 class="modal-title font-oswald text-uppercase fw-bold">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Promoción de Producto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="guardar_promo_producto">
+                    <input type="hidden" name="producto_id" id="edit_promo_producto_id">
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info py-2 px-3 small rounded-3 mb-3">
+                            <i class="bi bi-info-circle me-1"></i>Modificando promoción para: <strong id="edit_promo_nombre_display"></strong>
+                        </div>
 
-                            <div class="col-6">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
+                            <select name="tipo_oferta" id="edit_promo_tipo" class="form-select rounded-3" required>
+                                <option value="SEGUNDA_1">Segunda Unidad a Precio Especial ($1, $5, $500 o a medida)</option>
+                                <option value="2X1">Lleva 2 y Paga 1 (2x1)</option>
+                                <option value="3X2">Lleva 3 y Paga 2 (3x2)</option>
+                                <option value="DESCUENTO_PCT">Descuento Porcentual (%)</option>
+                                <option value="PRECIO_FIJO">Precio Promocional Fijo</option>
+                            </select>
+                        </div>
 
+                        <div class="mb-3" id="edit_grupo_precio">
+                            <label class="form-label small fw-bold text-dark">Precio 2da Unidad / Precio Fijo (CLP):</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="precio_oferta" id="edit_promo_precio" class="form-control" min="0" step="1">
+                                <span class="input-group-text">CLP</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 d-none" id="edit_grupo_pct">
+                            <label class="form-label small fw-bold text-dark">Porcentaje de Descuento (%):</label>
+                            <div class="input-group">
+                                <input type="number" name="descuento_pct" id="edit_promo_pct" class="form-control" min="1" max="99">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Límite por Ticket / Comanda:</label>
+                            <input type="number" name="limite_oferta_por_ticket" id="edit_promo_limite" class="form-control" min="0">
+                            <div class="form-text small">0 = Sin límite de uso por comanda.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Descripción Comercial:</label>
+                            <input type="text" name="descripcion_oferta" id="edit_promo_desc" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Actualizar Promoción</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: NUEVA CAMPAÑA DE TEMPORADA / MEDIOS DE PAGO -->
+    <div class="modal fade" id="modalNuevaCampana" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content card-safari overflow-hidden border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white py-3 px-4">
+                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-credit-card-2-front-fill me-2"></i>Nueva Campaña / Convenio de Pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="crear">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <!-- Nombre -->
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
+                                <input type="text" name="nombre" class="form-control" required placeholder="Ej: 15% Descuento Tarjeta Santander, Promo Invierno">
+                            </div>
+                            <!-- Tipo Campaña -->
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
+                                <select name="tipo_campana" id="campanaTipo" class="form-select" required>
+                                    <option value="GENERAL">Descuento General de Temporada</option>
+                                    <option value="MEDIO_PAGO" selected>Descuento por Medio de Pago / Tarjeta</option>
+                                    <option value="HAPPY_HOUR">Happy Hour / Franja Horaria</option>
+                                </select>
+                            </div>
+
+                            <!-- Medio de Pago Requerido -->
+                            <div class="col-md-6" id="grupoMedioPago">
+                                <label class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
+                                <select name="medio_pago_requerido" class="form-select">
+                                    <option value="TODOS">Todos los medios de pago</option>
+                                    <option value="DEBITO" selected>Tarjeta de Débito (Redcompra)</option>
+                                    <option value="CREDITO">Tarjeta de Crédito (Transbank/Bancos)</option>
+                                    <option value="EFECTIVO">Efectivo</option>
+                                    <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                                </select>
+                            </div>
+
+                            <!-- Banco / Convenio -->
+                            <div class="col-md-6" id="grupoBanco">
+                                <label class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
+                                <input type="text" name="banco_convenio" class="form-control" placeholder="Ej: Banco Santander, BancoEstado, Tarjeta Safari, Visa">
+                            </div>
+
+                            <!-- Porcentaje de Descuento -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Descuento (%):</label>
+                                <div class="input-group">
+                                    <input type="number" name="descuento_porcentaje" class="form-control" required min="1" max="100" value="15">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+
+                            <!-- Compra Mínima -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="monto_minimo_compra" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+
+                            <!-- Tope Descuento -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="tope_descuento_clp" class="form-control" value="5000" min="0" placeholder="0 = Sin tope">
+                                </div>
+                            </div>
+
+                            <!-- Límite de Usos -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
+                                <input type="number" name="limite_usos" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                            </div>
+
+                            <!-- Fecha Inicio -->
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
-
                                 <input type="date" name="fecha_inicio" class="form-control" required value="{% now 'Y-m-d' %}">
-
                             </div>
 
-                            <div class="col-6">
-
+                            <!-- Fecha Fin -->
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
-
                                 <input type="date" name="fecha_fin" class="form-control" required>
-
                             </div>
 
+                            <!-- Categoría Opcional -->
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
+                                <select name="categoria_aplicable" class="form-select">
+                                    <option value="">-- Toda la carta gastronómica --</option>
+                                    {% for cat in categorias %}
+                                    <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Descripción -->
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary">Descripción para Cajeros y Clientes:</label>
+                                <textarea name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación del beneficio comercial..."></textarea>
+                            </div>
                         </div>
-
-
 
                         <div class="form-check form-switch mt-3">
-
-                            <input class="form-check-input" type="checkbox" name="activa" id="checkActiva" checked>
-
-                            <label class="form-check-label fw-bold text-dark" for="checkActiva">Activar de inmediato en el sistema</label>
-
+                            <input class="form-check-input" type="checkbox" name="activa" id="checkActivaCampana" checked>
+                            <label class="form-check-label fw-bold text-dark" for="checkActivaCampana">Activar de inmediato en terminales POS y Meseros</label>
                         </div>
-
                     </div>
-
-                    <div class="modal-footer bg-light">
-
-                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-
-                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Guardar Oferta</button>
-
-                    </div>
-
-                </form>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- Bootstrap JS -->
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Modal Activar Producto en Promo Moneda $1 -->
-
-    <div class="modal fade" id="modalPromoMoneda1" tabindex="-1" aria-hidden="true">
-
-        <div class="modal-dialog modal-dialog-centered">
-
-            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
-
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
-
-                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-coin me-2"></i>Activar Promo Moneda de $1 Peso</h5>
-
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-
-                </div>
-
-                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
-
-                    {% csrf_token %}
-
-                    <input type="hidden" name="accion" value="activar_promo_moneda_1">
-
-                    <div class="modal-body p-4">
-
-                        <p class="small text-muted mb-3">
-
-                            Selecciona el producto gastronómico que participará en la promoción (ej. Hamburguesa Safari con Papas). Al comprar la primera unidad a precio regular, la segunda unidad se cobrará a $1 CLP al entregar la moneda física.
-
-                        </p>
-
-                        <div class="mb-3">
-
-                            <label class="form-label small fw-bold text-dark">Seleccionar Producto:</label>
-
-                            <select name="producto_id" class="form-select rounded-3" required>
-
-                                <option value="">-- Elige un producto del menú --</option>
-
-                                {% for prod in todos_productos %}
-
-                                <option value="{{ prod.id }}">
-
-                                    {{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }} CLP) - {{ prod.categoria.nombre|default:"General" }}
-
-                                </option>
-
-                                {% endfor %}
-
-                            </select>
-
-                        </div>
-
-                        <div class="alert alert-warning py-2 px-3 small rounded-3 mb-0 border-0 bg-warning bg-opacity-10 text-dark">
-
-                            <i class="bi bi-shield-check text-warning me-1"></i>
-
-                            <strong>Control Contable:</strong> La caja registrará la moneda física de $1 recibida, cuadrando en el arqueo con <code>monedas_1</code>.
-
-                        </div>
-
-                    </div>
-
                     <div class="modal-footer bg-light p-3 border-top">
-
-                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
-
-                        <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; border: none;">
-
-                            <i class="bi bi-check-circle-fill me-1"></i> Activar Promoción
-
-                        </button>
-
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Guardar Campaña</button>
                     </div>
-
                 </form>
-
             </div>
-
         </div>
-
     </div>
 
+    <!-- MODAL 4: EDITAR CAMPAÑA DE TEMPORADA -->
+    <div class="modal fade" id="modalEditarCampana" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content card-safari overflow-hidden border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white py-3 px-4">
+                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-pencil-square me-2"></i>Editar Campaña / Convenio</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="editar_campana">
+                    <input type="hidden" name="oferta_id" id="edit_oferta_id">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
+                                <input type="text" name="nombre" id="edit_campana_nombre" class="form-control" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
+                                <select name="tipo_campana" id="edit_campana_tipo" class="form-select" required>
+                                    <option value="GENERAL">Descuento General de Temporada</option>
+                                    <option value="MEDIO_PAGO">Descuento por Medio de Pago / Tarjeta</option>
+                                    <option value="HAPPY_HOUR">Happy Hour / Franja Horaria</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
+                                <select name="medio_pago_requerido" id="edit_campana_medio" class="form-select">
+                                    <option value="TODOS">Todos los medios de pago</option>
+                                    <option value="DEBITO">Tarjeta de Débito (Redcompra)</option>
+                                    <option value="CREDITO">Tarjeta de Crédito (Transbank/Bancos)</option>
+                                    <option value="EFECTIVO">Efectivo</option>
+                                    <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
+                                <input type="text" name="banco_convenio" id="edit_campana_banco" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Descuento (%):</label>
+                                <div class="input-group">
+                                    <input type="number" name="descuento_porcentaje" id="edit_campana_pct" class="form-control" required min="1" max="100">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="monto_minimo_compra" id="edit_campana_minimo" class="form-control" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="tope_descuento_clp" id="edit_campana_tope" class="form-control" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
+                                <input type="number" name="limite_usos" id="edit_campana_limite" class="form-control" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
+                                <input type="date" name="fecha_inicio" id="edit_campana_inicio" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
+                                <input type="date" name="fecha_fin" id="edit_campana_fin" class="form-control" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary">Descripción:</label>
+                                <textarea name="descripcion" id="edit_campana_descripcion" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" name="activa" id="edit_campana_activa">
+                            <label class="form-check-label fw-bold text-dark" for="edit_campana_activa">Campaña Activa en el Sistema</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 border-top">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script Modular de Promociones (AGENTS.md: Cero script inline) -->
+    <script src="{% static 'js/administrador/ofertas_temporada.js' %}?v=2.0"></script>
 </body>
-
 </html>
-

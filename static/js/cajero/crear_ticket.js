@@ -11,17 +11,19 @@ const posConfig = (() => {
 
 
 const productos = (() => {
-
     try {
-
         return JSON.parse(document.getElementById('productosPosData')?.textContent || '{}');
-
     } catch (e) {
-
         return {};
-
     }
+})();
 
+const ofertasPos = (() => {
+    try {
+        return JSON.parse(document.getElementById('ofertasPosData')?.textContent || '[]');
+    } catch (e) {
+        return [];
+    }
 })();
 
 
@@ -267,18 +269,21 @@ function calcularSubtotalItemJS(prod, qty) {
         if (g2 > 0) promoTexto = `Promo 2x1 (${g2} gratis)`;
 
     } else if (prod.tipo_oferta === 'SEGUNDA_1') {
-
         const p2 = Number(prod.precio_oferta !== null && prod.precio_oferta !== undefined ? prod.precio_oferta : 1);
-
         const pares = Math.floor(qty / 2);
-
         const resto = qty % 2;
-
-        subtotal = (pares * (base + p2)) + (resto * base);
-
+        const lim = Number(prod.limite_oferta_por_ticket || 0);
+        let paresPromo = pares;
+        let paresNormal = 0;
+        if (lim > 0 && pares > lim) {
+            paresPromo = lim;
+            paresNormal = pares - lim;
+        }
+        subtotal = (paresPromo * (base + p2)) + (paresNormal * 2 * base) + (resto * base);
         ahorro = (qty * base) - subtotal;
-
-        if (pares > 0) promoTexto = `🪙 Promo 2da a $${p2} (Recibir moneda física de $${p2})`;
+        if (paresPromo > 0) {
+            promoTexto = `Promo 2da a $${p2}` + (lim > 0 ? ` (máx ${lim})` : '');
+        }
 
     } else if (prod.tipo_oferta === 'PRECIO_FIJO' && prod.precio_oferta) {
 
@@ -520,13 +525,52 @@ function actualizarResumen() {
 
 
 
-    const totalFinalPagar = Math.max(0, total - montoBonificado);
-
     const metodoSeleccionado = modoCobroMesa === 'ABIERTA'
-
         ? 'DEBITO'
-
         : (document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO');
+
+    // Descuento reactivo por medio de pago o convenio tarjeta
+    let descMedioPago = 0;
+    let ofertaMedioPagoAplicada = null;
+    const baseParaDesc = Math.max(0, total - montoBonificado);
+    if (baseParaDesc > 0 && Array.isArray(ofertasPos)) {
+        for (const op of ofertasPos) {
+            if (op.medio_pago_requerido === 'TODOS' || op.medio_pago_requerido === metodoSeleccionado) {
+                if (op.monto_minimo_compra > 0 && baseParaDesc < op.monto_minimo_compra) {
+                    continue;
+                }
+                let candDesc = Math.round(baseParaDesc * (op.descuento_porcentaje / 100));
+                if (op.tope_descuento_clp > 0 && candDesc > op.tope_descuento_clp) {
+                    candDesc = op.tope_descuento_clp;
+                }
+                if (candDesc > descMedioPago) {
+                    descMedioPago = candDesc;
+                    ofertaMedioPagoAplicada = op;
+                }
+            }
+        }
+    }
+
+    const filaDescTarjeta = document.getElementById('filaDescuentoTarjeta');
+    const labelDescTarjeta = document.getElementById('labelDescuentoTarjeta');
+    const montoDescTarjeta = document.getElementById('montoDescuentoTarjeta');
+
+    if (descMedioPago > 0 && ofertaMedioPagoAplicada) {
+        if (filaDescTarjeta && montoDescTarjeta) {
+            filaDescTarjeta.classList.remove('d-none');
+            filaDescTarjeta.classList.add('d-flex');
+            if (labelDescTarjeta) {
+                const nombreCorto = ofertaMedioPagoAplicada.banco_convenio || ofertaMedioPagoAplicada.nombre || 'Promo';
+                labelDescTarjeta.innerText = `Promo ${nombreCorto} (${Math.round(ofertaMedioPagoAplicada.descuento_porcentaje)}%):`;
+            }
+            montoDescTarjeta.innerText = `-${formatearMoneda(descMedioPago)}`;
+        }
+    } else if (filaDescTarjeta) {
+        filaDescTarjeta.classList.add('d-none');
+        filaDescTarjeta.classList.remove('d-flex');
+    }
+
+    const totalFinalPagar = Math.max(0, total - montoBonificado - descMedioPago);
 
 
 
