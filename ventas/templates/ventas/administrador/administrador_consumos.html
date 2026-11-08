@@ -1,0 +1,802 @@
+{% load static %}
+
+{% load safari_tags %}
+
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Consumo Interno y Crédito de Personal • Safari Pilar</title>
+
+    <!-- Bootstrap 5 CSS -->
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Google Fonts: Oswald & Nunito -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
+    
+
+    <!-- Estilos Externos Modulares -->
+
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=3.2">
+
+    <link rel="stylesheet" href="{% static 'css/administrador/admin_base.css' %}?v=3.6">
+
+    <link rel="stylesheet" href="{% static 'css/administrador/consumos.css' %}?v=3.2">
+
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+
+
+    <!-- Cenefa tribal superior -->
+
+    <div class="tribal-divider"></div>
+
+
+
+    <!-- Barra de Navegación del Administrador -->
+
+    {% include 'ventas/administrador/include_admin_header.html' with active_subclase='consumos' %}
+
+
+
+    <main class="container-fluid px-4 py-4 flex-grow-1">
+
+
+
+        {% if messages %}
+
+            {% for message in messages %}
+
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+
+                    {{ message }}
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+
+
+<div class="container-fluid px-lg-5 my-4">
+
+
+
+    <!-- Encabezado de Página -->
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-4 shadow-sm bg-white border">
+
+        <div>
+
+            <span class="badge bg-warning text-dark px-3 py-1 mb-2 fw-bold">
+
+                <i class="bi bi-wallet2 me-1"></i> POLÍTICA DE CRÉDITO Y BENEFICIOS DE PERSONAL
+
+            </span>
+
+            <h2 class="fw-bold mb-1" style="font-family: 'Oswald', sans-serif; color: #1e293b;">
+
+                CONSUMO INTERNO DEL PERSONAL & FIADOS
+
+            </h2>
+
+            <p class="text-muted mb-0 small">
+
+                Control de colaciones, consumos autorizados y fiados por planilla. <strong>Separación contable estricta: estos montos no se mezclan con las ventas de clientes ni inflan la recaudación de caja diaria.</strong>
+
+            </p>
+
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+
+            <a href="{% url 'administrador' %}" class="btn btn-outline-secondary rounded-pill px-3 fw-bold">
+
+                <i class="bi bi-arrow-left me-1"></i> Volver a Administración
+
+            </a>
+
+            <a href="{% url 'crear_ticket' %}" class="btn btn-danger rounded-pill px-3 fw-bold">
+
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Registro en POS
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- KPIs Globales de Consumo Interno -->
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-lg-3">
+
+            <div class="p-3 bg-white rounded-4 border shadow-sm h-100">
+
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="p-3 rounded-circle bg-warning bg-opacity-10 text-warning fs-3">
+
+                        <i class="bi bi-hourglass-split"></i>
+
+                    </div>
+
+                    <div>
+
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem;">Fiado Pendiente</div>
+
+                        <h3 class="mb-0 fw-bold text-dark font-monospace">${{ total_pendiente|floatformat:0 }}</h3>
+
+                        <small class="text-muted" style="font-size: 0.7rem;">Por descontar en planilla</small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-6 col-lg-3">
+
+            <div class="p-3 bg-white rounded-4 border shadow-sm h-100">
+
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="p-3 rounded-circle bg-success bg-opacity-10 text-success fs-3">
+
+                        <i class="bi bi-check2-all"></i>
+
+                    </div>
+
+                    <div>
+
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem;">Total Descontado</div>
+
+                        <h3 class="mb-0 fw-bold text-success font-monospace">${{ total_descontado|floatformat:0 }}</h3>
+
+                        <small class="text-muted" style="font-size: 0.7rem;">Liquidado en nómina</small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-6 col-lg-3">
+
+            <div class="p-3 bg-white rounded-4 border shadow-sm h-100">
+
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="p-3 rounded-circle bg-primary bg-opacity-10 text-primary fs-3">
+
+                        <i class="bi bi-people-fill"></i>
+
+                    </div>
+
+                    <div>
+
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem;">Con Deuda Activa</div>
+
+                        <h3 class="mb-0 fw-bold text-primary font-monospace">{{ empleados_con_deuda }}</h3>
+
+                        <small class="text-muted" style="font-size: 0.7rem;">Colaboradores con saldo</small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-6 col-lg-3">
+
+            <div class="p-3 bg-white rounded-4 border shadow-sm h-100">
+
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="p-3 rounded-circle bg-dark bg-opacity-10 text-dark fs-3">
+
+                        <i class="bi bi-receipt"></i>
+
+                    </div>
+
+                    <div>
+
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem;">Operaciones Totales</div>
+
+                        <h3 class="mb-0 fw-bold text-dark font-monospace">{{ consumos.count }}</h3>
+
+                        <small class="text-muted" style="font-size: 0.7rem;">Registros de fiado/colación</small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Navegación por Pestañas -->
+
+    <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded-4 border shadow-sm" id="pills-tab" role="tablist">
+
+        <li class="nav-item" role="presentation">
+
+            <button class="nav-link active rounded-pill px-4 fw-bold" id="pills-resumen-tab" data-bs-toggle="pill" data-bs-target="#pills-resumen" type="button" role="tab">
+
+                <i class="bi bi-person-lines-fill me-1"></i> Saldos por Colaborador
+
+            </button>
+
+        </li>
+
+        <li class="nav-item" role="presentation">
+
+            <button class="nav-link rounded-pill px-4 fw-bold" id="pills-historial-tab" data-bs-toggle="pill" data-bs-target="#pills-historial" type="button" role="tab">
+
+                <i class="bi bi-clock-history me-1"></i> Historial Detallado de Operaciones
+
+            </button>
+
+        </li>
+
+    </ul>
+
+
+
+    <div class="tab-content" id="pills-tabContent">
+
+
+
+        <!-- Pestaña 1: Saldos por Colaborador -->
+
+        <div class="tab-pane fade show active" id="pills-resumen" role="tabpanel">
+
+            <div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden">
+
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+
+                    <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+
+                        <i class="bi bi-person-vcard text-warning me-2"></i>Estado de Cuentas Corrientes del Personal
+
+                    </h5>
+
+                    <span class="badge bg-secondary rounded-pill px-3 py-2 small">
+
+                        Actualizado en tiempo real
+
+                    </span>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle mb-0">
+
+                        {% if colaboradores_alto_riesgo > 0 %}
+
+                        <div class="p-3 m-3 rounded-4 bg-danger bg-opacity-10 border border-danger border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-2">
+
+                            <div class="d-flex align-items-center gap-2 text-danger">
+
+                                <i class="bi bi-shield-fill-exclamation fs-4"></i>
+
+                                <div>
+
+                                    <strong class="d-block">Control Anti-Fraude Activo (Límite Máximo: $100.000 CLP):</strong>
+
+                                    <small class="text-dark">Se detectaron <strong>{{ colaboradores_alto_riesgo }} colaborador(es)</strong> con deuda acumulada mayor a $60.000 CLP. El sistema bloquea nuevos fiados automáticamente si superan $100.000 CLP.</small>
+
+                                </div>
+
+                            </div>
+
+                            <span class="badge bg-danger rounded-pill px-3 py-2 fw-bold">Tope Automático de Seguridad</span>
+
+                        </div>
+
+                        {% endif %}
+
+
+
+                        <thead class="table-light text-muted small text-uppercase">
+
+                            <tr>
+
+                                <th>Colaborador</th>
+
+                                <th>RUT</th>
+
+                                <th>Rol Asignado</th>
+
+                                <th>Local Actual</th>
+
+                                <th class="text-center">Nivel de Riesgo</th>
+
+                                <th class="text-end">Total Fiado Pendiente</th>
+
+                                <th class="text-center">Acciones de Liquidación</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for item in resumen_colaboradores %}
+
+                            <tr>
+
+                                <td>
+
+                                    <div class="d-flex align-items-center gap-2">
+
+                                        <div class="rounded-circle p-2 bg-light border text-secondary fw-bold text-center" style="width: 38px; height: 38px;">
+
+                                            <i class="bi bi-person"></i>
+
+                                        </div>
+
+                                        <div>
+
+                                            <div class="fw-bold text-dark">{{ item.usuario.get_full_name|default:item.usuario.username }}</div>
+
+                                            <small class="text-muted">@{{ item.usuario.username }}</small>
+
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+                                <td class="font-monospace">{{ item.rut|default:"Sin registrar" }}</td>
+
+                                <td>
+
+                                    <span class="badge bg-light text-dark border px-2 py-1">
+
+                                        {{ item.rol }}
+
+                                    </span>
+
+                                </td>
+
+                                <td>{{ item.local_nombre }}</td>
+
+                                <td class="text-center">
+
+                                    {% if item.nivel_riesgo == 'ALTO' %}
+
+                                    <span class="badge bg-danger text-white rounded-pill px-2 py-1 small fw-bold">
+
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Alto (&gt;$60k)
+
+                                    </span>
+
+                                    {% elif item.nivel_riesgo == 'MODERADO' %}
+
+                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1 small fw-bold">
+
+                                        <i class="bi bi-exclamation-circle-fill me-1"></i>Moderado
+
+                                    </span>
+
+                                    {% elif item.nivel_riesgo == 'BAJO' %}
+
+                                    <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2 py-1 small fw-bold">
+
+                                        Bajo
+
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold">
+
+                                        <i class="bi bi-check-circle-fill me-1"></i>Al Día ($0)
+
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td class="text-end font-monospace fw-bold {% if item.total_pendiente > 0 %}text-danger fs-6{% else %}text-muted{% endif %}">
+
+                                    ${{ item.total_pendiente|floatformat:0 }}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    {% if item.total_pendiente > 0 %}
+
+                                    <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" onsubmit="return confirm('¿Confirmas liquidar y marcar como descontado por planilla el saldo pendiente de ${{ item.total_pendiente|floatformat:0 }} para {{ item.usuario.get_full_name|default:item.usuario.username }}?');">
+
+                                        {% csrf_token %}
+
+                                        <input type="hidden" name="accion" value="descontar_empleado">
+
+                                        <input type="hidden" name="empleado_id" value="{{ item.usuario.id }}">
+
+                                        <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold">
+
+                                            <i class="bi bi-check2-circle me-1"></i> Descontar por Planilla
+
+                                        </button>
+
+                                    </form>
+
+                                    {% else %}
+
+                                    <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill small">
+
+                                        <i class="bi bi-check-lg me-1"></i> Al Día (Sin Saldo)
+
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="6" class="text-center py-4 text-muted">
+
+                                    No hay colaboradores registrados en el sistema.
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Pestaña 2: Historial Detallado -->
+
+        <div class="tab-pane fade" id="pills-historial" role="tabpanel">
+
+            <div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden">
+
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                    <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+
+                        <i class="bi bi-journal-text text-danger me-2"></i>Registros Históricos de Consumo
+
+                    </h5>
+
+                    
+
+                    <!-- Filtros Rápidos -->
+
+                    <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
+
+                        <select name="estado" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+
+                            <option value="">Todos los estados</option>
+
+                            <option value="REGISTRADO" {% if request.GET.estado == 'REGISTRADO' %}selected{% endif %}>Pendiente Descuento</option>
+
+                            <option value="DESCONTADO" {% if request.GET.estado == 'DESCONTADO' %}selected{% endif %}>Descontado por Planilla</option>
+
+                            <option value="ANULADO" {% if request.GET.estado == 'ANULADO' %}selected{% endif %}>Anulado</option>
+
+                        </select>
+
+                        <select name="local_id" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+
+                            <option value="">Todos los locales</option>
+
+                            {% for loc in locales %}
+
+                            <option value="{{ loc.id }}" {% if request.GET.local_id == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </form>
+
+                </div>
+
+
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead class="table-light text-muted small text-uppercase">
+
+                            <tr>
+
+                                <th>#ID</th>
+
+                                <th>Fecha / Hora</th>
+
+                                <th>Colaborador</th>
+
+                                <th>Local</th>
+
+                                <th>Tipo</th>
+
+                                <th>Ítems Consumidos</th>
+
+                                <th class="text-end">Monto Total</th>
+
+                                <th class="text-center">Estado</th>
+
+                                <th class="text-center">Acciones</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for c in consumos %}
+
+                            <tr>
+
+                                <td class="font-monospace fw-bold">#FIA-{{ c.id|stringformat:"04d" }}</td>
+
+                                <td class="small text-muted font-monospace">{{ c.fecha_hora|date:"d/m/Y H:i" }}</td>
+
+                                <td>
+
+                                    <div class="fw-bold text-dark">{{ c.empleado.get_full_name|default:c.empleado.username }}</div>
+
+                                    <small class="text-muted">RUT: {{ c.empleado.perfil.rut|default:"S/R" }}</small>
+
+                                </td>
+
+                                <td class="small">{{ c.punto_venta.nombre }}</td>
+
+                                <td>
+
+                                    <span class="badge {% if c.tipo_consumo == 'FIADO' %}bg-warning text-dark{% elif c.tipo_consumo == 'COLACION' %}bg-info text-dark{% else %}bg-secondary{% endif %} rounded-pill px-2 py-1 small">
+
+                                        {{ c.get_tipo_consumo_display }}
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <ul class="list-unstyled mb-0 small" style="font-size: 0.82rem;">
+
+                                        {% for d in c.detalles.all %}
+
+                                        <li><strong>{{ d.cantidad }}x</strong> {{ d.producto.nombre }} (${{ d.subtotal|floatformat:0 }})</li>
+
+                                        {% endfor %}
+
+                                    </ul>
+
+                                    {% if c.observaciones %}
+
+                                    <small class="text-muted fst-italic d-block mt-1">Obs: {{ c.observaciones }}</small>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td class="text-end font-monospace fw-bold fs-6">
+
+                                    ${{ c.total|floatformat:0 }}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    {% if c.estado == 'REGISTRADO' %}
+
+                                        <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-1 rounded-pill fw-bold border border-warning-subtle">
+
+                                            <i class="bi bi-hourglass me-1"></i> Pendiente
+
+                                        </span>
+
+                                    {% elif c.estado == 'DESCONTADO' %}
+
+                                        <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill fw-bold border border-success-subtle">
+
+                                            <i class="bi bi-check-circle-fill me-1"></i> Descontado
+
+                                        </span>
+
+                                        {% if c.descontado_por %}
+
+                                        <small class="text-muted d-block" style="font-size: 0.68rem;">por {{ c.descontado_por.username }}</small>
+
+                                        {% endif %}
+
+                                    {% else %}
+
+                                        <span class="badge bg-danger-subtle text-danger px-3 py-1 rounded-pill fw-bold border border-danger-subtle">
+
+                                            Anulado
+
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    {% if c.estado == 'REGISTRADO' %}
+
+                                    <div class="d-flex justify-content-center gap-1">
+
+                                        <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline">
+
+                                            {% csrf_token %}
+
+                                            <input type="hidden" name="accion" value="descontar_individual">
+
+                                            <input type="hidden" name="consumo_id" value="{{ c.id }}">
+
+                                            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 fw-bold" title="Liquidar por planilla">
+
+                                                <i class="bi bi-check-lg"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                        <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" onsubmit="return confirm('¿Seguro que deseas anular este consumo interno?');">
+
+                                            {% csrf_token %}
+
+                                            <input type="hidden" name="accion" value="anular_individual">
+
+                                            <input type="hidden" name="consumo_id" value="{{ c.id }}">
+
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 fw-bold" title="Anular consumo">
+
+                                                <i class="bi bi-x-lg"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                    {% else %}
+
+                                    <span class="text-muted small">—</span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="9" class="text-center py-4 text-muted">
+
+                                    No hay registros de consumos internos para los filtros seleccionados.
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+    </div>
+
+
+
+</div>
+
+
+
+    </main>
+
+
+
+    <!-- Pie de página -->
+
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel, #ede4d3); border-top: 2px solid var(--safari-cafe-medium, #d5c7b2); font-size: 0.85rem;">
+
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+
+            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+
+            <span class="text-muted">
+
+                <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
+
+            </span>
+
+        </div>
+
+    </footer>
+
+
+
+    <!-- Bootstrap 5 JS Bundle -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
+
+    <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+
+</body>
+
+</html>
+

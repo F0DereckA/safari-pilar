@@ -230,6 +230,16 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
     }
 
 
+def sanitizar_celda_excel(val):
+    """
+    Mitigación de Inyección de Fórmulas CSV/Excel (CWE-1236 / OWASP).
+    Si un texto comienza con =, +, -, @, \t, \r, antepone un apóstrofe para forzar interpretación como texto literal.
+    """
+    if isinstance(val, str) and val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return f"'{val}"
+    return val
+
+
 def generar_excel_ventas(datos):
     """
     Genera un libro Excel (.xlsx) estructurado, con estilos corporativos Safari
@@ -332,16 +342,16 @@ def generar_excel_ventas(datos):
 
         for item in datos["filas_detalle"]:
             start_row += 1
-            ws.cell(row=start_row, column=1, value=item["mes"]).border = thin_border
-            ws.cell(row=start_row, column=2, value=item["periodo"]).border = thin_border
+            ws.cell(row=start_row, column=1, value=sanitizar_celda_excel(item["mes"])).border = thin_border
+            ws.cell(row=start_row, column=2, value=sanitizar_celda_excel(item["periodo"])).border = thin_border
             c_v = ws.cell(row=start_row, column=3, value=item["ventas"])
             c_v.number_format = '$#,##0'
             c_v.border = thin_border
             c_g = ws.cell(row=start_row, column=4, value=item["ganancia"])
             c_g.number_format = '$#,##0'
             c_g.border = thin_border
-            ws.cell(row=start_row, column=5, value=item["margen"]).border = thin_border
-            ws.cell(row=start_row, column=6, value=item["crecimiento"]).border = thin_border
+            ws.cell(row=start_row, column=5, value=sanitizar_celda_excel(item["margen"])).border = thin_border
+            ws.cell(row=start_row, column=6, value=sanitizar_celda_excel(item["crecimiento"])).border = thin_border
             c_t = ws.cell(row=start_row, column=7, value=item["tickets"])
             c_t.number_format = '#,##0'
             c_t.border = thin_border
@@ -357,11 +367,11 @@ def generar_excel_ventas(datos):
 
         for item in datos["filas_detalle"]:
             start_row += 1
-            ws.cell(row=start_row, column=1, value=item["id"]).border = thin_border
-            ws.cell(row=start_row, column=2, value=item["hora"]).border = thin_border
-            ws.cell(row=start_row, column=3, value=item["local"]).border = thin_border
-            ws.cell(row=start_row, column=4, value=item["cajero"]).border = thin_border
-            ws.cell(row=start_row, column=5, value=item["metodo"]).border = thin_border
+            ws.cell(row=start_row, column=1, value=sanitizar_celda_excel(item["id"])).border = thin_border
+            ws.cell(row=start_row, column=2, value=sanitizar_celda_excel(item["hora"])).border = thin_border
+            ws.cell(row=start_row, column=3, value=sanitizar_celda_excel(item["local"])).border = thin_border
+            ws.cell(row=start_row, column=4, value=sanitizar_celda_excel(item["cajero"])).border = thin_border
+            ws.cell(row=start_row, column=5, value=sanitizar_celda_excel(item["metodo"])).border = thin_border
             c_m = ws.cell(row=start_row, column=6, value=item["total"])
             c_m.number_format = '$#,##0'
             c_m.border = thin_border
@@ -379,8 +389,8 @@ def generar_excel_ventas(datos):
         for item in datos["filas_detalle"]:
             start_row += 1
             nom = item.get("dia") or item.get("semana")
-            ws.cell(row=start_row, column=1, value=nom).border = thin_border
-            ws.cell(row=start_row, column=2, value=item["local"]).border = thin_border
+            ws.cell(row=start_row, column=1, value=sanitizar_celda_excel(nom)).border = thin_border
+            ws.cell(row=start_row, column=2, value=sanitizar_celda_excel(item["local"])).border = thin_border
             c_t = ws.cell(row=start_row, column=3, value=item["tickets"])
             c_t.number_format = '#,##0'
             c_t.border = thin_border

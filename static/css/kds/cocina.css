@@ -1,0 +1,365 @@
+/* ==========================================================================
+   Monitor Táctico KDS Cocina - Parque Safari (Diseño Ergonómico Oficial)
+   ========================================================================== */
+
+body {
+    background-color: #f4efe9;
+    font-family: 'Nunito', sans-serif;
+    color: #2b2520;
+}
+.kds-header {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    color: #ffffff;
+    border-bottom: 3px solid #dc2626;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.kds-brand-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+    color: #f97316;
+    line-height: 1.1;
+}
+
+/* Grilla Responsiva KDS: Tarjetas verticales con ancho óptimo táctil */
+.kds-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.5rem;
+}
+
+.kds-card {
+    background: #ffffff;
+    border-radius: 1rem;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 380px;
+}
+.kds-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+.kds-card.estado-pendiente {
+    border-top: 6px solid #f59e0b;
+}
+.kds-card.estado-preparacion {
+    border-top: 6px solid #0284c7;
+    background-color: #ffffff;
+}
+.kds-card.estado-listo {
+    border-top: 6px solid #16a34a;
+    background-color: #ffffff;
+}
+.kds-card.demorado {
+    border: 2px solid #ef4444 !important;
+    animation: pulso-alerta 2s infinite ease-in-out;
+}
+@keyframes pulso-alerta {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 15px 4px rgba(239, 68, 68, 0.35); }
+}
+
+/* Encabezado de la Tarjeta */
+.kds-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.header-listo {
+    background-color: #dcfce7;
+}
+.header-preparacion {
+    background-color: #e0f2fe;
+}
+.header-pendiente {
+    background-color: #fef3c7;
+}
+
+.badge-comanda-id {
+    background-color: #0f172a;
+    color: #ffffff;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+.badge-modalidad {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+.modalidad-salon {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.modalidad-mostrador {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+.badge-tiempo {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+.badge-tiempo-normal {
+    background-color: #dcfce7;
+    color: #166534;
+}
+.badge-tiempo-medio {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+.badge-tiempo-urgente {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    animation: blinker 1.2s linear infinite;
+}
+@keyframes blinker {
+    50% { opacity: 0.4; }
+}
+
+.badge-estado-comanda {
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+.badge-estado-listo {
+    background-color: #16a34a;
+    color: #ffffff;
+}
+.badge-estado-preparacion {
+    background-color: #0284c7;
+    color: #ffffff;
+}
+.badge-estado-pendiente {
+    background-color: #f59e0b;
+    color: #000000;
+}
+
+.kds-mesa-titulo {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-top: 6px;
+    margin-bottom: 2px;
+}
+.kds-mesero-subtitulo {
+    color: #64748b;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+/* Cuerpo y Lista de Preparaciones */
+.kds-card-body {
+    padding: 1.25rem;
+    flex-grow: 1;
+    background: #ffffff;
+}
+.kds-items-box {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #ffffff;
+}
+.kds-item-row {
+    padding: 0.65rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.kds-item-row:last-child {
+    border-bottom: none;
+}
+.kds-qty-badge {
+    background-color: #1e293b;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    border-radius: 8px;
+    padding: 6px 12px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.kds-item-nombre {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.25;
+}
+.badge-destino {
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: #ffffff;
+    flex-shrink: 0;
+}
+.destino-cocina {
+    border: 1.5px solid #ef4444;
+    color: #dc2626;
+}
+.destino-barra {
+    border: 1.5px solid #0284c7;
+    color: #0284c7;
+}
+.nota-especial {
+    background-color: #fff1f2;
+    border-left: 4px solid #e11d48;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.35rem;
+    color: #be123c;
+    font-weight: 700;
+    font-size: 0.86rem;
+    margin-top: 0.4rem;
+}
+.kds-nota-referencia {
+    background-color: #fef9c3;
+    border: 1.5px solid #fde047;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    color: #713f12;
+    font-size: 0.92rem;
+    font-weight: 600;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* Footer Táctil */
+.kds-card-footer {
+    padding: 1rem 1.25rem;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    margin-top: auto;
+}
+.kds-notificado-aviso {
+    color: #0d9488;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.kds-btn-action {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    padding: 0.75rem 1rem;
+    min-height: 56px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    transition: transform 0.1s ease, filter 0.15s ease;
+}
+.kds-btn-action:active {
+    transform: scale(0.98);
+}
+.btn-kds-preparar {
+    background-color: #0284c7;
+    color: #ffffff;
+}
+.btn-kds-preparar:hover {
+    background-color: #0369a1;
+    color: #ffffff;
+}
+.btn-kds-listo {
+    background-color: #16a34a;
+    color: #ffffff;
+}
+.btn-kds-listo:hover {
+    background-color: #15803d;
+    color: #ffffff;
+}
+.btn-kds-entregar {
+    background-color: #475569;
+    color: #ffffff;
+}
+.btn-kds-entregar:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+@media (max-width: 991.98px) {
+    .kds-grid-container {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+    .kds-brand-title {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .kds-grid-container {
+        grid-template-columns: 1fr;
+    }
+    .kds-header {
+        padding: 8px 12px !important;
+    }
+    .kds-card {
+        border-radius: 0.75rem;
+    }
+}
+
+/* ==========================================================================
+   Modo Condensado Táctico KDS (Aloy - Ergonomía Pantallas de Producción)
+   ========================================================================== */
+body.kds-modo-condensado .kds-grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 0.75rem !important;
+}
+
+body.kds-modo-condensado .kds-card {
+    border-radius: 0.65rem !important;
+}
+
+body.kds-modo-condensado .kds-card-header {
+    padding: 0.5rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .kds-card-body {
+    padding: 0.5rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .kds-item-row {
+    padding: 0.35rem 0 !important;
+    font-size: 0.95rem !important;
+}
+
+body.kds-modo-condensado .kds-card-footer {
+    padding: 0.4rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .btn-kds-accion {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.85rem !important;
+}
+
+body.kds-modo-condensado .btn-modo-condensado {
+    background-color: #06b6d4 !important;
+    color: #000000 !important;
+    border-color: #0891b2 !important;
+}

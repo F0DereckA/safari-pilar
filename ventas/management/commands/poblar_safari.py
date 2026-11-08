@@ -125,7 +125,7 @@ class Command(BaseCommand):
                 user.is_staff = True
                 user.is_superuser = True
                 user.save()
-                self.stdout.write(self.style.SUCCESS(f"  [+] Administrador creado: {user.username} (password: safari123)"))
+                self.stdout.write(self.style.SUCCESS(f"  [+] Administrador creado: {user.username} [hash PBKDF2/SHA-256 generado]"))
             elif reset_passwords:
                 user.set_password("safari123")
                 user.save()
@@ -133,15 +133,18 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(f"  [=] Administrador existente: {user.username} (password conservada)")
 
-            PerfilEmpleado.objects.get_or_create(
+            perfil, _ = PerfilEmpleado.objects.get_or_create(
                 usuario=user,
                 defaults={
                     "rol": "ADMINISTRADOR",
                     "rut": adm["rut"],
                     "telefono": adm["telefono"],
-                    "activo": True
+                    "activo": True,
+                    "debe_cambiar_clave": False,
                 }
             )
+            perfil.debe_cambiar_clave = False
+            perfil.save(update_fields=['debe_cambiar_clave'])
 
         # 3. PERSONAL DEMO OPERATIVO (CAJEROS Y MESEROS)
         personal_inicial = [
@@ -167,7 +170,7 @@ class Command(BaseCommand):
             if creado:
                 u.set_password("safari123")
                 u.save()
-                self.stdout.write(self.style.SUCCESS(f"  [+] Usuario creado: {u.username} (password: safari123)"))
+                self.stdout.write(self.style.SUCCESS(f"  [+] Usuario creado: {u.username} [hash PBKDF2/SHA-256 generado]"))
             elif reset_passwords:
                 u.set_password("safari123")
                 u.save()
@@ -182,9 +185,12 @@ class Command(BaseCommand):
                     "rut": pdata["rut"],
                     "telefono": pdata["telefono"],
                     "punto_venta_actual": puntos.get(pdata["local_id"]),
-                    "activo": True
+                    "activo": True,
+                    "debe_cambiar_clave": False,
                 }
             )
+            perfil.debe_cambiar_clave = False
+            perfil.save(update_fields=['debe_cambiar_clave'])
             # Asegurar que el punto de venta y rol estén sincronizados
             if not p_creado:
                 cambios = False

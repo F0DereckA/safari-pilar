@@ -1,0 +1,869 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Centro de Gestión y Administración Integral</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- CSS Corporativo -->
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/administrador/admin_base.css' %}?v=3.6">
+    <link rel="stylesheet" href="{% static 'css/administrador/trabajadores.css' %}">
+    <link rel="stylesheet" href="{% static 'css/administrador/gestion.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Administrador con Categorías Madres -->
+    {% include 'ventas/administrador/include_admin_header.html' with active_subclase='gestion' %}
+
+    <!-- Contenido Principal -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Mensajes del Sistema en Toast Flotante Discreto en la Esquina (Tarea 3) -->
+        {% if messages %}
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+            {% for message in messages %}
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Encabezado Hero del Centro de Gestión -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #ffffff 0%, #fffbfb 100%); border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle p-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #a71d1d 0%, #7f1d1d 100%); color: #ffffff; width: 56px; height: 56px;">
+                        <i class="bi bi-sliders fs-3"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h4 class="fw-bold mb-0 text-dark">Centro de Gestión y Administración Integral</h4>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger small">Categoría Madre</span>
+                        </div>
+                        <p class="text-muted small mb-0">Gestión unificada de personal, mesas, productos gastronómicos y cartas de menú del parque en una sola página.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'administrador' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-arrow-left me-1"></i> Volver a Locales
+                    </a>
+                </div>
+            </div>
+
+            <!-- 4 Tarjetas de Indicadores KPI -->
+            <div class="row g-3 mt-3">
+                <div class="col-6 col-lg-3">
+                    <div class="kpi-gestion-card p-3 d-flex align-items-center gap-3" role="button" onclick="cambiarPestana('trabajadores')">
+                        <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #b91c1c; width: 44px; height: 44px;">
+                            <i class="bi bi-people-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Colaboradores</div>
+                            <div class="h5 fw-bold mb-0 text-dark">{{ total_trabajadores }} <span class="small fw-normal text-success" style="font-size: 0.75rem;">({{ total_activos_trab }} activos)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="kpi-gestion-card p-3 d-flex align-items-center gap-3" role="button" onclick="cambiarPestana('mesas')">
+                        <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #e0f2fe; color: #0369a1; width: 44px; height: 44px;">
+                            <i class="bi bi-grid-3x3-gap-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Mesas Parque</div>
+                            <div class="h5 fw-bold mb-0 text-dark">{{ total_mesas }} <span class="small fw-normal text-primary" style="font-size: 0.75rem;">({{ mesas_habilitadas }} libres)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="kpi-gestion-card p-3 d-flex align-items-center gap-3" role="button" onclick="cambiarPestana('productos')">
+                        <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #fef3c7; color: #b45309; width: 44px; height: 44px;">
+                            <i class="bi bi-egg-fried fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Catálogo Productos</div>
+                            <div class="h5 fw-bold mb-0 text-dark">{{ total_productos }} <span class="small fw-normal text-success" style="font-size: 0.75rem;">({{ activos_productos }} activos)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="kpi-gestion-card p-3 d-flex align-items-center gap-3" role="button" onclick="cambiarPestana('menus')">
+                        <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #f3e8ff; color: #7e22ce; width: 44px; height: 44px;">
+                            <i class="bi bi-book-half fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Cartas y Menús</div>
+                            <div class="h5 fw-bold mb-0 text-dark">{{ total_menus }} <span class="small fw-normal text-purple" style="font-size: 0.75rem; color: #7e22ce;">configurados</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestañas Madres de Administración -->
+        <div class="d-flex justify-content-center mb-4">
+            <ul class="nav nav-pills nav-pills-safari shadow-sm" id="gestionTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tab_activo == 'trabajadores' %}active{% endif %}" id="pills-trabajadores-tab" data-bs-toggle="pill" data-bs-target="#pills-trabajadores" type="button" role="tab">
+                        <i class="bi bi-people-fill me-1"></i> 1. Trabajadores & Dotación
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tab_activo == 'mesas' %}active{% endif %}" id="pills-mesas-tab" data-bs-toggle="pill" data-bs-target="#pills-mesas" type="button" role="tab">
+                        <i class="bi bi-grid-3x3-gap-fill me-1"></i> 2. Mesas del Parque
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tab_activo == 'productos' %}active{% endif %}" id="pills-productos-tab" data-bs-toggle="pill" data-bs-target="#pills-productos" type="button" role="tab">
+                        <i class="bi bi-egg-fried me-1"></i> 3. Catálogo de Productos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tab_activo == 'menus' %}active{% endif %}" id="pills-menus-tab" data-bs-toggle="pill" data-bs-target="#pills-menus" type="button" role="tab">
+                        <i class="bi bi-book-half me-1"></i> 4. Cartas y Menús
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Contenedor de Contenido de Pestañas -->
+        <div class="tab-content" id="gestionTabsContent">
+
+            <!-- ============================================================== -->
+            <!-- 1. PESTAÑA TRABAJADORES -->
+            <!-- ============================================================== -->
+            <div class="tab-pane fade {% if tab_activo == 'trabajadores' %}show active{% endif %}" id="pills-trabajadores" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 p-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Búsqueda Reactiva en Tiempo Real y Acciones -->
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-lg-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="buscarTrabajadorEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar por nombre, usuario, RUT (apreta Z y filtra al tiro)...">
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-lg-2">
+                            <select id="filtroLocalTrab" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Locales</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.nombre }}">{{ loc.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-lg-2">
+                            <select id="filtroRolTrab" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Roles</option>
+                                <option value="ADMINISTRADOR">Administrador</option>
+                                <option value="CAJERO">Cajero</option>
+                                <option value="MESERO">Mesero</option>
+                                <option value="COCINERO">Cocinero</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2 col-lg-2 text-muted small">
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                                <i class="bi bi-funnel me-1"></i> <span id="contadorTrabajadoresEnVivo" class="fw-bold">{{ total_trabajadores }}</span> colaboradores
+                            </span>
+                        </div>
+
+                        <div class="col-md-4 col-lg-2 text-end">
+                            <a href="{% url 'administrador_trabajadores' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100">
+                                <i class="bi bi-plus-circle-fill me-1"></i> + Colaborador
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Trabajadores -->
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-safari table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th>Usuario / RUT</th>
+                                    <th>Punto de Venta Asignado</th>
+                                    <th>Rol Operativo</th>
+                                    <th>Contacto</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTrabajadoresGestion">
+                                {% for t in trabajadores %}
+                                <tr class="worker-row" data-local="{{ t.perfil.punto_venta_actual.nombre|default:'Sin Asignar' }}" data-rol="{{ t.perfil.rol }}" data-estado="{% if t.perfil.activo %}activo{% else %}inactivo{% endif %}">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white small" style="width: 34px; height: 34px; background: linear-gradient(135deg, #a71d1d, #7f1d1d);">
+                                                {{ t.first_name|default:t.username|slice:":1"|upper }}
+                                            </div>
+                                            <div>
+                                                <strong class="text-dark">{{ t.get_full_name|default:t.username }}</strong>
+                                                {% if t.is_superuser %}<span class="badge bg-dark small ms-1">Root</span>{% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border font-monospace">@{{ t.username }}</span>
+                                        {% if t.perfil.rut %}<div class="small text-muted font-monospace">{{ t.perfil.rut }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if t.perfil.punto_venta_actual %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-geo-alt-fill me-1"></i>{{ t.perfil.punto_venta_actual.nombre }}</span>
+                                        {% else %}
+                                            <span class="text-muted small fst-italic">Sin puesto asignado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if t.perfil.rol == 'ADMINISTRADOR' %}
+                                            <span class="badge bg-danger text-white">Administrador</span>
+                                        {% elif t.perfil.rol == 'CAJERO' %}
+                                            <span class="badge bg-warning text-dark">Cajero</span>
+                                        {% elif t.perfil.rol == 'MESERO' %}
+                                            <span class="badge bg-success text-white">Mesero</span>
+                                        {% elif t.perfil.rol == 'COCINERO' %}
+                                            <span class="badge bg-info text-dark">Cocinero</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary text-white">{{ t.perfil.rol }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ t.perfil.telefono|default:'Sin teléfono' }}</small>
+                                    </td>
+                                    <td>
+                                        {% if t.perfil.activo %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'administrador_trabajadores' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Editar en módulo completo">
+                                            <i class="bi bi-pencil-fill me-1"></i> Gestionar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No se registran colaboradores.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="sinTrabajadoresMensaje" class="text-center py-4 d-none">
+                        <i class="bi bi-search display-6 text-muted mb-2 d-block"></i>
+                        <p class="text-muted mb-0">No se encontraron colaboradores que coincidan con la búsqueda.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- 2. PESTAÑA MESAS DEL PARQUE -->
+            <!-- ============================================================== -->
+            <div class="tab-pane fade {% if tab_activo == 'mesas' %}show active{% endif %}" id="pills-mesas" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 p-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Búsqueda Reactiva para Mesas -->
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-lg-5">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="buscarMesaEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar por mesa (ej: Mesa 1, Terraza, Z, 4 pers)...">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 col-lg-3">
+                            <select id="filtroLocalMesa" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Locales</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.nombre }}">{{ loc.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 col-lg-2">
+                            <select id="filtroEstadoMesa" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Estados</option>
+                                <option value="HABILITADA">Libres / Habilitadas</option>
+                                <option value="OCUPADA">Ocupadas</option>
+                                <option value="MANTENIMIENTO">Mantenimiento</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 col-lg-2 text-end">
+                            <a href="{% url 'administrador_mesas' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100">
+                                <i class="bi bi-plus-circle-fill me-1"></i> + Nueva Mesa
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Cuadrícula / Tabla de Mesas -->
+                    <div class="row g-3" id="contenedorMesasGestion">
+                        {% for m in mesas %}
+                        <div class="col-md-6 col-lg-4 col-xl-3 mesa-item" data-local="{{ m.punto_venta.nombre }}" data-estado="{{ m.estado }}">
+                            <div class="mesa-tile-card p-3 border shadow-sm">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle p-2 d-flex align-items-center justify-content-center {% if m.estado == 'HABILITADA' %}bg-success-subtle text-success{% elif m.estado == 'OCUPADA' %}bg-danger-subtle text-danger{% else %}bg-warning-subtle text-warning{% endif %}" style="width: 38px; height: 38px;">
+                                            <i class="bi bi-grid-3x3-gap-fill fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold mb-0 text-dark">{{ m.identificador }}</h6>
+                                            <small class="text-muted"><i class="bi bi-people me-1"></i>{{ m.capacidad }} personas</small>
+                                        </div>
+                                    </div>
+                                    <span class="badge {% if m.estado == 'HABILITADA' %}bg-success-subtle text-success border border-success{% elif m.estado == 'OCUPADA' %}bg-danger-subtle text-danger border border-danger{% else %}bg-warning-subtle text-warning border border-warning{% endif %}">
+                                        {{ m.get_estado_display }}
+                                    </span>
+                                </div>
+                                <div class="text-muted small mb-3 border-top pt-2">
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ m.punto_venta.nombre }}
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-light text-muted border">ID #{{ m.id }}</span>
+                                    <a href="{% url 'administrador_mesas' %}?local_id={{ m.punto_venta.id }}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                        Gestionar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">No se registran mesas registradas.</div>
+                        {% endfor %}
+                    </div>
+
+                    <div id="sinMesasMensaje" class="text-center py-5 d-none">
+                        <i class="bi bi-search display-6 text-muted mb-2 d-block"></i>
+                        <p class="text-muted mb-0">No se encontraron mesas que coincidan con los filtros ingresados.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- 3. PESTAÑA CATÁLOGO DE PRODUCTOS -->
+            <!-- ============================================================== -->
+            <div class="tab-pane fade {% if tab_activo == 'productos' %}show active{% endif %}" id="pills-productos" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 p-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Búsqueda Reactiva para Productos -->
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-lg-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="buscarProductoEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar producto (ej: hamburguesa, café, Z, jugo)...">
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-lg-3">
+                            <select id="filtroCategoriaProd" class="form-select rounded-pill small">
+                                <option value="todos">Todas las Categorías</option>
+                                {% for c in categorias %}
+                                <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-lg-3">
+                            <select id="filtroLocalProd" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Locales</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.nombre }}">{{ loc.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-2 col-lg-2 text-end">
+                            <a href="{% url 'administrador_productos' %}" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100">
+                                <i class="bi bi-plus-circle-fill me-1"></i> + Producto
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Productos Gastronómicos -->
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-safari table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Producto Gastronómico</th>
+                                    <th>Categoría Oficial</th>
+                                    <th>Precio Base Oficial</th>
+                                    <th>Locales de Venta</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyProductosGestion">
+                                {% for p in productos %}
+                                <tr class="producto-fila" data-categoria="{{ p.categoria.nombre }}" data-local="{% for pv in p.puntos_venta.all %}{{ pv.nombre }} {% endfor %}">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle p-2 bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                                <i class="bi bi-egg-fried fs-6"></i>
+                                            </div>
+                                            <div>
+                                                <strong class="text-dark">{{ p.nombre }}</strong>
+                                                <div class="small text-muted font-monospace">COD #{{ p.id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">{{ p.categoria.nombre }}</span>
+                                    </td>
+                                    <td id="celda_precio_{{ p.id }}">
+                                        {% if p.en_oferta %}
+                                            {% if p.tipo_oferta == 'PRECIO_FIJO' and p.precio_oferta %}
+                                                <div>
+                                                    <del class="text-muted small">${{ p.precio_base|floatformat:0 }}</del>
+                                                    <strong class="text-danger fs-6">${{ p.precio_oferta|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-tag-fill me-1"></i>{{ p.descripcion_oferta|default:"PRECIO FIJO" }}
+                                                </span>
+                                            {% elif p.tipo_oferta == 'SEGUNDA_1' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"¡2da unidad a $1 peso!" }}
+                                                </span>
+                                            {% elif p.tipo_oferta == '3X2' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>PROMO 3x2 (LLEVA 3, PAGA 2)
+                                                </span>
+                                            {% elif p.tipo_oferta == '2X1' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>PROMO 2x1 (LLEVA 2, PAGA 1)
+                                                </span>
+                                            {% elif p.tipo_oferta == 'DESCUENTO_PCT' %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-percent me-1"></i>{{ p.descuento_pct|floatformat:0 }}% DESCUENTO
+                                                </span>
+                                            {% else %}
+                                                <div>
+                                                    <strong class="text-dark fs-6">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                                </div>
+                                                <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"OFERTA ACTIVA" }}
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <strong class="text-danger">${{ p.precio_base|floatformat:0 }} CLP</strong>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for pv in p.puntos_venta.all %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle small me-1">{{ pv.nombre }}</span>
+                                        {% empty %}
+                                            <span class="text-muted small">Todos los locales</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if p.activo %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success">Disponible</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 me-1" data-bs-toggle="modal" data-bs-target="#modalOfertaProdGestion_{{ p.id }}" title="Gestionar Oferta Promocional">
+                                            <i class="bi bi-fire text-danger"></i> Oferta
+                                        </button>
+                                        <a href="{% url 'administrador_productos' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                            <i class="bi bi-pencil-fill me-1"></i> Modificar
+                                        </a>
+
+                                        <!-- Modal Oferta Producto #{{ p.id }} (Tarea 6) -->
+                                        <div class="modal fade text-start" id="modalOfertaProdGestion_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content rounded-4 border-0 shadow">
+                                                    <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                                            <i class="bi bi-fire"></i>
+                                                            <span>Configurar Oferta: {{ p.nombre }}</span>
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form method="POST" action="{% url 'administrador_productos' %}" onsubmit="guardarOfertaGestionAjax(event, '{{ p.id }}')">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="accion" value="gestionar_oferta">
+                                                        <input type="hidden" name="producto_id" value="{{ p.id }}">
+                                                        <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=productos">
+                                                        <div class="modal-body p-4">
+                                                            <div class="p-3 bg-light rounded-3 mb-3 border">
+                                                                <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.72rem;">Precio Base Oficial</small>
+                                                                <div class="fs-5 fw-bold text-dark">${{ p.precio_base|floatformat:0 }} CLP</div>
+                                                            </div>
+
+                                                            <div class="form-check form-switch mb-3">
+                                                                <input class="form-check-input" type="checkbox" name="en_oferta" id="check_oferta_g_{{ p.id }}" {% if p.en_oferta %}checked{% endif %} onchange="toggleOfertaCamposGestion('{{ p.id }}')">
+                                                                <label class="form-check-label fw-bold text-danger" for="check_oferta_g_{{ p.id }}">
+                                                                    <i class="bi bi-fire me-1"></i> Activar Oferta / Promoción en Carta y Terminales
+                                                                </label>
+                                                            </div>
+
+                                                            <div id="campos_oferta_g_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Tipo de Oferta o Promoción Especial:</label>
+                                                                    <select name="tipo_oferta" class="form-select rounded-3">
+                                                                        <option value="SEGUNDA_1" {% if p.tipo_oferta == 'SEGUNDA_1' %}selected{% endif %}>🍔 Segunda Unidad a $1 peso (o precio especial)</option>
+                                                                        <option value="3X2" {% if p.tipo_oferta == '3X2' %}selected{% endif %}>🎉 Lleva 3 y Paga 2 (3x2)</option>
+                                                                        <option value="2X1" {% if p.tipo_oferta == '2X1' %}selected{% endif %}>✨ Lleva 2 y Paga 1 (2x1)</option>
+                                                                        <option value="PRECIO_FIJO" {% if p.tipo_oferta == 'PRECIO_FIJO' %}selected{% endif %}>🏷️ Precio Fijo Rebajado</option>
+                                                                        <option value="DESCUENTO_PCT" {% if p.tipo_oferta == 'DESCUENTO_PCT' %}selected{% endif %}>📉 Descuento Porcentual (%)</option>
+                                                                        <option value="NINGUNA" {% if p.tipo_oferta == 'NINGUNA' %}selected{% endif %}>Sin Oferta Especial</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
+                                                                    <input type="number" name="precio_oferta" id="input_po_g_{{ p.id }}" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                                                    <div class="form-text small" style="font-size: 0.72rem;">
+                                                                        Acepta monedas de $1 o $5 pesos para promociones (ej: "Lleva la segunda hamburguesa a $1").
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-bold text-dark">Etiqueta o Motivo Promocional:</label>
+                                                                    <input type="text" name="descripcion_oferta" id="input_desc_g_{{ p.id }}" value="{{ p.descripcion_oferta|default:'' }}" maxlength="120" class="form-control rounded-3" placeholder="Ej: ¡Segunda hamburguesa a $1 peso!">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" id="btn_guardar_oferta_g_{{ p.id }}">
+                                                                <i class="bi bi-check-circle-fill me-1"></i> Guardar Oferta
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No se registran productos en el catálogo.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="sinProductosMensaje" class="text-center py-4 d-none">
+                        <i class="bi bi-search display-6 text-muted mb-2 d-block"></i>
+                        <p class="text-muted mb-0">No se encontraron productos coincidentes con la búsqueda.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- 4. PESTAÑA CARTAS Y MENÚS -->
+            <!-- ============================================================== -->
+                        <div class="tab-pane fade {% if tab_activo == 'menus' %}show active{% endif %}" id="pills-menus" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 p-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Búsqueda Reactiva para Menús -->
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-lg-5">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" id="buscarMenuEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar carta o menú (ej: Almuerzos, Barista, Oasis)...">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 col-lg-4">
+                            <select id="filtroLocalMenu" class="form-select rounded-pill small">
+                                <option value="todos">Todos los Locales</option>
+                                {% for loc in locales %}
+                                <option value="{{ loc.nombre }}">{{ loc.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-lg-3 text-end">
+                            <button type="button" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCrearMenuGestion">
+                                <i class="bi bi-plus-circle-fill me-1"></i> + Nueva Carta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tarjetas de Menús y Cartas -->
+                    <div class="row g-4" id="contenedorMenusGestion">
+                        {% for m in menus %}
+                        <div class="col-lg-6 menu-card-item" data-local="{{ m.punto_venta.nombre }}" id="menu_card_col_{{ m.id }}">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="border: 1.5px solid #e2e8f0 !important; background: #ffffff;">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle p-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                            <i class="bi bi-book-half fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="fw-bold mb-0 text-dark" id="menu_nombre_val_{{ m.id }}">{{ m.nombre }}</h5>
+                                            <small class="text-muted" id="menu_local_val_{{ m.id }}"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ m.punto_venta.nombre }}</small>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success" id="menu_badge_count_{{ m.id }}">
+                                        {{ m.productos.count }} platos vinculados
+                                    </span>
+                                </div>
+
+                                <div class="p-3 bg-light rounded-3 mb-3 border">
+                                    <span class="fw-bold small text-muted d-block mb-2">Platos y Productos de esta carta:</span>
+                                    <div class="d-flex flex-wrap gap-1" id="menu_prods_list_{{ m.id }}">
+                                        {% for prod in m.productos.all %}
+                                        <span class="badge bg-white text-dark border small py-1 px-2">
+                                            {{ prod.nombre }}
+                                            {% if prod.en_oferta and prod.precio_oferta %}
+                                                <strong class="text-danger">(${{ prod.precio_oferta|floatformat:0 }} PROMO)</strong>
+                                            {% else %}
+                                                (${% if prod.precio_base %}{{ prod.precio_base|floatformat:0 }}{% else %}0{% endif %})
+                                            {% endif %}
+                                        </span>
+                                        {% empty %}
+                                        <span class="text-muted small">Sin productos asignados a la carta</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-auto border-top pt-3">
+                                    <span class="text-muted small font-monospace">Carta #{{ m.id }}</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEditarMenuGestion_{{ m.id }}" title="Modificar Carta #{{ m.id }} al instante">
+                                        <i class="bi bi-pencil-fill me-1"></i> Editar Carta
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Inmediato Editar Carta #{{ m.id }} (Tarea 1) -->
+                        <div class="modal fade" id="modalEditarMenuGestion_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content rounded-4 border-0 shadow">
+                                    <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                            <i class="bi bi-pencil-square"></i>
+                                            <span>Modificar Carta: <span class="text-warning" id="modal_tit_menu_{{ m.id }}">{{ m.nombre }}</span></span>
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="POST" action="{% url 'administrador_menus' %}" onsubmit="guardarMenuGestionAjax(event, '{{ m.id }}')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="modificar">
+                                        <input type="hidden" name="menu_id" value="{{ m.id }}">
+                                        <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=menus">
+                                        <div class="modal-body p-4">
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-md-7">
+                                                    <label class="form-label fw-bold small text-muted">Nombre de la Carta / Menú:</label>
+                                                    <input type="text" name="nombre" value="{{ m.nombre }}" required class="form-control rounded-3" maxlength="100" id="input_nom_menu_{{ m.id }}">
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <label class="form-label fw-bold small text-muted">Punto de Venta:</label>
+                                                    <select name="punto_venta_id" class="form-select rounded-3" required id="select_pv_menu_{{ m.id }}">
+                                                        {% for loc in locales %}
+                                                        <option value="{{ loc.id }}" {% if m.punto_venta_id == loc.id %}selected{% endif %}>
+                                                            {{ loc.nombre }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <label class="form-label fw-bold small text-muted mb-2">Seleccionar Platos / Productos para esta Carta:</label>
+                                            <div class="border rounded-3 p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                                                <div class="row g-2">
+                                                    {% for p in productos %}
+                                                    <div class="col-md-6">
+                                                        <div class="form-check p-2 rounded-2 bg-white border">
+                                                            <input class="form-check-input ms-0 me-2" type="checkbox" name="productos" value="{{ p.id }}" id="edit_prod_gest_{{ m.id }}_{{ p.id }}" {% if p in m.productos.all %}checked{% endif %}>
+                                                            <label class="form-check-label w-100" for="edit_prod_gest_{{ m.id }}_{{ p.id }}">
+                                                                <strong>{{ p.nombre }}</strong>
+                                                                {% if p.en_oferta and p.precio_oferta %}
+                                                                    <span class="text-danger fw-bold">(${{ p.precio_oferta|floatformat:0 }} <small class="badge bg-danger py-0 px-1">PROMO</small>)</span>
+                                                                {% else %}
+                                                                    <span class="text-danger fw-bold">(${{ p.precio_base|floatformat:0 }})</span>
+                                                                {% endif %}
+                                                                <div class="small text-muted">{{ p.categoria.nombre }}</div>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+
+                                            <div class="form-check form-switch mt-3">
+                                                <input class="form-check-input" type="checkbox" name="activo" id="edit_activo_gest_{{ m.id }}" {% if m.activo %}checked{% endif %}>
+                                                <label class="form-check-label fw-semibold" for="edit_activo_gest_{{ m.id }}">Carta Activa en Local</label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" id="btn_guardar_menu_{{ m.id }}">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Guardar Cambios
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-4 text-muted">No se registran cartas gastronómicas configuradas.</div>
+                        {% endfor %}
+                    </div>
+
+                    <div id="sinMenusMensaje" class="text-center py-5 d-none">
+                        <i class="bi bi-search display-6 text-muted mb-2 d-block"></i>
+                        <p class="text-muted mb-0">No se encontraron menús que coincidan con la búsqueda.</p>
+                    </div>
+
+                </div>
+
+                <!-- Modal Nueva Carta -->
+                <div class="modal fade" id="modalCrearMenuGestion" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                                <h5 class="modal-title fw-bold">
+                                    <i class="bi bi-plus-circle-fill me-2"></i>Nueva Carta o Menú Gastronómico
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{% url 'administrador_menus' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="crear">
+                                <input type="hidden" name="next" value="{% url 'administrador_gestion' %}?tab=menus">
+                                <div class="modal-body p-4">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-7">
+                                            <label class="form-label fw-bold small text-muted">Nombre de la Carta:</label>
+                                            <input type="text" name="nombre" required class="form-control rounded-3" placeholder="Ej: Carta Minutas y Almuerzos">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold small text-muted">Punto de Venta:</label>
+                                            <select name="punto_venta_id" class="form-select rounded-3" required>
+                                                {% for loc in locales %}
+                                                <option value="{{ loc.id }}">{{ loc.nombre }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <label class="form-label fw-bold small text-muted mb-2">Seleccionar Platos Iniciales:</label>
+                                    <div class="border rounded-3 p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                                        <div class="row g-2">
+                                            {% for p in productos %}
+                                            <div class="col-md-6">
+                                                <div class="form-check p-2 rounded-2 bg-white border">
+                                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="productos" value="{{ p.id }}" id="crear_menu_p_{{ p.id }}">
+                                                    <label class="form-check-label w-100" for="crear_menu_p_{{ p.id }}">
+                                                        <strong>{{ p.nombre }}</strong> <span class="text-danger fw-bold">(${{ p.precio_base|floatformat:0 }})</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" name="activo" id="crear_menu_activo" checked>
+                                        <label class="form-check-label fw-semibold" for="crear_menu_activo">Carta Activa de Inmediato</label>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Guardar Nueva Carta
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div></div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Patrón geométrico inferior -->
+    <div class="tribal-bottom-divider"></div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center bg-white border-top">
+        <div class="container">
+            <p class="mb-0 text-muted small">
+                <strong>Safari Pilar</strong> • Sistema de Gestión Gastronómica © 2026. Módulo Central de Administración.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Protección contra doble envío -->
+    <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
+    <!-- Control de Inactividad y Reloj de Sesión Discreto -->
+    <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+    <!-- Filtro y Búsqueda en Tiempo Real Reactiva (por cada tecleo) -->
+    <script src="{% static 'js/global/filtro_tiempo_real.js' %}"></script>
+
+
+    <!-- Contenedor de Toast para notificaciones en tiempo real sin recargar -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+        <div id="toastSafariNotif" class="toast align-items-center text-white bg-success border-0 rounded-4 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-5"></i>
+                    <span id="toastSafariTexto">Operación completada exitosamente</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/administrador/gestion.js' %}"></script>
+
+</body>
+</html>

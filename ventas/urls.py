@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('qr-acceso/', views.qr_acceso_view, name='qr_acceso'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('vendedor/', views.vendedor, name='vendedor'),
@@ -36,6 +37,10 @@ urlpatterns = [
 
     # Seguridad de Contrasenas y Expiracion Semestral (Tarea 1)
     path('cambiar-clave-expirada/', views.cambiar_clave_expirada, name='cambiar_clave_expirada'),
+
+    # Sincronización Delta Liviana y Control de Stock en KDS
+    path('api/sincronizacion/estado/', views.api_sincronizacion_estado, name='api_sincronizacion_estado'),
+    path('api/kds/toggle-stock/', views.api_toggle_stock_producto, name='api_toggle_stock_producto'),
 
     # Verificacion QR, Cabanas y Descuentos Huespedes (Tarea 7)
     path('api/convenios/verificar/', views.api_verificar_convenio_qr, name='api_verificar_convenio_qr'),

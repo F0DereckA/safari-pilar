@@ -38,3 +38,5 @@ backups/
 .env.local
 .env.*
 !.env.example
+cosas para entregas futuras/
+staticfiles/

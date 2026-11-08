@@ -1,0 +1,1097 @@
+/* ==========================================================================
+   Panel de Administración y Supervisión - Safari Pilar
+   Estilos específicos para Administrador, Detalle de Locales y Dashboard
+   ========================================================================== */
+
+/* Header Administrativo */
+.admin-badge {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #851212 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--safari-yellow);
+}
+
+/* ==========================================================================
+   Grid Universal de Métricas / KPIs y Tarjetas sin Truncamiento
+   ========================================================================== */
+.safari-kpi-grid,
+.admin-kpi-grid,
+#contenedorAdminEnVivo > .row.g-3.mb-4,
+#contenedorDashboardKPIs > .row.g-3.mb-4 {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    gap: 1rem !important;
+}
+
+.safari-kpi-grid > [class*="col-"],
+.admin-kpi-grid > [class*="col-"],
+#contenedorAdminEnVivo > .row.g-3.mb-4 > [class*="col-"],
+#contenedorDashboardKPIs > .row.g-3.mb-4 > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Tarjetas KPI Superiores (admin-kpi-card & safari-kpi-card) */
+.admin-kpi-card,
+.safari-kpi-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    transition: all 0.25s ease;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.admin-kpi-card:hover,
+.safari-kpi-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 8px 24px rgba(92, 66, 48, 0.12);
+}
+
+.admin-kpi-icon,
+.safari-kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.admin-kpi-card > div:last-child,
+.safari-kpi-card > div:last-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.admin-kpi-val,
+.safari-kpi-val {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.2rem, 1.6vw, 1.7rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+.admin-kpi-label,
+.safari-kpi-label {
+    font-size: 0.78rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+/* Tarjetas comparativas del dashboard */
+.comparison-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 16px 18px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+    height: 100%;
+    min-width: 0;
+}
+
+.comparison-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.comparison-val {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.25rem, 1.8vw, 1.8rem);
+    font-weight: 700;
+    line-height: 1.15;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* Botón Destacado hacia Dashboard Analítico */
+.btn-dashboard-analitico {
+    background: linear-gradient(135deg, var(--safari-cafe-deep) 0%, var(--safari-cafe-dark) 100%);
+    color: #ffffff !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 12px 24px;
+    border-radius: 30px;
+    border: 2px solid var(--safari-yellow);
+    box-shadow: 0 4px 16px rgba(45, 33, 24, 0.35);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-dashboard-analitico:hover {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #851212 100%);
+    border-color: #ffffff;
+    box-shadow: 0 6px 20px rgba(198, 40, 40, 0.45);
+    transform: translateY(-2px);
+    color: #ffffff !important;
+}
+
+/* Tarjetas de los 3 Locales Gastronómicos */
+.local-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 5px 18px rgba(92, 66, 48, 0.08);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.local-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 10px 28px rgba(92, 66, 48, 0.16);
+    transform: translateY(-4px);
+}
+
+.local-card-header {
+    padding: 16px 20px;
+    border-bottom: 2px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.local-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--safari-cafe-deep);
+}
+
+.local-card-body {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+.local-metric-box {
+    background-color: var(--safari-cafe-light);
+    border: 1px solid var(--safari-cafe-pastel);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+}
+
+.local-metric-num {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.local-metric-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: 0.4px;
+}
+
+/* Personal activo en local */
+.staff-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #ffffff;
+    border: 1px solid var(--safari-cafe-medium);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--safari-cafe-dark);
+}
+
+.staff-avatar-mini {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--safari-yellow);
+    color: var(--safari-cafe-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.local-card-footer {
+    padding: 14px 20px;
+    background-color: #fdfaf5;
+    border-top: 2px solid var(--safari-cafe-pastel);
+}
+
+.btn-ver-jornada {
+    background: linear-gradient(135deg, var(--safari-yellow) 0%, var(--safari-yellow-dark) 100%);
+    color: var(--safari-cafe-deep) !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    border: 1.5px solid var(--safari-yellow-dark);
+    border-radius: 25px;
+    padding: 8px 16px;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.btn-ver-jornada:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #000000 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* ==========================================================================
+   Página de Detalle de Local Específico
+   ========================================================================== */
+.local-detail-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #fdfaf5 100%);
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(92, 66, 48, 0.08);
+}
+
+.detail-table-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+}
+
+.detail-table-header {
+    background: linear-gradient(135deg, var(--safari-cafe-dark) 0%, var(--safari-cafe-deep) 100%);
+    color: #ffffff;
+    padding: 14px 20px;
+    border-bottom: 3px solid var(--safari-yellow);
+}
+
+.detail-table {
+    margin: 0;
+}
+
+.detail-table th {
+    background-color: var(--safari-cafe-pastel);
+    color: var(--safari-cafe-dark);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1.5px solid var(--safari-cafe-medium);
+    padding: 12px 16px;
+}
+
+.detail-table td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f0ede6;
+}
+
+.badge-staff-activo {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.badge-staff-colacion {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+/* ==========================================================================
+   Componentes Compartidos de Filtros, Tablas y Modales - Zona Administrador
+   ========================================================================== */
+.worker-filter-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    margin-bottom: 24px;
+}
+
+.search-input-group {
+    position: relative;
+}
+
+.search-input-group i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.search-input-field {
+    padding-left: 44px !important;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 30px !important;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.search-input-field:focus {
+    border-color: var(--safari-red);
+    box-shadow: 0 0 0 4px rgba(167, 29, 29, 0.15);
+}
+
+.filter-select {
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--safari-cafe-deep);
+}
+
+.filter-select:focus {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 0 0 3px rgba(243, 178, 51, 0.25);
+}
+
+/* Modales Safari */
+.modal-safari-header {
+    background: linear-gradient(135deg, var(--safari-cafe-deep) 0%, var(--safari-cafe-dark) 100%);
+    color: #ffffff;
+    border-bottom: 3px solid var(--safari-yellow);
+    padding: 18px 24px;
+}
+
+.modal-safari-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-safari-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.35rem;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+/* Botones de Acción de Trabajadores */
+.btn-action-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+}
+
+.btn-action-icon:hover {
+    transform: scale(1.1);
+}
+
+/* ==========================================================================
+   Header Sticky Profesional Compacto (~48px) con Glassmorphism
+   ========================================================================== */
+.safari-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1040 !important;
+    background: rgba(251, 247, 238, 0.94) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-bottom: 1.5px solid var(--safari-cafe-medium) !important;
+    box-shadow: 0 4px 18px rgba(45, 33, 24, 0.08) !important;
+    transition: all 0.25s ease-in-out !important;
+}
+
+.safari-header .logo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.safari-header .logo-img {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    transition: transform 0.2s ease;
+}
+
+.safari-header .logo-link:hover .logo-img {
+    transform: scale(1.05);
+}
+
+.safari-header .brand-text-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.safari-header .brand-text-main {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--safari-cafe-deep);
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.safari-header .brand-text-sub {
+    font-size: 0.72rem;
+    color: #6b7280;
+    line-height: 1.1;
+    font-weight: 600;
+}
+
+.admin-user-label {
+    font-size: 0.85rem;
+    line-height: 1.1;
+}
+
+.admin-user-sub {
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.btn-alerta-campana {
+    width: 36px !important;
+    height: 36px !important;
+    border: 1.5px solid var(--safari-cafe-medium) !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-alerta-campana:hover {
+    background-color: #fff9f0 !important;
+    border-color: var(--safari-yellow-dark) !important;
+    transform: scale(1.05);
+}
+
+.badge-alerta-count {
+    font-size: 0.65rem !important;
+}
+
+.dropdown-alertas-panel {
+    min-width: 360px !important;
+    max-width: 420px !important;
+    z-index: 1050 !important;
+}
+
+.alert-list-scroll {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.btn-header-salir {
+    font-size: 0.8rem !important;
+    padding: 4px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+/* ==========================================================================
+   Cinta de Subclases con Flechas de Scroll y Microinteracciones
+   ========================================================================== */
+.safari-subclases-bar {
+    background: #ffffff !important;
+    border-top: 1px solid rgba(167, 29, 29, 0.08) !important;
+    border-bottom: 2px solid rgba(167, 29, 29, 0.12) !important;
+    padding: 4px 0 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
+}
+
+.subclases-label {
+    font-size: 0.75rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    color: #6b7280 !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+}
+
+.btn-subclases-scroll {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    border: 1px solid #d1d5db !important;
+    background: #ffffff !important;
+    color: var(--safari-cafe-deep) !important;
+    font-size: 0.75rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.btn-subclases-scroll:hover:not(:disabled):not(.is-disabled) {
+    background: var(--safari-red) !important;
+    color: #ffffff !important;
+    border-color: var(--safari-red) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 2px 8px rgba(198, 40, 40, 0.3) !important;
+}
+
+.btn-subclases-scroll:active:not(:disabled):not(.is-disabled) {
+    transform: scale(0.95) !important;
+}
+
+.btn-subclases-scroll:disabled,
+.btn-subclases-scroll.is-disabled {
+    opacity: 0.3 !important;
+    cursor: default !important;
+    box-shadow: none !important;
+}
+
+.btn-subclases-scroll.is-hidden {
+    display: none !important;
+}
+
+.subclases-scroll-wrapper {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    scroll-behavior: smooth !important;
+    padding: 2px 4px !important;
+    cursor: grab;
+}
+
+.subclases-scroll-wrapper:active {
+    cursor: grabbing;
+}
+
+.subclases-scroll-wrapper::-webkit-scrollbar {
+    display: none !important;
+    height: 0 !important;
+}
+
+.subclase-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 12px !important;
+    border-radius: 18px !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    color: #4b5563 !important;
+    background: #f8fafc !important;
+    border: 1.5px solid #e2e8f0 !important;
+    text-decoration: none !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.subclase-chip:hover {
+    color: var(--safari-red) !important;
+    background-color: #fff5f5 !important;
+    border-color: rgba(198, 40, 40, 0.45) !important;
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 3px 8px rgba(198, 40, 40, 0.16) !important;
+}
+
+.subclase-chip:active {
+    transform: translateY(0) !important;
+}
+
+.subclase-chip.active {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, var(--safari-red) 0%, #851212 100%) !important;
+    border-color: var(--safari-red) !important;
+    box-shadow: 0 3px 10px rgba(198, 40, 40, 0.35) !important;
+}
+
+.subclase-chip.active i {
+    color: var(--safari-yellow) !important;
+}
+
+.subclase-chip-promo {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+    border-color: #f59e0b !important;
+    color: #92400e !important;
+}
+
+.subclase-chip-promo:hover {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+    color: #78350f !important;
+    border-color: #d97706 !important;
+}
+
+.dropdown-safari {
+    border-radius: 16px !important;
+    box-shadow: 0 12px 32px rgba(45, 33, 24, 0.14) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    animation: fadeInDropdown 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dropdown-safari .active-item {
+    background-color: rgba(198, 40, 40, 0.12) !important;
+    color: var(--safari-red) !important;
+    font-weight: 700 !important;
+}
+
+@keyframes fadeInDropdown {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================================================
+   Responsive Design Universal - Móvil, Tablet, POS y Desktop
+   ========================================================================== */
+
+/* 1. Desktop / POS (> 1024px) */
+@media (min-width: 1024.02px) {
+    .safari-kpi-grid,
+    .admin-kpi-grid,
+    #contenedorAdminEnVivo > .row.g-3.mb-4,
+    #contenedorDashboardKPIs > .row.g-3.mb-4 {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+/* 2. Tablet y Laptops compactas (768px a 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .safari-header .brand-text-main {
+        font-size: 1.15rem;
+    }
+    
+    .safari-kpi-grid,
+    .admin-kpi-grid,
+    #contenedorAdminEnVivo > .row.g-3.mb-4,
+    #contenedorDashboardKPIs > .row.g-3.mb-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .admin-kpi-card,
+    .safari-kpi-card {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .admin-kpi-icon,
+    .safari-kpi-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.3rem;
+    }
+
+    .admin-kpi-val,
+    .safari-kpi-val {
+        font-size: 1.35rem;
+    }
+
+    .admin-kpi-label,
+    .safari-kpi-label {
+        font-size: 0.74rem;
+    }
+
+    .btn-dashboard-analitico {
+        font-size: 0.95rem;
+        padding: 10px 18px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .local-card {
+        border-radius: 14px;
+    }
+
+    .detail-table {
+        font-size: 0.88rem;
+    }
+}
+
+/* 3. Móvil y Pantallas Pequeñas (< 768px) */
+@media (max-width: 767.98px) {
+    .safari-header {
+        border-bottom-width: 1px !important;
+    }
+
+    .safari-header .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+    }
+
+    .safari-header .logo-img {
+        height: 28px !important;
+    }
+
+    .safari-header .brand-text-main {
+        font-size: 1.05rem !important;
+        letter-spacing: 0 !important;
+    }
+
+    .safari-header .brand-text-sub {
+        display: none !important;
+    }
+
+    .btn-alerta-campana {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .btn-header-salir {
+        font-size: 0.75rem !important;
+        padding: 3px 10px !important;
+    }
+
+    .safari-subclases-bar {
+        padding: 3px 0 !important;
+    }
+
+    .btn-subclases-scroll {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 0.7rem !important;
+    }
+
+    .subclase-chip {
+        padding: 4px 10px !important;
+        font-size: 0.74rem !important;
+        gap: 4px !important;
+        border-radius: 14px !important;
+    }
+
+    .safari-kpi-grid,
+    .admin-kpi-grid,
+    #contenedorAdminEnVivo > .row.g-3.mb-4,
+    #contenedorDashboardKPIs > .row.g-3.mb-4 {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+        gap: 0.65rem !important;
+    }
+
+    .admin-kpi-card,
+    .safari-kpi-card {
+        padding: 10px 12px;
+        gap: 10px;
+        border-radius: 12px;
+    }
+
+    .admin-kpi-icon,
+    .safari-kpi-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1.15rem;
+        border-radius: 10px;
+    }
+
+    .admin-kpi-val,
+    .safari-kpi-val {
+        font-size: 1.2rem;
+    }
+
+    .admin-kpi-label,
+    .safari-kpi-label {
+        font-size: 0.7rem;
+    }
+
+    .local-card-header {
+        padding: 14px;
+    }
+
+    .local-card-title {
+        font-size: 1.2rem;
+    }
+
+    .local-stat-box {
+        padding: 8px 10px;
+    }
+
+    .local-stat-number {
+        font-size: 1.15rem;
+    }
+
+    .detail-table th, .detail-table td {
+        padding: 8px 10px;
+        font-size: 0.82rem;
+    }
+
+    .btn-action-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .alerta-traslado-card {
+        padding: 12px;
+    }
+
+    .dropdown-alertas-panel {
+        min-width: 280px !important;
+        max-width: 320px !important;
+    }
+}
+
+
+/* ==========================================================================
+   Navegación por 3 Categorías Madre (Diseño Ergonómico sin Saturación)
+   ========================================================================== */
+.safari-master-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-safari-pill {
+    background-color: #ffffff !important;
+    border: 1.5px solid rgba(198, 40, 40, 0.22) !important;
+    color: var(--safari-cafe-deep, #2d2118) !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    border-radius: 25px !important;
+    padding: 6px 14px !important;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 2px 6px rgba(45, 33, 24, 0.05) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    text-decoration: none !important;
+}
+
+.btn-safari-pill:hover,
+.btn-safari-pill:focus,
+.safari-category-dropdown.show .btn-safari-pill {
+    background-color: #fff8f6 !important;
+    border-color: var(--safari-red, #c62828) !important;
+    color: var(--safari-red, #c62828) !important;
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.18) !important;
+}
+
+.btn-safari-pill.active {
+    background: linear-gradient(135deg, var(--safari-red, #c62828) 0%, #851212 100%) !important;
+    color: #ffffff !important;
+    border-color: var(--safari-yellow, #f59e0b) !important;
+    box-shadow: 0 3px 12px rgba(198, 40, 40, 0.3) !important;
+}
+
+.btn-safari-pill.active i {
+    color: var(--safari-yellow, #f59e0b) !important;
+}
+
+.btn-safari-pill .arrow-indicator {
+    font-size: 0.68rem !important;
+    transition: transform 0.2s ease !important;
+    opacity: 0.7;
+}
+
+.safari-category-dropdown.show .btn-safari-pill .arrow-indicator,
+.safari-category-dropdown:hover .btn-safari-pill .arrow-indicator {
+    transform: rotate(180deg) !important;
+    opacity: 1;
+}
+
+.dropdown-header-custom {
+    background: linear-gradient(135deg, #fef8f4 0%, #fdf5ee 100%);
+    border-radius: 12px 12px 0 0;
+}
+
+.dropdown-safari {
+    border-radius: 16px !important;
+    box-shadow: 0 14px 34px rgba(45, 33, 24, 0.15) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    animation: fadeInDropdown 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    background: #ffffff !important;
+}
+
+.dropdown-safari .dropdown-item {
+    transition: all 0.18s ease !important;
+}
+
+.dropdown-safari .dropdown-item:hover {
+    background-color: #fff4f2 !important;
+    color: var(--safari-red) !important;
+    transform: translateX(3px) !important;
+}
+
+.dropdown-safari .dropdown-item.active-item {
+    background-color: rgba(198, 40, 40, 0.1) !important;
+    border-left: 3px solid var(--safari-red) !important;
+}
+
+@media (min-width: 992px) {
+    .safari-category-dropdown:hover > .dropdown-menu {
+        display: block !important;
+        animation: fadeInDropdown 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        margin-top: 4px !important;
+    }
+}
+
+
+/* ==========================================================================
+   Íconos Espaciados y Tipografía en Menús de las 3 Clases Maestras
+   ========================================================================== */
+.safari-menu-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 10px 14px !important;
+    border-radius: 12px !important;
+    text-decoration: none !important;
+    white-space: normal !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.safari-menu-item:hover {
+    background-color: #fff4f2 !important;
+    transform: translateX(3px) !important;
+}
+
+.safari-menu-item.active-item {
+    background-color: rgba(198, 40, 40, 0.08) !important;
+    border-left: 3.5px solid var(--safari-red, #c62828) !important;
+}
+
+.safari-menu-icon {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.25rem !important;
+    flex-shrink: 0 !important;
+    margin-right: 14px !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.safari-menu-icon i {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    font-size: 1.25rem !important;
+}
+
+.safari-menu-item:hover .safari-menu-icon {
+    transform: scale(1.08) !important;
+}
+
+/* Modificadores temáticos armónicos y pastel para iconos */
+.safari-icon-red {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #fca5a5 !important;
+}
+
+.safari-icon-yellow {
+    background-color: #fef3c7 !important;
+    color: #b45309 !important;
+    border: 1px solid #fde68a !important;
+}
+
+.safari-icon-purple {
+    background-color: #f3e8ff !important;
+    color: #7e22ce !important;
+    border: 1px solid #e9d5ff !important;
+}
+
+.safari-icon-blue {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border: 1px solid #bae6fd !important;
+}
+
+.safari-icon-green {
+    background-color: #dcfce7 !important;
+    color: #15803d !important;
+    border: 1px solid #bbf7d0 !important;
+}
+
+.safari-menu-text {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    flex-grow: 1 !important;
+    padding-left: 0 !important;
+}
+
+.safari-menu-title {
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.3 !important;
+    color: #1e293b !important;
+}
+
+.safari-menu-desc {
+    font-size: 0.74rem !important;
+    color: #64748b !important;
+    line-height: 1.25 !important;
+    margin-top: 3px !important;
+}
+
+/* Variante compacta para offcanvas móvil / tablet */
+.safari-menu-icon-sm {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    font-size: 1rem !important;
+    margin-right: 10px !important;
+    border-radius: 8px !important;
+}
+
+.safari-menu-icon-sm i {
+    font-size: 1rem !important;
+}

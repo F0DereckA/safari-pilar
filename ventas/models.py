@@ -351,6 +351,7 @@ class Producto(models.Model):
             "destino_badge": destino_badge,
             "precio": int(self.precio_actual),
             "precio_base": int(self.precio_base),
+            "activo": self.activo,
             "en_oferta": self.en_oferta,
             "descripcion_oferta": self.descripcion_oferta or '',
             "descripcion": self.descripcion or '',

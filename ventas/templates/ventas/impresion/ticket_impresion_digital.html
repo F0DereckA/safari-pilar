@@ -1,0 +1,196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket #{{ ticket.codigo }} • Impresión Digital Safari</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Courier+Prime:wght@400;700&family=Inconsolata:wght@500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{% static 'css/impresion/ticket_digital.css' %}">
+</head>
+<body>
+
+    <div class="ticket-wrapper">
+
+        <!-- Barra de Controles de Impresión (Oculta al imprimir) -->
+        <div class="no-print mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-arrow-left me-1"></i> Volver
+                </a>
+                <span class="badge {% if ticket.tipo_destino == 'COCINA' %}bg-danger{% elif ticket.tipo_destino == 'BARRA' %}bg-primary{% else %}bg-success{% endif %} ticket-destination-badge px-3 py-2 rounded-pill">
+                    <i class="bi {% if ticket.tipo_destino == 'COCINA' %}bi-fire{% elif ticket.tipo_destino == 'BARRA' %}bi-cup-straw{% else %}bi-receipt-cutoff{% endif %} me-1"></i>
+                    DESTINO: {{ ticket.get_tipo_destino_display|upper }}
+                </span>
+            </div>
+
+            <!-- Estado del Despacho a Impresora Física/Digital  -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem;">Punto de Impresión Asignado</div>
+                        <div class="fw-bold text-dark">
+                            <i class="bi bi-printer-fill text-secondary me-1"></i>
+                            {{ punto_impresion.nombre|default:"Impresora Digital Provisional" }}
+                        </div>
+                        <div class="small text-muted">
+                            Tipo: <strong class="text-uppercase">{{ punto_impresion.get_tipo_conexion_display|default:"Digital" }}</strong> • Ancho: {{ punto_impresion.ancho_papel_mm|default:80 }}mm
+                        </div>
+                    </div>
+                    <div>
+                        {% if ticket.estado_impresion == 'IMPRESO' %}
+                            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                                <i class="bi bi-check2-circle me-1"></i> Despachado OK
+                            </span>
+                        {% elif ticket.estado_impresion == 'FALLO' %}
+                            <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-bold border border-danger-subtle">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Fallo de Impresión
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-2 rounded-pill fw-bold border border-warning-subtle">
+                                <i class="bi bi-hourglass-split me-1"></i> Pendiente
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if ticket.estado_impresion == 'FALLO' %}
+                <div class="alert alert-danger mb-0 mt-3 p-2 small rounded-3">
+                    <strong>Motivo del fallo:</strong> {{ ticket.error_impresion|default:"Error de comunicación o impresora fuera de línea." }}
+                    <div class="mt-2 text-end">
+                        <form method="POST" action="{% url 'reintentar_impresion' ticket.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold">
+                                <i class="bi bi-arrow-repeat me-1"></i> Reintentar Despacho Ahora
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Botonera de Acción Rápida -->
+            <div class="d-grid gap-2 mb-3">
+                <button type="button" class="btn btn-dark btn-lg fw-bold rounded-4 shadow-sm" onclick="window.print()">
+                    <i class="bi bi-printer-fill me-2 text-warning"></i> Imprimir en Impresora Térmica
+                </button>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{% url 'reimprimir_ticket' ticket.id %}" class="flex-grow-1 m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-warning text-dark w-100 fw-bold rounded-3">
+                            <i class="bi bi-files me-1"></i> Generar Copia Reimpresa
+                        </button>
+                    </form>
+                    <form method="POST" action="{% url 'reintentar_impresion' ticket.id %}" class="flex-grow-1 m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary w-100 fw-bold rounded-3">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Reenviar a Impresora
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {% if propina_sugerida %}
+            <!-- Sugerencia Voluntaria de Propina 10% (Ley N° 20.918 Art. 64 bis) -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem;">Ley N° 20.918 • Sugerencia de Propina (10%)</div>
+                        <div class="fw-bold text-success fs-5">
+                            +${{ propina_sugerida|floatformat:0 }} CLP
+                        </div>
+                        <div class="small text-muted">
+                            Total Sugerido con Propina: <strong>${{ total_con_propina|floatformat:0 }} CLP</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                            100% Voluntaria
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Tarjeta de Ticket Térmico (Impresión Física / Render Digital Monospace) -->
+        <div class="thermal-ticket-card">
+            <pre class="ticket-paper-content">{{ ticket.contenido_impresion }}</pre>
+
+            {% if ticket.tipo_destino == 'CAJA' or ticket.tipo_destino == 'COMPROBANTE' or not ticket.tipo_destino %}
+            <!-- Timbre Electrónico DTE Simulado (Inspector Legal & Cortana - Cumplimiento SII) -->
+            <div class="dte-timbre-electronico text-center mt-3 pt-3 border-top border-dark border-dashed">
+                <div class="dte-barcode-box p-2 mx-auto my-2 border border-2 border-dark" style="max-width: 260px; background: #fff;">
+                    <!-- SVG Timbre PDF417 Simulado -->
+                    <svg viewBox="0 0 240 55" width="100%" height="45" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="240" height="55" fill="#ffffff" />
+                        <g fill="#000000">
+                            <rect x="5" y="5" width="4" height="45" /><rect x="11" y="5" width="2" height="45" /><rect x="15" y="5" width="3" height="45" /><rect x="20" y="5" width="1" height="45" />
+                            <rect x="24" y="5" width="3" height="12" /><rect x="24" y="20" width="5" height="15" /><rect x="24" y="38" width="2" height="12" />
+                            <rect x="30" y="5" width="2" height="20" /><rect x="30" y="28" width="4" height="22" />
+                            <rect x="36" y="5" width="5" height="15" /><rect x="36" y="23" width="2" height="12" /><rect x="36" y="38" width="6" height="12" />
+                            <rect x="44" y="5" width="3" height="25" /><rect x="44" y="33" width="5" height="17" />
+                            <rect x="51" y="5" width="4" height="10" /><rect x="51" y="18" width="2" height="18" /><rect x="51" y="39" width="4" height="11" />
+                            <rect x="58" y="5" width="2" height="30" /><rect x="58" y="38" width="5" height="12" />
+                            <rect x="65" y="5" width="5" height="14" /><rect x="65" y="22" width="3" height="16" /><rect x="65" y="41" width="2" height="9" />
+                            <rect x="73" y="5" width="3" height="22" /><rect x="73" y="30" width="4" height="20" />
+                            <rect x="80" y="5" width="4" height="18" /><rect x="80" y="26" width="2" height="14" /><rect x="80" y="43" width="5" height="7" />
+                            <rect x="88" y="5" width="2" height="28" /><rect x="88" y="36" width="3" height="14" />
+                            <rect x="94" y="5" width="5" height="12" /><rect x="94" y="20" width="4" height="20" /><rect x="94" y="43" width="2" height="7" />
+                            <rect x="102" y="5" width="3" height="24" /><rect x="102" y="32" width="5" height="18" />
+                            <rect x="109" y="5" width="4" height="16" /><rect x="109" y="24" width="2" height="16" /><rect x="109" y="43" width="4" height="7" />
+                            <rect x="116" y="5" width="2" height="30" /><rect x="116" y="38" width="5" height="12" />
+                            <rect x="123" y="5" width="5" height="14" /><rect x="123" y="22" width="3" height="16" /><rect x="123" y="41" width="2" height="9" />
+                            <rect x="131" y="5" width="3" height="22" /><rect x="131" y="30" width="4" height="20" />
+                            <rect x="138" y="5" width="4" height="18" /><rect x="138" y="26" width="2" height="14" /><rect x="138" y="43" width="5" height="7" />
+                            <rect x="146" y="5" width="2" height="28" /><rect x="146" y="36" width="3" height="14" />
+                            <rect x="152" y="5" width="5" height="12" /><rect x="152" y="20" width="4" height="20" /><rect x="152" y="43" width="2" height="7" />
+                            <rect x="160" y="5" width="3" height="24" /><rect x="160" y="32" width="5" height="18" />
+                            <rect x="168" y="5" width="4" height="16" /><rect x="168" y="24" width="2" height="16" /><rect x="168" y="43" width="4" height="7" />
+                            <rect x="175" y="5" width="2" height="30" /><rect x="175" y="38" width="5" height="12" />
+                            <rect x="182" y="5" width="5" height="14" /><rect x="182" y="22" width="3" height="16" /><rect x="182" y="41" width="2" height="9" />
+                            <rect x="190" y="5" width="3" height="22" /><rect x="190" y="30" width="4" height="20" />
+                            <rect x="197" y="5" width="4" height="18" /><rect x="197" y="26" width="2" height="14" /><rect x="197" y="43" width="5" height="7" />
+                            <rect x="205" y="5" width="2" height="28" /><rect x="205" y="36" width="3" height="14" />
+                            <rect x="211" y="5" width="5" height="12" /><rect x="211" y="20" width="4" height="20" /><rect x="211" y="43" width="2" height="7" />
+                            <rect x="219" y="5" width="3" height="45" /><rect x="224" y="5" width="2" height="45" /><rect x="228" y="5" width="4" height="45" />
+                        </g>
+                    </svg>
+                </div>
+                <div class="dte-timbre-text font-monospace" style="font-size: 0.68rem; line-height: 1.2; color: #111;">
+                    <strong>Timbre Electrónico DTE</strong><br>
+                    Res. SII Nº 80 de 2014 - Verifique documento:<br>
+                    <span class="text-decoration-underline">www.sii.cl</span>
+                </div>
+                <div class="text-muted mt-1 font-monospace" style="font-size: 0.65rem;">
+                    * Simulación académica DTE Boleta Electrónica sin validez tributaria real *
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Mensajes del Sistema -->
+        {% if messages %}
+        <div class="no-print mt-3">
+            {% for m in messages %}
+            <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}success{% endif %} rounded-4 p-2 small text-center mb-0">
+                {{ m }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Script para auto-impresión si se solicita por parámetro URL (?auto_print=1) -->
+    <script src="{% static 'js/impresion/ticket_digital.js' %}"></script>
+</body>
+</html>

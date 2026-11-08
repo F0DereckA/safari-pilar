@@ -1709,6 +1709,84 @@ class ProteccionesSeguridadYResilienciaTests(TestCase):
         self.venta.refresh_from_db()
         self.assertEqual(self.venta.estado, "PAGADA")
 
+    def test_anular_venta_caja_cerrada_bloqueado(self):
+        """Control Anti-Fraude: No se puede anular una venta de una caja ya cerrada y arqueada"""
+        self.caja.estado = 'CERRADA'
+        self.caja.save()
+        self.client.login(username="supervisor_safari", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "Intento de anulación de caja cerrada"
+        }, follow=True)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "PAGADA")
+        self.assertContains(resp, "caja")
+
+    def test_cajero_no_puede_cancelar_pedido_directo(self):
+        """Control Anti-Fraude: Un cajero no puede cancelar un pedido en curso directamente"""
+        pedido = Pedido.objects.create(venta=self.venta, estado="EN_PREPARACION")
+        self.client.login(username="cajero_seguro", password="password123")
+        resp = self.client.post(reverse("cambiar_estado_pedido"), {
+            "pedido_id": str(pedido.id),
+            "nuevo_estado": "CANCELADO"
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 403)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, "EN_PREPARACION")
+
+    def test_desactivar_trabajador_con_caja_abierta_bloqueado(self):
+        """Control Anti-Fraude: No se puede dar de baja a un colaborador con caja abierta"""
+        self.client.login(username="supervisor_safari", password="password123")
+        perfil_cajero = self.cajero.perfil
+        resp = self.client.post(reverse("administrador_trabajadores"), {
+            "accion": "desactivar",
+            "perfil_id": str(perfil_cajero.id)
+        }, follow=True)
+        perfil_cajero.refresh_from_db()
+        self.assertTrue(perfil_cajero.activo)
+        self.assertContains(resp, "caja individual actualmente abierta")
+
+    def test_anulacion_consumo_interno_requiere_motivo_y_audita(self):
+        """Control Anti-Fraude: Anulación de consumo interno exige justificación y genera auditoría"""
+        consumo = ConsumoInterno.objects.create(
+            empleado=self.cajero,
+            punto_venta=self.pv,
+            registrado_por=self.admin,
+            total=Decimal("5000.00"),
+            estado="REGISTRADO"
+        )
+        self.client.login(username="supervisor_safari", password="password123")
+        # 1. Sin motivo o motivo corto -> Rechazado
+        resp_err = self.client.post(reverse("administrador_consumos"), {
+            "accion": "anular_individual",
+            "consumo_id": str(consumo.id),
+            "motivo_anulacion": "no"
+        }, follow=True)
+        consumo.refresh_from_db()
+        self.assertEqual(consumo.estado, "REGISTRADO")
+
+        # 2. Con motivo válido -> Aprobado y auditado
+        resp_ok = self.client.post(reverse("administrador_consumos"), {
+            "accion": "anular_individual",
+            "consumo_id": str(consumo.id),
+            "motivo_anulacion": "Colaborador pagó en efectivo en oficina central"
+        }, follow=True)
+        consumo.refresh_from_db()
+        self.assertEqual(consumo.estado, "ANULADO")
+        alerta = AlertaTraslado.objects.filter(autorizado_por=self.admin, motivo__contains=f"[ANULACIÓN CONSUMO INTERNO #{consumo.id}]").first()
+        self.assertIsNotNone(alerta)
+
+    def test_anulacion_venta_con_alimentos_entregados_genera_alerta_especial(self):
+        """Control Anti-Fraude: Anular venta con comida ya entregada registra alerta de merma/fraude"""
+        Pedido.objects.create(venta=self.venta, estado="ENTREGADO")
+        self.client.login(username="supervisor_safari", password="password123")
+        resp = self.client.post(reverse("anular_venta", args=[self.venta.id]), {
+            "motivo_anulacion": "Comensal reclamó comida fría tras haberla recibido"
+        }, follow=True)
+        self.venta.refresh_from_db()
+        self.assertEqual(self.venta.estado, "ANULADA")
+        alerta = AlertaTraslado.objects.filter(empleado=self.admin, motivo__contains="ALERTA DE MERMA/FRAUDE").first()
+        self.assertIsNotNone(alerta)
+
     def test_comando_backup_safari(self):
         """El comando backup_safari genera un snapshot íntegro, comprimido y con hash SHA-256"""
         from django.core.management import call_command
@@ -1824,7 +1902,7 @@ class GestionUnificadaYFiltrosTests(TestCase):
         """Verifica que el script de filtro por tecleo y el reloj discreto de sesión existan en static"""
         import os
         from django.conf import settings
-        static_dir = os.path.join(settings.BASE_DIR, "static", "js")
+        static_dir = os.path.join(settings.BASE_DIR, "static", "js", "global")
         self.assertTrue(os.path.exists(os.path.join(static_dir, "filtro_tiempo_real.js")), "filtro_tiempo_real.js debe existir")
         self.assertTrue(os.path.exists(os.path.join(static_dir, "seguridad_sesion.js")), "seguridad_sesion.js debe existir")
 
@@ -3475,8 +3553,11 @@ class SafariRF09GestionImpresionTests(TestCase):
         self.assertNotContains(resp, "Sesión: 14:")
         # 2. Sin botón manual 'Actualizar Pantalla'
         self.assertNotContains(resp, "Actualizar Pantalla")
-        # 3. Auto-actualización fluida en 1s presente
-        self.assertContains(resp, "autoActualizarBarra")
+        # 3. Auto-actualización fluida en 1s presente en su módulo estático por zona (static/js/kds/barra.js)
+        self.assertContains(resp, "js/kds/barra.js")
+        barra_js_path = os.path.join(settings.BASE_DIR, "static", "js", "kds", "barra.js")
+        with open(barra_js_path, "r", encoding="utf-8") as f:
+            self.assertIn("autoActualizarBarra", f.read())
 
     # 11. Transición táctil de estados en KDS Barra (Pendiente -> En Barra -> Listo -> Entregado)
     def test_rf09_11_kds_barra_transicion_estados(self):
@@ -6896,3 +6977,959 @@ class SafariRF18ReportesEstadisticasTests(TestCase):
         self.client.force_login(self.cajero_1)
         response_cajero = self.client.get(reverse('administrador_dashboard'))
         self.assertIn(response_cajero.status_code, [302, 403])
+
+
+class SafariSincronizacionTiempoRealCajaMeseroKdsTests(TestCase):
+    """
+    Pruebas integrales de regresión operativa:
+    1. Campos numéricos de Caja sin value="0" prellenado (ingreso directo sin 0 inicial).
+    2. Diseño responsivo sin recortes en KDS Cocina y Barra (flex-direction: column y grilla amplia).
+    3. Sincronización 100% SQLite entre Cajero, Salón (Mesero), Cocina y Barra.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        call_command('poblar_safari')
+        PerfilEmpleado.objects.all().update(debe_cambiar_clave=False)
+        self.cajero = User.objects.get(username='cvalenzuela')
+        self.mesero = User.objects.get(username='dsilva')
+        self.cocinero = User.objects.get(username='eparedes')
+        self.local = self.cajero.perfil.punto_venta_actual
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_inputs_numericos_caja_sin_cero_inicial(self):
+        self.client.force_login(self.cajero)
+        resp_inicial = self.client.get(reverse('vendedor'))
+        self.assertEqual(resp_inicial.status_code, 200)
+        html_inicial = resp_inicial.content.decode('utf-8')
+        self.assertNotIn('value="0"', html_inicial)
+
+        # Apertura con campo vacío debe asumir $0 limpio; y luego al tener caja activa tampoco hay value="0" en arqueo
+        self.client.post(reverse('abrir_jornada'), {'monto_apertura': ''}, follow=True)
+        resp_activa = self.client.get(reverse('vendedor'))
+        html_activa = resp_activa.content.decode('utf-8')
+        self.assertNotIn('value="0"', html_activa)
+        caja = Caja.objects.filter(cajero=self.cajero, estado='ABIERTA').first()
+        self.assertIsNotNone(caja)
+        self.assertEqual(int(caja.monto_apertura), 0)
+
+    def test_diseno_kds_cocina_y_barra_sin_recorte_flexbox(self):
+        self.client.force_login(self.cocinero)
+        resp_cocina = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_cocina.status_code, 200)
+        html_cocina = resp_cocina.content.decode('utf-8')
+        self.assertIn('css/kds/cocina.css', html_cocina)
+        cocina_css_path = os.path.join(settings.BASE_DIR, 'static', 'css', 'kds', 'cocina.css')
+        with open(cocina_css_path, 'r', encoding='utf-8') as f:
+            cocina_css = f.read()
+        self.assertNotIn('flex-column: column', cocina_css)
+        self.assertIn('flex-direction: column', cocina_css)
+
+        resp_barra = self.client.get(reverse('barra'))
+        self.assertEqual(resp_barra.status_code, 200)
+        html_barra = resp_barra.content.decode('utf-8')
+        self.assertIn('js/kds/barra.js', html_barra)
+        barra_js_path = os.path.join(settings.BASE_DIR, 'static', 'js', 'kds', 'barra.js')
+        with open(barra_js_path, 'r', encoding='utf-8') as f:
+            self.assertIn('autoActualizarBarra', f.read())
+
+    def test_conexion_integral_cajero_mesa_mesero_cocina_y_barra(self):
+        self.client.force_login(self.cajero)
+        self.client.post(reverse('abrir_jornada'), {'monto_apertura': '20000'}, follow=True)
+
+        mesa = Mesa.objects.filter(punto_venta=self.local, estado='HABILITADA').first()
+        self.assertIsNotNone(mesa)
+
+        # 1. Cajero envía clientes a la mesa desde su panel -> se ocupa en BD y se refleja en Mesero
+        resp_ocupar = self.client.post(
+            reverse('vendedor'),
+            {'accion': 'ocupar_mesa', 'mesa_id': str(mesa.id)},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(resp_ocupar.status_code, 200)
+        self.assertTrue(resp_ocupar.json()['ok'])
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+
+        # 2. Cajero emite pedido mixto (Cocina + Barra) asignado a esa mesa desde crear_ticket
+        prod_cocina = [p for p in self.local.get_productos_disponibles() if p.get_destino_operativo() == 'COCINA'][0]
+        prod_barra = [p for p in self.local.get_productos_disponibles() if p.get_destino_operativo() == 'BARRA'][0]
+
+        items_payload = [
+            {'producto_id': prod_cocina.id, 'nombre': prod_cocina.nombre, 'cantidad': 1, 'nota': 'Sin sal'},
+            {'producto_id': prod_barra.id, 'nombre': prod_barra.nombre, 'cantidad': 2, 'nota': 'Bien frio'},
+        ]
+        resp_pos = self.client.post(
+            reverse('crear_ticket'),
+            {
+                'items_json': json.dumps(items_payload),
+                'metodo_pago': 'DEBITO',
+                'modalidad': 'MESA',
+                'mesa_id': str(mesa.id),
+                'modo_cuenta': 'PAGADA',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(resp_pos.status_code, 200)
+        data_pos = resp_pos.json()
+        self.assertTrue(data_pos['ok'])
+        pedido_id = data_pos['pedido_id']
+
+        # 3. Verificar reflejo inmediato en Monitor de Cajero (SQLite real)
+        resp_vend = self.client.get(reverse('vendedor'))
+        pedidos_cajero = json.loads(resp_vend.context['pedidos_cajero_json'])
+        self.assertTrue(any(p['pedido_id'] == pedido_id for p in pedidos_cajero))
+
+        # 4. Verificar reflejo inmediato en Salón del Mesero
+        self.client.force_login(self.mesero)
+        resp_mesero = self.client.get(reverse('mesero'))
+        self.assertGreaterEqual(resp_mesero.context['mesas_ocupadas'], 1)
+        pedidos_mesa = json.loads(resp_mesero.context['pedidos_mesa_activos_json'])
+        self.assertIn(str(mesa.id), pedidos_mesa)
+        self.assertTrue(any(p['pedido_id'] == pedido_id for p in pedidos_mesa[str(mesa.id)]))
+
+        # 5. Verificar llegada inmediata de tickets a KDS Cocina y KDS Barra
+        self.client.force_login(self.cocinero)
+        resp_kds_cocina = self.client.get(reverse('cocina') + '?zona=COCINA')
+        self.assertContains(resp_kds_cocina, f"COM-{pedido_id:04d}")
+        self.assertContains(resp_kds_cocina, prod_cocina.nombre)
+
+        resp_kds_barra = self.client.get(reverse('barra'))
+        self.assertContains(resp_kds_barra, f"#BAR-{pedido_id:04d}")
+        self.assertContains(resp_kds_barra, prod_barra.nombre)
+
+    def test_cajero_cobra_cuenta_abierta_de_salon_y_libera_mesa(self):
+        # Mesero abre cuenta en salón
+        self.client.force_login(self.mesero)
+        mesa = Mesa.objects.filter(punto_venta=self.local, estado='HABILITADA').first()
+        prod_cocina = [p for p in self.local.get_productos_disponibles() if p.get_destino_operativo() == 'COCINA'][0]
+        self.client.post(reverse('mesero'), {
+            'accion': 'enviar_comanda',
+            'mesa_id': str(mesa.id),
+            'items_json': json.dumps([{
+                'id': prod_cocina.id,
+                'nombre': prod_cocina.nombre,
+                'cantidad': 1,
+                'precio': int(prod_cocina.precio_actual),
+                'destino': 'COCINA',
+                'nota': ''
+            }])
+        }, follow=True)
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'OCUPADA')
+
+        # Cajero habilita su caja individual en la jornada activa y cobra la cuenta abierta del salón desde su panel
+        self.client.force_login(self.cajero)
+        self.client.post(reverse('abrir_caja'), {'monto_apertura': '10000'}, follow=True)
+        resp_cobro = self.client.post(
+            reverse('vendedor'),
+            {'accion': 'cobrar_cuenta_mesa', 'mesa_id': str(mesa.id), 'metodo_pago': 'EFECTIVO'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(resp_cobro.status_code, 200)
+        self.assertTrue(resp_cobro.json()['ok'])
+        mesa.refresh_from_db()
+        self.assertEqual(mesa.estado, 'HABILITADA')
+        self.assertFalse(Venta.objects.filter(mesa=mesa, estado='ABIERTA').exists())
+
+    def test_migracion_estaticos_css_js_img_por_zonas(self):
+        import os
+        import pathlib
+        import re
+        from django.conf import settings
+
+        base = pathlib.Path(settings.BASE_DIR)
+        static_root = base / 'static'
+        zonas_estaticos = [
+            'global',
+            'acceso',
+            'administrador',
+            'cajero',
+            'mesero',
+            'kds',
+            'impresion',
+            'errores/400',
+            'errores/500',
+        ]
+        for tipo in ('css', 'js', 'img'):
+            for zona in zonas_estaticos:
+                ruta_zona = static_root / tipo / zona
+                self.assertTrue(ruta_zona.is_dir(), f"Debe existir la carpeta de zona static/{tipo}/{zona}")
+
+        # Plantillas de errores HTTP organizadas en templates/errores/{400,500}/ sin .html sueltos
+        for sub_err in ('400', '500'):
+            self.assertTrue((base / 'templates' / 'errores' / sub_err).is_dir())
+        self.assertEqual(
+            list((base / 'templates').glob('*.html')),
+            [],
+            "No deben existir plantillas .html sueltas en la raíz de templates/",
+        )
+
+        # Plantillas de la app organizadas en ventas/templates/ventas/<zona>/ sin .html sueltos
+        zonas_templates_ventas = ['acceso', 'administrador', 'cajero', 'mesero', 'kds', 'impresion']
+        for zona_tpl in zonas_templates_ventas:
+            self.assertTrue(
+                (base / 'ventas' / 'templates' / 'ventas' / zona_tpl).is_dir(),
+                f"Debe existir ventas/templates/ventas/{zona_tpl}",
+            )
+        self.assertEqual(
+            list((base / 'ventas' / 'templates' / 'ventas').glob('*.html')),
+            [],
+            "No deben existir plantillas .html sueltas en ventas/templates/ventas/",
+        )
+
+        # Raíz del repositorio limpia y reglas permanentes activas para futuras interacciones
+        for ext_prohibida in ('*.html', '*.docx', '*.xlsx', '*.png'):
+            self.assertEqual(
+                list(base.glob(ext_prohibida)),
+                [],
+                f"No deben quedar archivos {ext_prohibida} sueltos en la raíz del proyecto",
+            )
+        self.assertTrue((base / 'AGENTS.md').is_file(), "Debe existir AGENTS.md en la raíz del proyecto")
+        self.assertTrue(
+            (base / '.agents' / 'rules' / 'orden_arquitectura_safari.md').is_file(),
+            "Debe existir la regla de workspace .agents/rules/orden_arquitectura_safari.md",
+        )
+
+        html_files = (
+            list((base / 'templates').rglob('*.html'))
+            + list((base / 'ventas' / 'templates' / 'ventas').rglob('*.html'))
+        )
+        self.assertGreaterEqual(len(html_files), 30, "Deben auditarse las 30 plantillas del sistema")
+
+        for hf in html_files:
+            txt = hf.read_text(encoding='utf-8')
+            styles = re.findall(r'<style\b[^>]*>(.*?)</style>', txt, re.S | re.I)
+            self.assertEqual(len(styles), 0, f"{hf.name} no debe contener bloques <style> incrustados")
+
+            scripts = re.findall(r'<script\b([^>]*)>(.*?)</script>', txt, re.S | re.I)
+            inline_js = [
+                body for attrs, body in scripts
+                if 'src=' not in attrs.lower()
+                and 'application/json' not in attrs.lower()
+                and body.strip()
+            ]
+            self.assertEqual(len(inline_js), 0, f"{hf.name} no debe contener bloques <script> JS ejecutables incrustados")
+
+            refs = re.findall(r"""\{%\s*static\s+['"]([^'"]+)['"]\s*%\}""", txt)
+            for ref in refs:
+                self.assertTrue(
+                    os.path.exists(static_root / ref),
+                    f"El recurso estático '{ref}' referenciado en {hf.name} debe existir en static/"
+                )
+
+        # Acceso QR servido limpiamente por Django y manejo 404 operativo
+        resp_qr = self.client.get(reverse('qr_acceso'))
+        self.assertEqual(resp_qr.status_code, 200)
+        resp_404 = self.client.get('/ruta-inexistente-auditoria-orden/')
+        self.assertEqual(resp_404.status_code, 404)
+
+
+
+    def test_proteccion_apagon_dia_anterior_limpia_jornada_caja_mesa_y_pedidos_y_traspasa_fondo(self):
+        import datetime as dt_mod
+        from decimal import Decimal
+        from ventas.models import Jornada, Caja, Venta, Pedido, DetallePedido, Mesa, Producto
+
+        local = PuntoVenta.objects.get(id=1)
+        mesa = Mesa.objects.filter(punto_venta=local, estado='HABILITADA').first()
+        prod = Producto.objects.filter(activo=True).first()
+
+        ayer_dt = timezone.now() - dt_mod.timedelta(days=1, hours=2)
+        ayer_fecha = timezone.localtime(ayer_dt).date()
+
+        jornada_ayer = Jornada.objects.create(usuario_apertura=self.cajero, estado='ABIERTA')
+        Jornada.objects.filter(pk=jornada_ayer.pk).update(fecha=ayer_fecha, fecha_hora_apertura=ayer_dt)
+
+        caja_ayer = Caja.objects.create(
+            jornada=jornada_ayer,
+            cajero=self.cajero,
+            punto_venta=local,
+            nombre="Caja Ayer Apagón",
+            monto_apertura=Decimal('10000'),
+            estado='ABIERTA',
+        )
+        Caja.objects.filter(pk=caja_ayer.pk).update(fecha_hora_apertura=ayer_dt)
+
+        # Venta pagada ayer en efectivo ($15.000) con pedido que quedó en preparación por corte de luz
+        venta_pagada = Venta.objects.create(
+            caja=caja_ayer,
+            cajero=self.cajero,
+            punto_venta=local,
+            modalidad='VENTA_RAPIDA',
+            metodo_pago='EFECTIVO',
+            total=Decimal('15000'),
+            estado='PAGADA',
+        )
+        Venta.objects.filter(pk=venta_pagada.pk).update(fecha_hora=ayer_dt)
+        ped_pagado = Pedido.objects.create(venta=venta_pagada, estado='EN_PREPARACION', fecha_inicio_preparacion=ayer_dt)
+        DetallePedido.objects.create(pedido=ped_pagado, producto=prod, cantidad=1)
+        Pedido.objects.filter(pk=ped_pagado.pk).update(creado_en=ayer_dt, actualizado_en=ayer_dt)
+
+        # Venta abierta sin cobrar en Mesa con pedido LISTO olvidado ayer
+        mesa.ocupar(timestamp=ayer_dt)
+        venta_abierta_ayer = Venta.objects.create(
+            caja=caja_ayer,
+            cajero=self.mesero,
+            punto_venta=local,
+            modalidad='MESA',
+            mesa=mesa,
+            metodo_pago='EFECTIVO',
+            total=Decimal('5600'),
+            estado='ABIERTA',
+        )
+        Venta.objects.filter(pk=venta_abierta_ayer.pk).update(fecha_hora=ayer_dt)
+        ped_abierto = Pedido.objects.create(venta=venta_abierta_ayer, estado='LISTO', fecha_inicio_preparacion=ayer_dt, fecha_listo=ayer_dt)
+        DetallePedido.objects.create(pedido=ped_abierto, producto=prod, cantidad=2)
+        Pedido.objects.filter(pk=ped_abierto.pk).update(creado_en=ayer_dt, actualizado_en=ayer_dt)
+
+        # Al día siguiente entra PRIMERO Cocina (antes incluso de que Cajero abra jornada)
+        self.client.force_login(self.cocinero)
+        resp_kds = self.client.get(reverse('cocina'))
+        self.assertEqual(resp_kds.status_code, 200)
+        self.assertEqual(len(resp_kds.context['pedidos']), 0)
+
+        jornada_ayer.refresh_from_db()
+        caja_ayer.refresh_from_db()
+        venta_abierta_ayer.refresh_from_db()
+        ped_abierto.refresh_from_db()
+        ped_pagado.refresh_from_db()
+        mesa.refresh_from_db()
+
+        self.assertEqual(jornada_ayer.estado, 'CERRADA')
+        self.assertEqual(caja_ayer.estado, 'CERRADA')
+        self.assertEqual(caja_ayer.total_efectivo_declarado, Decimal('25000'))
+        self.assertEqual(venta_abierta_ayer.estado, 'ANULADA')
+        self.assertEqual(ped_abierto.estado, 'CANCELADO')
+        self.assertEqual(ped_pagado.estado, 'ENTREGADO')
+        self.assertTrue(ped_pagado.validar_orden_temporal()[0])
+        self.assertEqual(mesa.estado, 'HABILITADA')
+        self.assertIsNone(mesa.fecha_ocupacion)
+
+        # Cuando luego entra el Cajero y abre la nueva jornada con fondo vacío, recibe los $25.000 protegidos
+        self.client.force_login(self.cajero)
+        self.client.post(reverse('abrir_jornada'), {'monto_apertura': ''}, follow=True)
+        caja_hoy = Caja.objects.filter(cajero=self.cajero, estado='ABIERTA', jornada__fecha=timezone.localdate()).first()
+        self.assertIsNotNone(caja_hoy)
+        self.assertEqual(caja_hoy.monto_apertura, Decimal('25000'))
+
+    def test_pedido_olvidado_por_horas_sin_cerrar_se_limpia_automaticamente(self):
+        import datetime as dt_mod
+        from decimal import Decimal
+        from ventas.models import Jornada, Caja, Venta, Pedido, DetallePedido, Mesa, Producto
+
+        local = PuntoVenta.objects.get(id=1)
+        mesa = Mesa.objects.filter(punto_venta=local, estado='HABILITADA').first()
+        prod = Producto.objects.filter(activo=True).first()
+
+        # Simula el caso real de #COM-0023 olvidado 857 minutos sin cerrar
+        hace_857_min = timezone.now() - dt_mod.timedelta(minutes=857)
+        jornada = Jornada.objects.create(usuario_apertura=self.mesero, estado='ABIERTA')
+        caja = Caja.objects.create(
+            jornada=jornada,
+            cajero=self.mesero,
+            punto_venta=local,
+            nombre="Caja Madrugada",
+            monto_apertura=Decimal('0'),
+            estado='ABIERTA',
+        )
+        mesa.ocupar(timestamp=hace_857_min)
+        venta_abandonada = Venta.objects.create(
+            caja=caja,
+            cajero=self.mesero,
+            punto_venta=local,
+            modalidad='MESA',
+            mesa=mesa,
+            metodo_pago='EFECTIVO',
+            total=Decimal('5600'),
+            estado='ABIERTA',
+        )
+        Venta.objects.filter(pk=venta_abandonada.pk).update(fecha_hora=hace_857_min)
+
+        ped_zombie = Pedido.objects.create(
+            venta=venta_abandonada,
+            estado='LISTO',
+            fecha_inicio_preparacion=hace_857_min,
+            fecha_listo=hace_857_min,
+        )
+        DetallePedido.objects.create(pedido=ped_zombie, producto=prod, cantidad=2)
+        Pedido.objects.filter(pk=ped_zombie.pk).update(creado_en=hace_857_min, actualizado_en=hace_857_min)
+
+        self.client.force_login(self.cocinero)
+        resp = self.client.get(reverse('cocina'))
+        self.assertEqual(resp.status_code, 200)
+        ids_en_kds = [p['id'] for p in resp.context['pedidos']]
+        self.assertNotIn(ped_zombie.id, ids_en_kds)
+
+        ped_zombie.refresh_from_db()
+        venta_abandonada.refresh_from_db()
+        mesa.refresh_from_db()
+        self.assertEqual(ped_zombie.estado, 'CANCELADO')
+        self.assertEqual(venta_abandonada.estado, 'ANULADA')
+        self.assertEqual(mesa.estado, 'HABILITADA')
+
+    def test_cerrar_jornada_limpia_pedidos_en_kds_del_mismo_dia(self):
+        from decimal import Decimal
+        from django.contrib.auth.models import User
+        from ventas.models import Jornada, Caja, Venta, Pedido, DetallePedido, Mesa, Producto
+
+        admin = User.objects.filter(perfil__rol='ADMINISTRADOR').first()
+        local = PuntoVenta.objects.get(id=1)
+        mesa = Mesa.objects.filter(punto_venta=local, estado='HABILITADA').first()
+        prod = Producto.objects.filter(activo=True).first()
+
+        jornada = Jornada.objects.create(usuario_apertura=self.cajero, estado='ABIERTA')
+        caja = Caja.objects.create(
+            jornada=jornada,
+            cajero=self.cajero,
+            punto_venta=local,
+            nombre="Caja Turno Día",
+            monto_apertura=Decimal('10000'),
+            estado='ABIERTA',
+        )
+        mesa.ocupar()
+        venta = Venta.objects.create(
+            caja=caja,
+            cajero=self.mesero,
+            punto_venta=local,
+            modalidad='MESA',
+            mesa=mesa,
+            metodo_pago='EFECTIVO',
+            total=Decimal('5600'),
+            estado='ABIERTA',
+        )
+        ped = Pedido.objects.create(venta=venta, estado='LISTO', fecha_inicio_preparacion=timezone.now(), fecha_listo=timezone.now())
+        DetallePedido.objects.create(pedido=ped, producto=prod, cantidad=2)
+
+        # Administrador fuerza cierre de jornada
+        self.client.force_login(admin)
+        self.client.post(reverse('cerrar_jornada'), {
+            'jornada_id': jornada.id,
+            'forzar_cierre': '1',
+            'observaciones_cierre': 'Fin de operaciones del día',
+        })
+
+        ped.refresh_from_db()
+        venta.refresh_from_db()
+        caja.refresh_from_db()
+        mesa.refresh_from_db()
+        self.assertEqual(caja.estado, 'CERRADA')
+        self.assertEqual(venta.estado, 'ANULADA')
+        self.assertEqual(ped.estado, 'CANCELADO')
+        self.assertEqual(mesa.estado, 'HABILITADA')
+
+        # KDS Cocina ya no muestra el pedido de la jornada cerrada
+        self.client.force_login(self.cocinero)
+        resp_kds = self.client.get(reverse('cocina'))
+        self.assertEqual(len(resp_kds.context['pedidos']), 0)
+
+
+class EzioYAloyNuevasFuncionalidadesTests(TestCase):
+    """
+    Batería integral de pruebas automatizadas para las funcionalidades y parches solicitados por Ezio y Aloy:
+    1. Endpoint delta de sincronización liviana (/api/sincronizacion/estado/).
+    2. Control táctil de stock en KDS (Cocina/Barra) y protección contra venta de productos agotados (/api/kds/toggle-stock/).
+    3. Desglose y sugerencia voluntaria de propina del 10% (Ley N° 20.918 Art. 64 bis) en comprobantes y liquidación.
+    4. División de cuentas y abonos parciales (Split Bill) en atención de mesas sin liberar anticipadamente.
+    5. Motor anti-abandono y contingencia operativa en KDS (prevención de pedidos huérfanos > 180 min).
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from ventas.models import PuntoVenta, PerfilEmpleado, Categoria, Producto, Mesa, Jornada, Caja, Venta, Pedido, DetallePedido, Ticket
+        from django.utils import timezone
+        import datetime
+        from decimal import Decimal
+
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante Central KDS", activo=True)
+        self.cat = Categoria.objects.create(nombre="Cocina Caliente", activo=True)
+        self.cat_barra = Categoria.objects.create(nombre="Barra Safari", activo=True)
+
+        self.prod_empanada = Producto.objects.create(
+            nombre="Empanada de Pino Horno",
+            categoria=self.cat,
+            precio_base=Decimal('2500'),
+            activo=True,
+            destino_operativo='COCINA'
+        )
+        self.prod_empanada.puntos_venta.add(self.pv)
+
+        self.prod_bebida = Producto.objects.create(
+            nombre="Bebida Cola 500ml",
+            categoria=self.cat_barra,
+            precio_base=Decimal('1800'),
+            activo=True,
+            destino_operativo='BARRA'
+        )
+        self.prod_bebida.puntos_venta.add(self.pv)
+
+        self.mesa1 = Mesa.objects.create(identificador="Mesa 1", punto_venta=self.pv, capacidad=4, estado='HABILITADA')
+
+        # Usuarios por rol
+        self.admin = User.objects.create_user(username="admin_kds", password="Password123!", is_staff=True)
+        PerfilEmpleado.objects.create(usuario=self.admin, rol='ADMINISTRADOR', activo=True, punto_venta_actual=self.pv)
+
+        self.cocinero = User.objects.create_user(username="cocinero_kds", password="Password123!")
+        PerfilEmpleado.objects.create(usuario=self.cocinero, rol='COCINERO', activo=True, punto_venta_actual=self.pv)
+
+        self.mesero = User.objects.create_user(username="mesero_kds", password="Password123!")
+        PerfilEmpleado.objects.create(usuario=self.mesero, rol='MESERO', activo=True, punto_venta_actual=self.pv)
+
+        self.cajero = User.objects.create_user(username="cajero_kds", password="Password123!")
+        PerfilEmpleado.objects.create(usuario=self.cajero, rol='CAJERO', activo=True, punto_venta_actual=self.pv)
+
+        hoy = timezone.localdate()
+        self.jornada = Jornada.objects.create(fecha=hoy, estado='ABIERTA', usuario_apertura=self.admin)
+        self.caja = Caja.objects.create(
+            nombre="Caja Principal KDS",
+            punto_venta=self.pv,
+            jornada=self.jornada,
+            cajero=self.cajero,
+            monto_apertura=Decimal('50000'),
+            estado='ABIERTA'
+        )
+
+    def test_01_api_sincronizacion_estado_delta_liviano(self):
+        """Verifica que /api/sincronizacion/estado/ responda en formato JSON ultra liviano con versión hash"""
+        self.client.force_login(self.cocinero)
+        url = reverse('api_sincronizacion_estado') + f"?local_id={self.pv.id}&zona=COCINA"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('version', data)
+        self.assertEqual(data['cola_total'], 0)
+        self.assertEqual(data['mesas_ocupadas'], 0)
+
+        # Crear un pedido activo y verificar que la versión delta cambia
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa1, total=Decimal('5000'), estado='ABIERTA'
+        )
+        self.mesa1.ocupar()
+        ped = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=ped, producto=self.prod_empanada, cantidad=2)
+
+        resp2 = self.client.get(url)
+        data2 = resp2.json()
+        self.assertEqual(data2['cola_total'], 1)
+        self.assertEqual(data2['pendientes'], 1)
+        self.assertEqual(data2['mesas_ocupadas'], 1)
+        self.assertNotEqual(data['version'], data2['version'])
+
+    def test_02_toggle_stock_producto_desde_kds(self):
+        """Verifica que el cocinero pueda pausar/agotar un producto desde KDS y se audite en AlertaTraslado"""
+        self.client.force_login(self.cocinero)
+        url = reverse('api_toggle_stock_producto')
+        resp = self.client.post(url, {'producto_id': self.prod_empanada.id})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertFalse(data['activo'])
+
+        self.prod_empanada.refresh_from_db()
+        self.assertFalse(self.prod_empanada.activo)
+
+        # Verificar auditoría
+        from ventas.models import AlertaTraslado
+        alerta = AlertaTraslado.objects.filter(motivo__contains="[KDS STOCK]").first()
+        self.assertIsNotNone(alerta)
+        self.assertIn("Empanada de Pino Horno", alerta.motivo)
+        self.assertIn("AGOTADO EN COCINA", alerta.motivo)
+
+        # Intento de mesero sin permisos da 403
+        self.client.force_login(self.mesero)
+        resp_mesero = self.client.post(url, {'producto_id': self.prod_empanada.id})
+        self.assertEqual(resp_mesero.status_code, 403)
+
+    def test_03_propina_voluntaria_ley_20918_en_comprobante(self):
+        """Verifica que el comprobante de comensal en mesa incluya desglose y cálculo de propina voluntaria 10%"""
+        from ventas.utils import generar_contenido_comprobante_venta
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa1, total=Decimal('20000'), estado='PAGADA'
+        )
+        texto = generar_contenido_comprobante_venta(venta)
+        self.assertIn("Propina Sugerida 10% (Ley 20.918)", texto)
+        self.assertIn("$2.000", texto)
+        self.assertIn("Total Sugerido c/Propina", texto)
+        self.assertIn("$22.000", texto)
+        self.assertIn("100% voluntaria", texto)
+
+    def test_04_split_bill_abono_parcial_en_caja(self):
+        """Verifica cobro parcial (división de cuenta): genera venta parcial pagada y mantiene mesa ocupada con saldo pendiente"""
+        self.client.force_login(self.cajero)
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa1, total=Decimal('30000'), estado='ABIERTA'
+        )
+        self.mesa1.ocupar()
+
+        # Comensal 1 paga $10.000 en efectivo
+        url = reverse('vendedor')
+        resp = self.client.post(url, {
+            'accion': 'cobrar_cuenta_mesa',
+            'mesa_id': self.mesa1.id,
+            'metodo_pago': 'EFECTIVO',
+            'monto_pago': '10000',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['es_parcial'])
+        self.assertEqual(data['saldo_restante'], 20000.0)
+
+        # Mesa debe seguir ocupada con saldo $20.000
+        self.mesa1.refresh_from_db()
+        self.assertEqual(self.mesa1.estado, 'OCUPADA')
+        venta.refresh_from_db()
+        self.assertEqual(venta.total, Decimal('20000'))
+        self.assertEqual(venta.estado, 'ABIERTA')
+
+        # Se debe haber generado una venta pagada por $10.000
+        ventas_pagadas = Venta.objects.filter(mesa=self.mesa1, estado='PAGADA')
+        self.assertEqual(ventas_pagadas.count(), 1)
+        self.assertEqual(ventas_pagadas.first().total, Decimal('10000'))
+
+    def test_05_regularizacion_contingencia_pedidos_rezagados(self):
+        """Verifica que pedidos abandonados > 180 min sean regularizados y no queden como zombies de 800+ min en KDS"""
+        from ventas.utils import proteger_contingencia_operativa
+        hace_4_horas = timezone.now() - datetime.timedelta(hours=4)
+
+        venta = Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa1, total=Decimal('5000'), estado='PAGADA'
+        )
+        ped = Pedido.objects.create(venta=venta, estado='PENDIENTE')
+        Pedido.objects.filter(id=ped.id).update(creado_en=hace_4_horas, actualizado_en=hace_4_horas)
+
+        res = proteger_contingencia_operativa(usuario=self.admin, forzar=True)
+        self.assertGreaterEqual(res['pedidos_regularizados'], 1)
+
+        ped.refresh_from_db()
+        # Como la venta estaba pagada, se regulariza a ENTREGADO con fecha válida
+        self.assertEqual(ped.estado, 'ENTREGADO')
+
+
+class AuditoriaSeguridadRomperSistemaTests(TestCase):
+    """
+    Batería forense destructiva ("Romper el sistema") encargada por el usuario (Ezio y Cortana):
+    Prueba metódicamente todos los vectores de ataque, leyes de Chile y controles de seguridad:
+    1. Ataques de fuerza bruta y contraseñas débiles (ISO/IEC 27400).
+    2. Intentos de elevación de privilegios, puertas traseras y auto-bloqueo (Anti-lockout & RBAC).
+    3. Intentos de alteración de precios a $0 y modificación sigilosa de catálogo.
+    4. Ataques de manipulación de mesas ocupadas hacia mantenimiento.
+    5. Cierre forzado de jornadas y detección obligatoria de alertas de auditoría forense.
+    6. Cumplimiento de leyes de Chile: Ley 20.956 (redondeo en efectivo), Ley 20.918 (propina voluntaria 10%) y Ley 19.628 (protección de datos personales y contraseñas).
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from ventas.models import PuntoVenta, PerfilEmpleado, Categoria, Producto, Mesa, Jornada, Caja, Venta, AlertaTraslado
+        from decimal import Decimal
+        from django.utils import timezone
+
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante Central Auditoría", activo=True)
+        self.cat = Categoria.objects.create(nombre="Alimentos Seguros", activo=True)
+
+        self.prod = Producto.objects.create(
+            nombre="Pastel de Choclo Safari",
+            categoria=self.cat,
+            precio_base=Decimal('6500'),
+            activo=True
+        )
+        self.prod.puntos_venta.add(self.pv)
+
+        self.mesa = Mesa.objects.create(identificador="Mesa 5", punto_venta=self.pv, capacidad=4, estado='HABILITADA')
+
+        # Administrador Maestro
+        self.admin = User.objects.create_user(username="admin_supremo", password="AdminSecure2026!#", is_staff=True)
+        self.perfil_admin = PerfilEmpleado.objects.create(
+            usuario=self.admin, rol='ADMINISTRADOR', activo=True, punto_venta_actual=self.pv
+        )
+
+        # Cajero
+        self.cajero = User.objects.create_user(username="cajero_eval", password="CajeroSecure2026!#")
+        self.perfil_cajero = PerfilEmpleado.objects.create(
+            usuario=self.cajero, rol='CAJERO', activo=True, punto_venta_actual=self.pv
+        )
+
+        hoy = timezone.localdate()
+        self.jornada = Jornada.objects.create(fecha=hoy, estado='ABIERTA', usuario_apertura=self.admin)
+        self.caja = Caja.objects.create(
+            nombre="Caja Auditoría",
+            punto_venta=self.pv,
+            jornada=self.jornada,
+            cajero=self.cajero,
+            monto_apertura=Decimal('40000'),
+            estado='ABIERTA'
+        )
+
+    def test_01_ataque_contrasena_debil_rechazada_en_administrador(self):
+        """Intento de inyectar contraseñas débiles o triviales al crear personal: debe ser rechazado conforme a ISO/IEC 27400"""
+        from django.contrib.auth.models import User
+        self.client.force_login(self.admin)
+        url = reverse('administrador_trabajadores')
+
+        claves_debiles = ['123', '12345', '123456', 'password', 'qwerty']
+        for clave in claves_debiles:
+            resp = self.client.post(url, {
+                'accion': 'crear',
+                'nombre': 'Infiltrado',
+                'apellido': 'Test',
+                'username': f'infiltrado_{clave[:4]}',
+                'password': clave,
+                'rol': 'CAJERO',
+                'local_id': self.pv.id
+            }, follow=True)
+            # El usuario NO debe haberse creado
+            self.assertFalse(User.objects.filter(username=f'infiltrado_{clave[:4]}').exists(), f"Fallo de seguridad: Clave débil '{clave}' fue aceptada")
+
+        # Con clave robusta según ISO/IEC 27400
+        resp_ok = self.client.post(url, {
+            'accion': 'crear',
+            'nombre': 'Seguro',
+            'apellido': 'Oficial',
+            'username': 'seguro_oficial',
+            'password': 'PasswordRobusto2026!#',
+            'rol': 'CAJERO',
+            'local_id': self.pv.id
+        }, follow=True)
+        user_creado = User.objects.filter(username='seguro_oficial').first()
+        self.assertIsNotNone(user_creado)
+        # La clave jamás debe estar en texto plano en la BD
+        self.assertTrue(user_creado.password.startswith('pbkdf2_sha256$') or user_creado.password.startswith('argon2$'))
+        self.assertNotEqual(user_creado.password, 'PasswordRobusto2026!#')
+
+    def test_02_ataque_autodesactivacion_y_bloqueo_administrador(self):
+        """Intento de auto-desactivar o degradar al único administrador activo: debe ser bloqueado para evitar lockout"""
+        self.client.force_login(self.admin)
+        url = reverse('administrador_trabajadores')
+
+        # 1. Intento de desactivarse a sí mismo
+        resp = self.client.post(url, {'accion': 'desactivar', 'perfil_id': self.perfil_admin.id}, follow=True)
+        self.perfil_admin.refresh_from_db()
+        self.assertTrue(self.perfil_admin.activo, "Fallo: El administrador pudo desactivarse a sí mismo.")
+
+        # 2. Intento de cambiarse el rol a MESERO
+        resp2 = self.client.post(url, {
+            'accion': 'modificar',
+            'perfil_id': self.perfil_admin.id,
+            'rol': 'MESERO',
+            'local_id': self.pv.id
+        }, follow=True)
+        self.perfil_admin.refresh_from_db()
+        self.assertEqual(self.perfil_admin.rol, 'ADMINISTRADOR', "Fallo: El único administrador pudo degradar su propio rol.")
+
+    def test_03_ataque_cambio_rol_con_caja_abierta_bloqueado(self):
+        """Intento de cambiar el rol a un cajero que tiene una caja abierta: debe ser denegado por control anti-fraude"""
+        self.client.force_login(self.admin)
+        url = reverse('administrador_trabajadores')
+
+        # El cajero tiene la caja 'Caja Auditoría' en estado ABIERTA
+        resp = self.client.post(url, {
+            'accion': 'modificar',
+            'perfil_id': self.perfil_cajero.id,
+            'rol': 'MESERO',
+            'local_id': self.pv.id
+        }, follow=True)
+
+        self.perfil_cajero.refresh_from_db()
+        self.assertEqual(self.perfil_cajero.rol, 'CAJERO', "Fallo: Se permitió cambiar el rol de un colaborador con caja abierta.")
+
+    def test_04_ataque_producto_precio_cero_o_negativo_bloqueado(self):
+        """Intento de crear productos con precio $0 o negativo: debe ser bloqueado impidiendo fuga de inventario"""
+        from ventas.models import Producto
+        self.client.force_login(self.admin)
+        url = reverse('administrador_productos')
+
+        # Precio 0
+        resp0 = self.client.post(url, {
+            'accion': 'crear',
+            'nombre': 'Plato Gratis Ilegal',
+            'categoria_id': self.cat.id,
+            'precio_base': '0',
+            'activo': 'on'
+        }, follow=True)
+        self.assertFalse(Producto.objects.filter(nombre='Plato Gratis Ilegal').exists())
+
+        # Precio negativo
+        resp_neg = self.client.post(url, {
+            'accion': 'crear',
+            'nombre': 'Plato Negativo',
+            'categoria_id': self.cat.id,
+            'precio_base': '-1500',
+            'activo': 'on'
+        }, follow=True)
+        self.assertFalse(Producto.objects.filter(nombre='Plato Negativo').exists())
+
+        # Modificación de precio legal: audita en AlertaTraslado
+        resp_mod = self.client.post(url, {
+            'accion': 'modificar',
+            'producto_id': self.prod.id,
+            'nombre': self.prod.nombre,
+            'categoria_id': self.cat.id,
+            'precio_base': '7500',
+            'activo': 'on'
+        }, follow=True)
+        self.prod.refresh_from_db()
+        self.assertEqual(self.prod.precio_base, Decimal('7500'))
+
+        from ventas.models import AlertaTraslado
+        alerta = AlertaTraslado.objects.filter(motivo__contains="[AUDITORÍA PRECIOS]").first()
+        self.assertIsNotNone(alerta)
+        self.assertTrue("6,500" in alerta.motivo or "6.500" in alerta.motivo or "6500" in alerta.motivo)
+        self.assertTrue("7,500" in alerta.motivo or "7.500" in alerta.motivo or "7500" in alerta.motivo)
+
+    def test_05_ataque_inactivar_mesa_ocupada_bloqueado(self):
+        """Intento de marcar en mantenimiento o inactivar una mesa con comensales comiendo: debe ser denegado"""
+        from ventas.models import Venta
+        self.client.force_login(self.admin)
+        url = f"/administrador/mesas/?local_id={self.pv.id}"
+
+        # Mesa ocupada con cuenta abierta
+        self.mesa.ocupar()
+        Venta.objects.create(
+            caja=self.caja, cajero=self.cajero, punto_venta=self.pv,
+            modalidad='MESA', mesa=self.mesa, total=Decimal('15000'), estado='ABIERTA'
+        )
+
+        resp = self.client.post(url, {
+            'accion': 'modificar',
+            'mesa_id': self.mesa.id,
+            'identificador': self.mesa.identificador,
+            'capacidad': 4,
+            'punto_venta_id': self.pv.id,
+            'estado': 'INACTIVA'
+        }, follow=True)
+
+        self.mesa.refresh_from_db()
+        self.assertEqual(self.mesa.estado, 'OCUPADA', "Fallo: Se permitió inactivar una mesa con comensales y cuenta abierta.")
+
+    def test_06_cierre_forzado_jornada_genera_alerta_forense(self):
+        """Si un supervisor fuerza el cierre de jornada con cajas abiertas, se genera alerta forense obligatoria"""
+        from ventas.models import AlertaTraslado
+        self.client.force_login(self.admin)
+        url = reverse('cerrar_jornada')
+
+        # Cierre forzado con la caja 'Caja Auditoría' aún abierta
+        resp = self.client.post(url, {
+            'jornada_id': self.jornada.id,
+            'forzar_cierre': '1',
+            'observaciones_cierre': 'Cierre por emergencia nocturna'
+        }, follow=True)
+
+        self.jornada.refresh_from_db()
+        self.assertEqual(self.jornada.estado, 'CERRADA')
+
+        alerta = AlertaTraslado.objects.filter(motivo__contains="[ALERTA AUDITORÍA: CIERRE FORZADO DE JORNADA").first()
+        self.assertIsNotNone(alerta, "Fallo: No se emitió la alerta forense de cierre forzado de jornada con cajas abiertas.")
+        self.assertIn("Caja Auditoría", alerta.motivo)
+
+    def test_07_ley_chilena_20956_redondeo_en_efectivo(self):
+        """Verifica el cumplimiento matemático exacto de la Ley Chilena N° 20.956 para efectivo vs tarjetas"""
+        from ventas.utils import calcular_redondeo_ley_20956
+        from decimal import Decimal
+
+        # Regla: 1 a 5 pesos terminan en 0 hacia abajo. 6 a 9 pesos terminan en 10 hacia arriba.
+        # Caso 1: $1.821 en Efectivo -> $1.820 (ajuste -1)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1821'), 'EFECTIVO')
+        self.assertEqual(final, Decimal('1820'))
+        self.assertEqual(adj, Decimal('-1'))
+
+        # Caso 2: $1.824 en Efectivo -> $1.820 (ajuste -4)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1824'), 'EFECTIVO')
+        self.assertEqual(final, Decimal('1820'))
+        self.assertEqual(adj, Decimal('-4'))
+
+        # Caso 2b: $1.825 en Efectivo -> $1.830 (ajuste +5)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1825'), 'EFECTIVO')
+        self.assertEqual(final, Decimal('1830'))
+        self.assertEqual(adj, Decimal('5'))
+
+        # Caso 3: $1.826 en Efectivo -> $1.830 (ajuste +4)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1826'), 'EFECTIVO')
+        self.assertEqual(final, Decimal('1830'))
+        self.assertEqual(adj, Decimal('4'))
+
+        # Caso 4: $1.829 en Efectivo -> $1.830 (ajuste +1)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1829'), 'EFECTIVO')
+        self.assertEqual(final, Decimal('1830'))
+        self.assertEqual(adj, Decimal('1'))
+
+        # Caso 5: En Tarjeta de Débito / Crédito: NO se redondea (ajuste 0)
+        final, adj = calcular_redondeo_ley_20956(Decimal('1825'), 'DEBITO')
+        self.assertEqual(final, Decimal('1825'))
+        self.assertEqual(adj, Decimal('0'))
+
+    def test_08_ley_19628_y_seguridad_contrasenas_cero_texto_plano(self):
+        """Garantiza cumplimiento de Ley 19.628 y Norma ISO/IEC 27400: Cero contraseñas en texto plano en la BD"""
+        from django.contrib.auth.models import User
+        users = User.objects.all()
+        for u in users:
+            self.assertTrue(
+                u.password.startswith('pbkdf2_sha256$') or u.password.startswith('argon2$'),
+                f"Alerta Crítica: El usuario '{u.username}' tiene una contraseña no hasheada o insegura."
+            )
+            self.assertFalse(u.password.isalnum() and len(u.password) < 20, "Alerta: Contraseña en texto plano detectada en la BD.")
+    def test_09_antifraude_fiados_bloqueo_autofiadoy_limite_100k(self):
+        """Blindaje anti-fraude en fiados: bloqueo de auto-fiado a cajeros, límite $100.000 y alerta automática"""
+        from ventas.utils import registrar_consumo_interno
+        from ventas.models import AlertaTraslado
+        from django.core.exceptions import ValidationError
+
+        # 1. Cajero no puede auto-otorgarse fiado
+        with self.assertRaises(ValidationError) as ctx1:
+            registrar_consumo_interno(
+                empleado=self.cajero,
+                punto_venta=self.pv,
+                items=[{'producto_id': self.prod.id, 'cantidad': 1}],
+                usuario_registro=self.cajero,
+                tipo_consumo='FIADO'
+            )
+        self.assertIn("anti-fraude", str(ctx1.exception).lower())
+
+        # 2. Fiado de $15.000 o más genera AlertaTraslado obligatoria
+        consumo_grande = registrar_consumo_interno(
+            empleado=self.cajero,
+            punto_venta=self.pv,
+            items=[{'producto_id': self.prod.id, 'cantidad': 3}],
+            usuario_registro=self.admin,
+            tipo_consumo='FIADO'
+        )
+        self.assertGreaterEqual(consumo_grande.total, Decimal('15000'))
+        alerta_fiado = AlertaTraslado.objects.filter(motivo__contains="[AUDITORÍA FIADOS / CRÉDITO]").first()
+        self.assertIsNotNone(alerta_fiado)
+
+    def test_10_promo_moneda_1_peso_sin_redondeo_y_activacion_admin(self):
+        """Excepción Ley 20.956 y promo docente: 2da unidad a $1 peso no se redondea en efectivo y activa en admin"""
+        from ventas.utils import calcular_redondeo_ley_20956
+
+        # Prueba de redondeo con promo de moneda física
+        # Regular: $8.901 se redondearía a $8.900 (ajuste -1)
+        monto_reg, adj_reg = calcular_redondeo_ley_20956(Decimal('8901'), 'EFECTIVO', tiene_promo_moneda_fisica=False)
+        self.assertEqual(monto_reg, Decimal('8900'))
+
+        # Con promo moneda física traída por cliente: se cobra exacto $8.901
+        monto_promo, adj_promo = calcular_redondeo_ley_20956(Decimal('8901'), 'EFECTIVO', tiene_promo_moneda_fisica=True)
+        self.assertEqual(monto_promo, Decimal('8901'))
+        self.assertEqual(adj_promo, Decimal('0'))
+
+        # Activación desde panel administrador_ofertas_temporada
+        self.client.force_login(self.admin)
+        resp_act = self.client.post(reverse('administrador_ofertas_temporada'), {
+            'accion': 'activar_promo_moneda_1',
+            'producto_id': self.prod.id
+        }, follow=True)
+        self.prod.refresh_from_db()
+        self.assertTrue(self.prod.en_oferta)
+        self.assertEqual(self.prod.tipo_oferta, 'SEGUNDA_1')
+        self.assertEqual(self.prod.precio_oferta, Decimal('1'))
+

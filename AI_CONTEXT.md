@@ -9,7 +9,7 @@
 
 ## 2. ESTADO VIGENTE ÚNICO
 - RF01–RF18: **COMPLETADOS AL 100%**.
-- Suite oficial: **220/220 pruebas aprobadas**.
+- Suite oficial: **228/228 pruebas aprobadas**.
 - `python manage.py check`: **0 incidencias**.
 - Migraciones `ventas`: **20 aplicadas**.
 - Motor activo actual: **SQLite**.
@@ -117,18 +117,20 @@ El modelo de persistencia cuenta exactamente con **25 modelos Django explícitos
 3. `ventas/models.py`: Modelo de persistencia y dominio (25 modelos oficiales, relaciones e integridad).
 4. `ventas/views.py`: Vistas operativas, autenticación, control de jornada/caja y seguridad por roles con RBAC.
 5. `ventas/utils.py`: Servicios de negocio centralizados (cálculos monetarios, tickets térmicos, puntos de impresión, tiempos y reportes ORM reales).
-6. `ventas/tests.py`: Suite oficial con 220 pruebas automatizadas reproducibles de Django.
+6. `ventas/tests.py`: Suite oficial con 228 pruebas automatizadas reproducibles de Django.
 7. `Venta_safari/settings.py`: Configuración Django (`America/Santiago`, cookies seguras, carga dinámica de BD y `SECRET_KEY` protegida).
 8. `Venta_safari/urls.py`: Enrutamiento y control de acceso del sistema por rol.
 9. `ventas/management/commands/poblar_safari.py`: Comando administrativo idempotente de población inicial de datos.
-10. `static/js/anti_doble_envio.js`: Prevención de doble clic en botones de envío en formularios POST tradicionales.
-11. `static/js/safari_alerts.js`: Alertas y modales SweetAlert2 nativos estilizados con Bootstrap 5.
-12. `scratch/verificar_rf18.py`: Script de regresión funcional automatizada de los 4 roles operativos.
+10. `static/js/global/anti_doble_envio.js`: Prevención de doble clic en botones de envío en formularios POST tradicionales.
+11. `static/js/global/safari_alerts.js`: Alertas y modales SweetAlert2 nativos estilizados con Bootstrap 5.
+12. `scripts/verificar_rf18.py`: Script de regresión funcional automatizada de los 4 roles operativos.
+13. `AGENTS.md`: Reglas obligatorias de orden modular y arquitectura por zonas cargadas automáticamente en toda interacción futura.
+14. `.agents/rules/orden_arquitectura_safari.md`: Regla persistente de workspace que refuerza la separación de estáticos, plantillas e higiene de la raíz.
 
 ---
 
 ## 7. VERIFICACIONES VIGENTES
-- **220/220 pruebas automatizadas:** 100% aprobadas en verde (`python manage.py test ventas` sin fallos ni errores).
+- **228/228 pruebas automatizadas:** 100% aprobadas en verde (`python manage.py test ventas` sin fallos ni errores).
 - **Check Django:** `python manage.py check` con 0 incidencias (código limpio).
 - **Migraciones:** 20 migraciones de la app `ventas` aplicadas al 100% en base de datos.
 - **4 Roles Operativos:** Verificados en HTTP 200 y protegidos con RBAC (`ADMINISTRADOR`, `CAJERO`, `MESERO`, `COCINERO`).
@@ -165,6 +167,7 @@ Conservados exclusivamente como referencia para la futura fase documental del us
 9. Todo cambio futuro debe pasar `check` y suite completa.
 10. `AI_CONTEXT_ARCHIVE.md` es solo histórico y no contiene órdenes ejecutables.
 11. `AI_CONTEXT.md` es la única fuente de verdad vigente.
+12. Respetar sin excepción el orden modular por zonas definido en `AGENTS.md`: estáticos en `static/{css,js,img}/<zona>/`, plantillas en `ventas/templates/ventas/<zona>/` y `templates/errores/{400,500}/`, scripts en `scripts/`, raíz limpia y cero bloques `<style>` o `<script>` ejecutables incrustados en HTML.
 
 ---
 
@@ -176,7 +179,7 @@ Conservados exclusivamente como referencia para la futura fase documental del us
 
 ## 11. CHECKLIST FINAL
 - [x] RF01–RF18 cerrados.
-- [x] 220/220 pruebas.
+- [x] 228/228 pruebas.
 - [x] check limpio.
 - [x] migraciones al día.
 - [x] motor activo identificado.

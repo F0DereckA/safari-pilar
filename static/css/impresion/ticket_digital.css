@@ -1,0 +1,86 @@
+/* ==========================================================================
+   Ticket Térmico e Impresión Digital (RF08 / RF09) - Parque Safari
+   ========================================================================== */
+
+body {
+    background-color: #f1f5f9;
+    font-family: 'Nunito', sans-serif;
+    color: #1e293b;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
+.ticket-wrapper {
+    max-width: 440px;
+    margin: 0 auto;
+}
+.thermal-ticket-card {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    padding: 2rem 1.5rem;
+    position: relative;
+}
+.thermal-ticket-card::before, .thermal-ticket-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background-size: 12px 6px;
+}
+.thermal-ticket-card::before {
+    top: -6px;
+    background-image: radial-gradient(circle at 6px 6px, transparent 6px, #ffffff 6px);
+}
+.thermal-ticket-card::after {
+    bottom: -6px;
+    background-image: radial-gradient(circle at 6px 0px, transparent 6px, #ffffff 6px);
+}
+.ticket-paper-content {
+    font-family: 'Inconsolata', 'Courier Prime', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #0f172a;
+    margin: 0;
+    user-select: text;
+}
+.ticket-destination-badge {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* Estilos de Impresión Térmica Directa (RF09.3) */
+@media print {
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .ticket-wrapper {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .thermal-ticket-card {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+    }
+    .thermal-ticket-card::before, .thermal-ticket-card::after {
+        display: none !important;
+    }
+    .ticket-paper-content {
+        font-size: 11pt !important;
+        line-height: 1.25 !important;
+        color: #000000 !important;
+    }
+}

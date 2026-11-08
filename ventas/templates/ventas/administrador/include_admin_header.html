@@ -1,0 +1,472 @@
+{% load static %}
+<!-- Cenefa tribal decorativa superior -->
+<div class="tribal-divider"></div>
+
+<!-- Header de Administrador Unificado con las 3 Categorías Madre (Sin Saturación Visual) -->
+<header class="safari-header">
+    <div class="container-fluid px-3 px-lg-4 py-2">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+            
+            <!-- 1. Marca y Logo Oficial Safari -->
+            <a href="{% url 'administrador' %}" class="logo-link text-decoration-none d-flex align-items-center gap-2" title="Inicio de Administración">
+                <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                <div class="brand-text-wrapper">
+                    <h1 class="brand-text-main m-0">Venta Safari</h1>
+                    <span class="brand-text-sub d-none d-xl-inline text-muted" style="font-size: 0.72rem;">Módulo Central • Panel de Administración</span>
+                </div>
+            </a>
+
+            <!-- 2. LAS 3 CATEGORÍAS MADRE (NAV CÁPSULAS ELEGANTE Y COMPACTO EN PC) -->
+            <nav class="d-none d-lg-flex align-items-center gap-2 safari-master-nav" aria-label="Categorías Maestras de Administración">
+                
+                <!-- CATEGORÍA MADRE 1: LOCALES & SALÓN -->
+                <div class="dropdown safari-category-dropdown">
+                    <button class="btn btn-safari-pill {% if active_subclase in 'general locales mesas' %}active{% endif %}" type="button" id="dropdownCatLocales" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-building-fill text-danger me-1"></i>
+                        <span>Locales & Salón</span>
+                        <i class="bi bi-chevron-down arrow-indicator ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mt-2 dropdown-safari dropdown-menu-start" aria-labelledby="dropdownCatLocales" style="min-width: 320px;">
+                        <div class="dropdown-header-custom px-3 py-2 border-bottom mb-2">
+                            <span class="fw-bold text-dark small text-uppercase tracking-wider">
+                                <i class="bi bi-shop me-1 text-danger"></i> Puntos y Mesas de Salón
+                            </span>
+                        </div>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'general' or active_subclase == 'locales' %}active-item{% endif %}" href="{% url 'administrador' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-grid-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Vista General de Locales</span>
+                                <span class="safari-menu-desc">Supervisión consolidada de los 3 locales</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 1 %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-shop"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Restaurante Central Safari</span>
+                                <span class="safari-menu-desc">Cocina caliente y salón principal</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 2 %}">
+                            <div class="safari-menu-icon safari-icon-purple">
+                                <i class="bi bi-cup-hot"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cafetería & Pastelería La Selva</span>
+                                <span class="safari-menu-desc">Cafetería barista y repostería</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 3 %}">
+                            <div class="safari-menu-icon safari-icon-yellow">
+                                <i class="bi bi-cup-straw"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Barra Rápida & Kiosco Oasis</span>
+                                <span class="safari-menu-desc">Bebidas frías y snacks al paso</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider my-2"></div>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'mesas' %}active-item{% endif %}" href="{% url 'administrador_mesas' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-grid-3x3-gap-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Mesas del Parque</span>
+                                <span class="safari-menu-desc">Capacidad, ocupación y mantenimiento</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- CATEGORÍA MADRE 2: CATÁLOGO & OFERTAS -->
+                <div class="dropdown safari-category-dropdown">
+                    <button class="btn btn-safari-pill {% if active_subclase in 'productos menus ofertas convenios' %}active{% endif %}" type="button" id="dropdownCatCatalogo" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-egg-fried text-danger me-1"></i>
+                        <span>Catálogo & Cartas</span>
+                        <i class="bi bi-chevron-down arrow-indicator ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mt-2 dropdown-safari dropdown-menu-start" aria-labelledby="dropdownCatCatalogo" style="min-width: 330px;">
+                        <div class="dropdown-header-custom px-3 py-2 border-bottom mb-2">
+                            <span class="fw-bold text-dark small text-uppercase tracking-wider">
+                                <i class="bi bi-tags-fill me-1 text-danger"></i> Oferta Gastronómica & Promos
+                            </span>
+                        </div>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'productos' %}active-item{% endif %}" href="{% url 'administrador_productos' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-egg-fried"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Catálogo de Productos</span>
+                                <span class="safari-menu-desc">Precios base, destinos operativos y stock</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'menus' %}active-item{% endif %}" href="{% url 'administrador_menus' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-book-half"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cartas y Menús por Local</span>
+                                <span class="safari-menu-desc">Asignación de cartas gastronómicas</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'ofertas' %}active-item{% endif %}" href="{% url 'administrador_ofertas_temporada' %}">
+                            <div class="safari-menu-icon safari-icon-yellow">
+                                <i class="bi bi-coin"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <div class="safari-menu-title d-flex align-items-center gap-2">
+                                    Promos Monedas $1 / $5
+                                    <span class="badge bg-warning text-dark px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">Docente</span>
+                                </div>
+                                <span class="safari-menu-desc">Segunda unidad a $1 y ofertas de temporada</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'convenios' %}active-item{% endif %}" href="{% url 'administrador_convenios' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-qr-code-scan"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cabañas & Pases QR</span>
+                                <span class="safari-menu-desc">Convenios de descuento y canje de huéspedes</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- CATEGORÍA MADRE 3: CONTROL & FINANZAS -->
+                <div class="dropdown safari-category-dropdown">
+                    <button class="btn btn-safari-pill {% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}active{% endif %}" type="button" id="dropdownCatControl" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check text-danger me-1"></i>
+                        <span>Control & Finanzas</span>
+                        <i class="bi bi-chevron-down arrow-indicator ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mt-2 dropdown-safari dropdown-menu-end" aria-labelledby="dropdownCatControl" style="min-width: 340px;">
+                        <div class="dropdown-header-custom px-3 py-2 border-bottom mb-2">
+                            <span class="fw-bold text-dark small text-uppercase tracking-wider">
+                                <i class="bi bi-bar-chart-line-fill me-1 text-danger"></i> Trazabilidad, Personal y Cierre
+                            </span>
+                        </div>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'gestion' %}active-item{% endif %}" href="{% url 'administrador_gestion' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-sliders"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Centro de Gestión Integral</span>
+                                <span class="safari-menu-desc">Submódulos de dotación, mesas y catálogo</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'trabajadores' %}active-item{% endif %}" href="{% url 'administrador_trabajadores' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Trabajadores y Dotación</span>
+                                <span class="safari-menu-desc">Turnos activos, reasignaciones y roles</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'consumos' %}active-item{% endif %}" href="{% url 'administrador_consumos' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Créditos y Fiados a Personal</span>
+                                <span class="safari-menu-desc">Consumos de personal, límite $100k y riesgo</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider my-2"></div>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'dashboard' %}active-item{% endif %}" href="{% url 'administrador_dashboard' %}">
+                            <div class="safari-menu-icon safari-icon-yellow">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Dashboard Analítico de Ventas</span>
+                                <span class="safari-menu-desc">Métricas de ingresos, medios de pago y horas punta</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'historial' %}active-item{% endif %}" href="{% url 'administrador_historial' %}">
+                            <div class="safari-menu-icon safari-icon-red">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Bitácora e Historial Forense</span>
+                                <span class="safari-menu-desc">Registro inmutable de arqueos, auditorías y cambios</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+            </nav>
+
+            <!-- 3. ACCIONES GLOBALES: Usuario, Alertas, Reloj, Menú Móvil y Salir -->
+            <div class="d-flex align-items-center gap-2">
+                
+                <!-- Usuario Admin -->
+                <div class="d-none d-xl-flex flex-column text-end me-1">
+                    <span class="fw-bold text-dark admin-user-label">
+                        <i class="bi bi-shield-check text-danger me-1"></i> Admin: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                    </span>
+                    <small class="text-muted admin-user-sub">Supervisión Gastronómica</small>
+                </div>
+                <span class="admin-badge d-none d-md-inline-block">ADMINISTRADOR</span>
+
+                <!-- Campana de Alertas de Traslado y Seguridad -->
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm position-relative rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center btn-alerta-campana" type="button" id="dropdownAlertasHeader" data-bs-toggle="dropdown" aria-expanded="false" title="Centro de Alertas de Seguridad y Traslado">
+                        <i class="bi bi-bell-fill text-warning fs-6"></i>
+                        {% if total_alertas_no_leidas > 0 %}
+                        <span id="badgeAlertasCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white badge-alerta-count">
+                            {{ total_alertas_no_leidas }}
+                            <span class="visually-hidden">Alertas no leídas</span>
+                        </span>
+                        {% endif %}
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-3 mt-2 dropdown-safari dropdown-alertas-panel" aria-labelledby="dropdownAlertasHeader">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark fs-6">
+                                    <i class="bi bi-bell-fill text-warning me-1"></i> Centro de Alertas
+                                </span>
+                                <span id="badgeAlertasEstado" class="badge {% if total_alertas_no_leidas > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %} rounded-pill px-2 py-1 small fw-bold">
+                                    {% if total_alertas_no_leidas > 0 %}{{ total_alertas_no_leidas }} en vivo{% else %}Al día{% endif %}
+                                </span>
+                            </div>
+                            {% if total_alertas_no_leidas > 0 %}
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted p-0" id="btnMarcarTodasLeidas" style="font-size: 0.75rem;" title="Marcar todas como leídas">
+                                <i class="bi bi-check2-all text-primary me-1"></i>Marcar leídas
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        {% if alertas_traslado %}
+                        <div class="d-flex flex-column gap-2 alert-list-scroll">
+                            {% for a in alertas_traslado %}
+                            <div class="p-2 rounded-3 border-start border-3 {% if not a.leida %}border-danger bg-danger-subtle bg-opacity-10{% else %}border-secondary bg-light{% endif %}" id="alerta-item-{{ a.id }}">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-secondary text-white rounded-pill px-2" style="font-size: 0.65rem;">
+                                        {{ a.punto_venta_origen.nombre }} &rarr; {{ a.punto_venta_destino.nombre }}
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">{{ a.creado_en|date:"H:i" }}</small>
+                                </div>
+                                <p class="mb-1 text-dark small">{{ a.motivo }}</p>
+                                <div class="d-flex justify-content-between align-items-center" style="font-size: 0.72rem;">
+                                    <span class="text-muted">Por: <strong>{{ a.empleado.get_full_name|default:a.empleado.username }}</strong></span>
+                                    {% if not a.leida %}
+                                    <button class="btn btn-link btn-sm p-0 text-primary text-decoration-none btn-marcar-leida" data-alerta-id="{{ a.id }}" style="font-size: 0.72rem;">
+                                        Marcar leída
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3 text-muted">
+                            <i class="bi bi-shield-check fs-2 text-success opacity-50 mb-1 d-block"></i>
+                            <span class="small">No hay alertas de seguridad pendientes</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-top pt-2 mt-2 text-center">
+                            <a href="{% url 'administrador_historial' %}" class="small text-danger fw-bold text-decoration-none">
+                                <i class="bi bi-clock-history me-1"></i>Ver historial completo de auditoría
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RELOJ DISCRETO DE SESIÓN -->
+                <div id="contenedorRelojSesion"></div>
+
+                <!-- Botón Menú Móvil / Tablet (Offcanvas Trigger) -->
+                <button class="btn btn-outline-danger btn-sm d-lg-none rounded-pill px-2.5 py-1 fw-bold d-flex align-items-center gap-1 shadow-xs" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSafariMenu" aria-controls="offcanvasSafariMenu" title="Menú de Navegación">
+                    <i class="bi bi-grid fs-6 text-danger"></i>
+                    <span class="small">Módulos</span>
+                </button>
+
+                <!-- CERRAR SESIÓN -->
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold btn-header-salir" title="Cerrar Sesión Segura">
+                    <i class="bi bi-box-arrow-left me-1"></i> Salir
+                </a>
+            </div>
+
+        </div>
+    </div>
+</header>
+
+<!-- OFFCANVAS MÓVIL / TABLET CON LAS 3 CATEGORÍAS EN ACORDEÓN ELEGANTE -->
+<div class="offcanvas offcanvas-start rounded-end-4 shadow-lg border-0 d-lg-none" tabindex="-1" id="offcanvasSafariMenu" aria-labelledby="offcanvasSafariMenuLabel" style="width: 320px; background-color: #fdfaf6;">
+    <div class="offcanvas-header border-bottom py-3" style="background-color: #ffffff;">
+        <div class="d-flex align-items-center gap-2">
+            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 32px; width: auto;">
+            <div>
+                <h5 class="offcanvas-title fw-bold text-dark m-0" id="offcanvasSafariMenuLabel" style="font-size: 1rem;">Venta Safari</h5>
+                <small class="text-muted" style="font-size: 0.72rem;">Explorador de Módulos (3 Clases)</small>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    
+    <div class="offcanvas-body p-3">
+        <!-- Acordeón de 3 Categorías Madre en Móvil -->
+        <div class="accordion accordion-flush" id="accordionSafariMobile">
+            
+            <!-- Acordeón 1: Locales & Salón -->
+            <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
+                <h2 class="accordion-header" id="headingMobileLocales">
+                    <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'general locales mesas' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileLocales" aria-expanded="{% if active_subclase in 'general locales mesas' %}true{% else %}false{% endif %}" aria-controls="collapseMobileLocales">
+                        <i class="bi bi-building-fill text-danger me-2"></i> 1. Locales & Salón
+                    </button>
+                </h2>
+                <div id="collapseMobileLocales" class="accordion-collapse collapse {% if active_subclase in 'general locales mesas' %}show{% endif %}" aria-labelledby="headingMobileLocales" data-bs-parent="#accordionSafariMobile">
+                    <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-grid-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Vista General de Locales</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 1 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-shop"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Restaurante Central</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 2 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-purple">
+                                <i class="bi bi-cup-hot"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cafetería La Selva</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 3 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                                <i class="bi bi-cup-straw"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Kiosco Oasis</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_mesas' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-grid-3x3-gap-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Mesas del Salón</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acordeón 2: Catálogo & Cartas -->
+            <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
+                <h2 class="accordion-header" id="headingMobileCatalogo">
+                    <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'productos menus ofertas convenios' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileCatalogo" aria-expanded="{% if active_subclase in 'productos menus ofertas convenios' %}true{% else %}false{% endif %}" aria-controls="collapseMobileCatalogo">
+                        <i class="bi bi-egg-fried text-danger me-2"></i> 2. Catálogo & Cartas
+                    </button>
+                </h2>
+                <div id="collapseMobileCatalogo" class="accordion-collapse collapse {% if active_subclase in 'productos menus ofertas convenios' %}show{% endif %}" aria-labelledby="headingMobileCatalogo" data-bs-parent="#accordionSafariMobile">
+                    <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_productos' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-egg-fried"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Catálogo de Productos</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_menus' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-book-half"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cartas y Menús por Local</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_ofertas_temporada' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                                <i class="bi bi-coin"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Promos Monedas $1 / $5</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_convenios' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-qr-code-scan"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Cabañas & Pases QR</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acordeón 3: Control & Finanzas -->
+            <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
+                <h2 class="accordion-header" id="headingMobileControl">
+                    <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'trabajadores consumos dashboard historial gestion' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileControl" aria-expanded="{% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}true{% else %}false{% endif %}" aria-controls="collapseMobileControl">
+                        <i class="bi bi-shield-check text-danger me-2"></i> 3. Control & Finanzas
+                    </button>
+                </h2>
+                <div id="collapseMobileControl" class="accordion-collapse collapse {% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}show{% endif %}" aria-labelledby="headingMobileControl" data-bs-parent="#accordionSafariMobile">
+                    <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_gestion' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-sliders"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Centro de Gestión Integral</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_trabajadores' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Trabajadores y Dotación</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_consumos' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Créditos y Fiados</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_dashboard' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Dashboard Analítico</span>
+                            </div>
+                        </a>
+                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_historial' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <div class="safari-menu-text">
+                                <span class="safari-menu-title">Historial y Auditoría</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Script externo de control de cabecera y navegación fluida -->
+<script src="{% static 'js/administrador/admin_header.js' %}?v=3.5"></script>

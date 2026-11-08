@@ -1,0 +1,984 @@
+{% load static safari_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Terminal de Meseros (Salón & Mesas)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/mesero/mesero.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header de Mesero con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Inicio de Mesero -->
+                <a href="{% url 'mesero' %}" class="logo-link" title="Inicio de Mesero">
+                    <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Módulo Mesero • Toma de Pedidos en Salón</span>
+                    </div>
+                </a>
+
+                <!-- Selector de Local y Datos del Mesero Activo -->
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    
+                    <!-- Local Asignado (Inmutable para Mesero según asignación de RRHH/Administración) -->
+                    <div class="d-flex align-items-center gap-2 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Local asignado: {{ local_actual.nombre }}">
+                        <i class="bi bi-shop text-warning"></i>
+                        <span class="fw-bold text-dark small">{{ local_actual.nombre }}</span>
+                    </div>
+
+                    <!-- Horario Oficial Parque Safari: 10:00 a 18:00 -->
+                    <div class="d-none d-lg-flex align-items-center gap-1 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Horario Oficial de Operación: 10:00 a 18:00">
+                        <i class="bi bi-clock-history text-danger"></i>
+                        <span class="fw-bold text-dark small">10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})</span>
+                    </div>
+
+                    <!-- Datos del Mesero en Turno -->
+                    <div class="d-none d-md-flex flex-column text-end">
+                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                            <i class="bi bi-person-check-fill text-success me-1"></i> Mesero: <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</strong>
+                        </span>
+                        <small class="text-muted">{{ mesero_activo.rut|default:"En Turno Activo" }}</small>
+                    </div>
+
+                    <span class="mesero-badge">
+                        MESERO
+                    </span>
+
+                    <!-- Modo Sol / Alto Contraste Exterior (Aloy Ergonomía Salón) -->
+                    <button type="button" class="btn btn-sm btn-outline-warning bg-white text-dark rounded-pill px-3 fw-bold shadow-xs btn-modo-sol" id="btnToggleModoSol" title="Alternar Modo Sol / Alto Contraste para exteriores">
+                        <i class="bi bi-sun-fill text-warning me-1"></i> <span class="d-none d-sm-inline">Modo Sol</span>
+                    </button>
+
+                    <!-- Centro de Alertas de Cocina: Pedidos Listos para Servir -->
+                    <div class="dropdown" id="contenedorCampanaListos">
+                        <button class="btn btn-sm position-relative rounded-pill px-3 fw-bold {% if total_pedidos_listos > 0 %}btn-success text-white shadow-sm{% else %}btn-outline-secondary bg-white text-muted{% endif %}" type="button" id="dropdownPedidosListos" data-bs-toggle="dropdown" aria-expanded="false" title="Pedidos listos en cocina para retirar">
+                            <i class="bi bi-bell-fill {% if total_pedidos_listos > 0 %}text-warning{% endif %} me-1"></i>
+                            Cocina
+                            {% if total_pedidos_listos > 0 %}
+                            <span class="badge bg-danger rounded-pill ms-1">{{ total_pedidos_listos }} Listo{{ total_pedidos_listos|pluralize }}</span>
+                            {% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-3 mt-2" aria-labelledby="dropdownPedidosListos" style="min-width: 320px; max-width: 380px; z-index: 1050;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="bi bi-fire text-danger me-1"></i> Pedidos Listos en Cocina / Barra
+                                </h6>
+                                <span class="badge bg-success rounded-pill">{{ total_pedidos_listos }} listos</span>
+                            </div>
+                            {% if pedidos_listos %}
+                                <div class="d-flex flex-column gap-2" style="max-height: 280px; overflow-y: auto;">
+                                    {% for pl in pedidos_listos %}
+                                    <div class="p-2 rounded-3 bg-success-subtle border border-success-subtle d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong class="text-dark d-block">
+                                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ pl.venta.mesa.identificador|default:"Mostrador" }}
+                                            </strong>
+                                            <small class="text-muted font-monospace">#COM-{{ pl.id|stringformat:"04d" }} • Listo p/ servir</small>
+                                        </div>
+                                        <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="m-0">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="pedido_id" value="{{ pl.id }}">
+                                            <input type="hidden" name="nuevo_estado" value="ENTREGADO">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2 py-1 fw-bold shadow-xs" title="Marcar como retirado y servido en la mesa">
+                                                <i class="bi bi-check-lg me-1"></i> Servir
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-3 text-muted small">
+                                    <i class="bi bi-check-circle text-success fs-3 d-block mb-1"></i>
+                                    No hay comandas esperando retiro en cocina en este momento.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Módulo de Meseros -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Mensajes del Sistema (Sin banners gigantes en pantalla móvil: se gestionan mediante Toast flotante discreto) -->
+        {% if messages %}
+        <div class="d-none" id="mensajesSistemaBackend">
+            {% for message in messages %}
+            <span class="backend-msg-item" data-tags="{{ message.tags }}">{{ message }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Barra Superior: Resumen Operativo y Estado de Impresoras -->
+        <div class="mesero-top-bar d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <span class="badge bg-success px-3 py-1 mb-1 fw-bold text-white">
+                    <i class="bi bi-tablet-fill me-1"></i> MÓDULO RÁPIDO PARA MESEROS
+                </span>
+                <h3 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                    SALÓN DE MESAS Y PEDIDOS • {{ local_actual.nombre }}
+                </h3>
+                <p class="text-muted mb-0 small">
+                    Asigna una mesa, selecciona comensales y envía el pedido. <strong>El sistema imprimirá automáticamente en Cocina solo lo de cocina, y en Barra solo lo de barra.</strong>
+                </p>
+            </div>
+
+            <!-- KPIs de Mesas del Salón -->
+            <div class="d-flex align-items-center gap-3 flex-wrap" id="kpiMesasSalonBox">
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <span class="badge bg-success rounded-circle p-1"> </span>
+                    <strong class="small text-dark">{{ mesas_libres }} Libres</strong>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <span class="badge bg-danger rounded-circle p-1"> </span>
+                    <strong class="small text-dark">{{ mesas_ocupadas }} Ocupadas</strong>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
+                    <i class="bi bi-printer-fill text-primary"></i>
+                    <strong class="small text-muted">Cocina & Barra: Online</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 1: SELECTOR Y MAPA VISUAL DE MESAS -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                    <i class="bi bi-grid-3x3-gap-fill text-warning me-2"></i>1. Selecciona o Asigna una Mesa
+                </h5>
+                <small class="text-muted">Haz clic en una mesa para tomar el pedido de inmediato</small>
+            </div>
+
+            <div class="row g-3 mesas-scroll-container" id="contenedorMesas">
+                {% for m in mesas %}
+                <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+                    <div class="mesa-card {% if m.estado == 'HABILITADA' %}mesa-libre{% elif m.estado == 'OCUPADA' %}mesa-ocupada{% else %}mesa-reservada{% endif %} {% if forloop.first %}mesa-seleccionada{% endif %}"
+                         id="cardMesa_{{ m.id }}"
+                         data-mesa-id="{{ m.id }}"
+                         data-identificador="{{ m.identificador }}"
+                         data-capacidad="{{ m.capacidad }}"
+                         data-estado="{{ m.estado }}"
+                         onclick="seleccionarMesa({{ m.id }}, '{{ m.identificador|escapejs }}', {{ m.capacidad }}, '{{ m.estado }}')">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="mesa-title">{{ m.identificador }}</span>
+                            <span class="mesa-capacidad" title="Capacidad comensales">
+                                <i class="bi bi-people-fill"></i> {{ m.capacidad }}
+                            </span>
+                        </div>
+
+                        <div>
+                            {% if m.estado == 'HABILITADA' %}
+                            <span class="badge badge-status-success w-100 py-2 fw-bold">
+                                <i class="bi bi-check-circle-fill me-1"></i>Libre
+                            </span>
+                            {% elif m.estado == 'OCUPADA' %}
+                            <span class="badge badge-status-warning w-100 py-2 fw-bold">
+                                <i class="bi bi-person-fill me-1"></i>En Atención
+                            </span>
+                            {% elif m.estado == 'INACTIVA' %}
+                            <span class="badge badge-status-danger w-100 py-2 fw-bold">
+                                <i class="bi bi-slash-circle-fill me-1"></i>Inactiva
+                            </span>
+                            {% else %}
+                            <span class="badge badge-status-warning w-100 py-2 fw-bold">
+                                <i class="bi bi-clock-fill me-1"></i>Reservada
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div id="cuentaCardInfo_{{ m.id }}" class="mt-2 text-center" style="display: none;">
+                            <span class="badge bg-warning text-dark border border-dark-subtle w-100 py-1 small fw-bold text-truncate shadow-sm">
+                                <i class="bi bi-receipt me-1"></i><span id="cuentaCardTotal_{{ m.id }}">$0</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-4 bg-white rounded-4 border">
+                    <p class="text-muted mb-0">No hay mesas configuradas para este punto de venta.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: TOMA DE PEDIDO RÁPIDO & COMANDA LATERAL -->
+        <div class="row g-4">
+            
+            <!-- Columna Izquierda: Catálogo Táctil Rápido -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 2px solid var(--safari-cafe-medium) !important;">
+                    
+                    <!-- Barra de Control del Pedido Activo -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-danger px-3 py-2 fs-6 fw-bold rounded-pill" id="mesaActivaBadge">
+                                <i class="bi bi-geo-alt-fill me-1"></i> {% if mesas %}{{ mesas.0.identificador }}{% else %}Mesa 1{% endif %}
+                            </span>
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold">
+                                Estado: <span id="mesaActivaEstado" class="{% if mesas and mesas.0.estado == 'OCUPADA' %}text-danger{% else %}text-success{% endif %}">{% if mesas and mesas.0.estado == 'OCUPADA' %}Ocupada por Comensales{% else %}Libre / Habilitada{% endif %}</span>
+                            </span>
+                            <button type="button" id="btnOcuparMesaRapido" class="btn btn-sm btn-outline-success rounded-pill fw-bold px-3" style="display: none;" onclick="ejecutarAccionMesaRapida('ocupar_mesa')">
+                                <i class="bi bi-person-plus-fill me-1"></i>Asignar Comensales
+                            </button>
+                            <button type="button" id="btnLiberarMesaRapido" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold px-3" style="display: none;" onclick="ejecutarAccionMesaRapida('liberar_mesa')">
+                                <i class="bi bi-check2-circle me-1"></i>Liberar Mesa
+                            </button>
+                        </div>
+
+                        <!-- Selector Rápido de Comensales -->
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="fw-bold text-muted">Comensales:</small>
+                            <button type="button" class="btn-comensal active" onclick="setComensales(1, this)">1</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(2, this)">2</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(3, this)">3</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(4, this)">4</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(5, this)">5</button>
+                            <button type="button" class="btn-comensal" onclick="setComensales(6, this)">6+</button>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Cuenta Abierta de la Mesa Seleccionada -->
+                    <div id="bannerCuentaAbierta" class="card border-0 shadow-sm rounded-4 p-3 mb-3" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #d97706 !important; display: none;">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                    <span class="badge bg-warning text-dark fw-bold px-2 py-1">
+                                        <i class="bi bi-receipt-cutoff me-1"></i>CUENTA ABIERTA
+                                    </span>
+                                    <span class="badge bg-danger text-white fw-bold px-2 py-1" id="cuentaRondasBadge">
+                                        Ronda #1
+                                    </span>
+                                    <span class="small text-muted">
+                                        <i class="bi bi-clock me-1"></i>Iniciada: <strong id="cuentaHoraTexto" class="text-dark">--:--</strong>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                                    <span class="small text-muted">Total Acumulado en Mesa:</span>
+                                    <span class="fs-5 fw-bold text-danger" id="cuentaTotalTexto" style="font-family: 'Oswald', sans-serif;">$0</span>
+                                    <span class="small text-muted" id="cuentaItemsResumen">(0 consumos previos)</span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold px-3 bg-white shadow-sm" onclick="abrirModalReasignarMesa()" title="Reasignar atención activa a otra mesa disponible ">
+                                    <i class="bi bi-arrow-left-right me-1"></i> Reasignar Mesa
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-bold px-3 bg-white" onclick="abrirModalDetalleCuenta()">
+                                    <i class="bi bi-list-check me-1 text-primary"></i> Ver Consumos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3 shadow-sm" onclick="abrirModalCerrarCuenta()">
+                                    <i class="bi bi-cash-coin me-1"></i> Cobrar y Cerrar Mesa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Comandas Activas en Cocina/Barra para esta Mesa (Incluye pedidos enviados desde Caja) -->
+                    <div id="bannerPedidosActivosMesa" class="card border-0 shadow-sm rounded-4 p-3 mb-3" style="background: #f0f9ff; border-left: 5px solid #0284c7 !important; display: none;"></div>
+
+                    <!-- Pestañas de Categoría con Indicador de Destino de Impresión -->
+                    <div class="d-flex flex-wrap gap-2 mb-3 filter-cat-scroll">
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold filter-cat-btn active" onclick="filtrarCategoria('todos', this)">
+                            <i class="bi bi-grid-fill me-1"></i> Todo el Menú
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cocinar', this)">
+                            <i class="bi bi-fire me-1"></i> Comida por Cocinar <span class="badge bg-danger ms-1">Cocina</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('preparada', this)">
+                            <i class="bi bi-basket2-fill me-1"></i> Comida Preparada <span class="badge bg-warning text-dark ms-1">Salón</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('envasada', this)">
+                            <i class="bi bi-cup-straw me-1"></i> Bebidas Envasadas <span class="badge bg-primary ms-1">Barra</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cafeteria', this)">
+                            <i class="bi bi-cup-hot-fill me-1"></i> Cafetería & Jugos <span class="badge bg-info text-dark ms-1">Barra</span>
+                        </button>
+                    </div>
+
+                    <!-- Buscador Rápido de Producto -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" placeholder="Buscar plato, hamburguesa, bebida, café..." onkeyup="filtrarTextoPlatos()">
+                        </div>
+                    </div>
+
+                    <!-- Grilla de Productos -->
+                    <div class="row g-3" id="grillaProductos">
+                        {% for p in catalogo_productos %}
+                        <div class="col-md-6 item-plato" data-cat="{{ p.categoria }}" data-nombre="{{ p.nombre|lower }}">
+                            <div class="product-mesero-card">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        {% if p.destino == 'COCINA' %}
+                                        <span class="badge-dest-cocina">
+                                            <i class="bi bi-fire"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% elif p.destino == 'BARRA' %}
+                                        <span class="badge-dest-barra">
+                                            <i class="bi bi-cup-straw"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge-dest-salon">
+                                            <i class="bi bi-bag-check-fill"></i> {{ p.destino_badge }}
+                                        </span>
+                                        {% endif %}
+                                        {% if p.en_oferta %}
+                                        <span class="badge bg-danger text-white py-1 px-2" style="font-size: 0.72rem;">
+                                            <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"PROMO" }}
+                                        </span>
+                                        <span class="product-mesero-price text-danger fw-bold">
+                                            <del class="text-muted small me-1" style="font-size: 0.75rem;">${{ p.precio_base }}</del>
+                                            {{ p.precio|pesos_clp }}
+                                        </span>
+                                        {% else %}
+                                        <span class="product-mesero-price">{{ p.precio|pesos_clp }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h6 class="product-mesero-title">{{ p.nombre }}</h6>
+                                    <p class="text-muted small mb-3">{{ p.descripcion }}</p>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <button type="button" class="btn-nota-plato" id="btnNota_{{ p.id }}" onclick="abrirNotaModal({{ p.id }}, '{{ p.nombre|escapejs }}')">
+                                        <i class="bi bi-chat-left-text-fill text-danger"></i>
+                                        <span id="btnNotaText_{{ p.id }}">Nota</span>
+                                    </button>
+
+                                    <!-- Controles sumar / restar -->
+                                    <div class="d-flex align-items-center gap-1">
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', -1)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                        <span class="qty-display" id="qty_{{ p.id }}">0</span>
+                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', 1)">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Panel Lateral de Comanda en Curso -->
+            <div class="col-lg-4" id="columnaComanda">
+                <div class="comanda-mesero-panel" id="panelComanda">
+                    
+                    <div class="comanda-header">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 class="fw-bold mb-0" style="font-family: 'Oswald', sans-serif; color: var(--safari-cafe-deep);">
+                                    <i class="bi bi-receipt text-danger me-2"></i>Comanda en Vivo
+                                </h4>
+                                <small class="text-muted">
+                                    Mesa: <strong id="comandaMesaNombre" class="text-dark">Mesa 1</strong> • 
+                                    <span id="comandaComensales">1 Persona</span>
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="vaciarComanda()" title="Vaciar Comanda">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Ítems Agregados -->
+                    <div class="mb-3" style="max-height: 320px; overflow-y: auto;" id="listaComandaItems">
+                        <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
+                            <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning"></i>
+                            Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
+                        </div>
+                    </div>
+
+                    <!-- Desglose Inteligente por Zonas de Impresión -->
+                    <div class="p-3 rounded-3 mb-3" style="background-color: var(--safari-cafe-light); border: 1.5px dashed var(--safari-cafe-medium);">
+                        <div class="small fw-bold text-muted mb-2">
+                            <i class="bi bi-diagram-2-fill text-warning me-1"></i> Desglose de Impresión por Zona:
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span><i class="bi bi-fire text-danger me-1"></i> Para Comandera Cocina:</span>
+                            <strong id="contadorCocina">0 ítems</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span><i class="bi bi-cup-straw text-primary me-1"></i> Para Comandera Barra:</span>
+                            <strong id="contadorBarra">0 ítems</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center small">
+                            <span><i class="bi bi-bag-check text-warning me-1"></i> Para Salón / Entrega:</span>
+                            <strong id="contadorSalon">0 ítems</strong>
+                        </div>
+                    </div>
+
+                    <!-- Resumen de Cuenta Abierta en Lateral -->
+                    <div id="lateralCuentaAbiertaBox" class="p-3 rounded-3 mb-3" style="background-color: #fffbeb; border: 1.5px solid #fcd34d; display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-dark"><i class="bi bi-receipt text-warning me-1"></i> Cuenta en Mesa:</span>
+                            <span class="badge bg-warning text-dark fw-bold" id="lateralRondasBadge">Ronda 1</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <small class="text-muted">Total acumulado previo:</small>
+                            <strong class="text-danger fs-6" id="lateralTotalAcumulado">$0</strong>
+                        </div>
+                    </div>
+
+                    <!-- Total de la Mesa -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 pt-2 border-top">
+                        <span class="fs-5 fw-bold text-dark" id="labelTotalComanda">Total Comanda:</span>
+                        <h2 class="fw-bold text-danger mb-0" id="totalComandaTexto" style="font-family: 'Oswald', sans-serif;">
+                            $0
+                        </h2>
+                    </div>
+
+                    <!-- Botón Despachar Comanda Directo (Ágil para Hora Pico) -->
+                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="enviarComandaDirecta()" disabled>
+                        <i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a Cocina y Barra
+                    </button>
+
+                    <!-- Acceso opcional a vista previa / reimpresión de tickets térmicos -->
+                    <div class="text-center mt-2" id="boxVerTicketsPreview" style="display: none;">
+                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none py-0" onclick="abrirModalTickets()">
+                            <i class="bi bi-receipt me-1"></i> Ver comanda térmica de 80mm
+                        </button>
+                    </div>
+
+                    <!-- Botón Cerrar Cuenta y Cobrar Mesa (Lateral) -->
+                    <button type="button" class="btn btn-success w-100 py-3 rounded-4 fw-bold mt-2 shadow-sm" id="btnCerrarCuentaLateral" style="display: none;" onclick="abrirModalCerrarCuenta()">
+                        <i class="bi bi-cash-coin me-2 fs-5"></i> Cobrar y Cerrar Mesa
+                    </button>
+
+                    <small class="text-muted text-center d-block mt-2" style="font-size: 0.72rem;">
+                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Despacho instantáneo a producción con alerta rápida para agilizar la atención en hora pico.
+                    </small>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- BARRA FLOTANTE INFERIOR PARA MÓVILES (Smartphone Friendly) -->
+    <div class="mobile-comanda-bar d-lg-none" id="mobileComandaBar">
+        <div class="total-comanda-pill">
+            <span class="total-comanda-label" id="mobileComandaMesa">Mesa 1 • 0 ítems</span>
+            <span class="total-comanda-monto" id="mobileComandaTotal">$0</span>
+        </div>
+        <button type="button" class="btn-ver-comanda-flotante" onclick="scrollHaciaComanda()">
+            <i class="bi bi-receipt-cutoff"></i> Ver Comanda
+        </button>
+    </div>
+
+    <!-- MODAL DE NOTA ESPECIAL LIBRE (SIN FILTROS RÍGIDOS) -->
+    <div class="modal fade" id="modalNota" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white p-3">
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="modalNotaTitulo">
+                            <i class="bi bi-pencil-square text-warning me-2"></i>Nota de Preparación
+                        </h6>
+                        <small class="text-white-50" style="font-size: 0.78rem;">Instrucción libre para Cocina o Barra</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="notaProductoId">
+                    <label class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
+                    <textarea id="notaTextoInput" class="form-control mb-2" rows="3" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, poco hielo..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
+                    <small class="text-muted d-block">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> Escribe libremente lo que el cliente solicita. Aparecerá destacado en el ticket debajo del producto.
+                    </small>
+                </div>
+                <div class="modal-footer p-2 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNota" onclick="quitarNota()">
+                        <i class="bi bi-trash me-1"></i> Quitar Nota
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" onclick="guardarNota()">
+                            <i class="bi bi-check2-circle me-1"></i> Guardar Nota
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SIMULADOR DE IMPRESIÓN INTELIGENTE DE TICKETS POR ZONA -->
+    <div class="modal fade" id="modalTickets" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-printer-fill text-warning me-2"></i>DESPACHO Y EMISIÓN DE TICKETS POR ZONA
+                        </h5>
+                        <small class="text-white-50">Comandas separadas listas para impresión en comanderas térmicas de 80mm</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" style="background-color: #f3f4f6;">
+                    
+                    <div class="alert alert-success border-2 border-success rounded-3 mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill fs-3 text-success"></i>
+                            <div>
+                                <strong>¡Comanda de Producción Preparada!</strong>
+                                <div class="small" id="modalTicketsBannerMsg">Se emiten tickets únicamente para las zonas con pedidos reales:</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 justify-content-center">
+                        
+                        <!-- TICKET 1: COCINA (80mm Monocromático B&W Sin Emojis) -->
+                        <div class="col-md-6 d-flex justify-content-center" id="colTicketCocina">
+                            <div class="thermal-ticket-card" id="ticketTermicoCocina">
+                                <div class="thermal-ticket-header">
+                                    <div class="thermal-header-company">SAFARI ADVENTURE</div>
+                                    <div class="thermal-header-sub">SAFARI ADVENTURE SAC</div>
+                                    <div class="thermal-header-tax">RUT: 76.041.631-2</div>
+                                    <div class="thermal-header-addr">
+                                        CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38<br>
+                                        LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS
+                                    </div>
+                                    <div class="thermal-header-loc">
+                                        LUGAR EXPEDICION: {{ local_actual.nombre|default:"RESTAURANT PRINCIPAL"|upper }}
+                                    </div>
+                                </div>
+
+                                <div class="thermal-divider-double">================================================</div>
+                                <div class="thermal-ticket-role-title">*** COMANDA COCINA ***</div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-meta">
+                                    <div><span>FOLIO:</span> <strong id="tikCocinaCodigo">#COC-0085</strong></div>
+                                    <div><span>FECHA:</span> <span id="tikCocinaFecha">--/--/----</span> <span id="tikCocinaHora">--:--</span></div>
+                                    <div><span>MESA:</span> <strong id="tikCocinaMesa">MESA 1</strong></div>
+                                    <div><span>MESERO:</span> <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username|upper }}</strong></div>
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-items-header">
+                                    <span>CANT.  DESCRIPCION</span>
+                                </div>
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+
+                                <div class="thermal-items-body" id="tikCocinaItems">
+                                    <!-- Solo ítems de cocina -->
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-ticket-totals d-flex justify-content-between">
+                                    <span>TOTAL ITEMS COCINA:</span>
+                                    <strong id="tikCocinaTotalItems">0</strong>
+                                </div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-footer">
+                                    *** ENTRADA A PRODUCCION COCINA ***<br>
+                                    *** SOFT RESTAURANT V10 ***<br>
+                                    PARQUE SAFARI CHILE
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TICKET 2: BARRA / CAFETERÍA (80mm Monocromático B&W Sin Emojis) -->
+                        <div class="col-md-6 d-flex justify-content-center" id="colTicketBarra">
+                            <div class="thermal-ticket-card" id="ticketTermicoBarra">
+                                <div class="thermal-ticket-header">
+                                    <div class="thermal-header-company">SAFARI ADVENTURE</div>
+                                    <div class="thermal-header-sub">SAFARI ADVENTURE SAC</div>
+                                    <div class="thermal-header-tax">RUT: 76.041.631-2</div>
+                                    <div class="thermal-header-addr">
+                                        CAMINO PUNTA DE CORTEZ N° 4220 PARCELA N° 38<br>
+                                        LOTE B (RUTA H-30) RANCAGUA LIBERTADOR BERNARDO O'HIGGINS
+                                    </div>
+                                    <div class="thermal-header-loc">
+                                        LUGAR EXPEDICION: {{ local_actual.nombre|default:"RESTAURANT PRINCIPAL"|upper }}
+                                    </div>
+                                </div>
+
+                                <div class="thermal-divider-double">================================================</div>
+                                <div class="thermal-ticket-role-title">*** COMANDA BARRA ***</div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-meta">
+                                    <div><span>FOLIO:</span> <strong id="tikBarraCodigo">#BAR-0085</strong></div>
+                                    <div><span>FECHA:</span> <span id="tikBarraFecha">--/--/----</span> <span id="tikBarraHora">--:--</span></div>
+                                    <div><span>MESA:</span> <strong id="tikBarraMesa">MESA 1</strong></div>
+                                    <div><span>MESERO:</span> <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username|upper }}</strong></div>
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-items-header">
+                                    <span>CANT.  DESCRIPCION</span>
+                                </div>
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+
+                                <div class="thermal-items-body" id="tikBarraItems">
+                                    <!-- Solo ítems de barra -->
+                                </div>
+
+                                <div class="thermal-divider-single">------------------------------------------------</div>
+                                <div class="thermal-ticket-totals d-flex justify-content-between">
+                                    <span>TOTAL ITEMS BARRA:</span>
+                                    <strong id="tikBarraTotalItems">0</strong>
+                                </div>
+                                <div class="thermal-divider-double">================================================</div>
+
+                                <div class="thermal-ticket-footer">
+                                    *** DESPACHO INMEDIATO BARRA ***<br>
+                                    *** SOFT RESTAURANT V10 ***<br>
+                                    PARQUE SAFARI CHILE
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light p-3 d-flex justify-content-between flex-wrap gap-2">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                            Cerrar
+                        </button>
+                        <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i> Imprimir Comandas (80mm)
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="enviarComandaDirecta()">
+                        <i class="bi bi-send-check-fill me-1"></i> Despachar Pedido a Preparar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE DE CONSUMOS ACUMULADOS EN MESA -->
+    <div class="modal fade" id="modalDetalleCuenta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 680px; width: 95%;">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white p-3 px-4">
+                    <div>
+                        <h4 class="modal-title fw-bold mb-1" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
+                            <i class="bi bi-list-check text-warning me-2 fs-4"></i>Consumos Acumulados • <span id="modalDetalleMesaNom">Mesa</span>
+                        </h4>
+                        <span class="text-white-50" style="font-size: 0.95rem;">Rondas despachadas a Cocina y Barra</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <span class="text-muted" style="font-size: 1.05rem;">Mesero / Atendido por: <strong id="modalDetalleMeseroNom" class="text-dark">--</strong></span>
+                        <span class="badge bg-danger rounded-pill px-3 py-2 fs-6 shadow-sm" id="modalDetalleRondasCount">1 Ronda</span>
+                    </div>
+
+                    <div class="table-responsive mb-4" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 1.05rem;">
+                            <thead class="table-light">
+                                <tr class="text-secondary" style="font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <th style="width: 15%; padding: 12px 10px;">Cant.</th>
+                                    <th style="width: 45%; padding: 12px 10px;">Producto</th>
+                                    <th class="text-end" style="width: 20%; padding: 12px 10px;">P. Unit</th>
+                                    <th class="text-end" style="width: 20%; padding: 12px 10px;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalDetalleItemsBody">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 px-4 rounded-4 bg-light border shadow-sm">
+                        <span class="fs-5 fw-bold text-dark">Total Acumulado a Cobrar:</span>
+                        <h2 class="fw-bold text-danger mb-0" id="modalDetalleTotal" style="font-family: 'Oswald', sans-serif; font-size: 2.3rem;">$0</h2>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 fs-6 fw-semibold" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left me-1"></i> Volver a la Mesa
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary fw-bold rounded-pill px-3 py-2 fs-6 shadow-sm" onclick="pasarDeDetalleAReasignar()">
+                            <i class="bi bi-arrow-left-right me-1"></i> Cambiar Mesa
+                        </button>
+                        <button type="button" class="btn btn-success fw-bold rounded-pill px-4 py-2 fs-6 shadow-sm" onclick="pasarDeDetalleACobro()">
+                            <i class="bi bi-cash-coin me-1 fs-5"></i> Ir a Cobrar Cuenta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CIERRE DE CUENTA Y PAGO DE MESA -->
+    <div class="modal fade" id="modalCerrarCuenta" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 650px; width: 95%;">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white p-3 px-4" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-cash-coin text-warning me-2"></i>COBRO Y CIERRE DE CUENTA
+                        </h5>
+                        <small class="text-white-50"><span id="modalCerrarMesaNom">Mesa</span> • Liberación de Comensales</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="" id="formCerrarCuenta">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="cerrar_cuenta_mesa">
+                    <input type="hidden" name="mesa_id" id="modalCerrarMesaId">
+                    <div class="modal-body p-4">
+                        <div class="text-center py-2 mb-3 bg-light rounded-4 border">
+                            <span class="text-muted small d-block">TOTAL FINAL A PAGAR:</span>
+                            <h1 class="display-6 fw-bold text-success mb-0" id="modalCerrarTotal" style="font-family: 'Oswald', sans-serif;">$0</h1>
+                            <small class="text-muted" id="modalCerrarResumen">En 0 rondas acumuladas</small>
+                        </div>
+
+                        <label class="form-label fw-bold small text-dark mb-2">
+                            <i class="bi bi-credit-card-2-front-fill text-primary me-1"></i>Selecciona el Método de Pago:
+                        </label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_efectivo" value="EFECTIVO" checked>
+                                <label class="btn btn-outline-success w-100 py-2 rounded-3 fw-bold small text-start" for="pago_efectivo">
+                                    <i class="bi bi-cash-stack me-1 fs-5"></i> Efectivo
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_debito" value="DEBITO">
+                                <label class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold small text-start" for="pago_debito">
+                                    <i class="bi bi-credit-card-2-back me-1 fs-5"></i> Débito (Redcompra)
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_credito" value="CREDITO">
+                                <label class="btn btn-outline-warning text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_credito">
+                                    <i class="bi bi-credit-card me-1 fs-5"></i> Crédito
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="metodo_pago" id="pago_transferencia" value="TRANSFERENCIA">
+                                <label class="btn btn-outline-info text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_transferencia">
+                                    <i class="bi bi-phone-fill me-1 fs-5"></i> Transferencia
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Sugerencia Voluntaria de Propina 10% (Ley N° 20.918 Art. 64 bis) -->
+                        <div class="card border-0 bg-light p-3 rounded-3 mb-3">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="checkPropinaVoluntaria" name="incluir_propina" value="1">
+                                <label class="form-check-label fw-bold small text-dark" for="checkPropinaVoluntaria">
+                                    <i class="bi bi-heart-fill text-danger me-1"></i> Sugerir Propina Voluntaria 10% (Ley N° 20.918)
+                                </label>
+                                <div class="small text-muted" id="txtMontoPropinaSugerida">Opción voluntaria para el comensal.</div>
+                            </div>
+                        </div>
+
+                        <!-- Soporte para División de Cuentas / Abonos Parciales (Split Bill) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark mb-1">
+                                <i class="bi bi-pie-chart-fill text-warning me-1"></i> Monto a Pagar / Abono (Dejar vacío para Total Completo):
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white fw-bold small">$</span>
+                                <input type="number" class="form-control" name="monto_pago" id="inputMontoPagoParcial" placeholder="Total completo (o ingresa monto para abono parcial)">
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Si ingresas un monto menor, se registrará el abono y la mesa continuará ocupada con el saldo restante.</small>
+                        </div>
+
+                        <!-- Indicador en vivo de Ley N° 20.956 (Regla de Redondeo en Efectivo) -->
+                        <div id="boxRedondeoLey" class="alert alert-light border rounded-3 py-2 px-3 mb-3" style="border-left: 4px solid #16a34a !important;">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="small text-muted">
+                                    <i class="bi bi-shield-check text-success me-1"></i>
+                                    <strong>Ley N&deg; 20.956 (Efectivo):</strong> <span id="txtDetalleRedondeo">Sin ajuste necesario</span>
+                                </span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold" id="badgeRedondeoMonto">$0</span>
+                            </div>
+                        </div>
+                        <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 border-0">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Al liquidar el total completo, la cuenta quedará <strong>PAGADA</strong> y la mesa se marcará automáticamente como <strong>LIBRE / HABILITADA</strong>.
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Confirmar Pago y Liberar Mesa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE REASIGNACIÓN DE MESAS  -->
+    <div class="modal fade" id="modalReasignarMesa" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 620px; width: 95%;">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white p-3 px-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-arrow-left-right me-2 text-warning"></i>Reasignar Comensales a Nueva Mesa 
+                        </h5>
+                        <small class="text-white-50">Traslado de cuenta abierta sin pérdida de comanda ni tickets</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form method="POST" action="{% url 'mesero' %}?local_id={{ local_actual.id }}&mesero_id={{ mesero_activo.id|default:'' }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="reasignar_mesa">
+                    <input type="hidden" name="mesa_origen_id" id="modalReasignarOrigenId">
+
+                    <div class="modal-body p-4">
+                        <!-- Resumen Mesa Origen -->
+                        <div class="p-3 mb-4 rounded-4 bg-light border shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <small class="text-muted text-uppercase fw-bold">Mesa de Origen Actual</small>
+                                    <h4 class="fw-bold text-dark mb-0" id="modalReasignarOrigenNom">Mesa --</h4>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-danger rounded-pill px-3 py-2 fs-6 shadow-sm" id="modalReasignarRondasBadge">
+                                        1 Ronda
+                                    </span>
+                                    <div class="fw-bold text-danger fs-5 mt-1" id="modalReasignarTotalTexto">$0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selector Mesa Destino -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">
+                                <i class="bi bi-geo-alt-fill text-success me-1"></i> Selecciona la Mesa de Destino:
+                            </label>
+                            <select name="mesa_destino_id" id="modalReasignarDestinoSelect" class="form-select form-select-lg rounded-3 border-2" required>
+                                <option value="" disabled selected>-- Elige una mesa libre --</option>
+                                {% for m in mesas %}
+                                    {% if m.estado == 'HABILITADA' %}
+                                        <option value="{{ m.id }}">
+                                            {{ m.identificador }} (Capacidad: {{ m.capacidad }} comensales) - Libre
+                                        </option>
+                                    {% elif m.estado == 'OCUPADA' %}
+                                        <option value="{{ m.id }}" disabled>
+                                            {{ m.identificador }} (Ocupada - En atención)
+                                        </option>
+                                    {% elif m.estado == 'INACTIVA' %}
+                                        <option value="{{ m.id }}" disabled>
+                                            {{ m.identificador }} (Inactiva / Mantenimiento)
+                                        </option>
+                                    {% else %}
+                                        <option value="{{ m.id }}" disabled>
+                                            {{ m.identificador }} (Reservada)
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small text-muted">
+                                Solo se muestran disponibles las mesas habilitadas del local {{ local_actual.nombre }}.
+                            </div>
+                        </div>
+
+                        <!-- Motivo del Traslado -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-secondary small">
+                                <i class="bi bi-chat-text me-1"></i> Motivo del cambio (opcional):
+                            </label>
+                            <input type="text" name="motivo" class="form-control rounded-3" placeholder="Ej: Comensal prefirió mesa cerca de la ventana / sombra" maxlength="200">
+                        </div>
+
+                        <!-- Banner Informativo de Garantía Operativa -->
+                        <div class="alert alert-info d-flex align-items-center py-2 px-3 small border-0 rounded-3 mb-0" style="background-color: #eff6ff; color: #1e40af;">
+                            <i class="bi bi-shield-check fs-4 me-2 flex-shrink-0 text-primary"></i>
+                            <div>
+                                <strong>Garantía de Continuidad del Servicio:</strong> El saldo total, productos y tickets enviados a Cocina/Barra se transfieren íntegros. La mesa de origen quedará libre automáticamente.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 fs-6 fw-semibold" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4 py-2 fs-6 shadow-sm btn-anti-doble-envio">
+                            <i class="bi bi-arrow-left-right me-1"></i> Confirmar Traslado de Mesa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Terminal Meseros <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- SweetAlert2 y Safari Alerts para Notificaciones Ágiles en Hora Pico -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'js/global/safari_alerts.js' %}"></script>
+
+    <script id="cuentasAbiertasData" type="application/json">{{ cuentas_abiertas_json|safe }}</script>
+    <script id="pedidosMesaActivosData" type="application/json">{{ pedidos_mesa_activos_json|safe }}</script>
+
+    <input type="hidden" id="csrfTokenMeseroGlobal" value="{{ csrf_token }}">
+    <script id="meseroConfigData" type="application/json">
+    {
+        "urlCambiarEstadoPedido": "{% url 'cambiar_estado_pedido' %}",
+        "mesaInicial": {% if mesas %}{"id": {{ mesas.0.id|stringformat:"d" }}, "identificador": "{{ mesas.0.identificador|escapejs }}", "capacidad": {{ mesas.0.capacidad|stringformat:"d" }}, "estado": "{{ mesas.0.estado }}"}{% else %}{"id": 1, "identificador": "Mesa 1", "capacidad": 4, "estado": "HABILITADA"}{% endif %},
+        "mensajes": [{% for message in messages %}{"icon": "{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}", "title": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+    }
+    </script>
+    <script src="{% static 'js/mesero/mesero.js' %}"></script>
+    <!-- Script de Protección contra Doble Envío -->
+    <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
+    <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+</body>
+</html>

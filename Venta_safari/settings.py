@@ -41,7 +41,7 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '*')
 if allowed_hosts_raw == '*':
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ['*'] if DEBUG else ['localhost', '127.0.0.1']
 else:
     ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
 
@@ -74,7 +74,11 @@ ROOT_URLCONF = 'Venta_safari.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [
+            BASE_DIR / 'templates',
+            BASE_DIR / 'templates' / 'errores' / '400',
+            BASE_DIR / 'templates' / 'errores' / '500',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -101,7 +105,7 @@ if DB_ENGINE in ('postgresql', 'postgres'):
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ.get('DB_NAME', 'parque_safari_db'),
             'USER': os.environ.get('DB_USER', 'safari_admin'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'safari_secure_password_2026'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
             'OPTIONS': {
@@ -115,7 +119,7 @@ elif DB_ENGINE == 'mysql':
             'ENGINE': 'django.db.backends.mysql',
             'NAME': os.environ.get('DB_NAME', 'parque_safari_db'),
             'USER': os.environ.get('DB_USER', 'safari_admin'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'safari_secure_password_2026'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '3306'),
             'OPTIONS': {
@@ -129,6 +133,9 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,
+            },
         }
     }
 

@@ -1,0 +1,342 @@
+/* ==========================================================================
+   Monitor de Caja / Vendedor (Tickets en Desarrollo y Mesas) - Zona Cajero
+   ========================================================================== */
+
+/* Botones / Píldoras de filtrado */
+.filter-pill {
+    cursor: pointer;
+    border: 1px solid var(--safari-cafe-medium);
+    background-color: #ffffff;
+    color: var(--safari-cafe-dark);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.filter-pill.active, .filter-pill:hover {
+    background-color: var(--safari-red);
+    color: #ffffff;
+    border-color: var(--safari-red);
+}
+
+/* Botón Destacado Crear Nuevo Ticket */
+.btn-crear-ticket {
+    background: linear-gradient(135deg, var(--safari-red) 0%, #a61c1c 100%);
+    color: #ffffff !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 10px 24px;
+    border-radius: 30px;
+    border: 2px solid var(--safari-yellow);
+    box-shadow: 0 4px 14px rgba(198, 40, 40, 0.35);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-crear-ticket:hover {
+    background: linear-gradient(135deg, #a61c1c 0%, #851212 100%);
+    border-color: #ffffff;
+    box-shadow: 0 6px 18px rgba(198, 40, 40, 0.5);
+    transform: translateY(-2px);
+    color: #ffffff !important;
+}
+
+/* Tarjetas KPI de Estado (Resumen Superior) */
+.kpi-stat-card {
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 3px 10px rgba(92, 66, 48, 0.05);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.kpi-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(92, 66, 48, 0.1);
+}
+
+.kpi-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.kpi-number {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+}
+
+.kpi-label {
+    font-size: 0.78rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+}
+
+/* Tarjetas de Ticket / Comanda en Desarrollo */
+.ticket-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-pastel);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ticket-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 8px 22px rgba(92, 66, 48, 0.14);
+    transform: translateY(-3px);
+}
+
+.ticket-card-header {
+    padding: 12px 16px;
+    background-color: #fdfaf5;
+    border-bottom: 1.5px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ticket-id {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--safari-cafe-deep);
+}
+
+.ticket-card-body {
+    padding: 16px;
+    flex-grow: 1;
+}
+
+.ticket-item-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dashed #f0ede6;
+    font-size: 0.9rem;
+}
+
+.ticket-item-line:last-child {
+    border-bottom: none;
+}
+
+.ticket-card-footer {
+    padding: 12px 16px;
+    background-color: #faf7f0;
+    border-top: 1.5px solid var(--safari-cafe-pastel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.ticket-total {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--safari-red);
+}
+
+/* Badges de Estado del Ticket */
+.badge-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.status-cocina {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status-barra {
+    background-color: #f3e8ff;
+    color: #6b21a8;
+    border: 1px solid #e9d5ff;
+}
+
+.status-listo {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.status-entregado {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+/* Nota en la tarjeta del ticket en desarrollo */
+.ticket-item-nota {
+    background-color: #fff5f5;
+    border-left: 3px solid #dc3545;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-top: 3px;
+    font-size: 0.82rem;
+    color: #991b1b;
+}
+
+@media (max-width: 767.98px) {
+    .filter-pill {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+
+    .kpi-stat-card {
+        padding: 12px;
+    }
+
+    .kpi-number {
+        font-size: 1.4rem;
+    }
+
+    .kpi-icon-box {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+}
+
+/* ==========================================================================
+   Overlay de Bloqueo Rápido de Caja POS (Ezio Auditore - Terminal Compartido)
+   ========================================================================== */
+.safari-pos-lock-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeInLock 0.25s ease-out;
+}
+
+@keyframes fadeInLock {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.safari-pos-lock-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-width: 360px;
+    padding: 24px 20px;
+    user-select: none;
+}
+
+.lock-icon-circle {
+    width: 60px;
+    height: 60px;
+    background: #fee2e2;
+    border: 2px solid #fecaca;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+}
+
+.lock-pin-display {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 0;
+}
+
+.pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    border: 2px solid #94a3b8;
+    transition: all 0.15s ease;
+}
+
+.pin-dot.active {
+    background: #dc2626;
+    border-color: #991b1b;
+    transform: scale(1.2);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+}
+
+.lock-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+.btn-key {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 14px 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: 'Oswald', sans-serif;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    outline: none;
+}
+
+.btn-key:active, .btn-key:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    transform: scale(0.97);
+}
+
+.btn-key-action {
+    font-size: 1.15rem;
+    font-family: inherit;
+    background: #f1f5f9;
+}

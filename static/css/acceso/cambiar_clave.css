@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Actualización Obligatoria de Contraseña - Norma ISO/IEC 27400
+   ========================================================================== */
+
+body {
+    background-color: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Nunito', sans-serif;
+}
+.card-password {
+    background: #ffffff;
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    max-width: 520px;
+    width: 100%;
+}
+.header-top {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    color: #ffffff;
+    padding: 24px 30px;
+    text-align: center;
+}
+.header-top h3 {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+    font-size: 1.85rem;
+    margin: 0;
+    text-transform: uppercase;
+}
+.rule-item {
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    transition: all 0.25s ease-in-out;
+}
+.rule-item.valid {
+    background-color: #ecfdf5 !important;
+    border-color: #86efac !important;
+    color: #15803d !important;
+    font-weight: 700 !important;
+    transform: translateX(3px);
+}
+.rule-item.invalid {
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+    color: #64748b;
+}
+.rule-item i {
+    font-size: 1.05rem;
+    transition: transform 0.2s ease;
+}
+.rule-item.valid i {
+    transform: scale(1.15);
+}
+.input-group-pass .input-group-text {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+.input-group-pass .form-control {
+    border-color: #cbd5e1;
+    padding: 0.65rem 0.9rem;
+}
+.input-group-pass .form-control:focus {
+    border-color: #b91c1c;
+    box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.15);
+}

@@ -1,0 +1,1004 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venta Safari - Tickets en Desarrollo (Vendedor)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts: Oswald & Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos Externos Modulares -->
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/cajero/vendedor.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Cenefa tribal superior -->
+    <div class="tribal-divider"></div>
+
+    <!-- Header del Vendedor con Logo Siempre Visible -->
+    <header class="safari-header py-2">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                
+                <!-- Logo como botón de regreso al Inicio de Caja / Ventas -->
+                <a href="{% url 'vendedor' %}" class="logo-link" title="Inicio de Caja">
+                    <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" class="logo-img">
+                    <div>
+                        <h1 class="brand-text-main">Venta Safari</h1>
+                        <span class="brand-text-sub">Restaurante & Cafetería • Panel de Vendedor</span>
+                    </div>
+                </a>
+
+                <!-- Datos del Turno y Botón de Salida -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-none d-md-flex flex-column text-end">
+                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                            <i class="bi bi-person-badge text-warning me-1"></i> Cajero: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                        </span>
+                        <small class="text-muted">{{ punto_venta.nombre|default:"Restaurante Central Safari" }}</small>
+                    </div>
+
+                    {% if caja_activa %}
+                    <span class="badge bg-success px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-cash-coin me-1"></i> {{ caja_activa.nombre }} • Fondo: ${{ caja_activa.monto_apertura|floatformat:0 }}
+                    </span>
+                    {% elif jornada_activa %}
+                    <span class="badge bg-warning text-dark px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-clock-history me-1"></i> Jornada #{{ jornada_activa.id }} (Sin Caja)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger text-white px-3 py-2 fw-bold d-none d-sm-inline-block">
+                        <i class="bi bi-slash-circle me-1"></i> Jornada Sin Abrir
+                    </span>
+                    {% endif %}
+
+                    
+
+                    <!-- Botón Bloqueo Rápido de Terminal Compartido (Ezio Auditore) -->
+                    <button type="button" class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold" id="btnBloquearCaja" title="Bloquear terminal por relevo o ausencia breve">
+                        <i class="bi bi-lock-fill me-1 text-danger"></i> Bloquear
+                    </button>
+
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold">
+                        <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal: Pantalla Intermedia - Tickets en Desarrollo -->
+    <main class="container-fluid px-lg-5 my-4 flex-grow-1">
+
+        <!-- Mensajes del Sistema en Toast Flotante Discreto en la Esquina (Tarea 3) -->
+        {% if messages %}
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+            {% for message in messages %}
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ESTADO OPERATIVO DE JORNADA  -->
+        {% if not jornada_activa %}
+        <!-- Caso 1: Sin Jornada Abierta  -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="border-left: 6px solid #dc2626 !important; background-color: #fff;">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-danger text-white px-3 py-2 fw-bold rounded-pill mb-2">
+                            <i class="bi bi-sunrise-fill me-1"></i> REQUERIMIENTO OPERATIVO 
+                        </span>
+                        <h3 class="fw-bold text-dark mb-2">Apertura Diaria de Jornada Requerida</h3>
+                        <p class="text-muted mb-0">
+                            No existe una jornada operativa abierta para hoy en el parque. Como cajero(a), debes realizar la apertura oficial para habilitar el ciclo operativo del día y abrir tu caja individual.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                        <button type="button" class="btn btn-danger fw-bold rounded-pill px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirJornada">
+                            <i class="bi bi-sunrise-fill me-2"></i> Realizar Apertura de Jornada
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% elif not caja_activa %}
+        <!-- Caso 2: Jornada Abierta, pero Cajero sin Caja Individual  -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="border-left: 6px solid #f59e0b !important; background-color: #fff;">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-warning text-dark px-3 py-2 fw-bold rounded-pill mb-2">
+                            <i class="bi bi-cash-stack me-1"></i> REQUERIMIENTO OPERATIVO 
+                        </span>
+                        <h3 class="fw-bold text-dark mb-2">Apertura de Caja Individual Requerida</h3>
+                        <p class="text-muted mb-0">
+                            La <strong>Jornada #{{ jornada_activa.id }}</strong> se encuentra activa (abierta por {{ jornada_activa.usuario_apertura.get_full_name|default:jornada_activa.usuario_apertura.username }}). Para comenzar tu turno de cobro y emisión de tickets, debes ingresar tu fondo de sencillo y abrir tu caja individual.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                        <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirCaja">
+                            <i class="bi bi-cash-coin me-2"></i> Abrir Mi Caja Individual
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Caso 3: Jornada y Caja Abiertas y Operativas -->
+        <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-2 rounded-circle bg-white text-success shadow-sm">
+                    <i class="bi bi-check-circle-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">Turno Operativo Habilitado • Jornada #{{ jornada_activa.id }}</div>
+                    <small class="text-muted">Caja: <strong>{{ caja_activa.nombre }}</strong> en {{ caja_activa.punto_venta.nombre }} | Fondo inicial de sencillo: <strong>${{ caja_activa.monto_apertura|floatformat:0 }}</strong></small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-bold">
+                    <i class="bi bi-shield-check me-1"></i> Caja Abierta y Activa
+                </span>
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCerrarCaja">
+                    <i class="bi bi-calculator-fill me-1"></i> Cerrar Caja & Cuadratura
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Barra Superior de Acciones y Botón de Crear Ticket -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-4 shadow-sm" style="background-color: #ffffff; border: 2px solid var(--safari-cafe-medium);">
+            <div>
+                <span class="badge px-3 py-1 mb-2 fw-bold" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
+                    <i class="bi bi-clock-history me-1 text-danger"></i> Monitor de Comandas Activas
+                </span>
+                <h2 class="fw-bold mb-1" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
+                    TICKETS ACTUALES EN DESARROLLO
+                </h2>
+                <p class="text-muted mb-0 small">
+                    Controla el avance de pedidos en Cocina, Barra y entrega inmediata para comensales del parque.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Botón Principal: Crear un Ticket (Condicional a caja activa) -->
+                {% if caja_activa %}
+                <button type="button" class="btn btn-outline-danger fw-bold rounded-pill px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCerrarCaja">
+                    <i class="bi bi-calculator-fill me-1"></i> Arqueo & Cuadratura
+                </button>
+                <a href="{% url 'crear_ticket' %}" class="btn-crear-ticket">
+                    <i class="bi bi-plus-circle-fill me-2 fs-5"></i> Crear Nuevo Ticket
+                </a>
+                {% else %}
+                <button type="button" class="btn-crear-ticket" style="opacity: 0.85;" data-bs-toggle="modal" data-bs-target="{% if not jornada_activa %}#modalAbrirJornada{% else %}#modalAbrirCaja{% endif %}">
+                    <i class="bi bi-lock-fill me-2 fs-5"></i> Crear Nuevo Ticket (Requiere Caja)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Indicadores KPI de Estado -->
+        <div class="row g-3 mb-4">
+            <!-- Total en Curso -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #fef3c7; color: #b45309;">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Desarrollo</div>
+                        <div class="kpi-number text-dark" id="kpiTotal">{{ kpi_en_desarrollo|default:0 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- En Cocina -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #fee2e2; color: #b91c1c;">
+                        <i class="bi bi-fire"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Cocina</div>
+                        <div class="kpi-number text-danger" id="kpiCocina">{{ kpi_cocina|default:0 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- En Barra -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #f3e8ff; color: #7e22ce;">
+                        <i class="bi bi-cup-hot-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">En Barra</div>
+                        <div class="kpi-number" style="color: #7e22ce;" id="kpiBarra">{{ kpi_barra|default:0 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listos para Entrega -->
+            <div class="col-6 col-md-3">
+                <div class="kpi-stat-card">
+                    <div class="kpi-icon-box" style="background-color: #dcfce7; color: #15803d;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Listos Entrega</div>
+                        <div class="kpi-number text-success" id="kpiListos">{{ kpi_listos|default:0 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL EN VIVO DE MESAS DEL SALÓN (Sincronización Cajero <-> Mesero <-> Cocina/Barra) -->
+        <div id="panelMesasSalonCajero" class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.4px;">
+                        <i class="bi bi-grid-3x3-gap-fill text-danger me-1"></i> CONTROL DE MESAS EN SALÓN ({{ punto_venta.nombre|default:"Local Activo" }})
+                    </h6>
+                    <small class="text-muted">Asigna clientes a una mesa, envía pedidos o cobra cuentas abiertas sincronizadas con Meseros, Cocina y Barra.</small>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold">
+                        <i class="bi bi-check-circle-fill me-1"></i> {{ mesas_libres_count|default:0 }} Libres
+                    </span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-bold">
+                        <i class="bi bi-people-fill me-1"></i> {{ mesas_ocupadas_count|default:0 }} En Atención
+                    </span>
+                </div>
+            </div>
+
+            {% if mesas_salon_info %}
+            <div class="row g-2">
+                {% for m in mesas_salon_info %}
+                <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+                    <div class="p-2 rounded-3 border h-100 d-flex flex-column justify-content-between"
+                         style="{% if m.estado == 'OCUPADA' %}background-color: #fff7ed; border-color: #fdba74 !important;{% elif m.estado == 'HABILITADA' %}background-color: #f0fdf4; border-color: #86efac !important;{% else %}background-color: #f8fafc; border-color: #cbd5e1 !important;{% endif %}">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-dark small">{{ m.identificador }}</strong>
+                                <span class="badge bg-white text-muted border" style="font-size: 0.68rem;">
+                                    <i class="bi bi-people-fill"></i> {{ m.capacidad }}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                {% if m.estado == 'HABILITADA' %}
+                                <span class="badge bg-success w-100 py-1" style="font-size: 0.7rem;">Libre</span>
+                                {% elif m.estado == 'OCUPADA' %}
+                                <span class="badge bg-warning text-dark w-100 py-1 fw-bold" style="font-size: 0.7rem;">En Atención</span>
+                                {% else %}
+                                <span class="badge bg-secondary w-100 py-1" style="font-size: 0.7rem;">Inactiva</span>
+                                {% endif %}
+
+                                {% if m.tiene_deuda_abierta %}
+                                <div class="badge bg-danger text-white w-100 mt-1 py-1" style="font-size: 0.7rem;">
+                                    Por cobrar: ${{ m.total_abierto|floatformat:0 }}
+                                </div>
+                                {% endif %}
+                                {% if m.pedidos_activos > 0 %}
+                                <div class="badge bg-dark text-warning w-100 mt-1 py-1" style="font-size: 0.68rem;">
+                                    <i class="bi bi-fire me-1"></i>{{ m.pedidos_activos }} comanda{{ m.pedidos_activos|pluralize }} activa{{ m.pedidos_activos|pluralize }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-1">
+                            {% if m.estado == 'HABILITADA' %}
+                                <button type="button" class="btn btn-xs btn-sm btn-outline-success fw-bold py-1" style="font-size: 0.72rem;" onclick="ocuparMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}')">
+                                    <i class="bi bi-person-plus-fill me-1"></i>Enviar Clientes
+                                </button>
+                                {% if caja_activa %}
+                                <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-warning text-dark fw-bold py-1" style="font-size: 0.72rem;">
+                                    <i class="bi bi-cart-plus-fill me-1"></i>Tomar Pedido
+                                </a>
+                                {% endif %}
+                            {% elif m.estado == 'OCUPADA' %}
+                                {% if m.tiene_deuda_abierta %}
+                                    {% if caja_activa %}
+                                    <button type="button" class="btn btn-sm btn-success fw-bold py-1" style="font-size: 0.72rem;" onclick="cobrarMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}', {{ m.total_abierto }})">
+                                        <i class="bi bi-cash-coin me-1"></i>Cobrar Mesa
+                                    </button>
+                                    <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-outline-dark fw-bold py-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-plus-circle me-1"></i>+ Pedido
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-light text-muted border py-1" style="font-size: 0.68rem;">Requiere Caja Abierta</span>
+                                    {% endif %}
+                                {% else %}
+                                    {% if caja_activa %}
+                                    <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-warning text-dark fw-bold py-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-cart-plus-fill me-1"></i>Tomar Pedido
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold py-1" style="font-size: 0.72rem;" onclick="liberarMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}')">
+                                        <i class="bi bi-check2-circle me-1"></i>Liberar Mesa
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted small py-2">
+                Este punto de venta opera en modalidad mostrador (sin mesas registradas).
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Barra de Búsqueda y Pestañas de Filtro -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" placeholder="Buscar por #Ticket, mesa, producto (ej. hamburguesa, café, jugo)..." onkeyup="filtrarTickets()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="limpiarFiltroTicket()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end align-items-center">
+                        <span class="filter-pill active" onclick="filtrarEstado('activos', this)">
+                            <i class="bi bi-collection-play-fill me-1"></i> Todos en Curso
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('cocina', this)">
+                            <i class="bi bi-fire me-1"></i> Cocina
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('barra', this)">
+                            <i class="bi bi-cup-hot me-1"></i> Barra
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('listo', this)">
+                            <i class="bi bi-bag-check me-1"></i> Listos
+                        </span>
+                        <span class="filter-pill" onclick="filtrarEstado('entregado', this)">
+                            <i class="bi bi-check2-all me-1"></i> Entregados
+                        </span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 ms-1">
+                            <i class="bi bi-broadcast me-1"></i> En Vivo
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de Tarjetas de Tickets -->
+        <div class="row g-4" id="contenedorTickets">
+            <!-- Las tarjetas de tickets se renderizan dinámicamente con JavaScript -->
+        </div>
+
+        <!-- Mensaje cuando no hay tickets en el filtro -->
+        <div id="sinTickets" class="text-center py-5 d-none">
+            <div class="card border-0 shadow-sm p-5 rounded-4 mx-auto" style="max-width: 500px; background-color: #ffffff; border: 1.5px dashed var(--safari-cafe-medium) !important;">
+                <i class="bi bi-clipboard2-check fs-1 text-muted mb-2"></i>
+                <h5 class="fw-bold text-dark">No hay tickets en este estado</h5>
+                <p class="text-muted small mb-3">No se registran comandas pendientes con el filtro actual o la búsqueda ingresada.</p>
+                <div>
+                    <a href="{% url 'crear_ticket' %}" class="btn btn-warning fw-bold px-4 rounded-pill">
+                        <i class="bi bi-plus-lg me-1"></i> Crear Nuevo Ticket Ahora
+                    </a>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- REGISTRO DE VENTAS RECIENTES Y CONTROL ANTI-FRAUDE DE ANULACIONES -->
+        <div id="seccionVentasRecientesCajero">
+        {% if ventas_recientes %}
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #b91c1c; width: 38px; height: 38px;">
+                        <i class="bi bi-shield-lock-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Control Anti-Fraude: Ventas Recientes de la Caja</h6>
+                        <small class="text-muted">Las anulaciones requieren obligatoriamente visado de Supervisor y motivo justificado para auditoría</small>
+                    </div>
+                </div>
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-clock-history me-1"></i> Turno Actual
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th># Venta</th>
+                            <th>Hora</th>
+                            <th>Modalidad</th>
+                            <th>Total Cobrado</th>
+                            <th>Método de Pago</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acción de Seguridad</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        {% for v in ventas_recientes %}
+                        <tr>
+                            <td class="fw-bold">VEN-{{ v.id }}</td>
+                            <td>{{ v.fecha_hora|date:"H:i" }} hrs</td>
+                            <td>
+                                {% if v.modalidad == 'MESA' and v.mesa %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                        <i class="bi bi-shop me-1"></i> Mesa {{ v.mesa.identificador }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                                        <i class="bi bi-bag-check me-1"></i> Mostrador
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">${{ v.total|floatformat:0 }} CLP</td>
+                            <td>{{ v.get_metodo_pago_display }}</td>
+                            <td>
+                                {% if v.estado == 'PAGADA' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Pagada
+                                    </span>
+                                {% elif v.estado == 'ANULADA' %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Anulada
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">
+                                        {{ v.get_estado_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if v.estado == 'PAGADA' %}
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="abrirModalAnular('{{ v.id }}', '{{ v.total|floatformat:0 }}')">
+                                    <i class="bi bi-shield-x me-1"></i> Anular Venta
+                                </button>
+                                {% else %}
+                                <span class="text-muted small">Sin acción</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        </div>
+    </main>
+
+    <!-- MODAL 1: APERTURA DE JORNADA Y CAJA INICIAL  -->
+    <div class="modal fade" id="modalAbrirJornada" tabindex="-1" aria-labelledby="modalAbrirJornadaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #c62828 0%, #8e0000 100%);">
+                    <h5 class="modal-title fw-bold" id="modalAbrirJornadaLabel">
+                        <i class="bi bi-sunrise-fill text-warning me-2"></i> Apertura Diaria de Jornada 
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'abrir_jornada' %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info border-0 rounded-3 small mb-3">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Como primer cajero del día, tu acción abrirá el ciclo oficial de jornada del parque y dejará operativa tu caja individual.
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Cajero Responsable</label>
+                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                            </div>
+                        </div>
+
+                        {% if not punto_venta %}
+                        <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la jornada y la caja.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-stack text-success me-1"></i> Fondo Inicial de Sencillo (Caja Individual) <span class="text-muted fw-normal small">(Opcional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text fw-bold">$</span>
+                                <input type="number" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0" oninput="limpiarCerosInicialesInput(this)">
+                                <span class="input-group-text text-muted">CLP</span>
+                            </div>
+                            <small class="text-muted">Monto físico inicial en efectivo en gaveta para dar vuelto (opcional, si lo dejas vacío inicia en $0).</small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Observaciones de Apertura</label>
+                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold" {% if not punto_venta %}disabled title="Requiere asignación de puesto de trabajo"{% endif %}>
+                            <i class="bi bi-check-circle-fill me-1"></i> Confirmar y Abrir Jornada
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: APERTURA DE CAJA INDIVIDUAL  -->
+    <div class="modal fade" id="modalAbrirCaja" tabindex="-1" aria-labelledby="modalAbrirCajaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header text-dark" style="background: linear-gradient(135deg, #facc15 0%, #eab308 100%);">
+                    <h5 class="modal-title fw-bold" id="modalAbrirCajaLabel">
+                        <i class="bi bi-cash-stack text-danger me-2"></i> Apertura de Caja Individual 
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'abrir_caja' %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            La <strong>Jornada #{{ jornada_activa.id }}</strong> ya está activa. Ingresa tu fondo de apertura para comenzar tu turno con tu propia caja individual.
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Cajero</label>
+                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                            </div>
+                        </div>
+
+                        {% if not punto_venta %}
+                        <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la caja.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-coin text-success me-1"></i> Fondo Inicial de Sencillo (Gaveta) <span class="text-muted fw-normal small">(Opcional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text fw-bold">$</span>
+                                <input type="number" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0" oninput="limpiarCerosInicialesInput(this)">
+                                <span class="input-group-text text-muted">CLP</span>
+                            </div>
+                            <small class="text-muted">Fondo en efectivo asignado para dar vuelto en esta estación (opcional, si lo dejas vacío inicia en $0).</small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Observaciones</label>
+                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-bold" {% if not punto_venta %}disabled title="Requiere asignación de puesto de trabajo"{% endif %}>
+                            <i class="bi bi-check-circle-fill me-1"></i> Habilitar Mi Caja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CIERRE DE CAJA & ARQUEO DE CUADRATURA  -->
+    {% if caja_activa %}
+    <div class="modal fade" id="modalCerrarCaja" tabindex="-1" aria-labelledby="modalCerrarCajaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #a71d1d 0%, #7f1d1d 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="modalCerrarCajaLabel">
+                            <i class="bi bi-safe2-fill text-warning me-2"></i> Cierre de Caja & Proceso de Cuadratura
+                        </h5>
+                        <small class="text-white-50">Subproceso de Arqueo y Cuadratura de Fin de Turno</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'cerrar_caja' %}" id="formCerrarCaja">
+                    {% csrf_token %}
+                    <input type="hidden" name="caja_id" value="{{ caja_activa.id }}">
+
+                    <div class="modal-body p-4" style="background-color: #fafaf9;">
+                        <!-- Resumen Informativo de Turno -->
+                        <div class="card border-0 rounded-4 shadow-xs p-3 mb-3 bg-white">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-sm-6">
+                                    <div class="small text-muted">Caja Asignada:</div>
+                                    <div class="fw-bold text-dark fs-6">
+                                        <i class="bi bi-shop text-danger me-1"></i> {{ caja_activa.nombre }}
+                                    </div>
+                                    <small class="text-muted">{{ caja_activa.punto_venta.nombre }} • Apertura: {{ caja_activa.fecha_hora_apertura|date:"H:i" }} hrs</small>
+                                </div>
+                                <div class="col-sm-6 text-sm-end">
+                                    <div class="small text-muted">Cajero(a) Responsable:</div>
+                                    <div class="fw-bold text-dark">
+                                        <i class="bi bi-person-badge text-warning me-1"></i> {{ request.user.get_full_name|default:request.user.username }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Balances Teóricos Registrados en Sistema -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <div class="p-2 rounded-3 bg-white border text-center">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">Fondo Inicial (Vuelto)</small>
+                                    <strong class="text-dark fs-6">${{ resumen_caja.monto_apertura|default:0|floatformat:0 }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded-3 bg-white border text-center">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">Ventas Efectivo</small>
+                                    <strong class="text-success fs-6">+${{ resumen_caja.ventas_efectivo|default:0|floatformat:0 }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded-3 bg-white border text-center" style="background-color: #fefce8 !important; border-color: #fde047 !important;">
+                                    <small class="text-dark fw-bold d-block" style="font-size: 0.72rem;">Total Efectivo Esperado</small>
+                                    <strong class="text-danger fs-6" id="totalEsperadoTexto">${{ resumen_caja.total_efectivo_esperado|default:0|floatformat:0 }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información Normativa Ley N° 20.956 -->
+                        <div class="alert alert-light border rounded-3 p-3 mb-3" style="background-color: #f8fafc; border-left: 4px solid var(--safari-red) !important;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-info-circle-fill text-danger fs-5 mt-1"></i>
+                                <div class="small">
+                                    <strong>Normativa Oficial & Eventos Promocionales:</strong>
+                                    <div class="text-muted mt-1">
+                                        • Según la <strong>Ley N° 20.956</strong> del Banco Central de Chile, las monedas de $1 y $5 salieron del cono monetario legal; el sistema las acepta y cuadra físicamente para eventos promocionales especiales (ej: segunda unidad a $1 peso).<br>
+                                        • El efectivo recaudado ya incluye la regla de redondeo (1 al 4 hacia abajo, 5 al 9 hacia arriba) aplicada a cada venta.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grilla de Conteo Físico: Billetes y Monedas -->
+                        <h6 class="fw-bold text-dark mb-2">
+                            <i class="bi bi-cash-stack text-success me-1"></i> Arqueo Físico de Efectivo en Gaveta:
+                        </h6>
+
+                        <div class="row g-3">
+                            <!-- Columna 1: Billetes -->
+                            <div class="col-md-6">
+                                <div class="card border rounded-3 p-3 bg-white h-100">
+                                    <div class="fw-bold small text-dark border-bottom pb-2 mb-2 d-flex justify-content-between align-items-center">
+                                        <span><i class="bi bi-cash me-1 text-primary"></i> Billetes</span>
+                                        <span class="badge bg-light text-muted border">Unidades</span>
+                                    </div>
+
+                                    <!-- Billetes $20.000 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="b_20000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$20.000:</label>
+                                        <input type="number" min="0" step="1" name="billetes_20000" id="b_20000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="20000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_b_20000" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Billetes $10.000 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="b_10000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10.000:</label>
+                                        <input type="number" min="0" step="1" name="billetes_10000" id="b_10000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_b_10000" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Billetes $5.000 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="b_5000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$5.000:</label>
+                                        <input type="number" min="0" step="1" name="billetes_5000" id="b_5000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_b_5000" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Billetes $2.000 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="b_2000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$2.000:</label>
+                                        <input type="number" min="0" step="1" name="billetes_2000" id="b_2000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="2000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_b_2000" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Billetes $1.000 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                        <label for="b_1000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$1.000:</label>
+                                        <input type="number" min="0" step="1" name="billetes_1000" id="b_1000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_b_1000" style="min-width: 80px;">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Columna 2: Monedas -->
+                            <div class="col-md-6">
+                                <div class="card border rounded-3 p-3 bg-white h-100">
+                                    <div class="fw-bold small text-dark border-bottom pb-2 mb-2 d-flex justify-content-between align-items-center">
+                                        <span><i class="bi bi-coin me-1 text-warning"></i> Monedas</span>
+                                        <span class="badge bg-light text-muted border">Unidades</span>
+                                    </div>
+
+                                    <!-- Monedas $500 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="m_500" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$500:</label>
+                                        <input type="number" min="0" step="1" name="monedas_500" id="m_500" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="500" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_500" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Monedas $100 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="m_100" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$100:</label>
+                                        <input type="number" min="0" step="1" name="monedas_100" id="m_100" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="100" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_100" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Monedas $50 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="m_50" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$50:</label>
+                                        <input type="number" min="0" step="1" name="monedas_50" id="m_50" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="50" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_50" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Monedas $10 -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="m_10" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10:</label>
+                                        <input type="number" min="0" step="1" name="monedas_10" id="m_10" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_10" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Monedas $5 (Promos/Eventos) -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="m_5" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
+                                            $5 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
+                                        </label>
+                                        <input type="number" min="0" step="1" name="monedas_5" id="m_5" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_5" style="min-width: 80px;">$0</span>
+                                    </div>
+
+                                    <!-- Monedas $1 (Promos/Eventos) -->
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                        <label for="m_1" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
+                                            $1 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
+                                        </label>
+                                        <input type="number" min="0" step="1" name="monedas_1" id="m_1" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <span class="small text-muted text-end" id="sub_m_1" style="min-width: 80px;">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta de Resultado de Cuadratura en Vivo -->
+                        <div class="card border-0 rounded-4 shadow-sm p-3 my-3" style="background-color: #ffffff; border: 2px solid #e2e8f0;">
+                            <div class="row align-items-center text-center text-md-start">
+                                <div class="col-md-4 mb-2 mb-md-0">
+                                    <small class="text-muted fw-bold d-block text-uppercase" style="font-size: 0.72rem;">Total Físico Contado</small>
+                                    <div class="fs-4 fw-bold text-dark" id="displayTotalContado">$0</div>
+                                </div>
+                                <div class="col-md-4 mb-2 mb-md-0">
+                                    <small class="text-muted fw-bold d-block text-uppercase" style="font-size: 0.72rem;">Total Teórico Esperado</small>
+                                    <div class="fs-5 fw-bold text-muted" id="displayTotalEsperado">${{ resumen_caja.total_efectivo_esperado|default:0|floatformat:0 }}</div>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <div id="badgeResultadoCuadre" class="badge bg-secondary fs-6 px-3 py-2">
+                                        Ingresa el efectivo
+                                    </div>
+                                    <div class="small fw-bold text-muted mt-1" id="detalleDiferenciaCuadre">
+                                        Diferencia: $0 CLP
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Observaciones de Cierre -->
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">
+                                Observaciones de Cierre / Justificación (Opcional):
+                            </label>
+                            <textarea name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Cuadratura conforme. Sin incidencias de gaveta."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light p-3 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" onclick="confirmarCierreCaja()">
+                            <i class="bi bi-lock-fill me-1"></i> Confirmar Arqueo y Cerrar Caja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pie de página -->
+    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
+        <div class="container d-flex align-items-center justify-content-center gap-2">
+            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+            <span class="text-muted">
+                <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
+            </span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 CDN + Configuración Safari con Botones Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'js/global/safari_alerts.js' %}"></script>
+    <!-- Script de Protección contra Doble Envío -->
+    <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
+    
+    <!-- MODAL ANTI-FRAUDE: ANULACIÓN DE VENTA CON SUPERVISIÓN -->
+    <div class="modal fade" id="modalAnularVenta" tabindex="-1" aria-labelledby="modalAnularVentaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold" id="modalAnularVentaLabel">
+                        <i class="bi bi-shield-lock-fill me-2"></i> Anulación de Venta (Anti-Fraude)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formAnularVenta" method="POST" action="" autocomplete="off">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Protocolo Anti-Fraude:</strong> La anulación revierte el registro contable y queda asentada en la auditoría del Administrador con marca temporal y usuario responsable.
+                        </div>
+
+                        <div class="bg-light p-3 rounded-3 mb-3 border">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">Venta Seleccionada:</span>
+                                <strong id="lblVentaId" class="text-dark">#0</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="text-muted small">Monto a Revertir:</span>
+                                <strong id="lblVentaTotal" class="text-danger">$0 CLP</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">
+                                Motivo de la Anulación <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5"></textarea>
+                            <div class="form-text small">Obligatorio (mínimo 5 caracteres) para registro de auditoría.</div>
+                        </div>
+
+                        <div class="border-top pt-3 mt-3">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-key-fill text-danger"></i>
+                                <span class="small fw-bold text-dark">Autorización de Supervisor Requerida</span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                Ingrese las credenciales de un usuario con perfil de <strong>ADMINISTRADOR</strong> para visar esta anulación:
+                            </p>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Usuario Administrador</label>
+                                    <input type="text" name="supervisor_username" class="form-control form-control-sm" placeholder="ej: rgomez" required autocomplete="off">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Contraseña</label>
+                                    <input type="password" name="supervisor_password" class="form-control form-control-sm" placeholder="••••••••" required autocomplete="new-password" data-lpignore="true">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0 p-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                            <i class="bi bi-check2-circle me-1"></i> Confirmar Anulación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Overlay de Bloqueo Rápido de Caja POS (Ezio Auditore - Terminal Compartido) -->
+    <div id="safariPosLockOverlay" class="safari-pos-lock-overlay d-none">
+        <div class="safari-pos-lock-card text-center">
+            <div class="lock-icon-circle mb-3">
+                <i class="bi bi-shield-lock-fill text-danger"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Terminal de Caja Protegido</h5>
+            <p class="text-muted small mb-1">Ingresa tu PIN de seguridad (4 dígitos) para operar</p>
+            <div class="badge bg-secondary-subtle text-dark border px-3 py-1 mb-3">
+                <i class="bi bi-person-badge me-1"></i> Cajero: {{ request.user.get_full_name|default:request.user.username }}
+            </div>
+
+            <!-- Visualizador de PIN Oculto (Cumple Regla Seguridad Contraseñas) -->
+            <div class="lock-pin-display mb-2">
+                <span class="pin-dot" id="pinDot0"></span>
+                <span class="pin-dot" id="pinDot1"></span>
+                <span class="pin-dot" id="pinDot2"></span>
+                <span class="pin-dot" id="pinDot3"></span>
+            </div>
+
+            <div id="pinErrorMessage" class="text-danger small fw-bold mb-2 invisible">
+                PIN incorrecto. Intenta de nuevo.
+            </div>
+
+            <!-- Teclado Numérico Táctil -->
+            <div class="lock-keypad">
+                <button type="button" class="btn-key" data-digit="1">1</button>
+                <button type="button" class="btn-key" data-digit="2">2</button>
+                <button type="button" class="btn-key" data-digit="3">3</button>
+                <button type="button" class="btn-key" data-digit="4">4</button>
+                <button type="button" class="btn-key" data-digit="5">5</button>
+                <button type="button" class="btn-key" data-digit="6">6</button>
+                <button type="button" class="btn-key" data-digit="7">7</button>
+                <button type="button" class="btn-key" data-digit="8">8</button>
+                <button type="button" class="btn-key" data-digit="9">9</button>
+                <button type="button" class="btn-key btn-key-action text-danger" id="btnPinClear">C</button>
+                <button type="button" class="btn-key" data-digit="0">0</button>
+                <button type="button" class="btn-key btn-key-action text-primary" id="btnPinBackspace"><i class="bi bi-backspace"></i></button>
+            </div>
+
+            <div class="mt-3">
+                <small class="text-muted d-block" style="font-size: 0.75rem;">
+                    * PIN por defecto: <strong>1234</strong> (o últimos 4 dígitos de tu RUT).
+                </small>
+                <a href="{% url 'logout' %}" class="btn btn-link btn-sm text-danger mt-1 text-decoration-none" style="font-size: 0.78rem;">
+                    <i class="bi bi-box-arrow-left me-1"></i> Cerrar sesión del cajero
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+
+    <input type="hidden" id="csrfTokenVendedorGlobal" value="{{ csrf_token }}">
+    <script id="pedidosCajeroData" type="application/json">{{ pedidos_cajero_json|safe }}</script>
+
+    <script id="vendedorConfigData" type="application/json">
+    {
+        "urlCambiarEstadoPedido": "{% url 'cambiar_estado_pedido' %}",
+        "urlVendedor": "{% url 'vendedor' %}",
+        "cajaActiva": {% if caja_activa %}true{% else %}false{% endif %},
+        "esperadoEfectivo": {{ resumen_caja.total_efectivo_esperado|default:0|floatformat:"0u" }}
+    }
+    </script>
+    <script src="{% static 'js/cajero/vendedor.js' %}"></script>
+</body>
+</html>

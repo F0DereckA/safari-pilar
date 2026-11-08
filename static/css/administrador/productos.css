@@ -1,0 +1,36 @@
+/* ==========================================================================
+   Administrador: Catálogo Centralizado de Productos - Parque Safari
+   ========================================================================== */
+
+.prod-card {
+    border-radius: 1rem;
+    border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
+    background: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.prod-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(92, 66, 48, 0.08);
+    border-color: var(--safari-cafe-medium, #cbbba6);
+}
+.badge-cat {
+    background-color: var(--status-warning-bg, #fef3c7);
+    color: var(--status-warning-text, #92400e);
+    border: 1px solid var(--status-warning-border, #fde68a);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.btn-safari-header {
+    background-color: #ffffff !important;
+    border: 1.5px solid #a71d1d !important;
+    color: #a71d1d !important;
+    box-shadow: 0 0 10px rgba(167, 29, 29, 0.28), 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.25s ease-in-out !important;
+    text-decoration: none !important;
+}
+.btn-safari-header:hover {
+    background-color: #fff4f2 !important;
+    border-color: #821414 !important;
+    color: #821414 !important;
+    transform: translateY(-1.5px) !important;
+}

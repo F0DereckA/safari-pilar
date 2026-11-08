@@ -1,0 +1,16 @@
+/* ==========================================================================
+   Consumos Internos del Personal y Fiados (RF10) - Zona Administrador
+   ========================================================================== */
+
+.font-oswald {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+}
+
+.consumo-kpi-box {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.consumo-kpi-box:hover {
+    transform: translateY(-2px);
+}

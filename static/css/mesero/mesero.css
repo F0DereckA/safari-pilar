@@ -1,0 +1,781 @@
+/* ==========================================================================
+   Módulo de Meseros - Safari Pilar (Venta_safari)
+   Estilos específicos para Asignación de Mesas, Pedidos y Tickets por Zona
+   ========================================================================== */
+
+/* Header y Barra de Estado del Mesero */
+.mesero-badge {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid #86efac;
+}
+
+.mesero-top-bar {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 14px rgba(92, 66, 48, 0.06);
+    margin-bottom: 24px;
+}
+
+/* Tarjetas de Mesas */
+.mesa-card {
+    background-color: #ffffff;
+    border: 2.5px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    padding: 18px;
+    transition: all 0.22s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.mesa-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(92, 66, 48, 0.15);
+}
+
+.mesa-card.mesa-libre {
+    border-color: #22c55e;
+    background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.mesa-card.mesa-libre:hover {
+    border-color: #16a34a;
+    box-shadow: 0 8px 24px rgba(34, 197, 94, 0.2);
+}
+
+/* Mesa en proceso de consumo / atención -> Amarillo */
+.mesa-card.mesa-ocupada {
+    border-color: var(--safari-yellow, #f59e0b);
+    background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.mesa-card.mesa-ocupada:hover {
+    border-color: var(--safari-yellow-dark, #d97706);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
+}
+
+.mesa-card.mesa-reservada {
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+}
+
+/* Mesa inactiva / fuera de servicio -> Rojo */
+.mesa-card.mesa-inactiva {
+    border-color: var(--safari-red, #ef4444);
+    background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
+    opacity: 0.75;
+}
+
+.mesa-card.mesa-seleccionada {
+    border-color: var(--safari-red) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fff4f2 100%) !important;
+    box-shadow: 0 0 0 4px rgba(167, 29, 29, 0.25) !important;
+}
+
+.mesa-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--safari-cafe-deep);
+}
+
+.mesa-capacidad {
+    background-color: var(--safari-cafe-pastel);
+    color: var(--safari-cafe-dark);
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Selector Rápido de Comensales */
+.btn-comensal {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--safari-cafe-medium);
+    background-color: #ffffff;
+    color: var(--safari-cafe-deep);
+    transition: all 0.2s ease;
+}
+
+.btn-comensal:hover, .btn-comensal.active {
+    background-color: var(--safari-red);
+    color: #ffffff;
+    border-color: var(--safari-red-dark);
+    box-shadow: 0 3px 8px rgba(167, 29, 29, 0.3);
+}
+
+/* Badges de Destino Operativo (Cocina vs Barra) */
+.badge-dest-cocina {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.badge-dest-barra {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.badge-dest-salon {
+    background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* Tarjeta de Producto para Mesero */
+.product-mesero-card {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.product-mesero-card:hover {
+    border-color: var(--safari-yellow-dark);
+    box-shadow: 0 6px 18px rgba(92, 66, 48, 0.1);
+    transform: translateY(-2px);
+}
+
+.product-mesero-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: var(--safari-cafe-deep);
+}
+
+.product-mesero-price {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--safari-red);
+}
+
+/* Controles de Cantidad Rápidos */
+.qty-control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    border: 2px solid var(--safari-cafe-medium);
+    background-color: #ffffff;
+    color: var(--safari-cafe-deep);
+    transition: all 0.2s ease;
+}
+
+.qty-control-btn:hover {
+    background-color: var(--safari-yellow);
+    border-color: var(--safari-yellow-dark);
+    color: var(--safari-cafe-deep);
+}
+
+.qty-display {
+    width: 38px;
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+/* Panel Lateral de Comanda */
+.comanda-mesero-panel {
+    background-color: #ffffff;
+    border: 2px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(92, 66, 48, 0.08);
+    position: sticky;
+    top: 20px;
+}
+
+.comanda-header {
+    border-bottom: 2px dashed var(--safari-cafe-medium);
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+}
+
+.btn-despachar-comanda {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    color: #ffffff !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 14px 20px;
+    border-radius: 30px;
+    border: 2px solid #86efac;
+    box-shadow: 0 4px 16px rgba(22, 101, 52, 0.35);
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.btn-despachar-comanda:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    box-shadow: 0 6px 22px rgba(22, 101, 52, 0.45);
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Simulación Auténtica de Tickets Térmicos de 8 cm (80mm) - B&W Sin Emojis
+   Basado en formato real POS de Parque Safari Chile (Soft Restaurant)
+   ========================================================================== */
+.thermal-ticket-card {
+    width: 80mm;
+    max-width: 320px;
+    margin: 0 auto 20px auto;
+    background-color: #ffffff;
+    color: #000000;
+    font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+    font-size: 12.5px;
+    line-height: 1.35;
+    padding: 18px 14px 22px 14px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+    position: relative;
+    border-left: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+}
+
+/* Bordes dentados / corte de papel térmico (sawtooth) arriba y abajo */
+.thermal-ticket-card::before {
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: 0;
+    width: 100%;
+    height: 7px;
+    background: linear-gradient(135deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%),
+                linear-gradient(45deg, #ffffff 33.333%, transparent 33.333%, transparent 66.667%, #ffffff 66.667%);
+    background-size: 10px 7px;
+}
+
+.thermal-ticket-card::after {
+    content: "";
+    position: absolute;
+    bottom: -7px;
+    left: 0;
+    width: 100%;
+    height: 7px;
+    background: linear-gradient(135deg, #ffffff 33.333%, transparent 33.333%, transparent 66.667%, #ffffff 66.667%),
+                linear-gradient(45deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%);
+    background-size: 10px 7px;
+}
+
+/* Cabecera del ticket */
+.thermal-ticket-header {
+    text-align: center;
+    color: #000000;
+    margin-bottom: 8px;
+}
+
+.thermal-header-company {
+    font-size: 14.5px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.thermal-header-sub {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.thermal-header-tax {
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.thermal-header-addr {
+    font-size: 10px;
+    line-height: 1.25;
+    margin: 3px 0;
+    color: #111111;
+}
+
+.thermal-header-loc {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.thermal-ticket-role-title {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+    text-align: center;
+    padding: 3px 0;
+    text-transform: uppercase;
+}
+
+/* Divisores térmicos estándar de 80mm */
+.thermal-divider-double {
+    font-size: 10px;
+    letter-spacing: -0.5px;
+    color: #000000;
+    text-align: center;
+    user-select: none;
+    line-height: 1;
+    margin: 4px 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.thermal-divider-single {
+    font-size: 10px;
+    letter-spacing: -0.5px;
+    color: #000000;
+    text-align: center;
+    user-select: none;
+    line-height: 1;
+    margin: 4px 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Metadatos del ticket */
+.thermal-ticket-meta {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: #000000;
+    margin: 4px 0;
+}
+
+.thermal-ticket-meta div {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Encabezados de columna de ítems */
+.thermal-items-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    padding: 2px 0;
+}
+
+/* Ítems del pedido */
+.thermal-items-body {
+    margin: 4px 0;
+}
+
+.thermal-ticket-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.thermal-ticket-qty {
+    font-weight: 900;
+    min-width: 22px;
+}
+
+.thermal-ticket-name {
+    font-weight: 700;
+    flex-grow: 1;
+    text-transform: uppercase;
+}
+
+/* Nota de preparación térmica: 100% Blanco y Negro, sin emojis */
+.thermal-ticket-note {
+    font-size: 11px;
+    font-weight: 700;
+    color: #000000;
+    padding: 1px 0 3px 28px;
+    margin-bottom: 4px;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+/* Totales y resumen */
+.thermal-ticket-totals {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 0;
+}
+
+/* Pie del ticket */
+.thermal-ticket-footer {
+    text-align: center;
+    font-size: 10.5px;
+    line-height: 1.35;
+    margin-top: 6px;
+    color: #000000;
+}
+
+/* Soporte oficial para impresión directa en comanderas térmicas de 80mm */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #modalTickets, #modalTickets .modal-dialog, #modalTickets .modal-content, #modalTickets .modal-body, #modalTickets .thermal-ticket-card, #modalTickets .thermal-ticket-card * {
+        visibility: visible !important;
+    }
+    #modalTickets {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .modal-header, .modal-footer, .alert, .modal-backdrop {
+        display: none !important;
+    }
+    #modalTickets .row {
+        display: block !important;
+        margin: 0 !important;
+    }
+    #modalTickets .col-md-6 {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    #colTicketCocina[style*="none"],
+    #colTicketBarra[style*="none"],
+    .d-none {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    .thermal-ticket-card {
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 auto 15mm auto !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always !important;
+    }
+    .thermal-ticket-card::before,
+    .thermal-ticket-card::after {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
+   Botón de Nota Especial - Prominente, Táctil y con Feedback Visual
+   ========================================================================== */
+.btn-nota-plato {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: #ffffff;
+    border: 1.5px solid var(--safari-cafe-medium);
+    color: var(--safari-cafe-deep);
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    min-height: 38px;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-nota-plato:hover {
+    background-color: #fff1f2;
+    border-color: #dc3545;
+    color: #dc3545;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(220, 53, 69, 0.15);
+}
+
+.btn-nota-plato.tiene-nota {
+    background-color: #fef2f2 !important;
+    border-color: #dc3545 !important;
+    color: #b91c1c !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25) !important;
+    font-weight: 800;
+}
+
+.btn-nota-plato.tiene-nota i {
+    color: #b91c1c !important;
+}
+
+/* Nota dentro de la Comanda en Vivo */
+.comanda-item-nota {
+    background-color: #fff5f5;
+    border-left: 3px solid #dc3545;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: #991b1b;
+}
+
+/* ==========================================================================
+   Adaptación Móvil Dinámica para Meseros (Smartphone Friendly < 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* Header compacto */
+    .safari-header {
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    .brand-text-main {
+        font-size: 1.15rem !important;
+    }
+
+    .brand-text-sub {
+        display: none !important;
+    }
+
+    .mesero-top-bar {
+        padding: 12px 14px;
+        margin-bottom: 16px;
+    }
+
+    /* Carrusel táctil horizontal para el Mapa de Mesas */
+    .mesas-scroll-container {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        gap: 12px !important;
+        padding-bottom: 10px !important;
+        margin-left: -6px;
+        margin-right: -6px;
+        padding-left: 6px;
+        padding-right: 6px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+    }
+
+    .mesas-scroll-container .col-6,
+    .mesas-scroll-container .col-sm-4,
+    .mesas-scroll-container .col-md-3 {
+        flex: 0 0 145px !important;
+        max-width: 145px !important;
+        scroll-snap-align: start;
+    }
+
+    .mesa-card {
+        padding: 12px 10px;
+        border-radius: 14px;
+    }
+
+    .mesa-title {
+        font-size: 1.2rem;
+    }
+
+    /* Pestañas de Categoría con Scroll Horizontal táctil sin saltos */
+    .filter-cat-scroll {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        gap: 8px !important;
+        padding-bottom: 6px !important;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+
+    .filter-cat-btn {
+        flex: 0 0 auto !important;
+        font-size: 0.8rem !important;
+        padding: 6px 12px !important;
+    }
+
+    /* Tarjetas de Producto táctiles y optimizadas */
+    .product-mesero-card {
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    .product-mesero-title {
+        font-size: 1rem;
+    }
+
+    .product-mesero-price {
+        font-size: 1.15rem;
+    }
+
+    .qty-control-btn {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.1rem;
+    }
+
+    .btn-nota-plato {
+        padding: 6px 12px;
+        min-height: 40px;
+        font-size: 0.82rem;
+    }
+
+    /* Espacio inferior para evitar que la barra flotante tape contenido */
+    body {
+        padding-bottom: 80px;
+    }
+}
+
+/* ==========================================================================
+   Barra Flotante Inferior de Comanda en Celulares (Mobile Bottom Bar)
+   ========================================================================== */
+.mobile-comanda-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-top: 2px solid var(--safari-cafe-medium);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    padding: 10px 16px;
+    z-index: 1040;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.mobile-comanda-bar .total-comanda-pill {
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-comanda-bar .total-comanda-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.mobile-comanda-bar .total-comanda-monto {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+}
+
+.mobile-comanda-bar .btn-ver-comanda-flotante {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    color: #ffffff;
+    border: 1.5px solid #86efac;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 8px 18px;
+    border-radius: 24px;
+    box-shadow: 0 3px 10px rgba(22, 101, 52, 0.3);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==========================================================================
+   Modo Sol / Alto Contraste Exterior (Aloy - Ergonomía Móvil Salón)
+   ========================================================================== */
+body.safari-modo-sol {
+    background-color: #f8fafc !important;
+    color: #000000 !important;
+}
+
+body.safari-modo-sol .mesa-card {
+    border-width: 3.5px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.safari-modo-sol .mesa-card.mesa-libre {
+    border-color: #15803d !important;
+    background: #ffffff !important;
+}
+
+body.safari-modo-sol .mesa-card.mesa-ocupada {
+    border-color: #b45309 !important;
+    background: #fffbeb !important;
+}
+
+body.safari-modo-sol .mesa-card .mesa-numero {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+body.safari-modo-sol .product-card-pos {
+    border: 2.5px solid #000000 !important;
+    background-color: #ffffff !important;
+}
+
+body.safari-modo-sol .product-card-pos .product-title {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+body.safari-modo-sol .product-card-pos .product-price {
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+    font-size: 1.25rem !important;
+}
+
+body.safari-modo-sol .comanda-sidebar {
+    border-left: 3px solid #000000 !important;
+    background: #ffffff !important;
+}
+
+body.safari-modo-sol .btn-modo-sol {
+    background-color: #f59e0b !important;
+    color: #000000 !important;
+    border-color: #d97706 !important;
+}
+

@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Administrador: Vista Detallada de Punto de Venta (Local) - Parque Safari
+   ========================================================================== */
+
+.btn-safari-header {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-safari-header:hover,
+.btn-safari-header:focus {
+    background-color: #fff4f2 !important;
+    border-color: var(--safari-red-dark, #821414) !important;
+    color: var(--safari-red-dark, #821414) !important;
+    box-shadow: 0 0 16px rgba(167, 29, 29, 0.48), 0 4px 12px rgba(167, 29, 29, 0.22) !important;
+    transform: translateY(-1.5px) !important;
+}
+.btn-safari-header i {
+    transition: transform 0.2s ease;
+}
+.btn-safari-header:hover i,
+.btn-safari-header:focus i {
+    transform: scale(1.15);
+}

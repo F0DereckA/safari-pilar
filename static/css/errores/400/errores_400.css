@@ -1,0 +1,141 @@
+/* ==========================================================================
+   Estilos Zona Errores Cliente HTTP 4xx (400, 401, 403, 404) - Parque Safari
+   ========================================================================== */
+
+body.error-page {
+    background-color: #f8fafc;
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.error-card {
+    background: #ffffff;
+    border: none;
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.btn-safari {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.btn-safari:hover {
+    background-color: #991b1b;
+    border-color: #991b1b;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+/* --- HTTP 400: Bad Request --- */
+.error-page-400 .error-header-strip-400 {
+    height: 6px;
+    background: linear-gradient(90deg, #eab308, #ea580c, #b91c1c);
+}
+
+.error-page-400 .error-code-400 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 6.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    color: #d97706;
+    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.18);
+}
+
+.warning-icon {
+    font-size: 4rem;
+    color: #ea580c;
+    animation: pulse-warn 3s ease-in-out infinite;
+}
+
+@keyframes pulse-warn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* --- HTTP 401: Unauthorized --- */
+.error-page-401 .error-header-strip {
+    height: 6px;
+    background: linear-gradient(90deg, #d97706, #b45309, #78350f);
+}
+
+.error-page-401 .error-code {
+    font-family: 'Oswald', sans-serif;
+    font-size: 6.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    color: #d97706;
+    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.15);
+}
+
+.lock-icon {
+    font-size: 4rem;
+    color: #d97706;
+    animation: pulse-lock 3s ease-in-out infinite;
+}
+
+@keyframes pulse-lock {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* --- HTTP 403: Forbidden --- */
+.error-page-403 .error-header-strip-403 {
+    height: 6px;
+    background: linear-gradient(90deg, #dc2626, #ea580c, #7c3aed);
+}
+
+.error-page-403 .error-code-403 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 6.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    color: #dc2626;
+    text-shadow: 2px 4px 10px rgba(220, 38, 38, 0.18);
+}
+
+.shield-icon {
+    font-size: 4rem;
+    color: #ea580c;
+    animation: pulse-shield 3s ease-in-out infinite;
+}
+
+@keyframes pulse-shield {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* --- HTTP 404: Not Found --- */
+.error-page-404 .error-header-strip {
+    height: 6px;
+    background: linear-gradient(90deg, #b91c1c, #d97706, #047857);
+}
+
+.error-page-404 .error-code {
+    font-family: 'Oswald', sans-serif;
+    font-size: 6.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    color: #b91c1c;
+    text-shadow: 2px 4px 10px rgba(185, 28, 28, 0.15);
+}
+
+.compass-icon {
+    font-size: 4rem;
+    color: #d97706;
+    animation: pulse-compass 3s ease-in-out infinite;
+}
+
+@keyframes pulse-compass {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.08) rotate(15deg); }
+}

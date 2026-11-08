@@ -1,0 +1,23 @@
+/* ==========================================================================
+   Administrador: Convenios Huéspedes y Cabañas - Parque Safari
+   ========================================================================== */
+
+.card-safari {
+    border-radius: 1rem;
+    border: 1.5px solid var(--safari-cafe-pastel, #ede4d3);
+    background: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-safari:hover {
+    box-shadow: 0 8px 24px rgba(92, 66, 48, 0.08);
+}
+.qr-code-pill {
+    font-family: monospace;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px dashed #cbd5e1;
+}

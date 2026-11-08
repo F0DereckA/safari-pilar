@@ -1,0 +1,84 @@
+/* ==========================================================================
+   Administrador: Centro Unificado de Gestión - Parque Safari
+   ========================================================================== */
+
+.kpi-gestion-card {
+    background: #ffffff;
+    border-radius: 1.25rem;
+    border: 1.5px solid var(--safari-cafe-medium);
+    padding: 1.25rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+.kpi-gestion-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+.nav-pills-safari {
+    background: #f8fafc;
+    padding: 0.5rem;
+    border-radius: 50rem;
+    border: 1.5px solid var(--safari-cafe-medium);
+}
+.nav-pills-safari .nav-link {
+    border-radius: 50rem;
+    font-weight: 700;
+    padding: 0.65rem 1.4rem;
+    color: #475569;
+    transition: all 0.25s ease;
+    border: none;
+}
+.nav-pills-safari .nav-link:hover {
+    color: #a71d1d;
+    background: rgba(167, 29, 29, 0.06);
+}
+.nav-pills-safari .nav-link.active {
+    background: linear-gradient(135deg, #a71d1d 0%, #7f1d1d 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(167, 29, 29, 0.3);
+}
+.search-field-live {
+    border-radius: 50rem;
+    padding: 0.6rem 1.2rem;
+    border: 1.5px solid var(--safari-cafe-medium);
+    font-size: 0.92rem;
+    transition: all 0.2s ease;
+}
+.search-field-live:focus {
+    border-color: #a71d1d;
+    box-shadow: 0 0 0 0.25rem rgba(167, 29, 29, 0.15);
+}
+.table-safari th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    font-weight: 700;
+    background-color: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 0.85rem 1rem;
+}
+.table-safari td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+}
+.table-safari tr:hover td {
+    background-color: #fbfcfe;
+}
+.badge-status {
+    padding: 0.35rem 0.75rem;
+    border-radius: 50rem;
+    font-weight: 600;
+    font-size: 0.78rem;
+}
+.mesa-tile-card {
+    border-radius: 1rem;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+.mesa-tile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
