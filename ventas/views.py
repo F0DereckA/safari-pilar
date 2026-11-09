@@ -3644,6 +3644,7 @@ def crear_ticket(request):
 
             'desc_oferta': p.descripcion_oferta or '',
             'limite_oferta_por_ticket': getattr(p, 'limite_oferta_por_ticket', 0),
+            'cantidad_minima_oferta': getattr(p, 'cantidad_minima_oferta', 2),
         })
 
 
@@ -8119,7 +8120,9 @@ def cocina(request):
 
     # Filtro por destino/zona: 'TODAS', 'COCINA', 'BARRA'
 
-    zona_filtro = request.GET.get('zona', 'TODAS').upper()
+    # Regla estricta de aislamiento Cocina vs Barra:
+    # La pantalla de Cocina opera exclusivamente sobre productos destinados a Cocina Caliente/Elaboración.
+    zona_filtro = 'COCINA'
 
 
 
@@ -8203,27 +8206,12 @@ def cocina(request):
 
 
 
-        if zona_filtro == 'COCINA' and not tiene_cocina:
-
+        if not tiene_cocina:
             continue
 
-        elif zona_filtro == 'BARRA' and not tiene_barra:
-
+        items_filtrados = [it for it in items_pedido if it['destino'] == 'COCINA']
+        if not items_filtrados:
             continue
-
-
-
-        if zona_filtro == 'COCINA':
-
-            items_filtrados = [it for it in items_pedido if it['destino'] == 'COCINA']
-
-        elif zona_filtro == 'BARRA':
-
-            items_filtrados = [it for it in items_pedido if it['destino'] == 'BARRA']
-
-        else:
-
-            items_filtrados = items_pedido
 
 
 
@@ -9731,6 +9719,9 @@ def administrador_ofertas_temporada(request):
                 messages.error(request, "Debe especificar la fecha de término de la campaña.")
                 return redirect('administrador_ofertas_temporada')
 
+            prod_esp_id = request.POST.get('producto_especifico')
+            producto_especifico_obj = Producto.objects.filter(id=prod_esp_id).first() if prod_esp_id else None
+
             OfertaTemporada.objects.create(
                 nombre=nombre,
                 descripcion=descripcion,
@@ -9744,7 +9735,8 @@ def administrador_ofertas_temporada(request):
                 fecha_inicio=fecha_inicio,
                 fecha_fin=fecha_fin,
                 activa=activa,
-                categoria_aplicable=categoria_obj
+                categoria_aplicable=categoria_obj,
+                producto_especifico=producto_especifico_obj
             )
             messages.success(request, f"Campaña '{nombre}' creada y configurada exitosamente.")
             return redirect('administrador_ofertas_temporada')
@@ -9770,6 +9762,8 @@ def administrador_ofertas_temporada(request):
 
             cat_id = request.POST.get('categoria_aplicable')
             o.categoria_aplicable = Categoria.objects.filter(id=cat_id).first() if cat_id else None
+            prod_esp_id = request.POST.get('producto_especifico')
+            o.producto_especifico = Producto.objects.filter(id=prod_esp_id).first() if prod_esp_id else None
 
             o.save()
             messages.success(request, f"Campaña '{o.nombre}' actualizada exitosamente.")
@@ -9840,6 +9834,32 @@ def administrador_ofertas_temporada(request):
                 prod.descuento_pct = val_pct
                 if not descripcion_oferta:
                     descripcion_oferta = f"{val_pct}% Descuento Especial"
+            elif tipo_oferta == 'SEGUNDA_PCT':
+                try:
+                    val_pct = Decimal(str(descuento_pct_raw or '50'))
+                except Exception:
+                    val_pct = Decimal('50')
+                prod.descuento_pct = val_pct
+                if not descripcion_oferta:
+                    descripcion_oferta = f"Segunda unidad con {val_pct:,.0f}% de descuento"
+            elif tipo_oferta == 'LLEVA_2_POR':
+                try:
+                    val_pack = Decimal(str(precio_oferta_raw or (prod.precio_base * Decimal('1.5'))))
+                except Exception:
+                    val_pack = prod.precio_base * Decimal('1.5')
+                prod.precio_oferta = val_pack
+                if not descripcion_oferta:
+                    descripcion_oferta = f"Pack 2 por ${val_pack:,.0f} CLP"
+            elif tipo_oferta == 'CANTIDAD_MINIMA':
+                try:
+                    val_unit = Decimal(str(precio_oferta_raw or prod.precio_base))
+                except Exception:
+                    val_unit = prod.precio_base
+                min_cant = max(2, int(request.POST.get('cantidad_minima_oferta', '2') or '2'))
+                prod.precio_oferta = val_unit
+                prod.cantidad_minima_oferta = min_cant
+                if not descripcion_oferta:
+                    descripcion_oferta = f"Desde {min_cant} un. a ${val_unit:,.0f} c/u"
 
             prod.descripcion_oferta = descripcion_oferta
             prod.save()
@@ -10542,20 +10562,29 @@ def api_sincronizacion_estado(request):
 
 
 
-    mesas_ocupadas = Mesa.objects.filter(punto_venta=local_actual, estado='OCUPADA').count()
+    # Firma reactiva de mesas: refleja cualquier cambio (LIBRE, OCUPADA, SUCIA, RESERVADA)
+    mesas_loc = list(Mesa.objects.filter(punto_venta=local_actual).order_by('id').values('id', 'estado'))
+    mesas_ocupadas = sum(1 for m in mesas_loc if m['estado'] == 'OCUPADA')
+    mesas_sig = "-".join(f"{m['id']}:{m['estado']}" for m in mesas_loc)
 
-    ultimo_ped = pedidos_qs.order_by('-actualizado_en').values_list('actualizado_en', flat=True).first()
+    # Firma reactiva de cuentas abiertas de salón (conteo y suma de deuda)
+    ventas_abiertas = Venta.objects.filter(punto_venta=local_actual, estado='ABIERTA')
+    ventas_abiertas_count = ventas_abiertas.count()
+    ventas_abiertas_sum = int(ventas_abiertas.aggregate(total=models.Sum('total'))['total'] or 0)
 
-    ts_ped = int(ultimo_ped.timestamp()) if ultimo_ped else 0
+    # Última venta (pagada, ronda agregada o modificada)
+    ult_venta = Venta.objects.filter(punto_venta=local_actual, fecha_hora__date=hoy).order_by('-id').first()
+    venta_sig = f"{ult_venta.id}:{ult_venta.estado}:{int(ult_venta.total)}" if ult_venta else "0"
+
+    # Último pedido modificado en general (incluyendo ENTREGADO para actualizar campana de listos)
+    ult_ped_general = Pedido.objects.filter(venta__punto_venta=local_actual, creado_en__date=hoy).order_by('-actualizado_en').first()
+    ts_ped = int(ult_ped_general.actualizado_en.timestamp()) if ult_ped_general else 0
+    ped_estado_sig = f"{ult_ped_general.id}:{ult_ped_general.estado}:{ts_ped}" if ult_ped_general else "0"
 
     stock_count = Producto.objects.filter(activo=True).count()
 
-
-
     import hashlib
-
-    sig_str = f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:{mesas_ocupadas}:{ts_ped}:{stock_count}"
-
+    sig_str = f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:{mesas_sig}:{ventas_abiertas_count}:{ventas_abiertas_sum}:{venta_sig}:{ped_estado_sig}:{stock_count}"
     version_hash = hashlib.md5(sig_str.encode('utf-8')).hexdigest()[:12]
 
 

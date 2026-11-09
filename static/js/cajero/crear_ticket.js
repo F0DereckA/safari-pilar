@@ -294,12 +294,57 @@ function calcularSubtotalItemJS(prod, qty) {
         promoTexto = `Precio Rebajado`;
 
     } else if (prod.tipo_oferta === 'DESCUENTO_PCT' && prod.descuento_pct > 0) {
-
         subtotal = qty * Number(prod.precio);
-
         ahorro = Math.max(0, (qty * base) - subtotal);
-
         promoTexto = `${Math.round(prod.descuento_pct)}% Dcto.`;
+
+    } else if (prod.tipo_oferta === 'SEGUNDA_PCT') {
+        const pct = Number(prod.descuento_pct || 50);
+        const p2 = Math.round(base * (1 - (pct / 100)));
+        const pares = Math.floor(qty / 2);
+        const resto = qty % 2;
+        const lim = Number(prod.limite_oferta_por_ticket || 0);
+        let paresPromo = pares;
+        let paresNormal = 0;
+        if (lim > 0 && pares > lim) {
+            paresPromo = lim;
+            paresNormal = pares - lim;
+        }
+        subtotal = (paresPromo * (base + p2)) + (paresNormal * 2 * base) + (resto * base);
+        ahorro = Math.max(0, (qty * base) - subtotal);
+        if (paresPromo > 0) {
+            promoTexto = `Promo 2da al ${Math.round(pct)}%` + (lim > 0 ? ` (máx ${lim})` : '');
+        }
+
+    } else if (prod.tipo_oferta === 'LLEVA_2_POR') {
+        const packPrecio = Number(prod.precio_oferta || Math.round(base * 1.5));
+        const pares = Math.floor(qty / 2);
+        const resto = qty % 2;
+        const lim = Number(prod.limite_oferta_por_ticket || 0);
+        let paresPromo = pares;
+        let paresNormal = 0;
+        if (lim > 0 && pares > lim) {
+            paresPromo = lim;
+            paresNormal = pares - lim;
+        }
+        subtotal = (paresPromo * packPrecio) + (paresNormal * 2 * base) + (resto * base);
+        ahorro = Math.max(0, (qty * base) - subtotal);
+        if (paresPromo > 0) {
+            promoTexto = `Pack 2 por $${packPrecio.toLocaleString('es-CL')}` + (lim > 0 ? ` (máx ${lim})` : '');
+        }
+
+    } else if (prod.tipo_oferta === 'CANTIDAD_MINIMA') {
+        const minCant = Number(prod.cantidad_minima_oferta || 2);
+        const precioUnit = Number(prod.precio_oferta || base);
+        if (qty >= minCant) {
+            subtotal = qty * precioUnit;
+            ahorro = Math.max(0, (qty * base) - subtotal);
+            promoTexto = `Precio x Vol (${qty} un. a $${precioUnit.toLocaleString('es-CL')})`;
+        } else {
+            subtotal = qty * base;
+            ahorro = 0;
+            promoTexto = `(Mín. ${minCant} un. para $${precioUnit.toLocaleString('es-CL')})`;
+        }
 
     } else {
 

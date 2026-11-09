@@ -983,11 +983,13 @@
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    gap: 14px !important;
-    padding: 10px 14px !important;
+    gap: 16px !important;
+    padding: 11px 16px !important;
     border-radius: 12px !important;
     text-decoration: none !important;
     white-space: normal !important;
+    position: relative !important;
+    overflow: visible !important;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -1002,17 +1004,19 @@
 }
 
 .safari-menu-icon {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
-    border-radius: 10px !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    border-radius: 12px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.25rem !important;
+    font-size: 1.3rem !important;
     flex-shrink: 0 !important;
     margin-right: 14px !important;
+    position: relative !important;
+    float: none !important;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -1021,7 +1025,9 @@
     align-items: center !important;
     justify-content: center !important;
     line-height: 1 !important;
-    font-size: 1.25rem !important;
+    font-size: 1.3rem !important;
+    position: static !important;
+    margin: 0 !important;
 }
 
 .safari-menu-item:hover .safari-menu-icon {

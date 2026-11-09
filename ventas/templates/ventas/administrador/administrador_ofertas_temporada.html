@@ -17,7 +17,7 @@
     
     <!-- Estilos Externos Modulares -->
     <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=3.2">
-    <link rel="stylesheet" href="{% static 'css/administrador/admin_base.css' %}?v=3.6">
+    <link rel="stylesheet" href="{% static 'css/administrador/admin_base.css' %}?v=3.7">
     <link rel="stylesheet" href="{% static 'css/administrador/ofertas_temporada.css' %}?v=2.0">
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -192,6 +192,18 @@
                                                 <span class="badge bg-dark text-white badge-promo-kind">
                                                     <i class="bi bi-tag-fill me-1"></i>Precio Fijo: ${{ p.precio_oferta|floatformat:0 }} CLP
                                                 </span>
+                                            {% elif p.tipo_oferta == 'SEGUNDA_PCT' %}
+                                                <span class="badge bg-warning text-dark badge-promo-kind">
+                                                    <i class="bi bi-percent me-1"></i>2da Unidad {{ p.descuento_pct|floatformat:0 }}% Dto
+                                                </span>
+                                            {% elif p.tipo_oferta == 'LLEVA_2_POR' %}
+                                                <span class="badge bg-primary text-white badge-promo-kind">
+                                                    <i class="bi bi-boxes me-1"></i>Pack 2 por ${{ p.precio_oferta|floatformat:0 }} CLP
+                                                </span>
+                                            {% elif p.tipo_oferta == 'CANTIDAD_MINIMA' %}
+                                                <span class="badge bg-success text-white badge-promo-kind">
+                                                    <i class="bi bi-layers-fill me-1"></i>Desde {{ p.cantidad_minima_oferta }} un. a ${{ p.precio_oferta|floatformat:0 }} CLP
+                                                </span>
                                             {% endif %}
                                             <small class="text-muted d-block mt-1">{{ p.descripcion_oferta|default:"Promoción vigente" }}</small>
                                         </td>
@@ -237,6 +249,7 @@
                                                         data-pct="{{ p.descuento_pct|default:'0'|floatformat:0 }}"
                                                         data-limite="{{ p.limite_oferta_por_ticket|default:'0' }}"
                                                         data-desc="{{ p.descripcion_oferta|default:'' }}"
+                                                        data-min-cant="{{ p.cantidad_minima_oferta|default:'2' }}"
                                                         title="Editar parámetros de la promoción">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
@@ -351,6 +364,8 @@
                                             data-inicio="{{ o.fecha_inicio|date:'Y-m-d' }}"
                                             data-fin="{{ o.fecha_fin|date:'Y-m-d' }}"
                                             data-activa="{% if o.activa %}true{% else %}false{% endif %}"
+                                            data-cat="{{ o.categoria_aplicable_id|default:'' }}"
+                                            data-prod="{{ o.producto_especifico_id|default:'' }}"
                                             title="Editar campaña">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
@@ -424,6 +439,9 @@
                                 <option value="3X2">Lleva 3 y Paga 2 (3x2)</option>
                                 <option value="DESCUENTO_PCT">Descuento Porcentual (%)</option>
                                 <option value="PRECIO_FIJO">Precio Promocional Fijo</option>
+                                <option value="SEGUNDA_PCT">Segunda Unidad con % de Descuento (ej. 2da al 50%)</option>
+                                <option value="LLEVA_2_POR">Pack Lleva 2 por Precio Fijo (ej. 2 hamburguesas por $12.000)</option>
+                                <option value="CANTIDAD_MINIMA">Precio Rebajado por Volumen (desde X unidades)</option>
                             </select>
                         </div>
 
@@ -447,11 +465,22 @@
 
                         <!-- Descuento Porcentual -->
                         <div class="mb-3 d-none" id="campoDescuentoPct">
-                            <label class="form-label small fw-bold text-dark">Porcentaje de Descuento (%):</label>
+                            <label class="form-label small fw-bold text-dark" id="labelDescuentoPct">Porcentaje de Descuento (%):</label>
                             <div class="input-group">
                                 <input type="number" name="descuento_pct" id="promoDescuentoPct" class="form-control" value="15" min="1" max="99">
                                 <span class="input-group-text">%</span>
                             </div>
+                        </div>
+
+                        <!-- Cantidad Mínima para Precio por Volumen -->
+                        <div class="mb-3 d-none" id="campoCantidadMinima">
+                            <label class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-layers"></i></span>
+                                <input type="number" name="cantidad_minima_oferta" id="promoCantidadMinima" class="form-control" value="2" min="2" step="1">
+                                <span class="input-group-text">unidades</span>
+                            </div>
+                            <div class="form-text small">A partir de cuántas unidades se aplica el precio rebajado unitario.</div>
                         </div>
 
                         <!-- Límite por Ticket / Mesa -->
@@ -505,6 +534,9 @@
                                 <option value="3X2">Lleva 3 y Paga 2 (3x2)</option>
                                 <option value="DESCUENTO_PCT">Descuento Porcentual (%)</option>
                                 <option value="PRECIO_FIJO">Precio Promocional Fijo</option>
+                                <option value="SEGUNDA_PCT">Segunda Unidad con % de Descuento (ej. 2da al 50%)</option>
+                                <option value="LLEVA_2_POR">Pack Lleva 2 por Precio Fijo (ej. 2 por $12.000)</option>
+                                <option value="CANTIDAD_MINIMA">Precio Rebajado por Volumen (desde X unidades)</option>
                             </select>
                         </div>
 
@@ -518,10 +550,19 @@
                         </div>
 
                         <div class="mb-3 d-none" id="edit_grupo_pct">
-                            <label class="form-label small fw-bold text-dark">Porcentaje de Descuento (%):</label>
+                            <label class="form-label small fw-bold text-dark" id="edit_label_pct">Porcentaje de Descuento (%):</label>
                             <div class="input-group">
                                 <input type="number" name="descuento_pct" id="edit_promo_pct" class="form-control" min="1" max="99">
                                 <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 d-none" id="edit_grupo_min_cant">
+                            <label class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-layers"></i></span>
+                                <input type="number" name="cantidad_minima_oferta" id="edit_promo_min_cant" class="form-control" value="2" min="2" step="1">
+                                <span class="input-group-text">unidades</span>
                             </div>
                         </div>
 
@@ -637,12 +678,21 @@
                             </div>
 
                             <!-- Categoría Opcional -->
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <label class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
                                 <select name="categoria_aplicable" class="form-select">
                                     <option value="">-- Toda la carta gastronómica --</option>
                                     {% for cat in categorias %}
                                     <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
+                                <select name="producto_especifico" class="form-select">
+                                    <option value="">-- Sin restringir a un solo producto --</option>
+                                    {% for prod in productos %}
+                                    <option value="{{ prod.id }}">{{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }} CLP)</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -740,6 +790,24 @@
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
                                 <input type="date" name="fecha_fin" id="edit_campana_fin" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
+                                <select name="categoria_aplicable" id="edit_campana_categoria" class="form-select">
+                                    <option value="">-- Toda la carta gastronómica --</option>
+                                    {% for cat in categorias %}
+                                    <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
+                                <select name="producto_especifico" id="edit_campana_producto" class="form-select">
+                                    <option value="">-- Sin restringir a un solo producto --</option>
+                                    {% for prod in productos %}
+                                    <option value="{{ prod.id }}">{{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }} CLP)</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary">Descripción:</label>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Venta Safari - Sistema KDS Cocina & Barra</title>
+    <title>Venta Safari - Sistema KDS Cocina Caliente</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -32,28 +32,20 @@
                 </a>
                 <div>
                     <h1 class="kds-brand-title mb-0">
-                        <i class="bi bi-fire text-danger me-1"></i> KDS COCINA & BARRA
+                        <i class="bi bi-fire text-danger me-1"></i> KDS COCINA CALIENTE
                     </h1>
                     <small class="text-light-subtle d-block" style="font-size: 0.8rem;">
-                        {{ local_actual.nombre }} • Monitor Táctil de Producción
+                        {{ local_actual.nombre }} • Monitor Táctil de Elaboración Culinaria
                     </small>
                 </div>
             </div>
 
-            <!-- Centro: Filtros Rápidos de Zona -->
-            <div class="d-flex align-items-center gap-1 bg-dark p-1 rounded-pill border border-secondary shadow-sm">
-                <a href="?zona=TODAS{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'TODAS' %}btn-warning text-dark{% else %}btn-outline-light text-white border-0{% endif %}">
-                    <i class="bi bi-grid-fill me-1"></i> Todos ({{ total_cola }})
-                </a>
-                <a href="?zona=COCINA{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'COCINA' %}btn-danger{% else %}btn-outline-light text-white border-0{% endif %}">
-                    <i class="bi bi-fire me-1"></i> Cocina Caliente
-                </a>
-                <a href="?zona=BARRA{% if request.GET.local_id %}&local_id={{ request.GET.local_id }}{% endif %}" class="btn btn-sm rounded-pill px-3 fw-bold {% if zona_filtro == 'BARRA' %}btn-info text-dark{% else %}btn-outline-light text-white border-0{% endif %}">
-                    <i class="bi bi-cup-straw me-1"></i> Barra & Bebidas
-                </a>
-                <a href="{% url 'barra' %}" class="btn btn-sm rounded-pill px-3 fw-bold btn-outline-info text-info border-0" title="Abrir Pantalla KDS Táctil exclusiva de Barra">
-                    <i class="bi bi-box-arrow-up-right me-1"></i> Monitor Barra
-                </a>
+            <!-- Centro: Indicador de Estación Exclusiva Cocina -->
+            <div class="d-none d-md-flex align-items-center gap-2 bg-dark px-3 py-1.5 rounded-pill border border-danger shadow-sm">
+                <span class="badge bg-danger text-white rounded-pill px-3 py-1 fw-bold fs-6">
+                    <i class="bi bi-fire me-1"></i> Estación Cocina Caliente
+                </span>
+                <span class="text-light small fw-semibold">Producción Gastronómica Exclusiva</span>
             </div>
 
             <!-- Derecha: Estado de Turno, Datos del Cocinero y Reloj -->
@@ -127,7 +119,7 @@
                         <i class="bi bi-fire"></i>
                     </div>
                     <div>
-                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Plancha / Barra</div>
+                        <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Fogón / Plancha</div>
                         <h4 class="mb-0 fw-bold text-primary font-monospace" id="kdsBadgePreparacion">{{ total_en_preparacion }}</h4>
                     </div>
                 </div>
@@ -355,7 +347,7 @@
 
     <!-- Footer minimalista -->
     <footer class="py-2 text-center text-muted small bg-white border-top">
-        <strong>Safari Pilar KDS</strong> • Módulo Operativo de Cocina & Barra • Sincronización automática en tiempo real
+        <strong>Safari Pilar KDS</strong> • Módulo Operativo de Cocina Caliente • Sincronización automática en tiempo real
     </footer>
 
     <!-- Bootstrap JS -->

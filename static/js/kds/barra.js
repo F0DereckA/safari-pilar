@@ -86,6 +86,15 @@ async function autoActualizarBarra(forzar = false) {
             actualHist.innerHTML = nuevoHist.innerHTML;
         }
 
+        // Actualizar badges KPI superiores
+        ['barraBadgePendientes', 'barraBadgePreparacion', 'barraBadgeListos', 'barraBadgeCola'].forEach(id => {
+            const nuevoEl = nuevoDoc.getElementById(id);
+            const actualEl = document.getElementById(id);
+            if (nuevoEl && actualEl && nuevoEl.innerText !== actualEl.innerText) {
+                actualEl.innerText = nuevoEl.innerText;
+            }
+        });
+
         window.scrollTo(0, scrollActual);
     } catch (err) {
         // Silencioso ante fluctuaciones
@@ -183,7 +192,8 @@ async function enviarAccionBarraAjax(e, form) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
-        await autoActualizarBarra();
+        ultimaVersionDeltaBarra = null;
+        await autoActualizarBarra(true);
         window.scrollTo(0, scrollPos);
     } catch (err) {
         form.submit();

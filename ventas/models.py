@@ -265,7 +265,10 @@ class Producto(models.Model):
         ('NINGUNA', 'Sin Oferta'),
         ('3X2', 'Lleva 3 y Paga 2 (3x2)'),
         ('2X1', 'Lleva 2 y Paga 1 (2x1)'),
-        ('SEGUNDA_1', 'Segunda Unidad a $1 peso'),
+        ('SEGUNDA_1', 'Segunda Unidad a Precio Especial ($1, $5, $500, etc.)'),
+        ('SEGUNDA_PCT', 'Segunda Unidad con % de Descuento (ej. 2da al 50%)'),
+        ('LLEVA_2_POR', 'Pack Lleva 2 por Precio Total Fijo (ej. 2 por $12.000)'),
+        ('CANTIDAD_MINIMA', 'Precio Rebajado por Volumen (desde X unidades)'),
         ('PRECIO_FIJO', 'Precio de Oferta Fijo'),
         ('DESCUENTO_PCT', 'Descuento Porcentual'),
     ]
@@ -282,6 +285,7 @@ class Producto(models.Model):
     descuento_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Porcentaje de descuento para tipo DESCUENTO_PCT")
     descripcion_oferta = models.CharField(max_length=120, blank=True, null=True, help_text="Etiqueta visible: Ej: ¡Lleva 3 y paga 2!, ¡Segunda hamburguesa a $1!")
     limite_oferta_por_ticket = models.PositiveIntegerField(default=0, help_text="Límite de unidades en promoción por comanda (0 = sin límite)")
+    cantidad_minima_oferta = models.PositiveIntegerField(default=2, help_text="Cantidad mínima requerida para activar la oferta de volumen (ej. 2 unidades)")
     destino_operativo = models.CharField(
         max_length=20,
         choices=[
@@ -399,6 +403,46 @@ class Producto(models.Model):
             ahorro = total_sin_promo - total
             texto = f"Promo 2x1 aplicada ({grupos_2} gratis)" if grupos_2 > 0 else "Promo 2x1 activa"
             return total, ahorro, texto
+
+        elif self.tipo_oferta == 'SEGUNDA_PCT':
+            pct = self.descuento_pct if self.descuento_pct > 0 else Decimal('50')
+            precio_segunda = (p_base * (Decimal('100') - pct) / Decimal('100')).quantize(Decimal('1'))
+            pares = cant // 2
+            sobrante = cant % 2
+            if self.limite_oferta_por_ticket > 0:
+                pares_promo = min(pares, self.limite_oferta_por_ticket)
+                pares_normal = pares - pares_promo
+                total = (pares_promo * (p_base + precio_segunda)) + (pares_normal * 2 * p_base) + (sobrante * p_base)
+            else:
+                total = (pares * (p_base + precio_segunda)) + (sobrante * p_base)
+            ahorro = total_sin_promo - total
+            texto = f"Promo 2da al {pct:,.0f}% aplicada" if pares > 0 else f"2da al {pct:,.0f}%"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == 'LLEVA_2_POR':
+            precio_par = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta > 0) else (p_base * Decimal('1.5')).quantize(Decimal('1'))
+            pares = cant // 2
+            sobrante = cant % 2
+            if self.limite_oferta_por_ticket > 0:
+                pares_promo = min(pares, self.limite_oferta_por_ticket)
+                pares_normal = pares - pares_promo
+                total = (pares_promo * precio_par) + (pares_normal * 2 * p_base) + (sobrante * p_base)
+            else:
+                total = (pares * precio_par) + (sobrante * p_base)
+            ahorro = total_sin_promo - total
+            texto = f"Pack 2 por ${precio_par:,.0f} aplicado" if pares > 0 else f"Lleva 2 por ${precio_par:,.0f}"
+            return total, ahorro, texto
+
+        elif self.tipo_oferta == 'CANTIDAD_MINIMA':
+            min_cant = self.cantidad_minima_oferta if self.cantidad_minima_oferta > 0 else 2
+            precio_unit = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta > 0) else p_base
+            if cant >= min_cant:
+                total = cant * precio_unit
+                ahorro = max(Decimal('0'), total_sin_promo - total)
+                texto = f"Promo {cant} un. x ${precio_unit:,.0f} c/u"
+                return total, ahorro, texto
+            else:
+                return total_sin_promo, Decimal('0'), f"Promo activa desde {min_cant} un."
 
         elif self.tipo_oferta == 'SEGUNDA_1':
             precio_segunda = self.precio_oferta if (self.precio_oferta is not None and self.precio_oferta >= 0) else Decimal('1')

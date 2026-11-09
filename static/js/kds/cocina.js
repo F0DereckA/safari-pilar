@@ -89,6 +89,15 @@ async function autoActualizarCocina(forzar = false) {
             actualHist.innerHTML = nuevoHist.innerHTML;
         }
 
+        // Actualizar badges KPI superiores
+        ['kdsBadgePendientes', 'kdsBadgePreparacion', 'kdsBadgeListos', 'kdsBadgeCola'].forEach(id => {
+            const nuevoEl = nuevoDoc.getElementById(id);
+            const actualEl = document.getElementById(id);
+            if (nuevoEl && actualEl && nuevoEl.innerText !== actualEl.innerText) {
+                actualEl.innerText = nuevoEl.innerText;
+            }
+        });
+
         window.scrollTo(0, scrollActual);
     } catch (err) {
         // Silencioso ante fluctuaciones de red
@@ -184,7 +193,8 @@ async function enviarAccionKdsAjax(e, form) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
-        await autoActualizarCocina();
+        ultimaVersionDeltaCocina = null;
+        await autoActualizarCocina(true);
         window.scrollTo(0, scrollPos);
     } catch (err) {
         form.submit(); // Respaldo tradicional si falla la red

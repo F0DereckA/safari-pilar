@@ -32,48 +32,48 @@
                                 <i class="bi bi-shop me-1 text-danger"></i> Puntos y Mesas de Salón
                             </span>
                         </div>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'general' or active_subclase == 'locales' %}active-item{% endif %}" href="{% url 'administrador' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'general' or active_subclase == 'locales' %}active-item{% endif %}" href="{% url 'administrador' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-grid-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Vista General de Locales</span>
                                 <span class="safari-menu-desc">Supervisión consolidada de los 3 locales</span>
                             </div>
                         </a>
                         <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 1 %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-shop"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Restaurante Central Safari</span>
                                 <span class="safari-menu-desc">Cocina caliente y salón principal</span>
                             </div>
                         </a>
                         <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 2 %}">
-                            <div class="safari-menu-icon safari-icon-purple">
+                            <div class="safari-menu-icon safari-icon-purple flex-shrink-0 me-3">
                                 <i class="bi bi-cup-hot"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cafetería & Pastelería La Selva</span>
                                 <span class="safari-menu-desc">Cafetería barista y repostería</span>
                             </div>
                         </a>
                         <a class="dropdown-item safari-menu-item" href="{% url 'administrador_local' 3 %}">
-                            <div class="safari-menu-icon safari-icon-yellow">
+                            <div class="safari-menu-icon safari-icon-yellow flex-shrink-0 me-3">
                                 <i class="bi bi-cup-straw"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Barra Rápida & Kiosco Oasis</span>
                                 <span class="safari-menu-desc">Bebidas frías y snacks al paso</span>
                             </div>
                         </a>
                         <div class="dropdown-divider my-2"></div>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'mesas' %}active-item{% endif %}" href="{% url 'administrador_mesas' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'mesas' %}active-item{% endif %}" href="{% url 'administrador_mesas' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-grid-3x3-gap-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Mesas del Parque</span>
                                 <span class="safari-menu-desc">Capacidad, ocupación y mantenimiento</span>
                             </div>
@@ -94,29 +94,29 @@
                                 <i class="bi bi-tags-fill me-1 text-danger"></i> Oferta Gastronómica & Promos
                             </span>
                         </div>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'productos' %}active-item{% endif %}" href="{% url 'administrador_productos' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'productos' %}active-item{% endif %}" href="{% url 'administrador_productos' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-egg-fried"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Catálogo de Productos</span>
                                 <span class="safari-menu-desc">Precios base, destinos operativos y stock</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'menus' %}active-item{% endif %}" href="{% url 'administrador_menus' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'menus' %}active-item{% endif %}" href="{% url 'administrador_menus' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-book-half"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cartas y Menús por Local</span>
                                 <span class="safari-menu-desc">Asignación de cartas gastronómicas</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'ofertas' %}active-item{% endif %}" href="{% url 'administrador_ofertas_temporada' %}">
-                            <div class="safari-menu-icon safari-icon-yellow">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'ofertas' %}active-item{% endif %}" href="{% url 'administrador_ofertas_temporada' %}">
+                            <div class="safari-menu-icon safari-icon-yellow flex-shrink-0 me-3">
                                 <i class="bi bi-coin"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <div class="safari-menu-title d-flex align-items-center gap-2">
                                     Promociones & Ofertas
                                     <span class="badge bg-warning text-dark px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">Docente</span>
@@ -124,11 +124,11 @@
                                 <span class="safari-menu-desc">Segunda unidad $1/$X, tarjetas y temporadas</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'convenios' %}active-item{% endif %}" href="{% url 'administrador_convenios' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'convenios' %}active-item{% endif %}" href="{% url 'administrador_convenios' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-qr-code-scan"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cabañas & Pases QR</span>
                                 <span class="safari-menu-desc">Convenios de descuento y canje de huéspedes</span>
                             </div>
@@ -149,48 +149,48 @@
                                 <i class="bi bi-bar-chart-line-fill me-1 text-danger"></i> Trazabilidad, Personal y Cierre
                             </span>
                         </div>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'gestion' %}active-item{% endif %}" href="{% url 'administrador_gestion' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'gestion' %}active-item{% endif %}" href="{% url 'administrador_gestion' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-sliders"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Centro de Gestión Integral</span>
                                 <span class="safari-menu-desc">Submódulos de dotación, mesas y catálogo</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'trabajadores' %}active-item{% endif %}" href="{% url 'administrador_trabajadores' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'trabajadores' %}active-item{% endif %}" href="{% url 'administrador_trabajadores' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-people-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Trabajadores y Dotación</span>
                                 <span class="safari-menu-desc">Turnos activos, reasignaciones y roles</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'consumos' %}active-item{% endif %}" href="{% url 'administrador_consumos' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'consumos' %}active-item{% endif %}" href="{% url 'administrador_consumos' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-wallet2"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Créditos y Fiados a Personal</span>
                                 <span class="safari-menu-desc">Consumos de personal, límite $100k y riesgo</span>
                             </div>
                         </a>
                         <div class="dropdown-divider my-2"></div>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'dashboard' %}active-item{% endif %}" href="{% url 'administrador_dashboard' %}">
-                            <div class="safari-menu-icon safari-icon-yellow">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'dashboard' %}active-item{% endif %}" href="{% url 'administrador_dashboard' %}">
+                            <div class="safari-menu-icon safari-icon-yellow flex-shrink-0 me-3">
                                 <i class="bi bi-bar-chart-line-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Dashboard Analítico de Ventas</span>
                                 <span class="safari-menu-desc">Métricas de ingresos, medios de pago y horas punta</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item {% if active_subclase == 'historial' %}active-item{% endif %}" href="{% url 'administrador_historial' %}">
-                            <div class="safari-menu-icon safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center {% if active_subclase == 'historial' %}active-item{% endif %}" href="{% url 'administrador_historial' %}">
+                            <div class="safari-menu-icon safari-icon-red flex-shrink-0 me-3">
                                 <i class="bi bi-clock-history"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Bitácora e Historial Forense</span>
                                 <span class="safari-menu-desc">Registro inmutable de arqueos, auditorías y cambios</span>
                             </div>
@@ -322,43 +322,43 @@
                 </h2>
                 <div id="collapseMobileLocales" class="accordion-collapse collapse {% if active_subclase in 'general locales mesas' %}show{% endif %}" aria-labelledby="headingMobileLocales" data-bs-parent="#accordionSafariMobile">
                     <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-grid-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Vista General de Locales</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 1 %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_local' 1 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-shop"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Restaurante Central</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 2 %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-purple">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_local' 2 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-purple flex-shrink-0 me-2.5">
                                 <i class="bi bi-cup-hot"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cafetería La Selva</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_local' 3 %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_local' 3 %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow flex-shrink-0 me-2.5">
                                 <i class="bi bi-cup-straw"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Kiosco Oasis</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_mesas' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_mesas' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-grid-3x3-gap-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Mesas del Salón</span>
                             </div>
                         </a>
@@ -375,35 +375,35 @@
                 </h2>
                 <div id="collapseMobileCatalogo" class="accordion-collapse collapse {% if active_subclase in 'productos menus ofertas convenios' %}show{% endif %}" aria-labelledby="headingMobileCatalogo" data-bs-parent="#accordionSafariMobile">
                     <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_productos' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_productos' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-egg-fried"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Catálogo de Productos</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_menus' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_menus' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-book-half"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cartas y Menús por Local</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_ofertas_temporada' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_ofertas_temporada' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow flex-shrink-0 me-2.5">
                                 <i class="bi bi-coin"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Promociones & Ofertas</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_convenios' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_convenios' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-qr-code-scan"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Cabañas & Pases QR</span>
                             </div>
                         </a>
@@ -420,43 +420,43 @@
                 </h2>
                 <div id="collapseMobileControl" class="accordion-collapse collapse {% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}show{% endif %}" aria-labelledby="headingMobileControl" data-bs-parent="#accordionSafariMobile">
                     <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_gestion' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_gestion' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-sliders"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Centro de Gestión Integral</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_trabajadores' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_trabajadores' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-people-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Trabajadores y Dotación</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_consumos' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_consumos' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-wallet2"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Créditos y Fiados</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_dashboard' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_dashboard' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-yellow flex-shrink-0 me-2.5">
                                 <i class="bi bi-bar-chart-line-fill"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Dashboard Analítico</span>
                             </div>
                         </a>
-                        <a class="dropdown-item safari-menu-item py-2 px-2.5" href="{% url 'administrador_historial' %}">
-                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red">
+                        <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_historial' %}">
+                            <div class="safari-menu-icon safari-menu-icon-sm safari-icon-red flex-shrink-0 me-2.5">
                                 <i class="bi bi-clock-history"></i>
                             </div>
-                            <div class="safari-menu-text">
+                            <div class="safari-menu-text flex-grow-1 min-w-0">
                                 <span class="safari-menu-title">Historial y Auditoría</span>
                             </div>
                         </a>

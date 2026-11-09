@@ -689,7 +689,7 @@ class SafariFase2A1Tests(TestCase):
         self.client.force_login(self.cocinero_user)
         resp_cocina = self.client.get(reverse('cocina'))
         self.assertEqual(resp_cocina.status_code, 200)
-        self.assertContains(resp_cocina, "KDS Cocina & Barra")
+        self.assertContains(resp_cocina, "KDS Cocina")
         self.assertContains(resp_cocina, f"COM-{pedido.id:04d}")
         self.assertContains(resp_cocina, "Hamburguesa Safari con Papas")
         self.assertContains(resp_cocina, "Sin cebolla")
@@ -7661,6 +7661,12 @@ class AuditoriaSeguridadRomperSistemaTests(TestCase):
             usuario=self.cajero, rol='CAJERO', activo=True, punto_venta_actual=self.pv
         )
 
+        # Cocinero KDS
+        self.cocinero = User.objects.create_user(username="cocinero_auditoria", password="CocineroSecure2026!#")
+        self.perfil_cocinero = PerfilEmpleado.objects.create(
+            usuario=self.cocinero, rol='COCINERO', activo=True, punto_venta_actual=self.pv
+        )
+
         hoy = timezone.localdate()
         self.jornada = Jornada.objects.create(fecha=hoy, estado='ABIERTA', usuario_apertura=self.admin)
         self.caja = Caja.objects.create(
@@ -8100,3 +8106,121 @@ class AuditoriaSeguridadRomperSistemaTests(TestCase):
         self.assertEqual(venta.total, subtotal_esperado)
         camp.refresh_from_db()
         self.assertEqual(camp.usos_actuales, 1)
+
+    def test_16_promocion_segunda_unidad_descuento_porcentual(self):
+        """Prueba: Tipo de oferta SEGUNDA_PCT aplica descuento exacto a unidades pares (ej. 2da al 50%)"""
+        self.prod.en_oferta = True
+        self.prod.tipo_oferta = 'SEGUNDA_PCT'
+        self.prod.descuento_pct = Decimal('50')
+        self.prod.limite_oferta_por_ticket = 0
+        self.prod.save()
+
+        # Compra 2: 1ra base ($6.500) + 2da al 50% ($3.250) = $9.750
+        total, ahorro, txt = self.prod.calcular_total_promocion(2)
+        self.assertEqual(total, Decimal('9750'))
+        self.assertEqual(ahorro, Decimal('3250'))
+        self.assertIn("50%", txt)
+
+        # Compra 3: 2 unidades en promo ($9.750) + 1 a precio base ($6.500) = $16.250
+        total3, ahorro3, _ = self.prod.calcular_total_promocion(3)
+        self.assertEqual(total3, Decimal('16250'))
+        self.assertEqual(ahorro3, Decimal('3250'))
+
+    def test_17_promocion_pack_lleva_2_por(self):
+        """Prueba: Tipo de oferta LLEVA_2_POR cobra precio fijo por cada par (ej. 2 por $10.000)"""
+        self.prod.en_oferta = True
+        self.prod.tipo_oferta = 'LLEVA_2_POR'
+        self.prod.precio_oferta = Decimal('10000') # Base es 6.500 c/u, 2 costarían 13.000
+        self.prod.limite_oferta_por_ticket = 1 # Máximo 1 promo por ticket
+        self.prod.save()
+
+        # Compra 2: 1 par a $10.000, ahorro de $3.000
+        total2, ahorro2, txt2 = self.prod.calcular_total_promocion(2)
+        self.assertEqual(total2, Decimal('10000'))
+        self.assertEqual(ahorro2, Decimal('3000'))
+
+        # Compra 4: Por límite de 1 promo, 1 par a $10.000 + 2 unidades a $6.500 c/u ($13.000) = $23.000
+        total4, ahorro4, _ = self.prod.calcular_total_promocion(4)
+        self.assertEqual(total4, Decimal('23000'))
+        self.assertEqual(ahorro4, Decimal('3000'))
+
+    def test_18_promocion_precio_rebajado_por_volumen_cantidad_minima(self):
+        """Prueba: Tipo de oferta CANTIDAD_MINIMA aplica rebaja unitaria a partir de umbral configurado"""
+        self.prod.en_oferta = True
+        self.prod.tipo_oferta = 'CANTIDAD_MINIMA'
+        self.prod.precio_oferta = Decimal('5000') # Base es 6.500
+        self.prod.cantidad_minima_oferta = 3
+        self.prod.save()
+
+        # Compra 2 (menor al umbral 3): paga precio base 2 * 6.500 = 13.000
+        total2, ahorro2, txt2 = self.prod.calcular_total_promocion(2)
+        self.assertEqual(total2, Decimal('13000'))
+        self.assertEqual(ahorro2, Decimal('0'))
+
+        # Compra 3 (alcanza el umbral 3): paga 3 * 5.000 = 15.000
+        total3, ahorro3, txt3 = self.prod.calcular_total_promocion(3)
+        self.assertEqual(total3, Decimal('15000'))
+        self.assertEqual(ahorro3, Decimal('4500'))
+        self.assertIn("3 un.", txt3)
+
+    def test_19_aislamiento_estricto_cocina_sin_items_barra_ni_acceso_barra(self):
+        """Prueba: Cocina KDS no muestra pedidos con solo barra ni ofrece links de navegación hacia Barra"""
+        from ventas.models import Pedido, DetallePedido
+        self.client.force_login(self.cocinero)
+
+        # Crear producto exclusivo de barra
+        prod_barra = Producto.objects.create(
+            nombre="Mojito Safari Bar", categoria=self.cat, precio_base=Decimal('4500'),
+            activo=True, destino_operativo='BARRA'
+        )
+        prod_barra.puntos_venta.add(self.pv)
+
+        # Crear venta con pedido de solo barra
+        venta_b = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv, total=Decimal('4500'))
+        ped_b = Pedido.objects.create(venta=venta_b, estado='PENDIENTE')
+        DetallePedido.objects.create(pedido=ped_b, producto=prod_barra, cantidad=1)
+
+        # Cocinero consulta pantalla de cocina
+        resp = self.client.get(reverse('cocina'))
+        self.assertEqual(resp.status_code, 200)
+
+        # La comanda de solo barra NO debe figurar en la lista de pedidos de cocina
+        pedidos_cocina_ids = [p['id'] for p in resp.context['pedidos']]
+        self.assertNotIn(ped_b.id, pedidos_cocina_ids)
+
+        # Tampoco debe existir el enlace al monitor barra ni selector de zona barra
+        contenido_html = resp.content.decode('utf-8')
+        self.assertNotIn('?zona=BARRA', contenido_html)
+        self.assertNotIn('Monitor Barra', contenido_html)
+        self.assertIn('KDS COCINA CALIENTE', contenido_html)
+
+    def test_20_reactividad_sincronizacion_delta_cambio_estado_mesas_y_pedidos(self):
+        """Prueba: El endpoint delta /api/sincronizacion/estado/ altera el version hash ante cualquier cambio"""
+        self.client.force_login(self.admin)
+        url_delta = reverse('api_sincronizacion_estado') + f'?local_id={self.pv.id}'
+
+        # 1. Obtener hash inicial
+        resp1 = self.client.get(url_delta)
+        self.assertEqual(resp1.status_code, 200)
+        hash1 = resp1.json()['version']
+
+        # 2. Modificar estado de mesa (HABILITADA -> OCUPADA)
+        self.mesa.estado = 'OCUPADA'
+        self.mesa.save()
+
+        resp2 = self.client.get(url_delta)
+        hash2 = resp2.json()['version']
+        self.assertNotEqual(hash1, hash2, "El hash debe reactualizarse inmediatamente al cambiar estado de mesa")
+
+        # 3. Crear pedido en cocina y luego entregarlo
+        venta_c = Venta.objects.create(caja=self.caja, cajero=self.cajero, punto_venta=self.pv, total=Decimal('6500'))
+        ped_c = Pedido.objects.create(venta=venta_c, estado='LISTO')
+        resp3 = self.client.get(url_delta)
+        hash3 = resp3.json()['version']
+        self.assertNotEqual(hash2, hash3, "El hash debe cambiar cuando entra un pedido listo")
+
+        ped_c.estado = 'ENTREGADO'
+        ped_c.save()
+        resp4 = self.client.get(url_delta)
+        hash4 = resp4.json()['version']
+        self.assertNotEqual(hash3, hash4, "El hash debe cambiar cuando el pedido se marca como ENTREGADO")
