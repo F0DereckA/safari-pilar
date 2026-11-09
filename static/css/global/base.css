@@ -523,3 +523,102 @@ footer {
         transform: translateY(0);
     }
 }
+
+/* ==============================================================================
+   Aloy UI/UX: Container Queries & Tarjetas Touch Verticales (<480px)
+   Convierte tablas densas (.safari-table-container, .safari-touch-cards, .safari-mobile-cards)
+   en tarjetas touch verticales optimizadas para dispositivos móviles en terreno.
+   ============================================================================== */
+.safari-table-container {
+    container-type: inline-size;
+    container-name: safariTableContainer;
+}
+
+@container safariTableContainer (max-width: 480px) {
+    .safari-touch-cards thead,
+    table.safari-touch-cards thead {
+        display: none !important;
+    }
+    .safari-touch-cards tr,
+    table.safari-touch-cards tr {
+        display: block !important;
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        margin-bottom: 0.85rem !important;
+        padding: 0.75rem !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    }
+    .safari-touch-cards td,
+    table.safari-touch-cards td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0.4rem 0.25rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 0.88rem !important;
+    }
+    .safari-touch-cards td:last-child,
+    table.safari-touch-cards td:last-child {
+        border-bottom: none !important;
+        padding-top: 0.6rem !important;
+        justify-content: flex-end !important;
+    }
+    .safari-touch-cards td::before,
+    table.safari-touch-cards td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #64748b;
+        font-size: 0.8rem;
+        margin-right: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .safari-mobile-cards thead,
+    .safari-touch-cards thead,
+    table.safari-mobile-cards thead {
+        display: none !important;
+    }
+    .safari-mobile-cards tr,
+    .safari-touch-cards tr,
+    table.safari-mobile-cards tr {
+        display: block !important;
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        margin-bottom: 0.85rem !important;
+        padding: 0.75rem !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    }
+    .safari-mobile-cards td,
+    .safari-touch-cards td,
+    table.safari-mobile-cards td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0.4rem 0.25rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 0.88rem !important;
+    }
+    .safari-mobile-cards td:last-child,
+    .safari-touch-cards td:last-child,
+    table.safari-mobile-cards td:last-child {
+        border-bottom: none !important;
+        padding-top: 0.6rem !important;
+        justify-content: flex-end !important;
+    }
+    .safari-mobile-cards td::before,
+    .safari-touch-cards td::before,
+    table.safari-mobile-cards td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #64748b;
+        font-size: 0.8rem;
+        margin-right: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+}

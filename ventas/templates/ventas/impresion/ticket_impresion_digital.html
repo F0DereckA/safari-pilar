@@ -98,6 +98,77 @@
                 </div>
             </div>
 
+                        <!-- Diferenciador INACAP: Inspección del Árbol XML DTE / SII (Res. Ex. N° 80) -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="fw-bold text-dark small">
+                        <i class="bi bi-file-earmark-code text-primary me-1"></i>
+                        Estructura XML Boleta Electrónica DTE (Norma SII)
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" data-bs-toggle="collapse" data-bs-target="#arbolXmlDteCollapse" aria-expanded="false" aria-controls="arbolXmlDteCollapse">
+                        <i class="bi bi-code-slash me-1"></i> Inspeccionar Árbol DTE
+                    </button>
+                </div>
+                <div class="collapse mt-2" id="arbolXmlDteCollapse">
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        Representación canónica del XML firmado con Timbre Electrónico DTE (<strong>&lt;TED&gt;</strong>) y Código de Autorización de Folios (<strong>&lt;CAF&gt;</strong>) según estándar del Servicio de Impuestos Internos de Chile.
+                    </div>
+                    <pre class="bg-dark text-success p-3 rounded-3 small font-monospace mb-2" style="font-size: 0.72rem; max-height: 280px; overflow-y: auto;"><code>&lt;?xml version="1.0" encoding="ISO-8859-1"?&gt;
+&lt;DTE version="1.0" xmlns="http://www.sii.cl/SiiDte"&gt;
+  &lt;Documento ID="DTE-TICKET-{{ ticket.codigo|default:ticket.id }}"&gt;
+    &lt;Encabezado&gt;
+      &lt;IdDoc&gt;
+        &lt;TipoDTE&gt;39&lt;/TipoDTE&gt; &lt;!-- Boleta Electrónica --&gt;
+        &lt;Folio&gt;{{ ticket.id }}&lt;/Folio&gt;
+        &lt;FchEmis&gt;{{ ticket.fecha_emision|date:"Y-m-d" }}&lt;/FchEmis&gt;
+        &lt;IndServicio&gt;3&lt;/IndServicio&gt; &lt;!-- Servicios Gastronómicos --&gt;
+      &lt;/IdDoc&gt;
+      &lt;Emisor&gt;
+        &lt;RUTEmisor&gt;76.123.456-7&lt;/RUTEmisor&gt;
+        &lt;RznSoc&gt;PARQUE SAFARI CHILE S.A.&lt;/RznSoc&gt;
+        &lt;GiroEmis&gt;Parque Zoológico y Servicios de Restauración&lt;/GiroEmis&gt;
+        &lt;Acteco&gt;552010&lt;/Acteco&gt;
+        &lt;DirOrigen&gt;Ruta H-30 Km 5, Rancagua&lt;/DirOrigen&gt;
+        &lt;CmnaOrigen&gt;Rancagua&lt;/CmnaOrigen&gt;
+      &lt;/Emisor&gt;
+      &lt;Totales&gt;
+        &lt;MntNeto&gt;{{ venta.total|default:1000|floatformat:0 }}&lt;/MntNeto&gt;
+        &lt;IVA&gt;0&lt;/IVA&gt;
+        &lt;MntTotal&gt;{{ venta.total|default:1000|floatformat:0 }}&lt;/MntTotal&gt;
+      &lt;/Totales&gt;
+    &lt;/Encabezado&gt;
+    &lt;TED version="1.0"&gt;
+      &lt;DD&gt;
+        &lt;RE&gt;76.123.456-7&lt;/RE&gt;
+        &lt;TD&gt;39&lt;/TD&gt;
+        &lt;F&gt;{{ ticket.id }}&lt;/F&gt;
+        &lt;FE&gt;{{ ticket.fecha_emision|date:"Y-m-d" }}&lt;/FE&gt;
+        &lt;RR&gt;66.666.666-6&lt;/RR&gt;
+        &lt;RSR&gt;CONSUMIDOR FINAL&lt;/RSR&gt;
+        &lt;MNT&gt;{{ venta.total|default:1000|floatformat:0 }}&lt;/MNT&gt;
+        &lt;IT1&gt;Servicios de Gastronomía Safari&lt;/IT1&gt;
+        &lt;CAF version="1.0"&gt;
+          &lt;DA&gt;
+            &lt;RE&gt;76.123.456-7&lt;/RE&gt;
+            &lt;RS&gt;PARQUE SAFARI CHILE S.A.&lt;/RS&gt;
+            &lt;TD&gt;39&lt;/TD&gt;
+            &lt;RNG&gt;&lt;D&gt;1&lt;/D&gt;&lt;H&gt;50000&lt;/H&gt;&lt;/RNG&gt;
+            &lt;FA&gt;{{ ticket.fecha_emision|date:"Y-m-d" }}&lt;/FA&gt;
+            &lt;RSAPK&gt;&lt;M&gt;3B2F...9A1C&lt;/M&gt;&lt;E&gt;AQAB&lt;/E&gt;&lt;/RSAPK&gt;
+            &lt;IDK&gt;100&lt;/IDK&gt;
+          &lt;/DA&gt;
+          &lt;FRMA algoritmo="SHA1withRSA"&gt;MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3...&lt;/FRMA&gt;
+        &lt;/CAF&gt;
+        &lt;TSTED&gt;{{ ticket.fecha_emision|date:"c" }}&lt;/TSTED&gt;
+      &lt;/DD&gt;
+      &lt;FRMT algoritmo="SHA1withRSA"&gt;Kx9LmP3q...dZ2Q==&lt;/FRMT&gt;
+    &lt;/TED&gt;
+  &lt;/Documento&gt;
+&lt;/DTE&gt;</code></pre>
+                </div>
+            </div>
+
             {% if propina_sugerida %}
             <!-- Sugerencia Voluntaria de Propina 10% (Ley N° 20.918 Art. 64 bis) -->
             <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">

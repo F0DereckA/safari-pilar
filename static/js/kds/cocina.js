@@ -10,9 +10,95 @@ function actualizarReloj() {
 setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
+// ==============================================================================
+// Echo & Aloy: Alerta Sonora Nativa Web Audio API (880 Hz / 150 ms senoidal)
+// Cero dependencias ni MP3s externos. Fiabilidad de hardware en cocina.
+// ==============================================================================
+const KdsAudio = (() => {
+    let audioCtx = null;
+    let habilitado = localStorage.getItem('safari_kds_audio_cocina') !== 'false';
+
+    function initContext() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                audioCtx = new AudioContextClass();
+            }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function emitirCampanaComanda() {
+        if (!habilitado) return;
+        try {
+            initContext();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine'; // Senoidal nativa
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880 Hz
+
+            gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.28, audioCtx.currentTime + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.16);
+        } catch (e) {
+            console.debug('Aviso auditivo omitido:', e);
+        }
+    }
+
+    function toggleAudio() {
+        habilitado = !habilitado;
+        localStorage.setItem('safari_kds_audio_cocina', habilitado);
+        actualizarBoton();
+        if (habilitado) emitirCampanaComanda();
+    }
+
+    function actualizarBoton() {
+        const btn = document.getElementById('btnToggleKdsAudio');
+        if (!btn) return;
+        if (habilitado) {
+            btn.className = 'btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
+            btn.innerHTML = '<i class="bi bi-volume-up-fill text-warning"></i> <span class="d-none d-md-inline small fw-bold">Sonido ON</span>';
+            btn.title = 'Alerta sonora de comanda activa (880 Hz). Clic para silenciar.';
+        } else {
+            btn.className = 'btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
+            btn.innerHTML = '<i class="bi bi-volume-mute-fill"></i> <span class="d-none d-md-inline small fw-bold">Sonido OFF</span>';
+            btn.title = 'Alerta sonora silenciada. Clic para activar.';
+        }
+    }
+
+    function init() {
+        actualizarBoton();
+        const btn = document.getElementById('btnToggleKdsAudio');
+        if (btn) btn.addEventListener('click', toggleAudio);
+        ['click', 'touchstart'].forEach(evt => {
+            document.addEventListener(evt, initContext, { once: true, passive: true });
+        });
+    }
+
+    return { init, emitirCampanaComanda, toggleAudio, isHabilitado: () => habilitado };
+})();
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', KdsAudio.init);
+} else {
+    KdsAudio.init();
+}
+
 // Sincronización Delta Liviana (~150 bytes) y Auto-actualización fluida en segundo plano con Scroll Lock
 let actualizandoKds = false;
 let ultimaVersionDeltaCocina = null;
+let prevColaCocina = null;
 
 async function autoActualizarCocina(forzar = false) {
     if (actualizandoKds) return;
@@ -44,6 +130,12 @@ async function autoActualizarCocina(forzar = false) {
                         const el = document.getElementById(id);
                         if (el && el.innerText !== String(val)) el.innerText = String(val);
                     }
+
+                    // Echo & Aloy: Detección sonora ante nuevas comandas entrantes
+                    if (prevColaCocina !== null && delta.cola_total > prevColaCocina) {
+                        KdsAudio.emitirCampanaComanda();
+                    }
+                    prevColaCocina = delta.cola_total;
 
                     if (!forzar && ultimaVersionDeltaCocina && ultimaVersionDeltaCocina === delta.version) {
                         actualizandoKds = false;

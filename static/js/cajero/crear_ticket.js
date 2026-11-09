@@ -1694,3 +1694,158 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// ==============================================================================
+// Cortana & Atlas: Emulador de Balanza Digital Serial/USB (Buffet al Peso)
+// ==============================================================================
+const BalanzaDigital = (() => {
+    let pesoBrutoGramos = 0;
+    let taraGramos = 0;
+    let productoSeleccionadoId = null;
+    let modalBalanzaInstance = null;
+
+    function init() {
+        const modalEl = document.getElementById('modalBalanzaDigital');
+        if (!modalEl) return;
+
+        // Poblar selector con productos
+        const selectEl = document.getElementById('selectProductoBalanza');
+        if (selectEl && Object.keys(productos).length > 0) {
+            selectEl.innerHTML = '';
+            Object.values(productos).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.nombre} - $${p.precio_base.toLocaleString('es-CL')} CLP`;
+                selectEl.appendChild(opt);
+            });
+            selectEl.addEventListener('change', (e) => {
+                productoSeleccionadoId = parseInt(e.target.value);
+                actualizarDisplay();
+            });
+            productoSeleccionadoId = parseInt(selectEl.value);
+        }
+
+        // Botones de peso rápido
+        document.querySelectorAll('.btn-peso-rapido').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const delta = parseInt(btn.getAttribute('data-peso-g') || '0');
+                pesoBrutoGramos = Math.max(0, pesoBrutoGramos + delta);
+                document.getElementById('sliderPesoBalanza').value = pesoBrutoGramos;
+                actualizarDisplay();
+            });
+        });
+
+        // Slider manual fino
+        const slider = document.getElementById('sliderPesoBalanza');
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                pesoBrutoGramos = parseInt(e.target.value);
+                actualizarDisplay();
+            });
+        }
+
+        // Tarar (descontar plato actual)
+        document.getElementById('btnBalanzaTarar')?.addEventListener('click', () => {
+            taraGramos = pesoBrutoGramos;
+            actualizarDisplay();
+        });
+
+        // Poner en cero
+        document.getElementById('btnBalanzaCero')?.addEventListener('click', () => {
+            pesoBrutoGramos = 0;
+            taraGramos = 0;
+            if (slider) slider.value = 0;
+            actualizarDisplay();
+        });
+
+        // Transferir al ticket
+        document.getElementById('btnBalanzaTransferir')?.addEventListener('click', transferirAlTicket);
+    }
+
+    function actualizarDisplay() {
+        const pesoNetoGramos = Math.max(0, pesoBrutoGramos - taraGramos);
+        const pesoNetoKg = pesoNetoGramos / 1000.0;
+        const brutoKg = pesoBrutoGramos / 1000.0;
+        const taraKg = taraGramos / 1000.0;
+
+        const prod = productos[productoSeleccionadoId];
+        const precioUnit = prod ? prod.precio_base : 0;
+        // Asumiendo que el precio base es por kg si es al peso, o calculando proporción
+        const total = Math.round(pesoNetoKg * precioUnit);
+
+        const elPeso = document.getElementById('balanzaDisplayPeso');
+        const elBruto = document.getElementById('balanzaDisplayBruto');
+        const elTara = document.getElementById('balanzaDisplayTara');
+        const elPrecioKg = document.getElementById('balanzaDisplayPrecioKg');
+        const elTotal = document.getElementById('balanzaDisplayTotal');
+        const elLabelGramos = document.getElementById('labelGramosSlider');
+
+        if (elPeso) elPeso.textContent = pesoNetoKg.toFixed(3);
+        if (elBruto) elBruto.textContent = `${brutoKg.toFixed(3)} kg`;
+        if (elTara) elTara.textContent = `${taraKg.toFixed(3)} kg`;
+        if (elPrecioKg) elPrecioKg.textContent = `$${precioUnit.toLocaleString('es-CL')} / kg`;
+        if (elTotal) elTotal.textContent = `$${total.toLocaleString('es-CL')} CLP`;
+        if (elLabelGramos) elLabelGramos.textContent = `${pesoBrutoGramos} gramos`;
+    }
+
+    function transferirAlTicket() {
+        const pesoNetoGramos = Math.max(0, pesoBrutoGramos - taraGramos);
+        if (pesoNetoGramos <= 0) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Balanza en Cero', 'Debes colocar peso en la balanza antes de transferir.', 'warning');
+            } else {
+                alert('Debes colocar peso en la balanza antes de transferir.');
+            }
+            return;
+        }
+
+        if (!productoSeleccionadoId || !productos[productoSeleccionadoId]) {
+            return;
+        }
+
+        // Agregar 1 unidad del ítem con la nota de balanza
+        cambiarCantidad(productoSeleccionadoId, 1);
+        const notaBalanza = `Balanza: ${pesoNetoGramos}g neto (Tara: ${taraGramos}g)`;
+        notasProductosCajero[productoSeleccionadoId] = notaBalanza;
+        actualizarBotonNotaCajero(productoSeleccionadoId, notaBalanza);
+        actualizarResumen();
+
+        const modalEl = document.getElementById('modalBalanzaDigital');
+        if (modalEl) {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `Peso registrado: ${pesoNetoGramos}g`,
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }
+    }
+
+    function abrirModal() {
+        const modalEl = document.getElementById('modalBalanzaDigital');
+        if (!modalEl) return;
+        if (!modalBalanzaInstance) {
+            modalBalanzaInstance = new bootstrap.Modal(modalEl);
+        }
+        actualizarDisplay();
+        modalBalanzaInstance.show();
+    }
+
+    return { init, abrirModal };
+})();
+
+window.abrirModalBalanzaDigital = () => BalanzaDigital.abrirModal();
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', BalanzaDigital.init);
+} else {
+    BalanzaDigital.init();
+}

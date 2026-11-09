@@ -2128,7 +2128,26 @@ def vendedor(request):
 
 
 
+    # PIN de desbloqueo rápido de terminal (Ezio Auditore - Terminal Compartido)
+    pins_validos = {'1234'}
+    pin_hint = '1234'
+    perfil_cajero = getattr(request.user, 'perfil', None)
+    if perfil_cajero and perfil_cajero.rut:
+        rut_clean = ''.join(c for c in perfil_cajero.rut if c.isdigit())
+        rut_sin_dv = perfil_cajero.rut.split('-')[0].replace('.', '')
+        rut_sin_dv_clean = ''.join(c for c in rut_sin_dv if c.isdigit())
+        if len(rut_sin_dv_clean) >= 4:
+            p_cuerpo = rut_sin_dv_clean[-4:]
+            pins_validos.add(p_cuerpo)
+            pin_hint = p_cuerpo
+        if len(rut_clean) >= 4:
+            pins_validos.add(rut_clean[-4:])
+
     context = {
+
+        "pins_validos_json": json.dumps(list(pins_validos)),
+
+        "pin_hint": pin_hint,
 
         "jornada_activa": jornada_activa,
 
@@ -3140,7 +3159,7 @@ def crear_ticket(request):
 
 
 
-                if modo_cuenta == 'PAGADA' and Venta.objects.filter(mesa=mesa_obj, estado='ABIERTA').exists():
+                if modo_cuenta == 'PAGADA' and Venta.objects.select_for_update().filter(mesa=mesa_obj, estado='ABIERTA').exists():
 
                     if es_ajax_req:
 
@@ -9309,13 +9328,36 @@ def cambiar_clave_expirada(request):
 
 def api_verificar_convenio_qr(request):
 
-    """Verifica código QR o de barras para convenios comerciales (RF07.5) o huéspedes de cabañas"""
+    """Verifica código QR o de barras con firma HMAC-SHA256 anti-fraude para cabañas y convenios"""
 
-    codigo = request.GET.get('codigo', '').strip()
+    from ventas.utils import generar_firma_qr_convenio, verificar_firma_qr_convenio
 
-    if not codigo:
+    raw_codigo = request.GET.get('codigo', '').strip()
+    firma_param = request.GET.get('firma', '').strip()
+
+    if not raw_codigo:
 
         return JsonResponse({'ok': False, 'mensaje': 'Por favor ingresa o escanea un código QR o de barra.'}, status=400)
+
+    # Detección de token criptográfico HMAC integrado (formato: CODIGO:FIRMA)
+    if ':' in raw_codigo:
+        partes_qr = raw_codigo.split(':', 1)
+        codigo = partes_qr[0].strip()
+        firma_qr = partes_qr[1].strip()
+    else:
+        codigo = raw_codigo
+        firma_qr = firma_param
+
+    # Si se suministró firma, verificar autenticidad matemática estricta
+    if firma_qr:
+        if not verificar_firma_qr_convenio(codigo, firma_qr):
+            return JsonResponse({
+                'ok': False,
+                'encontrado': False,
+                'tampered': True,
+                'error_criptografico': True,
+                'mensaje': 'ALERTA ANTI-FRAUDE: La firma criptográfica HMAC-SHA256 del código QR es inválida o ha sido adulterada.'
+            }, status=403)
 
 
 

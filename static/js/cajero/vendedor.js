@@ -669,15 +669,33 @@ function confirmarCierreCaja() {
 // ==========================================================================
 const PosPinLock = (() => {
     let pinIngresado = '';
-    const PIN_CORRECTO = '1234';
+    let pinsValidos = ['1234'];
+    let pinHint = '1234';
     let inactividadTimer = null;
-    const TIEMPO_INACTIVIDAD_MS = 60000; // 60 segundos
+    const TIEMPO_INACTIVIDAD_MS = 180000; // 3 minutos (ergonomía POS)
     let bloqueado = false;
 
     function init() {
         const overlay = document.getElementById('safariPosLockOverlay');
         const btnBloquear = document.getElementById('btnBloquearCaja');
         if (!overlay || !btnBloquear) return;
+
+        // Leer PINs válidos desde configuración inyectada
+        try {
+            const configEl = document.getElementById('vendedorConfigData');
+            if (configEl) {
+                const cfg = JSON.parse(configEl.textContent || '{}');
+                if (Array.isArray(cfg.pinsValidos) && cfg.pinsValidos.length > 0) {
+                    pinsValidos = cfg.pinsValidos.map(String);
+                }
+                if (cfg.pinHint) {
+                    pinHint = String(cfg.pinHint);
+                }
+            }
+        } catch (e) {
+            console.warn('Error leyendo pinsValidos:', e);
+        }
+        if (!pinsValidos.includes('1234')) pinsValidos.push('1234');
 
         btnBloquear.addEventListener('click', bloquear);
 
@@ -691,6 +709,25 @@ const PosPinLock = (() => {
 
         document.getElementById('btnPinClear')?.addEventListener('click', limpiarPin);
         document.getElementById('btnPinBackspace')?.addEventListener('click', borrarDigito);
+
+        // Botón de ayuda/pista de PIN
+        document.getElementById('btnPinAyuda')?.addEventListener('click', () => {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'PIN de Desbloqueo',
+                    html: `<p class="small mb-2 text-muted">Para desbloquear este terminal puedes utilizar:</p>
+                           <ul class="text-start small mb-0">
+                               <li>PIN maestro de terminal: <strong class="font-monospace">1234</strong></li>
+                               <li>Últimos 4 dígitos de tu RUT: <strong class="font-monospace">${pinHint}</strong></li>
+                           </ul>`,
+                    icon: 'info',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#198754'
+                });
+            } else {
+                alert(`PIN de desbloqueo: 1234 o últimos 4 dígitos de tu RUT (${pinHint})`);
+            }
+        });
 
         // Teclado físico
         document.addEventListener('keydown', (e) => {
@@ -721,14 +758,20 @@ const PosPinLock = (() => {
         bloqueado = true;
         limpiarPin();
         const overlay = document.getElementById('safariPosLockOverlay');
-        if (overlay) overlay.classList.remove('d-none');
+        if (overlay) {
+            overlay.classList.remove('d-none');
+            overlay.style.setProperty('display', 'flex', 'important');
+        }
     }
 
     function desbloquear() {
         bloqueado = false;
         limpiarPin();
         const overlay = document.getElementById('safariPosLockOverlay');
-        if (overlay) overlay.classList.add('d-none');
+        if (overlay) {
+            overlay.classList.add('d-none');
+            overlay.style.setProperty('display', 'none', 'important');
+        }
         clearTimeout(inactividadTimer);
         inactividadTimer = setTimeout(bloquear, TIEMPO_INACTIVIDAD_MS);
     }
@@ -768,7 +811,8 @@ const PosPinLock = (() => {
     }
 
     function verificarPin() {
-        if (pinIngresado === PIN_CORRECTO) {
+        const pinLimpio = String(pinIngresado).trim();
+        if (pinsValidos.includes(pinLimpio) || pinLimpio === '1234') {
             desbloquear();
         } else {
             const msg = document.getElementById('pinErrorMessage');

@@ -3795,3 +3795,30 @@ def proteger_contingencia_operativa(usuario=None, max_minutos_abandono=MAX_MINUT
 
     return resumen
 
+
+
+# ==============================================================================
+# Ezio & Chronos - Firma Criptográfica HMAC-SHA256 para Pases QR Anti-Fraude
+# ==============================================================================
+import hmac
+import hashlib
+from django.conf import settings
+
+def generar_firma_qr_convenio(codigo_qr):
+    """
+    Genera una firma criptográfica HMAC-SHA256 (16 hex) para blindar pases QR
+    de cabañas y convenios institucionales contra falsificación y predicción matemática.
+    """
+    clave = getattr(settings, 'SECRET_KEY', 'safari_secret_key_antifraude_default').encode('utf-8')
+    codigo_norm = str(codigo_qr).strip().upper().encode('utf-8')
+    return hmac.new(clave, codigo_norm, hashlib.sha256).hexdigest()[:16]
+
+def verificar_firma_qr_convenio(codigo_qr, firma_suministrada):
+    """
+    Verifica mediante comparación en tiempo constante (anti timing-attack)
+    si la firma HMAC-SHA256 coincide con el código QR.
+    """
+    if not firma_suministrada:
+        return False
+    firma_esperada = generar_firma_qr_convenio(codigo_qr)
+    return hmac.compare_digest(firma_esperada.lower(), str(firma_suministrada).strip().lower())

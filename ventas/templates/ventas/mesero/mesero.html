@@ -69,6 +69,12 @@
                         <i class="bi bi-sun-fill text-warning me-1"></i> <span class="d-none d-sm-inline">Modo Sol</span>
                     </button>
 
+                    <!-- Píldora de Estado de Red / Terreno Exterior (Aloy & Echo) -->
+                    <div id="pildoraRedMesero" class="d-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-white text-success small fw-bold" title="Estado de conexión a la red de Parque Safari">
+                        <i class="bi bi-wifi" id="iconoRedMesero"></i>
+                        <span id="textoRedMesero" class="d-none d-sm-inline">Online</span>
+                    </div>
+
                     <!-- Centro de Alertas de Cocina: Pedidos Listos para Servir -->
                     <div class="dropdown" id="contenedorCampanaListos">
                         <button class="btn btn-sm position-relative rounded-pill px-3 fw-bold {% if total_pedidos_listos > 0 %}btn-success text-white shadow-sm{% else %}btn-outline-secondary bg-white text-muted{% endif %}" type="button" id="dropdownPedidosListos" data-bs-toggle="dropdown" aria-expanded="false" title="Pedidos listos en cocina para retirar">

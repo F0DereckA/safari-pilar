@@ -60,6 +60,12 @@
                     <i class="bi bi-boxes me-1"></i> Stock Platos
                 </button>
 
+                <!-- Alerta Auditiva KDS Web Audio API (Echo & Aloy) -->
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" id="btnToggleKdsAudio" title="Alerta sonora comanda (880 Hz). Clic para alternar.">
+                    <i class="bi bi-volume-up-fill text-warning"></i>
+                    <span class="d-none d-md-inline small fw-bold">Sonido ON</span>
+                </button>
+
                 <!-- Reloj en vivo -->
                 <div class="bg-black text-warning px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
                     <i class="bi bi-clock me-1"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>

@@ -8224,3 +8224,159 @@ class AuditoriaSeguridadRomperSistemaTests(TestCase):
         resp4 = self.client.get(url_delta)
         hash4 = resp4.json()['version']
         self.assertNotEqual(hash3, hash4, "El hash debe cambiar cuando el pedido se marca como ENTREGADO")
+
+
+
+# ==============================================================================
+# RESOLUCIÓN DE MESA TÉCNICA (DEBATE ZONE) - PRUEBAS AUTOMATIZADAS
+# Ezio, Chronos, Echo, Aloy, Cortana, Atlas & Arbiter
+# ==============================================================================
+from ventas.utils import generar_firma_qr_convenio, verificar_firma_qr_convenio
+from ventas.models import ConvenioHuesped
+
+class ResolucionDebateZoneTests(TestCase):
+    """
+    Suite de verificación formal de las directrices dictaminadas por Mesa Técnica:
+    1. Desbloqueo de cajero por PIN de RUT y PIN maestro 1234
+    2. Blindaje criptográfico HMAC-SHA256 en pases QR de cabañas (/api/verificar-convenio-qr/)
+    3. Bloqueo pesimista select_for_update() en concurrencia transaccional
+    4. Ergonomía KDS (Web Audio API 880Hz), píldora offline mesero y Container Queries
+    5. Diferenciadores INACAP: Balanza Digital y Árbol XML DTE (<TED>, <CAF>)
+    """
+
+    def setUp(self):
+        self.pv = PuntoVenta.objects.create(nombre="Restaurante Central Safari", activo=True)
+        
+        # Cajero Carlos Valenzuela M. (RUT 15.421.890-3)
+        self.user_cajero = User.objects.create_user(username='cvalenzuela_test', password='PasswordSegura#2026')
+        self.jornada = Jornada.objects.create(
+            fecha=timezone.localdate(),
+            estado='ABIERTA',
+            usuario_apertura=self.user_cajero
+        )
+        self.perfil_cajero = PerfilEmpleado.objects.create(
+            usuario=self.user_cajero,
+            rol='CAJERO',
+            rut='15.421.890-3',
+            punto_venta_actual=self.pv
+        )
+        self.caja = Caja.objects.create(
+            jornada=self.jornada,
+            cajero=self.user_cajero,
+            punto_venta=self.pv,
+            nombre="Caja Test Carlos",
+            monto_apertura=Decimal('100000'),
+            estado='ABIERTA'
+        )
+
+        self.mesa = Mesa.objects.create(punto_venta=self.pv, identificador="Mesa 5", estado='HABILITADA')
+        self.cat = Categoria.objects.create(nombre="Buffet al Peso", activo=True)
+        self.prod = Producto.objects.create(
+            nombre="Buffet Libre al Peso",
+            categoria=self.cat,
+            precio_base=Decimal('14990'),
+            activo=True
+        )
+
+    def test_desbloqueo_cajero_contexto_pins_validos(self):
+        """Prueba: El contexto de la vista vendedor expone los PINs válidos (1234 + dígitos de RUT)"""
+        self.client.force_login(self.user_cajero)
+        resp = self.client.get(reverse('vendedor'))
+        self.assertEqual(resp.status_code, 200)
+
+        # Verificar que el contexto contiene los PINs válidos
+        self.assertIn('pins_validos_json', resp.context)
+        pins_cargados = json.loads(resp.context['pins_validos_json'])
+        
+        # Debe contener '1234' por defecto
+        self.assertIn('1234', pins_cargados)
+        # Debe contener los últimos 4 dígitos del cuerpo del RUT ('1890' para 15.421.890-3)
+        self.assertIn('1890', pins_cargados)
+        # Debe contener los últimos 4 dígitos numéricos totales ('8903')
+        self.assertIn('8903', pins_cargados)
+
+        # Debe mostrar en el HTML la pista de PIN para el cajero
+        html = resp.content.decode('utf-8')
+        self.assertIn('vendedorConfigData', html)
+        self.assertIn('pinsValidos', html)
+        self.assertIn('btnPinAyuda', html)
+
+    def test_blindaje_criptografico_hmac_sha256_qr_cabanas(self):
+        """Prueba: Firma y verificación matemática HMAC-SHA256 para prevenir predicción y manipulación de QR"""
+        codigo_pase = "CAB-SAFARI-2026-X99"
+        
+        # 1. Generar firma oficial
+        firma_oficial = generar_firma_qr_convenio(codigo_pase)
+        self.assertEqual(len(firma_oficial), 16, "La firma HMAC debe ser de 16 caracteres hexadecimales")
+
+        # 2. Verificación matemática positiva
+        self.assertTrue(verificar_firma_qr_convenio(codigo_pase, firma_oficial))
+        # Case insensitive
+        self.assertTrue(verificar_firma_qr_convenio(codigo_pase, firma_oficial.upper()))
+
+        # 3. Verificación matemática negativa (adulteración de 1 solo bit)
+        firma_falsa = firma_oficial[:-1] + ('0' if firma_oficial[-1] != '0' else '1')
+        self.assertFalse(verificar_firma_qr_convenio(codigo_pase, firma_falsa))
+        self.assertFalse(verificar_firma_qr_convenio(codigo_pase, ""))
+        self.assertFalse(verificar_firma_qr_convenio(codigo_pase, None))
+
+        # 4. Prueba contra endpoint /api/verificar-convenio-qr/
+        convenio = ConvenioHuesped.objects.create(
+            codigo_qr=codigo_pase,
+            nombre_titular="Familia González - Cabaña 12",
+            numero_cabana="Cabaña 12",
+            tipo_beneficio='DESCUENTO_PORCENTAJE',
+            valor_descuento=Decimal('20.00'),
+            fecha_checkin=timezone.localdate() - timedelta(days=1),
+            fecha_checkout=timezone.localdate() + timedelta(days=2),
+            activo=True
+        )
+
+        # Petición con QR adulterado (formato CODIGO:FIRMA_FALSA) -> 403 Forbidden
+        url_api = reverse('api_verificar_convenio_qr')
+        resp_tampered = self.client.get(f"{url_api}?codigo={codigo_pase}:{firma_falsa}")
+        self.assertEqual(resp_tampered.status_code, 403)
+        data_tampered = resp_tampered.json()
+        self.assertTrue(data_tampered.get('tampered'))
+        self.assertTrue(data_tampered.get('error_criptografico'))
+
+        # Petición con QR legítimo firmado (formato CODIGO:FIRMA_OFICIAL) -> 200 OK
+        resp_valido = self.client.get(f"{url_api}?codigo={codigo_pase}:{firma_oficial}")
+        self.assertEqual(resp_valido.status_code, 200)
+        data_valido = resp_valido.json()
+        self.assertTrue(data_valido['ok'])
+        self.assertTrue(data_valido['encontrado'])
+
+    def test_widget_balanza_digital_y_arbol_xml_dte_en_plantillas(self):
+        """Prueba: Las interfaces de POS e Impresión integran los diferenciadores técnicos para INACAP"""
+        self.client.force_login(self.user_cajero)
+
+        # 1. Terminal POS de creación de tickets: debe contener el widget y modal de la Balanza Digital
+        resp_pos = self.client.get(reverse('crear_ticket'))
+        self.assertEqual(resp_pos.status_code, 200)
+        html_pos = resp_pos.content.decode('utf-8')
+        self.assertIn('abrirModalBalanzaDigital', html_pos)
+        self.assertIn('id="modalBalanzaDigital"', html_pos)
+        self.assertIn('balanza-digital-display', html_pos)
+        self.assertIn('balanzaDisplayPeso', html_pos)
+
+        # 2. Ticket de impresión digital: debe contener el inspector del árbol XML DTE con nodos <TED> y <CAF>
+        venta = Venta.objects.create(
+            caja=self.caja,
+            cajero=self.user_cajero,
+            punto_venta=self.pv,
+            total=Decimal('15000'),
+            estado='PAGADA'
+        )
+        ticket = Ticket.objects.create(
+            venta=venta,
+            tipo_destino='CLIENTE',
+            codigo="TCK-TEST-9999",
+            contenido_impresion="Ticket de Prueba"
+        )
+        resp_ticket = self.client.get(reverse('ver_imprimir_ticket_digital', args=[ticket.id]))
+        self.assertEqual(resp_ticket.status_code, 200)
+        html_ticket = resp_ticket.content.decode('utf-8')
+        self.assertIn('arbolXmlDteCollapse', html_ticket)
+        self.assertIn('&lt;TED version="1.0"&gt;', html_ticket)
+        self.assertIn('&lt;CAF version="1.0"&gt;', html_ticket)

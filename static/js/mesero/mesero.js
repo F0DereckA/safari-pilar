@@ -1100,9 +1100,68 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// ==============================================================================
+// Aloy & Echo: Monitor de Conectividad en Terreno (Salón Exterior / WiFi Safari)
+// ==============================================================================
+function inicializarMonitorRedSalón() {
+    const pildora = document.getElementById('pildoraRedMesero');
+    const icono = document.getElementById('iconoRedMesero');
+    const texto = document.getElementById('textoRedMesero');
+    if (!pildora || !icono || !texto) return;
+
+    function actualizar() {
+        if (navigator.onLine) {
+            pildora.className = 'd-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-white text-success small fw-bold';
+            icono.className = 'bi bi-wifi text-success';
+            texto.textContent = 'Online';
+            pildora.title = 'Terminal conectado al servidor central de Safari.';
+        } else {
+            pildora.className = 'd-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-danger text-white small fw-bold';
+            icono.className = 'bi bi-wifi-off text-white';
+            texto.textContent = 'Offline';
+            pildora.title = 'Sin conexión de red exterior. Las operaciones se sincronizarán al reconectar.';
+        }
+    }
+
+    window.addEventListener('online', () => {
+        actualizar();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Conexión restablecida con el servidor',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        actualizar();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Modo Fuera de Línea detectado',
+                text: 'Revisa tu cobertura WiFi en salón exterior.',
+                showConfirmButton: false,
+                timer: 4000
+            });
+        }
+    });
+
+    actualizar();
+}
+
 // Inicialización de Modo Sol y Ergonomía
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarModoSol);
+    document.addEventListener('DOMContentLoaded', () => {
+        inicializarModoSol();
+        inicializarMonitorRedSalón();
+    });
 } else {
     inicializarModoSol();
+    inicializarMonitorRedSalón();
 }
