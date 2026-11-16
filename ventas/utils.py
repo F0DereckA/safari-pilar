@@ -1916,20 +1916,13 @@ def validar_modalidad_operativa(modalidad, mesa=None, punto_venta=None):
 
 
 
-def sanitizar_observacion(texto, max_length=200):
-
+def sanitizar_observacion(texto, max_length=100):
     """
-
     Sanitiza y normaliza comentarios/observaciones de productos para comandas (RF12 / OWASP ASVS):
-
     - Elimina espacios en blanco superfluos al inicio y final.
-
     - Neutraliza inyecciones XSS escapando entidades HTML (<, >, &, ", ').
-
-    - Trunca con seguridad a longitud máxima (por defecto 200 caracteres).
-
+    - Trunca con seguridad a longitud máxima (por defecto 100 caracteres para notas de comida).
     - Retorna None si el texto queda vacío o solo contenía espacios o caracteres nulos.
-
     """
 
     if not texto:

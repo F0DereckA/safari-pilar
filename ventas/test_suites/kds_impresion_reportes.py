@@ -495,18 +495,20 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
         self.assertTrue(self.prod_cocina.activo)
 
     def test_rf12_comentarios_sanitizacion_xss_y_aislamiento_rondas(self):
-        # 1. Sanitización de observaciones via subTest
+        # 1. Sanitización de observaciones via subTest (límite máximo de 100 caracteres para notas de comida)
         casos_san = [
             ("vacio", "   \t\n ", None),
             ("acentos_nulo", "Sin cebolla\x00 ni ají", "Sin cebolla ni ají"),
-            ("longitud_200", "X" * 260, "X" * 200),
+            ("longitud_100", "X" * 160, "X" * 100),
         ]
         for nombre, entrada, esperado in casos_san:
             with self.subTest(sanitizar=nombre):
                 res = sanitizar_observacion(entrada)
                 self.assertEqual(res, esperado)
                 if res:
-                    self.assertLessEqual(len(res), 200)
+                    self.assertLessEqual(len(res), 100)
+
+        self.assertEqual(DetallePedido._meta.get_field('observaciones').max_length, 100)
 
         # 2. XSS escaping al renderizar KDS y Tickets + aislamiento entre ítems y rondas POS/Mesero
         self.abrir_jornada_y_caja(self.pv_central, self.cajero_user, self.admin_user)
@@ -585,6 +587,49 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
             no_debe_estar=("R1 Poco hecho",),
             contexto="Aislamiento nota Ronda 2 Barra",
         )
+
+        # 3. Límite estricto de 100 caracteres en UI y backend (POS Cajero y Mesero)
+        self.client.force_login(self.cajero_user)
+        resp_pos_html = self.client.get(reverse('crear_ticket'))
+        self.assertEqual(resp_pos_html.status_code, 200)
+        self.assertContains(resp_pos_html, 'id="notaCajeroTextoInput"')
+        self.assertContains(resp_pos_html, 'maxlength="100"')
+        self.assertContains(resp_pos_html, 'id="notaCajeroContadorAyuda"')
+
+        nota_excesiva = "N" * 150
+        resp_pos_lim = self.client.post(
+            reverse('crear_ticket'),
+            {
+                'metodo_pago': 'EFECTIVO',
+                'modalidad': 'VENTA_RAPIDA',
+                'items_json': json.dumps([{'producto_id': self.prod_cocina.id, 'cantidad': 1, 'nota': nota_excesiva}]),
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(resp_pos_lim.status_code, 200)
+        det_pos_lim = DetallePedido.objects.get(pedido_id=resp_pos_lim.json()['pedido_id'], producto=self.prod_cocina)
+        self.assertEqual(det_pos_lim.observaciones, "N" * 100)
+
+        self.client.force_login(self.mesero_user)
+        resp_mes_html = self.client.get(reverse('mesero'))
+        self.assertEqual(resp_mes_html.status_code, 200)
+        self.assertContains(resp_mes_html, 'id="notaTextoInput"')
+        self.assertContains(resp_mes_html, 'maxlength="100"')
+        self.assertContains(resp_mes_html, 'id="notaMeseroContadorAyuda"')
+
+        resp_mes_lim = self.client.post(
+            reverse('mesero'),
+            {
+                'accion': 'enviar_comanda',
+                'local_id': self.pv_central.id,
+                'mesa_id': self.mesa_m1.id,
+                'items_json': json.dumps([{'id': self.prod_cocina.id, 'cantidad': 1, 'nota': nota_excesiva}]),
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(resp_mes_lim.status_code, 200)
+        det_mes_lim = DetallePedido.objects.get(pedido_id=resp_mes_lim.json()['pedido_id'], producto=self.prod_cocina)
+        self.assertEqual(det_mes_lim.observaciones, "N" * 100)
 
     def test_rf13_maquina_estados_entregas_y_bloqueos_subtest(self):
         _, caja = self.abrir_jornada_y_caja(self.pv_central, self.cajero_user, self.admin_user)

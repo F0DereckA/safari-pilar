@@ -73,6 +73,21 @@ function escapeHtml(text) {
 
 
 // Modales de Notas para Cajero
+const MAX_NOTA_COMIDA_CHARS = 100;
+
+function actualizarContadorNotaCajero() {
+    const input = document.getElementById('notaCajeroTextoInput');
+    const contador = document.getElementById('notaCajeroContadorAyuda');
+    if (!input || !contador) return;
+    if (input.value.length > MAX_NOTA_COMIDA_CHARS) {
+        input.value = input.value.slice(0, MAX_NOTA_COMIDA_CHARS);
+    }
+    const largo = input.value.length;
+    contador.textContent = `${largo} / ${MAX_NOTA_COMIDA_CHARS} caracteres`;
+    contador.classList.toggle('text-danger', largo >= MAX_NOTA_COMIDA_CHARS);
+    contador.classList.toggle('text-warning', largo >= 85 && largo < MAX_NOTA_COMIDA_CHARS);
+    contador.classList.toggle('text-muted', largo < 85);
+}
 
 function abrirNotaCajeroModal(id, nombre) {
 
@@ -80,9 +95,10 @@ function abrirNotaCajeroModal(id, nombre) {
 
     document.getElementById('modalNotaCajeroTitulo').innerHTML = `<i class="bi bi-pencil-square text-lcd-amber me-2" aria-hidden="true"></i>Nota para: ${escapeHtml(nombre)}`;
 
-    const notaActual = notasProductosCajero[id] || '';
+    const notaActual = String(notasProductosCajero[id] || '').slice(0, MAX_NOTA_COMIDA_CHARS);
 
     document.getElementById('notaCajeroTextoInput').value = notaActual;
+    actualizarContadorNotaCajero();
 
 
 
@@ -125,6 +141,7 @@ function abrirNotaCajeroModal(id, nombre) {
 function quitarNotaCajero() {
 
     document.getElementById('notaCajeroTextoInput').value = '';
+    actualizarContadorNotaCajero();
 
     guardarNotaCajero();
 
@@ -136,7 +153,7 @@ function guardarNotaCajero() {
 
     const id = document.getElementById('notaCajeroProductoId').value;
 
-    const nota = document.getElementById('notaCajeroTextoInput').value.trim();
+    const nota = document.getElementById('notaCajeroTextoInput').value.trim().slice(0, MAX_NOTA_COMIDA_CHARS);
 
     notasProductosCajero[id] = nota;
 
@@ -1590,6 +1607,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (inputNota) {
 
+        inputNota.addEventListener('input', actualizarContadorNotaCajero);
+
         inputNota.addEventListener('keydown', (e) => {
 
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1954,7 +1973,7 @@ const BalanzaDigital = (() => {
 
         // Agregar 1 unidad del ítem con la nota de balanza
         cambiarCantidad(productoSeleccionadoId, 1);
-        const notaBalanza = `Balanza: ${pesoNetoGramos}g neto (Tara: ${taraGramos}g)`;
+        const notaBalanza = `Balanza: ${pesoNetoGramos}g neto (Tara: ${taraGramos}g)`.slice(0, MAX_NOTA_COMIDA_CHARS);
         notasProductosCajero[productoSeleccionadoId] = notaBalanza;
         actualizarBotonNotaCajero(productoSeleccionadoId, notaBalanza);
         actualizarResumen();

@@ -2900,7 +2900,9 @@ def crear_ticket(request):
 
                 subtotal_bruto += calc['subtotal']
 
-                lineas_calculadas.append((prod, calc, it.get('nota', '')))
+                nota_item_pos = str(it.get('nota', '') or '').replace('\x00', '').strip()[:100]
+
+                lineas_calculadas.append((prod, calc, nota_item_pos))
 
 
 
@@ -7539,7 +7541,7 @@ def mesero(request):
 
                         'cantidad': cant,
 
-                        'nota': str(it.get('nota', '')).strip()[:200],
+                        'nota': str(it.get('nota', '') or '').replace('\x00', '').strip()[:100],
 
                         'destino': 'BARRA' if it.get('destino') == 'BARRA' else 'COCINA',
 

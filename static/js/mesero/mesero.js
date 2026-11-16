@@ -336,11 +336,28 @@ function vaciarComanda() {
 }
 
 // Modal de Notas Libres
+const MAX_NOTA_COMIDA_CHARS = 100;
+
+function actualizarContadorNotaMesero() {
+    const input = document.getElementById('notaTextoInput');
+    const contador = document.getElementById('notaMeseroContadorAyuda');
+    if (!input || !contador) return;
+    if (input.value.length > MAX_NOTA_COMIDA_CHARS) {
+        input.value = input.value.slice(0, MAX_NOTA_COMIDA_CHARS);
+    }
+    const largo = input.value.length;
+    contador.textContent = `${largo} / ${MAX_NOTA_COMIDA_CHARS} caracteres`;
+    contador.classList.toggle('text-danger', largo >= MAX_NOTA_COMIDA_CHARS);
+    contador.classList.toggle('text-warning', largo >= 85 && largo < MAX_NOTA_COMIDA_CHARS);
+    contador.classList.toggle('text-muted', largo < 85);
+}
+
 function abrirNotaModal(id, nombre) {
     document.getElementById('notaProductoId').value = id;
     document.getElementById('modalNotaTitulo').innerHTML = `<i class="bi bi-pencil-square text-lcd-amber me-2" aria-hidden="true"></i>Nota para: ${escapeHtml(nombre)}`;
-    const notaActual = notasProductos[id] || (carrito[id] ? carrito[id].nota : '');
+    const notaActual = String(notasProductos[id] || (carrito[id] ? carrito[id].nota : '')).slice(0, MAX_NOTA_COMIDA_CHARS);
     document.getElementById('notaTextoInput').value = notaActual;
+    actualizarContadorNotaMesero();
 
     const btnQuitar = document.getElementById('btnQuitarNota');
     if (btnQuitar) {
@@ -363,12 +380,13 @@ function abrirNotaModal(id, nombre) {
 function quitarNota() {
     const id = document.getElementById('notaProductoId').value;
     document.getElementById('notaTextoInput').value = '';
+    actualizarContadorNotaMesero();
     guardarNota();
 }
 
 function guardarNota() {
     const id = document.getElementById('notaProductoId').value;
-    const nota = document.getElementById('notaTextoInput').value.trim();
+    const nota = document.getElementById('notaTextoInput').value.trim().slice(0, MAX_NOTA_COMIDA_CHARS);
     notasProductos[id] = nota;
 
     if (carrito[id]) {
@@ -1103,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const inputNota = document.getElementById('notaTextoInput');
     if (inputNota) {
+        inputNota.addEventListener('input', actualizarContadorNotaMesero);
         inputNota.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

@@ -558,10 +558,13 @@
                 <div class="modal-body p-3">
                     <input type="hidden" id="notaProductoId">
                     <label for="notaTextoInput" class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
-                    <textarea id="notaTextoInput" class="form-control mb-2" rows="3" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, poco hielo..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
-                    <small class="text-muted d-block">
-                        <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i> Escribe libremente lo que el cliente solicita. Aparecerá destacado en el ticket debajo del producto.
-                    </small>
+                    <textarea id="notaTextoInput" class="form-control mb-2" rows="3" maxlength="100" aria-describedby="notaMeseroContadorAyuda notaMeseroAyuda" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, poco hielo..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
+                    <div class="d-flex justify-content-between align-items-center mb-1 gap-2">
+                        <small id="notaMeseroAyuda" class="text-muted">
+                            <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i> Máximo 100 caracteres; aparecerá bajo el producto en el ticket.
+                        </small>
+                        <small id="notaMeseroContadorAyuda" class="fw-semibold text-muted text-nowrap">0 / 100 caracteres</small>
+                    </div>
                 </div>
                 <div class="modal-footer p-2 bg-light d-flex justify-content-between">
                     <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNota" data-mesero-action="quitar-nota">
@@ -1076,7 +1079,7 @@
         "mensajes": [{% for message in messages %}{"icon": "{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}", "title": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
     }
     </script>
-    <script src="{% static 'js/mesero/mesero.js' %}?v=4.0"></script>
+    <script src="{% static 'js/mesero/mesero.js' %}?v=4.1"></script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
     <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>

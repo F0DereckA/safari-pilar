@@ -1131,13 +1131,13 @@ class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='detalles_pedido')
     cantidad = models.PositiveIntegerField(default=1)
-    observaciones = models.CharField(max_length=200, blank=True, null=True, help_text="Ej: sin sal, sin hielo, término medio")
+    observaciones = models.CharField(max_length=100, blank=True, null=True, help_text="Ej: sin sal, sin hielo, término medio (máx. 100 caracteres)")
 
     def clean(self):
         super().clean()
         if self.observaciones:
             from ventas.utils import sanitizar_observacion
-            self.observaciones = sanitizar_observacion(self.observaciones, max_length=200)
+            self.observaciones = sanitizar_observacion(self.observaciones, max_length=100)
         else:
             self.observaciones = None
 
