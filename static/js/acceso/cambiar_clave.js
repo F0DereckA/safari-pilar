@@ -4,11 +4,21 @@ function togglePass(inputId, btn) {
     if (input.type === 'password') {
         input.type = 'text';
         icon.classList.replace('bi-eye', 'bi-eye-slash');
+        btn.setAttribute('aria-pressed', 'true');
     } else {
         input.type = 'password';
         icon.classList.replace('bi-eye-slash', 'bi-eye');
+        btn.setAttribute('aria-pressed', 'false');
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-toggle-pass]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            togglePass(btn.getAttribute('data-toggle-pass'), btn);
+        });
+    });
+});
 
 const inputNueva = document.getElementById('nuevaClave');
 const inputConfirmar = document.getElementById('confirmarClave');
@@ -65,19 +75,19 @@ function validarFormulario() {
     if (cumplidos <= 1) {
         barFortaleza.className = 'progress-bar bg-danger';
         txtFortaleza.innerText = `${cumplidos}/5 - Muy débil`;
-        txtFortaleza.style.color = '#dc2626';
+        txtFortaleza.style.color = '#991b1b';
     } else if (cumplidos <= 3) {
         barFortaleza.className = 'progress-bar bg-warning';
         txtFortaleza.innerText = `${cumplidos}/5 - Intermedia`;
-        txtFortaleza.style.color = '#d97706';
+        txtFortaleza.style.color = '#92400e';
     } else if (cumplidos === 4) {
         barFortaleza.className = 'progress-bar bg-info';
         txtFortaleza.innerText = `${cumplidos}/5 - Buena`;
-        txtFortaleza.style.color = '#0284c7';
+        txtFortaleza.style.color = '#0369a1';
     } else {
         barFortaleza.className = 'progress-bar bg-success';
         txtFortaleza.innerText = `5/5 - ¡Robusta y Segura!`;
-        txtFortaleza.style.color = '#16a34a';
+        txtFortaleza.style.color = '#15803d';
     }
 
     // Comprobar coincidencia

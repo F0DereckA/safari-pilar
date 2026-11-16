@@ -44,13 +44,13 @@ body.error-page {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
-    color: #d97706;
-    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.18);
+    color: #b45309;
+    text-shadow: 2px 4px 10px rgba(180, 83, 9, 0.18);
 }
 
 .warning-icon {
     font-size: 4rem;
-    color: #ea580c;
+    color: #c2410c;
     animation: pulse-warn 3s ease-in-out infinite;
 }
 
@@ -71,13 +71,13 @@ body.error-page {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
-    color: #d97706;
-    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.15);
+    color: #b45309;
+    text-shadow: 2px 4px 10px rgba(180, 83, 9, 0.15);
 }
 
 .lock-icon {
     font-size: 4rem;
-    color: #d97706;
+    color: #b45309;
     animation: pulse-lock 3s ease-in-out infinite;
 }
 
@@ -131,11 +131,20 @@ body.error-page {
 
 .compass-icon {
     font-size: 4rem;
-    color: #d97706;
+    color: #b45309;
     animation: pulse-compass 3s ease-in-out infinite;
 }
 
 @keyframes pulse-compass {
     0%, 100% { transform: scale(1) rotate(0deg); }
     50% { transform: scale(1.08) rotate(15deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .warning-icon,
+    .lock-icon,
+    .shield-icon,
+    .compass-icon {
+        animation: none !important;
+    }
 }

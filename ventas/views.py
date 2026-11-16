@@ -2,9 +2,15 @@ import datetime
 
 import json
 
+import logging
+
+import time
+
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404, Http404
+
+from django.urls import reverse
 
 from django.http import JsonResponse, HttpResponse
 
@@ -26,11 +32,29 @@ from django.contrib.auth.models import User
 
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 
+from django.contrib.auth.password_validation import validate_password
+
 from .validators import validar_complejidad_clave
 
+from .security import (
+    USUARIOS_DEMO_EVALUACION,
+    VERSION_POLITICA_ACTUAL,
+    VERSION_TERMINOS_ACTUAL,
+    demo_mode_activo,
+    enmascarar_rut,
+    hash_alias_navegador,
+    hash_dato_sensible,
+    limpiar_texto_seguro,
+    resolver_usuario_demo_eval,
+    usuario_tiene_consentimiento_vigente,
+    validar_acceso_rls_local,
+    verificar_rate_limit_ip,
+)
 
 
-from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion, ConsumoInterno, DetalleConsumoInterno
+logger = logging.getLogger(__name__)
+
+from .models import PuntoVenta, PerfilEmpleado, AlertaTraslado, Mesa, Jornada, Caja, Venta, DetalleVenta, Pedido, DetallePedido, Ticket, Categoria, Producto, Menu, Entrega, ConvenioHuesped, ConsumoHuesped, OfertaTemporada, ReasignacionMesa, PrecioEspecial, RegistroPrecioEspecial, PuntoImpresion, RegistroImpresion, ConsumoInterno, DetalleConsumoInterno, registrar_evento_consentimiento
 
 from .utils import (
 
@@ -58,449 +82,7 @@ def get_locales_data():
 
     """Retorna los datos operativos de todos los locales gastronómicos registrados en la BD de Parque Safari"""
 
-    # Métricas y simulaciones base de la jornada para los locales demo iniciales
-
-    mock_metricas = {
-
-        1: {
-
-            "nombre": "Restaurante Central Safari",
-
-            "tipo": "Restaurante & Buffet Caliente",
-
-            "descripcion": "Comida por cocinar, platos de fondo caliente, minutas, hamburguesas y autoservicio para familias.",
-
-            "icono": "bi-building-fill",
-
-            "color": "#c62828",
-
-            "turno": "Turno Continuo (09:00 - 19:30)",
-
-            "total_ventas": 940000,
-
-            "tickets_emitidos": 72,
-
-            "ticket_promedio": 13055,
-
-            "caja_apertura": 100000,
-
-            "caja_efectivo": 320000,
-
-            "caja_tarjeta": 620000,
-
-            "saldo_actual": 420000,
-
-            "ventas_categoria": [
-
-                {"nombre": "Comida por Cocinar", "monto": 560000, "porcentaje": 60, "color": "#ef4444"},
-
-                {"nombre": "Comida Preparada", "monto": 180000, "porcentaje": 19, "color": "#f59e0b"},
-
-                {"nombre": "Bebidas Envasadas", "monto": 120000, "porcentaje": 13, "color": "#0284c7"},
-
-                {"nombre": "Cafetería y Jugos", "monto": 80000, "porcentaje": 8, "color": "#9333ea"}
-
-            ],
-
-            "metodos_pago": [
-
-                {"metodo": "Tarjeta Débito", "monto": 480000, "porcentaje": 51, "icono": "bi-credit-card"},
-
-                {"metodo": "Efectivo", "monto": 320000, "porcentaje": 34, "icono": "bi-cash-coin"},
-
-                {"metodo": "Tarjeta Crédito", "monto": 140000, "porcentaje": 15, "icono": "bi-credit-card-2-front"}
-
-            ],
-
-            "tickets_recientes": [
-
-                {
-
-                    "id": "COM-0084",
-
-                    "hora": "14:21",
-
-                    "cliente": "Mesa 8",
-
-                    "total": 25400,
-
-                    "cajero": "Carlos Valenzuela",
-
-                    "creador_rol": "Mesero",
-
-                    "estado": "En Cocina",
-
-                    "items": [
-
-                        {"nombre": "Hamburguesa Safari con Papas", "cantidad": 2, "precio": 8900, "subtotal": 17800, "destino": "Cocina", "nota": "Sin cebolla"},
-
-                        {"nombre": "Bebida Coca-Cola 350ml", "cantidad": 2, "precio": 2000, "subtotal": 4000, "destino": "Barra", "nota": "Bien fría"},
-
-                        {"nombre": "Porción Papas Fritas Rústicas", "cantidad": 1, "precio": 3600, "subtotal": 3600, "destino": "Cocina", "nota": "Poco condimento"}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0081",
-
-                    "hora": "14:10",
-
-                    "cliente": "Mesa 4",
-
-                    "total": 23000,
-
-                    "cajero": "Carlos Valenzuela",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "En Cocina",
-
-                    "items": [
-
-                        {"nombre": "Churrasco Italiano con Papas", "cantidad": 2, "precio": 8500, "subtotal": 17000, "destino": "Cocina", "nota": "Mayonesa casera aparte"},
-
-                        {"nombre": "Café Cappuccino", "cantidad": 2, "precio": 3000, "subtotal": 6000, "destino": "Barra", "nota": "Leche descremada"}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0078",
-
-                    "hora": "13:55",
-
-                    "cliente": "Mesa 2",
-
-                    "total": 18900,
-
-                    "cajero": "Matías González",
-
-                    "creador_rol": "Mesero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Cazuela de Ave Criolla", "cantidad": 2, "precio": 7500, "subtotal": 15000, "destino": "Cocina", "nota": "Bien caliente"},
-
-                        {"nombre": "Jugo Natural de Fruta", "cantidad": 1, "precio": 3900, "subtotal": 3900, "destino": "Barra", "nota": "Frambuesa con hielo"}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0075",
-
-                    "hora": "13:40",
-
-                    "cliente": "Mostrador",
-
-                    "total": 14500,
-
-                    "cajero": "Carlos Valenzuela",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Menú Infantil Nuggets con Papas", "cantidad": 2, "precio": 5900, "subtotal": 11800, "destino": "Cocina", "nota": "Con ketchup"},
-
-                        {"nombre": "Jugo en Caja 200ml", "cantidad": 2, "precio": 1350, "subtotal": 2700, "destino": "Barra", "nota": ""}
-
-                    ]
-
-                }
-
-            ]
-
-        },
-
-        2: {
-
-            "nombre": "Cafetería & Pastelería La Selva",
-
-            "tipo": "Cafetería Barista & Repostería",
-
-            "descripcion": "Café de grano italiano de barista, sándwiches frescos de vitrina, jugos naturales exprimidos y pastelería.",
-
-            "icono": "bi-cup-hot-fill",
-
-            "color": "#6b21a8",
-
-            "turno": "Turno Mañana/Tarde (09:30 - 19:00)",
-
-            "total_ventas": 520000,
-
-            "tickets_emitidos": 45,
-
-            "ticket_promedio": 11555,
-
-            "caja_apertura": 80000,
-
-            "caja_efectivo": 190000,
-
-            "caja_tarjeta": 330000,
-
-            "saldo_actual": 270000,
-
-            "ventas_categoria": [
-
-                {"nombre": "Cafetería y Jugos", "monto": 260000, "porcentaje": 50, "color": "#9333ea"},
-
-                {"nombre": "Comida Preparada", "monto": 160000, "porcentaje": 31, "color": "#f59e0b"},
-
-                {"nombre": "Bebidas Envasadas", "monto": 80000, "porcentaje": 15, "color": "#0284c7"},
-
-                {"nombre": "Comida por Cocinar", "monto": 20000, "porcentaje": 4, "color": "#ef4444"}
-
-            ],
-
-            "metodos_pago": [
-
-                {"metodo": "Tarjeta Débito", "monto": 280000, "porcentaje": 54, "icono": "bi-credit-card"},
-
-                {"metodo": "Efectivo", "monto": 190000, "porcentaje": 37, "icono": "bi-cash-coin"},
-
-                {"metodo": "Tarjeta Crédito", "monto": 50000, "porcentaje": 9, "icono": "bi-credit-card-2-front"}
-
-            ],
-
-            "tickets_recientes": [
-
-                {
-
-                    "id": "COM-0082",
-
-                    "hora": "14:15",
-
-                    "cliente": "Para Llevar",
-
-                    "total": 13300,
-
-                    "cajero": "Camila Soto",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "En Barra",
-
-                    "items": [
-
-                        {"nombre": "Café de Grano / Cortado", "cantidad": 2, "precio": 2400, "subtotal": 4800, "destino": "Barra", "nota": "Término caliente"},
-
-                        {"nombre": "Sándwich Ave Pimentón", "cantidad": 1, "precio": 4200, "subtotal": 4200, "destino": "Barra", "nota": "Calentar pan"},
-
-                        {"nombre": "Medialuna Rellena", "cantidad": 2, "precio": 2150, "subtotal": 4300, "destino": "Barra", "nota": "Manjar"}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0079",
-
-                    "hora": "13:58",
-
-                    "cliente": "Terraza #1",
-
-                    "total": 8600,
-
-                    "cajero": "Camila Soto",
-
-                    "creador_rol": "Mesero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Café Cappuccino", "cantidad": 2, "precio": 2800, "subtotal": 5600, "destino": "Barra", "nota": "Canela en polvo"},
-
-                        {"nombre": "Empanada de Queso", "cantidad": 1, "precio": 3000, "subtotal": 3000, "destino": "Barra", "nota": "Al horno"}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0076",
-
-                    "hora": "13:42",
-
-                    "cliente": "Para Llevar",
-
-                    "total": 11200,
-
-                    "cajero": "Camila Soto",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Limonada Menta Jengibre", "cantidad": 2, "precio": 3200, "subtotal": 6400, "destino": "Barra", "nota": "Hielo aparte"},
-
-                        {"nombre": "Sándwich Pan Jamón y Queso", "cantidad": 1, "precio": 3500, "subtotal": 3500, "destino": "Barra", "nota": "Tostado"},
-
-                        {"nombre": "Agua Mineral 500ml", "cantidad": 1, "precio": 1300, "subtotal": 1300, "destino": "Barra", "nota": "Sin gas"}
-
-                    ]
-
-                }
-
-            ]
-
-        },
-
-        3: {
-
-            "nombre": "Barra Rápida & Kiosco Oasis",
-
-            "tipo": "Punto Snack & Bebidas Frías",
-
-            "descripcion": "Bebidas frías, jugos en caja, empanadas de mantenedor, helados y snacks al paso en zonas de recorrido.",
-
-            "icono": "bi-shop-window",
-
-            "color": "#0284c7",
-
-            "turno": "Turno Tarde (10:00 - 18:30)",
-
-            "total_ventas": 385000,
-
-            "tickets_emitidos": 38,
-
-            "ticket_promedio": 10131,
-
-            "caja_apertura": 60000,
-
-            "caja_efectivo": 165000,
-
-            "caja_tarjeta": 220000,
-
-            "saldo_actual": 225000,
-
-            "ventas_categoria": [
-
-                {"nombre": "Bebidas Envasadas", "monto": 195000, "porcentaje": 51, "color": "#0284c7"},
-
-                {"nombre": "Comida Preparada", "monto": 150000, "porcentaje": 39, "color": "#f59e0b"},
-
-                {"nombre": "Cafetería y Jugos", "monto": 40000, "porcentaje": 10, "color": "#9333ea"},
-
-                {"nombre": "Comida por Cocinar", "monto": 0, "porcentaje": 0, "color": "#ef4444"}
-
-            ],
-
-            "metodos_pago": [
-
-                {"metodo": "Tarjeta Débito", "monto": 170000, "porcentaje": 44, "icono": "bi-credit-card"},
-
-                {"metodo": "Efectivo", "monto": 165000, "porcentaje": 43, "icono": "bi-cash-coin"},
-
-                {"metodo": "Tarjeta Crédito", "monto": 50000, "porcentaje": 13, "icono": "bi-credit-card-2-front"}
-
-            ],
-
-            "tickets_recientes": [
-
-                {
-
-                    "id": "COM-0083",
-
-                    "hora": "14:18",
-
-                    "cliente": "Mostrador",
-
-                    "total": 7500,
-
-                    "cajero": "Matías González",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "Listo",
-
-                    "items": [
-
-                        {"nombre": "Bebida Coca-Cola 350ml", "cantidad": 2, "precio": 2000, "subtotal": 4000, "destino": "Barra", "nota": ""},
-
-                        {"nombre": "Pan Jamón y Queso", "cantidad": 1, "precio": 3500, "subtotal": 3500, "destino": "Barra", "nota": ""}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0080",
-
-                    "hora": "14:02",
-
-                    "cliente": "Paso",
-
-                    "total": 6200,
-
-                    "cajero": "Matías González",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Empanada de Pino al Horno", "cantidad": 1, "precio": 3200, "subtotal": 3200, "destino": "Barra", "nota": ""},
-
-                        {"nombre": "Agua Mineral 500ml", "cantidad": 2, "precio": 1500, "subtotal": 3000, "destino": "Barra", "nota": ""}
-
-                    ]
-
-                },
-
-                {
-
-                    "id": "COM-0077",
-
-                    "hora": "13:46",
-
-                    "cliente": "Paso",
-
-                    "total": 4500,
-
-                    "cajero": "Matías González",
-
-                    "creador_rol": "Cajero",
-
-                    "estado": "Entregado",
-
-                    "items": [
-
-                        {"nombre": "Sándwich Ave Pimentón", "cantidad": 1, "precio": 3000, "subtotal": 3000, "destino": "Barra", "nota": ""},
-
-                        {"nombre": "Agua Mineral 500ml", "cantidad": 1, "precio": 1500, "subtotal": 1500, "destino": "Barra", "nota": ""}
-
-                    ]
-
-                }
-
-            ]
-
-        }
-
-    }
-
-
-
-    # Cargar todos los puntos de venta reales registrados en la BD
+    # Cargar todos los puntos de venta reales registrados en la BD (cero métricas simuladas)
 
     locales_bd = PuntoVenta.objects.all().order_by('id')
 
@@ -526,211 +108,191 @@ def get_locales_data():
 
 
 
+    cajas_por_local = {}
+
+    paleta_cat = ["#ef4444", "#f59e0b", "#0284c7", "#9333ea", "#16a34a"]
+
+    iconos_mp = {
+
+        "Efectivo": "bi-cash-coin",
+
+        "Tarjeta Débito": "bi-credit-card",
+
+        "Tarjeta Crédito": "bi-credit-card-2-front",
+
+        "Transferencia": "bi-bank",
+
+    }
+
     for pv in locales_bd:
 
-        demo = mock_metricas.get(pv.id, {})
-
-
-
-        # Regla Parque Safari: Guiado por día y hora. Las ventas corresponden exclusivamente al día actual (hoy).
-
-        # Al finalizar el día o empezar un nuevo día, la cuenta vuelve automáticamente a 0.
-
+        # Regla Parque Safari: Las ventas y cierres corresponden exclusivamente al día actual (hoy).
         real_ventas_hoy = Venta.objects.filter(
             punto_venta=pv,
             fecha_hora__date=hoy
         ).exclude(
             estado__in=['ANULADA', 'CANCELADA']
-        ).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto').order_by('-fecha_hora')
+        ).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto__categoria').order_by('-fecha_hora')
 
-
+        cajas_hoy = list(Caja.objects.filter(punto_venta=pv, jornada__fecha=hoy).select_related('cajero'))
+        caja_apertura = sum(int(c.monto_apertura or 0) for c in cajas_hoy)
+        cajas_por_local[pv.id] = {c.cajero_id: c for c in cajas_hoy}
 
         real_tickets = []
-
         suma_ventas_reales = 0
-
-
+        tickets_pagados = 0
+        comandas_abiertas = 0
+        caja_efectivo = 0
+        caja_tarjeta = 0
+        categorias_monto = {}
+        metodos_monto = {}
 
         for rv in real_ventas_hoy:
-
             rol_c = obtener_rol_usuario(rv.cajero) or "Mesero"
-
             v_items = []
-
             for d in rv.detalles.all():
-
                 nom = d.producto.nombre
-
-                dest = "Cocina" if any(w in nom.lower() for w in ['hamburguesa', 'cazuela', 'churrasco', 'papas', 'nuggets', 'almuerzo']) else "Barra"
+                cat_obj = d.producto.categoria if d.producto else None
+                if cat_obj and getattr(cat_obj, 'destino_defecto', None) == 'BARRA':
+                    dest = "Barra"
+                elif cat_obj and getattr(cat_obj, 'destino_defecto', None) == 'COCINA':
+                    dest = "Cocina"
+                else:
+                    dest = "Cocina" if any(w in nom.lower() for w in ['hamburguesa', 'cazuela', 'churrasco', 'papas', 'nuggets', 'almuerzo']) else "Barra"
 
                 v_items.append({
-
                     "nombre": nom,
-
                     "cantidad": d.cantidad,
-
                     "precio": int(d.precio_aplicado),
-
                     "subtotal": int(d.subtotal),
-
                     "destino": dest,
-
                     "nota": ""
-
                 })
 
+                if rv.estado == 'PAGADA':
+                    cat_nombre = cat_obj.nombre if cat_obj else "Otros Productos"
+                    categorias_monto[cat_nombre] = categorias_monto.get(cat_nombre, 0) + int(d.subtotal or 0)
+
             if rv.estado == 'PAGADA':
-                suma_ventas_reales += int(rv.total)
+                monto_rv = int(rv.total or 0)
+                suma_ventas_reales += monto_rv
+                tickets_pagados += 1
+                mp = (rv.metodo_pago or 'EFECTIVO').upper()
+                if mp == 'EFECTIVO':
+                    caja_efectivo += monto_rv
+                elif mp in ['DEBITO', 'CREDITO']:
+                    caja_tarjeta += monto_rv
+                mp_label = {
+                    'EFECTIVO': 'Efectivo',
+                    'DEBITO': 'Tarjeta Débito',
+                    'CREDITO': 'Tarjeta Crédito',
+                    'TRANSFERENCIA': 'Transferencia',
+                }.get(mp, rv.get_metodo_pago_display())
+                metodos_monto[mp_label] = metodos_monto.get(mp_label, 0) + monto_rv
+            elif rv.estado == 'ABIERTA':
+                comandas_abiertas += 1
 
-            real_tickets.append({
-
-                "id": f"COM-{rv.id:04d}",
-
-                "hora": timezone.localtime(rv.fecha_hora).strftime("%H:%M"),
-
-                "cliente": rv.mesa.identificador if rv.mesa else "Mostrador",
-
-                "total": int(rv.total),
-
-                "cajero": rv.cajero.get_full_name() or rv.cajero.username,
-
-                "creador_rol": "Mesero" if rol_c == 'MESERO' else "Cajero",
-
-                "estado": "En Cocina" if any(it["destino"] == "Cocina" for it in v_items) else "Listo",
-
-                "items": v_items,
-
-                "items_json": json.dumps(v_items)
-
-            })
-
-
-
-        # Si el local tiene ventas hoy, se muestran; si no, la cuenta del día está limpia en 0
+            if len(real_tickets) < 25:
+                estado_ticket = "Pagado" if rv.estado == 'PAGADA' else ("En Cocina" if any(it["destino"] == "Cocina" for it in v_items) else "En Barra")
+                real_tickets.append({
+                    "id": f"COM-{rv.id:04d}",
+                    "hora": timezone.localtime(rv.fecha_hora).strftime("%H:%M"),
+                    "cliente": rv.mesa.identificador if rv.mesa else "Mostrador",
+                    "total": int(rv.total),
+                    "cajero": rv.cajero.get_full_name() or rv.cajero.username,
+                    "creador_rol": "Mesero" if rol_c == 'MESERO' else "Cajero",
+                    "estado": estado_ticket,
+                    "items": v_items,
+                    "items_json": json.dumps(v_items)
+                })
 
         total_ventas_calc = suma_ventas_reales
-
-        tickets_emitidos_calc = len(real_tickets)
-
+        tickets_emitidos_calc = tickets_pagados
         ticket_prom_calc = round(total_ventas_calc / tickets_emitidos_calc) if tickets_emitidos_calc else 0
 
+        total_cat = sum(categorias_monto.values())
+        ventas_categoria = [
+            {
+                "nombre": c_nom,
+                "monto": c_monto,
+                "porcentaje": round((c_monto / total_cat) * 100) if total_cat else 0,
+                "color": paleta_cat[idx % len(paleta_cat)],
+            }
+            for idx, (c_nom, c_monto) in enumerate(sorted(categorias_monto.items(), key=lambda x: -x[1]))
+        ]
 
+        total_met = sum(metodos_monto.values())
+        metodos_pago = [
+            {
+                "metodo": m_nom,
+                "monto": m_monto,
+                "porcentaje": round((m_monto / total_met) * 100) if total_met else 0,
+                "icono": iconos_mp.get(m_nom, "bi-wallet2"),
+            }
+            for m_nom, m_monto in sorted(metodos_monto.items(), key=lambda x: -x[1])
+        ]
 
         turno_oficial = "Horario Oficial (10:00 - 18:00)"
-
         if pv.activo:
-
             estado_local = "Abierto (10:00 - 18:00)" if en_horario else "Cerrado (Horario 10:00 - 18:00)"
-
         else:
-
             estado_local = "Inactivo"
 
-
-
         locales[pv.id] = {
-
             "id": pv.id,
-
             "nombre": pv.nombre,
-
-            "tipo": pv.tipo or demo.get("tipo", "Punto de Venta"),
-
-            "descripcion": pv.descripcion or demo.get("descripcion", "Punto gastronómico operativo de Parque Safari."),
-
-            "icono": getattr(pv, 'icono', None) or demo.get("icono", "bi-shop"),
-
-            "color": getattr(pv, 'color', None) or demo.get("color", "#c62828"),
-
+            "tipo": pv.tipo or "Punto de Venta",
+            "descripcion": pv.descripcion or "Punto gastronómico operativo de Parque Safari.",
+            "icono": getattr(pv, 'icono', None) or "bi-shop",
+            "color": getattr(pv, 'color', None) or "#c62828",
             "estado": estado_local,
-
             "en_horario": en_horario,
-
             "horario_apertura": "10:00",
-
             "horario_cierre": "18:00",
-
             "turno": turno_oficial,
-
             "total_ventas": total_ventas_calc,
-
             "tickets_emitidos": tickets_emitidos_calc,
-
+            "comandas_abiertas": comandas_abiertas,
             "ticket_promedio": ticket_prom_calc,
-
-            "caja_apertura": demo.get("caja_apertura", 0),
-
-            "caja_efectivo": demo.get("caja_efectivo", 0),
-
-            "caja_tarjeta": demo.get("caja_tarjeta", 0),
-
-            "saldo_actual": suma_ventas_reales,
-
+            "caja_apertura": caja_apertura,
+            "caja_efectivo": caja_efectivo,
+            "caja_tarjeta": caja_tarjeta,
+            "saldo_actual": int(caja_apertura) + caja_efectivo,
             "personal": [],
-
-            "ventas_categoria": demo.get("ventas_categoria", []),
-
-            "metodos_pago": demo.get("metodos_pago", []),
-
+            "ventas_categoria": ventas_categoria,
+            "metodos_pago": metodos_pago,
             "tickets_recientes": real_tickets
-
         }
 
-
-
-    # Si por algún motivo aún no hay locales en BD (p.ej. antes del seeding), cargar los mock por defecto
-
-    if not locales and mock_metricas:
-
-        for mid, mdata in mock_metricas.items():
-
-            locales[mid] = {
-
-                "id": mid,
-
-                **mdata,
-
-                "estado": "En Servicio",
-
-                "personal": []
-
-            }
-
-
-
     # Sincronizar dotación de personal real desde la BD respetando el límite de 1 puesto de trabajo
-
     for loc_id, loc in locales.items():
-
         perfiles = PerfilEmpleado.objects.filter(punto_venta_actual_id=loc_id, activo=True).select_related('usuario')
-
         if perfiles.exists():
-
-            loc["personal"] = [
-
-                {
-
+            cajas_local = cajas_por_local.get(loc_id, {})
+            personal_list = []
+            for p in perfiles:
+                caja_asoc = cajas_local.get(p.usuario_id)
+                if caja_asoc and caja_asoc.fecha_hora_apertura:
+                    hora_login = timezone.localtime(caja_asoc.fecha_hora_apertura).strftime("%H:%M")
+                elif p.usuario.last_login:
+                    hora_login = timezone.localtime(p.usuario.last_login).strftime("%H:%M")
+                else:
+                    hora_login = "--:--"
+                caja_nombre = (
+                    caja_asoc.nombre
+                    if caja_asoc
+                    else (f"Salón {loc['nombre'].split()[0]}" if p.rol == 'MESERO' else f"Caja {loc['nombre'].split()[0]} #1")
+                )
+                personal_list.append({
                     "perfil_id": p.id,
-
                     "nombre": p.usuario.get_full_name() or p.usuario.username,
-
-                    "rut": p.rut or "S/RUT",
-
+                    "rut": enmascarar_rut(p.rut) if p.rut else "S/RUT",
                     "cargo": p.get_rol_display(),
-
-                    "hora_login": "08:30" if p.rol == 'MESERO' else "08:45",
-
-                    "caja": f"Caja {loc['nombre'].split()[0]} #1",
-
-                    "estado": "Activo"
-
-                }
-
-                for p in perfiles
-
-            ]
-
-
+                    "hora_login": hora_login,
+                    "caja": caja_nombre,
+                    "estado": "Activo",
+                })
+            loc["personal"] = personal_list
 
     return locales
 
@@ -784,7 +346,21 @@ def requiere_rol(roles_permitidos):
 
         def _wrapped_view(request, *args, **kwargs):
 
+            es_api = (
+                request.path.startswith('/api/')
+                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('accept', '')
+            )
+
             if not request.user.is_authenticated:
+
+                if es_api:
+                    return JsonResponse({
+                        'ok': False,
+                        'status': 'error',
+                        'sesion_expirada': True,
+                        'error': "Sesión expirada o no iniciada. Inicia sesión nuevamente."
+                    }, status=401)
 
                 messages.warning(request, "Acceso protegido: Debes iniciar sesión con tus credenciales para ingresar.")
 
@@ -798,6 +374,14 @@ def requiere_rol(roles_permitidos):
 
                 logout(request)
 
+                if es_api:
+                    return JsonResponse({
+                        'ok': False,
+                        'status': 'error',
+                        'sesion_expirada': True,
+                        'error': "Tu cuenta de colaborador ha sido desactivada. La sesión fue cerrada por seguridad."
+                    }, status=401)
+
                 messages.error(request, "Tu cuenta de colaborador ha sido desactivada. La sesión fue cerrada por seguridad.")
 
                 return redirect('index')
@@ -810,6 +394,14 @@ def requiere_rol(roles_permitidos):
 
                 logout(request)
 
+                if es_api:
+                    return JsonResponse({
+                        'ok': False,
+                        'status': 'error',
+                        'sesion_expirada': True,
+                        'error': "Tu cuenta de colaborador se encuentra inactiva. La sesión fue cerrada por seguridad."
+                    }, status=401)
+
                 messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. La sesión fue cerrada por seguridad.")
 
                 return redirect('index')
@@ -819,6 +411,14 @@ def requiere_rol(roles_permitidos):
             # H19: Blindaje ISO/IEC 27400: Obligar cambio de clave expirada o de primer ingreso
 
             if request.session.get('requiere_cambio_clave'):
+
+                if es_api:
+                    return JsonResponse({
+                        'ok': False,
+                        'status': 'error',
+                        'requiere_cambio_clave': True,
+                        'error': "Actualización obligatoria de clave requerida antes de operar."
+                    }, status=403)
 
                 messages.warning(
 
@@ -837,8 +437,6 @@ def requiere_rol(roles_permitidos):
             rol = obtener_rol_usuario(request.user)
 
             if rol not in roles_permitidos:
-
-                es_api = request.path.startswith('/api/') or request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', '')
 
                 if es_api:
 
@@ -948,21 +546,87 @@ TIEMPO_BLOQUEO_LOGIN = 300  # 5 minutos en segundos
 
 
 
+def _leer_tokens_ack_cookie(request):
+    from urllib.parse import unquote
+    raw = request.COOKIES.get('safari_ack_users', '')
+    if not raw:
+        return []
+    try:
+        decodificado = unquote(raw)
+        data = json.loads(decodificado)
+        if isinstance(data, list):
+            return [str(x)[:16] for x in data if isinstance(x, str) and len(x) <= 16][:25]
+    except (ValueError, TypeError):
+        pass
+    return []
+
+
+def _adjuntar_cookie_ack_usuario(request, response, user, perfil=None):
+    from urllib.parse import quote
+    tokens = _leer_tokens_ack_cookie(request)
+    nuevos = [hash_alias_navegador(user.username)]
+    if perfil and getattr(perfil, 'rut', ''):
+        tok_rut = hash_alias_navegador(perfil.rut)
+        if tok_rut:
+            nuevos.append(tok_rut)
+    for t in nuevos:
+        if t and t not in tokens:
+            tokens.append(t)
+    tokens = tokens[-25:]
+    payload = quote(json.dumps(tokens, separators=(',', ':')), safe='')
+    response.set_cookie(
+        'safari_ack_users',
+        payload,
+        max_age=180 * 86400,
+        httponly=False,
+        samesite='Lax',
+        secure=request.is_secure(),
+    )
+    return response
+
+
 def login_view(request):
 
-    """RF01: Inicio de sesión real con django.contrib.auth, protección de fuerza bruta y redirección automática por rol"""
+    """RF01: Inicio de sesión real con django.contrib.auth, consentimiento 1 sola vez por usuario, protección de fuerza bruta y redirección por rol"""
 
     if request.method == 'POST':
 
-        username = request.POST.get('username', '').strip()
+        permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+            request,
+            namespace='login_post_ip',
+            max_requests=80,
+            window_seconds=60,
+        )
+        if not permitido_ip:
+            resp_429 = HttpResponse(
+                "Demasiados intentos de inicio de sesión desde tu dirección IP. Espera unos segundos.",
+                status=429,
+                content_type='text/plain; charset=utf-8',
+            )
+            resp_429['Retry-After'] = str(retry_after)
+            return resp_429
+
+        username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=150)
 
         password = request.POST.get('password', '')
 
+        demo_rol_eval = limpiar_texto_seguro(request.POST.get('demo_rol_eval', ''), max_length=50).lower()
 
+        acepto_politicas = request.POST.get('acepto_politicas', '') in ('1', 'on', 'true', 'yes')
+
+        exigir_consentimiento = (
+            request.POST.get('portal_consent_required') == '1'
+            or 'mozilla' in (request.META.get('HTTP_USER_AGENT', '') or '').lower()
+        )
+
+        es_demo_autorizado = bool(demo_rol_eval and demo_mode_activo() and not password)
+
+        if es_demo_autorizado and not username:
+            username = demo_rol_eval
 
         # Validar campos requeridos obligatorios (Semana 10)
 
-        if not username or not password:
+        if not username or (not password and not es_demo_autorizado):
 
             messages.warning(request, "Por favor completa todos los campos requeridos (nombre de usuario y contraseña).")
 
@@ -1052,7 +716,10 @@ def login_view(request):
 
 
 
-        user = authenticate(request, username=username, password=password)
+        if es_demo_autorizado and demo_rol_eval == username.lower():
+            user = resolver_usuario_demo_eval(demo_rol_eval)
+        else:
+            user = authenticate(request, username=username, password=password)
 
 
 
@@ -1063,6 +730,17 @@ def login_view(request):
             if not user.is_active or (perfil and not perfil.activo):
 
                 messages.error(request, "Tu cuenta de colaborador se encuentra inactiva. Contacta al Administrador.")
+
+                return redirect('index')
+
+            ya_acepto_vigente = usuario_tiene_consentimiento_vigente(user)
+
+            if exigir_consentimiento and not acepto_politicas and not ya_acepto_vigente:
+
+                messages.error(
+                    request,
+                    "Debes marcar la casilla para aceptar la Política de Privacidad y los Términos y Condiciones antes de ingresar.",
+                )
 
                 return redirect('index')
 
@@ -1084,9 +762,28 @@ def login_view(request):
 
 
 
-            login(request, user)
+            if hasattr(user, 'backend'):
+                login(request, user)
+            else:
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
+            request.session['_safari_last_activity'] = time.time()
+            ua_actual = request.META.get('HTTP_USER_AGENT', '')
+            if ua_actual:
+                request.session['_safari_ua_hash'] = hash_dato_sensible(ua_actual, contexto='session-ua')
 
+            if acepto_politicas:
+                acepto_cookies_analisis = request.POST.get('acepto_cookies_analisis', '') in ('1', 'on', 'true', 'yes')
+                registrar_evento_consentimiento(
+                    request=request,
+                    usuario=user,
+                    origen='LOGIN_PORTAL',
+                    acepto_privacidad=True,
+                    acepto_terminos=True,
+                    acepto_cookies_analisis=acepto_cookies_analisis,
+                )
+
+            respuesta_login = None
 
             # Verificar cambio forzoso de contraseña en primer ingreso o expiración semestral de 6 meses (ISO/IEC 27400)
 
@@ -1118,51 +815,48 @@ def login_view(request):
 
                     )
 
-                return redirect('cambiar_clave_expirada')
+                respuesta_login = redirect('cambiar_clave_expirada')
 
+            if respuesta_login is None:
 
+                # Redirección directa si se especificó un destino explícito autorizado (ej: KDS Cocina o BDS Barra)
 
-            # Redirección directa si se especificó un destino explícito autorizado (ej: KDS Cocina o BDS Barra)
+                next_url = request.POST.get('next', '').strip()
 
-            next_url = request.POST.get('next', '').strip()
+                if next_url in ('/cocina/', '/barra/', '/mesero/', '/vendedor/', '/administrador/'):
 
-            if next_url in ('/cocina/', '/barra/', '/mesero/', '/vendedor/', '/administrador/'):
+                    respuesta_login = redirect(next_url)
 
-                return redirect(next_url)
+            if respuesta_login is None:
 
+                rol = obtener_rol_usuario(user)
 
+                if rol == 'ADMINISTRADOR':
 
-            rol = obtener_rol_usuario(user)
+                    respuesta_login = redirect('administrador')
 
-            if rol == 'ADMINISTRADOR':
+                elif rol == 'CAJERO':
 
-                messages.success(request, f"Bienvenido(a) Administrador(a) {user.get_full_name() or user.username}.")
+                    respuesta_login = redirect('vendedor')
 
-                return redirect('administrador')
+                elif rol == 'MESERO':
 
-            elif rol == 'CAJERO':
+                    respuesta_login = redirect('mesero')
 
-                messages.success(request, f"Bienvenido(a) Cajero(a) {user.get_full_name() or user.username}.")
+                elif rol == 'COCINERO':
 
-                return redirect('vendedor')
+                    respuesta_login = redirect('cocina')
 
-            elif rol == 'MESERO':
+                else:
 
-                messages.success(request, f"Bienvenido(a) Mesero(a) {user.get_full_name() or user.username}.")
+                    messages.warning(request, "Usuario autenticado sin rol asignado en el sistema.")
 
-                return redirect('mesero')
+                    respuesta_login = redirect('index')
 
-            elif rol == 'COCINERO':
+            if acepto_politicas or ya_acepto_vigente:
+                _adjuntar_cookie_ack_usuario(request, respuesta_login, user, perfil)
 
-                messages.success(request, f"Bienvenido(a) Cocinero(a) {user.get_full_name() or user.username}.")
-
-                return redirect('cocina')
-
-            else:
-
-                messages.warning(request, "Usuario autenticado sin rol asignado en el sistema.")
-
-                return redirect('index')
+            return respuesta_login
 
         else:
 
@@ -1284,7 +978,9 @@ def logout_view(request):
 
         messages.info(request, "Has cerrado tu sesión de forma segura. ¡Hasta pronto!")
 
-    return redirect('index')
+    resp = redirect('index')
+    resp['Clear-Site-Data'] = '"cache", "storage"'
+    return resp
 
 
 
@@ -1420,9 +1116,14 @@ def error_500_view(request):
 
 def qr_acceso_view(request):
 
-    """Vista informativa con código QR de conexión en red local para evaluación."""
+    """Vista informativa con código QR de conexión dinámica sin exponer IPs ni cuentas fuera de evaluación."""
 
-    return render(request, 'ventas/acceso/qr_acceso.html')
+    url_acceso = request.build_absolute_uri(reverse('index'))
+
+    return render(request, 'ventas/acceso/qr_acceso.html', {
+        'url_acceso': url_acceso,
+        'demo_mode_activo': demo_mode_activo(),
+    })
 
 
 
@@ -1452,7 +1153,24 @@ def index(request):
 
             return redirect('cocina')
 
-    return render(request, 'ventas/acceso/index.html')
+    ack_tokens = _leer_tokens_ack_cookie(request)
+    if demo_mode_activo():
+        demo_users = User.objects.filter(username__in=USUARIOS_DEMO_EVALUACION, is_active=True).select_related('perfil')
+        for u_demo in demo_users:
+            if usuario_tiene_consentimiento_vigente(u_demo):
+                tok = hash_alias_navegador(u_demo.username)
+                if tok and tok not in ack_tokens:
+                    ack_tokens.append(tok)
+
+    ack_config = {
+        'tokens': ack_tokens,
+        'policy_version': VERSION_POLITICA_ACTUAL,
+        'terms_version': VERSION_TERMINOS_ACTUAL,
+    }
+    return render(request, 'ventas/acceso/index.html', {
+        'demo_mode_activo': demo_mode_activo(),
+        'ack_config': ack_config,
+    })
 
 
 
@@ -1544,9 +1262,26 @@ def vendedor(request):
 
                 return redirect('vendedor')
 
+            try:
+                mesa_id = int(mesa_id)
+            except (ValueError, TypeError):
+                err_mesa = "Debes especificar una mesa válida para operar."
+                if es_ajax:
+                    return JsonResponse({'ok': False, 'error': err_mesa}, status=400)
+                messages.error(request, err_mesa)
+                return redirect('vendedor')
+
 
 
             if accion == 'ocupar_mesa':
+                _, _, err_caja = _validar_jornada_y_caja_abierta_local(
+                    local_operativo, caja_asignada=caja_activa, exigir_caja_asignada=True
+                )
+                if err_caja:
+                    if es_ajax:
+                        return JsonResponse({'ok': False, 'error': err_caja}, status=400)
+                    messages.warning(request, err_caja)
+                    return redirect('vendedor')
 
                 from ventas.utils import validar_ocupacion_mesa
 
@@ -1694,8 +1429,6 @@ def vendedor(request):
 
                     monto_pago_raw = request.POST.get('monto_pago')
 
-                    incluir_propina = request.POST.get('incluir_propina') in ['1', 'true', 'on', True]
-
                     monto_pago = None
 
                     if monto_pago_raw:
@@ -1710,21 +1443,69 @@ def vendedor(request):
 
 
 
+                    # Base de consumo gastronómico (alimentos y bebidas sujetos a IVA 19%)
+
+                    base_consumo = monto_pago if (monto_pago and Decimal('0') < monto_pago < venta_abierta.total) else venta_abierta.total
+
+
+
+                    # Opciones Dinámicas de Propina (0%, 10%, 15%, 20% o personalizada - EXENTA DE IVA Ley 20.918)
+
+                    porcentaje_propina = 0
+
+                    monto_propina_calculada = Decimal('0')
+
+                    pct_raw = request.POST.get('porcentaje_propina')
+
+                    monto_propina_raw = request.POST.get('monto_propina')
+
+                    incluir_propina = request.POST.get('incluir_propina') in ['1', 'true', 'on', True]
+
+
+
+                    if pct_raw is not None and str(pct_raw).strip() != '':
+
+                        try:
+
+                            porcentaje_propina = max(0, min(100, int(pct_raw)))
+
+                            monto_propina_calculada = Decimal(str(int(round(base_consumo * Decimal(str(porcentaje_propina)) / Decimal('100')))))
+
+                        except (ValueError, TypeError):
+
+                            porcentaje_propina = 0
+
+                    elif monto_propina_raw is not None and str(monto_propina_raw).strip() != '':
+
+                        try:
+
+                            monto_propina_calculada = max(Decimal('0'), Decimal(str(monto_propina_raw)))
+
+                            if base_consumo > 0:
+
+                                porcentaje_propina = int(round((monto_propina_calculada / base_consumo) * Decimal('100')))
+
+                        except Exception:
+
+                            monto_propina_calculada = Decimal('0')
+
+                    elif incluir_propina:
+
+                        porcentaje_propina = 10
+
+                        monto_propina_calculada = Decimal(str(int(round(base_consumo * Decimal('0.10')))))
+
+
+
                     # Soporte para División de Cuentas y Abonos Parciales (Split Bill)
 
                     if monto_pago and Decimal('0') < monto_pago < venta_abierta.total:
 
                         monto_abono = monto_pago
 
-                        if incluir_propina:
+                        total_con_propina = monto_abono + monto_propina_calculada
 
-                            propina_10 = int(round(monto_abono * Decimal('0.10')))
-
-                            monto_abono += propina_10
-
-
-
-                        monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(monto_abono, metodo_pago)
+                        monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(total_con_propina, metodo_pago)
 
                         saldo_restante = max(Decimal('0'), venta_abierta.total - monto_pago)
 
@@ -1738,13 +1519,19 @@ def vendedor(request):
 
                             punto_venta=local_operativo,
 
+                            venta_origen=venta_abierta,
+
                             modalidad='MESA',
 
                             mesa=mesa_obj,
 
                             metodo_pago=metodo_pago,
 
-                            total_sin_redondeo=monto_abono,
+                            propina=monto_propina_calculada,
+
+                            porcentaje_propina=porcentaje_propina,
+
+                            total_sin_redondeo=total_con_propina,
 
                             redondeo_ley_20956=ajuste_redondeo,
 
@@ -1757,6 +1544,8 @@ def vendedor(request):
                         emitir_comprobante_venta(venta_parcial, usuario_emisor=request.user)
 
 
+
+                        venta_abierta.monto_abonado_parcial = (venta_abierta.monto_abonado_parcial or Decimal('0.00')) + monto_abono
 
                         venta_abierta.total = saldo_restante
 
@@ -1776,7 +1565,7 @@ def vendedor(request):
 
                         if es_ajax:
 
-                            return JsonResponse({'ok': True, 'es_parcial': True, 'mensaje': msg_ok, 'saldo_restante': float(saldo_restante), 'venta_id': venta_parcial.id})
+                            return JsonResponse({'ok': True, 'es_parcial': True, 'mensaje': msg_ok, 'saldo_restante': float(saldo_restante), 'venta_id': venta_parcial.id, 'propina': float(monto_propina_calculada)})
 
                         messages.success(request, msg_ok)
 
@@ -1786,23 +1575,23 @@ def vendedor(request):
 
                     # Liquidación total de la mesa
 
-                    monto_a_cobrar = venta_abierta.total
+                    monto_consumo_total = venta_abierta.total
 
-                    if incluir_propina:
+                    total_con_propina = monto_consumo_total + monto_propina_calculada
 
-                        propina_10 = int(round(monto_a_cobrar * Decimal('0.10')))
-
-                        monto_a_cobrar += propina_10
+                    monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(total_con_propina, metodo_pago)
 
 
-
-                    monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(monto_a_cobrar, metodo_pago)
 
                     venta_abierta.caja = caja_activa
 
                     venta_abierta.cajero = request.user
 
-                    venta_abierta.total_sin_redondeo = monto_a_cobrar
+                    venta_abierta.propina = monto_propina_calculada
+
+                    venta_abierta.porcentaje_propina = porcentaje_propina
+
+                    venta_abierta.total_sin_redondeo = total_con_propina
 
                     venta_abierta.redondeo_ley_20956 = ajuste_redondeo
 
@@ -2086,7 +1875,7 @@ def vendedor(request):
 
             estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
 
-        ):
+        ).select_related('venta'):
 
             m_id = p_act.venta.mesa_id
 
@@ -2128,26 +1917,7 @@ def vendedor(request):
 
 
 
-    # PIN de desbloqueo rápido de terminal (Ezio Auditore - Terminal Compartido)
-    pins_validos = {'1234'}
-    pin_hint = '1234'
-    perfil_cajero = getattr(request.user, 'perfil', None)
-    if perfil_cajero and perfil_cajero.rut:
-        rut_clean = ''.join(c for c in perfil_cajero.rut if c.isdigit())
-        rut_sin_dv = perfil_cajero.rut.split('-')[0].replace('.', '')
-        rut_sin_dv_clean = ''.join(c for c in rut_sin_dv if c.isdigit())
-        if len(rut_sin_dv_clean) >= 4:
-            p_cuerpo = rut_sin_dv_clean[-4:]
-            pins_validos.add(p_cuerpo)
-            pin_hint = p_cuerpo
-        if len(rut_clean) >= 4:
-            pins_validos.add(rut_clean[-4:])
-
     context = {
-
-        "pins_validos_json": json.dumps(list(pins_validos)),
-
-        "pin_hint": pin_hint,
 
         "jornada_activa": jornada_activa,
 
@@ -2190,7 +1960,69 @@ def vendedor(request):
     return render(request, 'ventas/cajero/vendedor.html', context)
 
 
+@requiere_rol(['CAJERO', 'ADMINISTRADOR'])
+def api_desbloquear_pin_pos(request):
+    """Verifica o configura en servidor el PIN operativo cifrado del cajero o su contraseña de turno."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido.'}, status=405)
 
+    permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+        request,
+        namespace='api_desbloquear_pin_pos',
+        max_requests=8,
+        window_seconds=60,
+        key_extra=str(request.user.id),
+    )
+    if not permitido_ip:
+        resp_429 = JsonResponse(
+            {'ok': False, 'error': 'Demasiados intentos de desbloqueo. Espera unos segundos.'},
+            status=429,
+        )
+        resp_429['Retry-After'] = str(retry_after)
+        return resp_429
+
+    perfil = getattr(request.user, 'perfil', None)
+    if not perfil:
+        return JsonResponse({'ok': False, 'error': 'Perfil operativo no encontrado.'}, status=403)
+
+    accion = (request.POST.get('accion') or 'desbloquear').strip().lower()
+    if accion == 'configurar_pin':
+        password = request.POST.get('password') or ''
+        nuevo_pin = (request.POST.get('nuevo_pin') or '').strip()
+        if not password or not request.user.check_password(password):
+            return JsonResponse({'ok': False, 'error': 'Contraseña actual incorrecta.'}, status=403)
+        if not (len(nuevo_pin) == 4 and nuevo_pin.isdigit()):
+            return JsonResponse(
+                {'ok': False, 'error': 'El PIN operativo debe tener exactamente 4 dígitos numéricos.'},
+                status=400,
+            )
+        perfil.set_pin_operativo(nuevo_pin)
+        return JsonResponse({'ok': True, 'mensaje': 'PIN operativo cifrado configurado correctamente.'})
+
+    pin = (request.POST.get('pin') or '').strip()
+    password = request.POST.get('password') or ''
+
+    if pin:
+        if not (len(pin) == 4 and pin.isdigit()):
+            return JsonResponse({'ok': False, 'error': 'El PIN debe tener 4 dígitos numéricos.'}, status=400)
+        if not perfil.pin_operativo_hash:
+            return JsonResponse(
+                {
+                    'ok': False,
+                    'error': 'Aún no has configurado un PIN cifrado. Usa "Configurar PIN" o desbloquea con tu contraseña de turno.',
+                },
+                status=403,
+            )
+        if not perfil.check_pin_operativo(pin):
+            return JsonResponse({'ok': False, 'error': 'PIN operativo incorrecto.'}, status=403)
+        return JsonResponse({'ok': True, 'mensaje': 'Terminal de caja desbloqueado exitosamente.'})
+
+    if password:
+        if not request.user.check_password(password):
+            return JsonResponse({'ok': False, 'error': 'Contraseña de turno incorrecta.'}, status=403)
+        return JsonResponse({'ok': True, 'mensaje': 'Terminal de caja desbloqueado exitosamente.'})
+
+    return JsonResponse({'ok': False, 'error': 'Ingresa tu PIN operativo o contraseña de turno.'}, status=400)
 
 
 @requiere_rol(['CAJERO'])
@@ -2963,7 +2795,7 @@ def crear_ticket(request):
 
             if not caja or caja.estado != 'ABIERTA':
 
-                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
                     return JsonResponse({'ok': False, 'error': 'La caja individual no se encuentra abierta.'}, status=400)
 
@@ -2987,11 +2819,11 @@ def crear_ticket(request):
 
                 p_cant = it.get('cantidad', 1)
 
-                p_precio_solicitado = it.get('precio_especial') or it.get('precio')
+                p_precio_solicitado = it.get('precio_especial')
 
                 p_conv_id = it.get('convenio_id')
 
-                p_motivo = it.get('motivo_precio_especial') or it.get('motivo')
+                p_motivo = (it.get('motivo_precio_especial') or it.get('motivo') or '').strip()
 
 
 
@@ -3009,7 +2841,7 @@ def crear_ticket(request):
 
                 if not prod:
 
-                    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
                         return JsonResponse({'ok': False, 'error': f"El producto '{p_nom or p_id}' no existe en la base de datos."}, status=400)
 
@@ -3059,6 +2891,20 @@ def crear_ticket(request):
 
 
 
+                if precio_req_val is not None and not p_motivo:
+
+                    err_msg = "Debes especificar un motivo explícito para aplicar un precio especial manual."
+
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+
+                        return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                    messages.error(request, err_msg)
+
+                    return redirect('crear_ticket')
+
+
+
                 try:
 
                     calc = validar_y_calcular_precio_linea(
@@ -3073,9 +2919,9 @@ def crear_ticket(request):
 
                         usuario=request.user,
 
-                        motivo=p_motivo or "Condición comercial autorizada",
+                        motivo=p_motivo,
 
-                        permite_manual=True
+                        permite_manual=bool(precio_req_val is not None and p_motivo)
 
                     )
 
@@ -3083,7 +2929,7 @@ def crear_ticket(request):
 
                     err_msg = ve.message if hasattr(ve, 'message') else str(ve)
 
-                    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
                         return JsonResponse({'ok': False, 'error': err_msg}, status=400)
 
@@ -3179,39 +3025,87 @@ def crear_ticket(request):
 
 
 
-            # Soporte opcional para bonificación de convenio QR Huésped / Cabaña (H7: Validado contra BD)
+            # Validación y cálculo servidor-autoritativo de convenio QR Huésped / Cabaña (HMAC-SHA256 + select_for_update)
 
-            monto_bonificado_raw = request.POST.get('monto_bonificado', '0')
+            conv_huesped_aplicar = None
 
-            try:
+            monto_bonificado_dec = Decimal('0')
 
-                monto_bonificado_dec = max(Decimal('0'), Decimal(str(monto_bonificado_raw)))
+            codigo_conv_raw = limpiar_texto_seguro(
 
-            except Exception:
+                request.POST.get('codigo_convenio') or request.POST.get('codigo_qr') or '',
 
-                monto_bonificado_dec = Decimal('0')
+                max_length=120
 
+            )
 
+            if codigo_conv_raw:
 
-            if monto_bonificado_dec > Decimal('0'):
+                if ':' in codigo_conv_raw:
 
-                codigo_conv = (request.POST.get('codigo_convenio') or request.POST.get('codigo_qr') or '').strip()
+                    partes_conv = codigo_conv_raw.split(':', 1)
 
-                conv_obj = ConvenioHuesped.objects.filter(codigo_qr__iexact=codigo_conv).first() if codigo_conv else None
+                    codigo_conv = partes_conv[0].strip()
 
-                if not conv_obj or not conv_obj.puede_consumir_hoy():
+                    firma_conv = partes_conv[1].strip()
 
-                    conv_comercial = PrecioEspecial.objects.filter(codigo_convenio__iexact=codigo_conv, activo=True).first() if codigo_conv else None
+                else:
 
-                    if not conv_comercial:
+                    codigo_conv = codigo_conv_raw
 
-                        monto_bonificado_dec = Decimal('0')
+                    firma_conv = limpiar_texto_seguro(
 
-                elif conv_obj:
+                        request.POST.get('firma_convenio') or request.POST.get('firma') or '',
 
-                    # No puede superar el valor de descuento configurado en el convenio
+                        max_length=64
 
-                    monto_bonificado_dec = min(monto_bonificado_dec, conv_obj.valor_descuento)
+                    )
+
+                conv_obj = ConvenioHuesped.objects.select_for_update().filter(codigo_qr__iexact=codigo_conv).first() if codigo_conv else None
+
+                if conv_obj:
+
+                    from ventas.utils import verificar_firma_qr_convenio
+
+                    if not firma_conv or not verificar_firma_qr_convenio(conv_obj.codigo_qr, firma_conv):
+
+                        err_hmac = 'Firma criptográfica HMAC-SHA256 del convenio QR faltante o inválida.'
+
+                        if es_ajax_req:
+
+                            return JsonResponse({'ok': False, 'tampered': True, 'error': err_hmac}, status=403)
+
+                        messages.error(request, err_hmac)
+
+                        return redirect('crear_ticket')
+
+                    if not conv_obj.puede_consumir_hoy():
+
+                        err_lim = 'El convenio de cabaña no está vigente hoy o alcanzó su límite diario.'
+
+                        if es_ajax_req:
+
+                            return JsonResponse({'ok': False, 'error': err_lim}, status=400)
+
+                        messages.error(request, err_lim)
+
+                        return redirect('crear_ticket')
+
+                    if conv_obj.tipo_beneficio == 'DESAYUNO_INCLUIDO':
+
+                        monto_bonificado_dec = subtotal_bruto
+
+                    elif conv_obj.tipo_beneficio == 'DESCUENTO_PORCENTAJE':
+
+                        pct_desc = max(Decimal('0'), min(Decimal('100'), Decimal(str(conv_obj.valor_descuento or 0))))
+
+                        monto_bonificado_dec = Decimal(str(int(round(subtotal_bruto * pct_desc / Decimal('100')))))
+
+                    elif conv_obj.tipo_beneficio == 'DESCUENTO_MONTO':
+
+                        monto_bonificado_dec = min(subtotal_bruto, max(Decimal('0'), Decimal(str(conv_obj.valor_descuento or 0))))
+
+                    conv_huesped_aplicar = conv_obj
 
 
 
@@ -3254,6 +3148,8 @@ def crear_ticket(request):
                     venta = venta_existente
 
                     venta.total += subtotal_efectivo
+
+                    venta.total_sin_redondeo = (venta.total_sin_redondeo or Decimal('0')) + subtotal_efectivo
 
                     venta.save()
 
@@ -3301,13 +3197,38 @@ def crear_ticket(request):
 
                     (prod and getattr(prod, 'tipo_oferta', '') == 'SEGUNDA_1') or
 
-                    (calc.get('precio_unitario') in [Decimal('1'), Decimal('5'), 1, 5])
+                    (calc.get('precio_aplicado') in [Decimal('1'), Decimal('5'), 1, 5])
 
                     for prod, calc, _ in lineas_calculadas
 
                 )
 
-                monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(subtotal_efectivo, metodo_pago, tiene_promo_moneda_fisica=tiene_promo_moneda)
+                # Opciones Dinámicas de Propina (0%, 10%, 15%, 20% o personalizada - EXENTA DE IVA Ley 20.918)
+                porcentaje_propina = 0
+                monto_propina_calculada = Decimal('0')
+                pct_raw = request.POST.get('porcentaje_propina')
+                monto_propina_raw = request.POST.get('monto_propina')
+                incluir_propina = request.POST.get('incluir_propina') in ['1', 'true', 'on', True]
+
+                if pct_raw is not None and str(pct_raw).strip() != '':
+                    try:
+                        porcentaje_propina = max(0, min(100, int(pct_raw)))
+                        monto_propina_calculada = Decimal(str(int(round(subtotal_efectivo * Decimal(str(porcentaje_propina)) / Decimal('100')))))
+                    except (ValueError, TypeError):
+                        porcentaje_propina = 0
+                elif monto_propina_raw is not None and str(monto_propina_raw).strip() != '':
+                    try:
+                        monto_propina_calculada = max(Decimal('0'), Decimal(str(monto_propina_raw)))
+                        if subtotal_efectivo > 0:
+                            porcentaje_propina = int(round((monto_propina_calculada / subtotal_efectivo) * Decimal('100')))
+                    except Exception:
+                        monto_propina_calculada = Decimal('0')
+                elif incluir_propina:
+                    porcentaje_propina = 10
+                    monto_propina_calculada = Decimal(str(int(round(subtotal_efectivo * Decimal('0.10')))))
+
+                total_con_propina = subtotal_efectivo + monto_propina_calculada
+                monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(total_con_propina, metodo_pago, tiene_promo_moneda_fisica=tiene_promo_moneda)
 
                 venta = Venta.objects.create(
 
@@ -3323,9 +3244,13 @@ def crear_ticket(request):
 
                     metodo_pago=metodo_pago,
 
+                    propina=monto_propina_calculada,
+
+                    porcentaje_propina=porcentaje_propina,
+
                     total=monto_final,
 
-                    total_sin_redondeo=subtotal_efectivo,
+                    total_sin_redondeo=total_con_propina,
 
                     redondeo_ley_20956=ajuste_redondeo,
 
@@ -3447,14 +3372,6 @@ def crear_ticket(request):
 
 
 
-            if venta.estado == 'ABIERTA' and es_ronda_adicional:
-
-                venta.total = sum(d.subtotal for d in venta.detalles.all())
-
-                venta.save()
-
-
-
             # RF08: Emisión clasificada por BD y comprobante de cliente
 
             ticket_info = emitir_tickets_comanda(pedido, usuario_emisor=request.user)
@@ -3464,6 +3381,34 @@ def crear_ticket(request):
             if venta.estado == 'PAGADA':
 
                 comprobante = emitir_comprobante_venta(venta, usuario_emisor=request.user)
+
+
+
+            convenio_aplicado_en_venta = False
+
+            if conv_huesped_aplicar and monto_bonificado_dec > Decimal('0'):
+
+                ticket_ref_conv = ticket_info['tickets'][0] if ticket_info.get('tickets') else comprobante
+
+                ConsumoHuesped.objects.create(
+
+                    convenio=conv_huesped_aplicar,
+
+                    ticket=ticket_ref_conv,
+
+                    monto_original=subtotal_bruto,
+
+                    monto_bonificado=monto_bonificado_dec,
+
+                    monto_pagado=subtotal_efectivo,
+
+                    registrado_por=request.user,
+
+                    observaciones=f"Descuento aplicado atómico en POS: {conv_huesped_aplicar.get_tipo_beneficio_display()}"
+
+                )
+
+                convenio_aplicado_en_venta = True
 
 
 
@@ -3505,6 +3450,10 @@ def crear_ticket(request):
 
                     'total_sin_redondeo': float(venta.total_sin_redondeo or venta.total),
 
+                    'propina': float(getattr(venta, 'propina', 0)),
+
+                    'porcentaje_propina': int(getattr(venta, 'porcentaje_propina', 0)),
+
                     'redondeo': float(venta.redondeo_ley_20956 or 0),
 
                     'tickets': tickets_generados,
@@ -3516,6 +3465,8 @@ def crear_ticket(request):
                     'destino': destino_resumen,
 
                     'ubicacion': venta.get_ubicacion_despacho(),
+
+                    'convenio_aplicado_en_venta': convenio_aplicado_en_venta,
 
                     'mensaje': (
 
@@ -4270,13 +4221,36 @@ def administrador_local(request, local_id):
 
 
 
+def _validar_clave_colaborador(password, user_candidate=None):
+    """Valida complejidad mínima (ISO/IEC 27400) y validadores oficiales de Django."""
+    es_valida, msg_err = validar_complejidad_clave(password)
+    if not es_valida:
+        return msg_err
+    try:
+        validate_password(password, user=user_candidate)
+    except ValidationError as exc:
+        return exc.messages[0] if exc.messages else "La contraseña no cumple con los requisitos de seguridad institucional."
+    return None
+
+
 @requiere_rol(['ADMINISTRADOR'])
 
 def administrador_trabajadores(request):
 
-    """Gestión de Trabajadores (CRUD, búsqueda dinámica, límite de 1 puesto de trabajo y alertas de traslado)"""
+    """Gestión de Trabajadores (CRUD, minimización de datos, límite de 1 puesto de trabajo y alertas de traslado)"""
 
     if request.method == 'POST':
+
+        permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+            request,
+            namespace='admin_trabajadores_ip',
+            max_requests=45,
+            window_seconds=60,
+        )
+        if not permitido_ip:
+            resp_429 = HttpResponse("Demasiadas operaciones administrativas desde tu IP. Espera unos segundos.", status=429)
+            resp_429['Retry-After'] = str(retry_after)
+            return resp_429
 
         accion = request.POST.get('accion')
 
@@ -4284,19 +4258,33 @@ def administrador_trabajadores(request):
 
         if accion == 'crear':
 
-            nombre = request.POST.get('nombre', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=60)
 
-            apellido = request.POST.get('apellido', '').strip()
+            apellido = limpiar_texto_seguro(request.POST.get('apellido', ''), max_length=60)
 
-            username = request.POST.get('username', '').strip().lower()
+            username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=60).lower()
 
-            rut = request.POST.get('rut', '').strip()
+            rut = limpiar_texto_seguro(request.POST.get('rut', ''), max_length=12)
 
             rol = request.POST.get('rol', 'CAJERO')
 
-            telefono = request.POST.get('telefono', '').strip()
+            if rol not in {'ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'}:
+
+                messages.error(request, "Rol operativo inválido.")
+
+                return redirect('administrador_trabajadores')
+
+            telefono = limpiar_texto_seguro(request.POST.get('telefono', ''), max_length=20)
+
+            email_opcional = limpiar_texto_seguro(request.POST.get('email', ''), max_length=120)
 
             local_id = request.POST.get('local_id')
+
+            if not nombre or not apellido:
+
+                messages.error(request, "Nombre y apellido válidos son obligatorios (sin etiquetas HTML).")
+
+                return redirect('administrador_trabajadores')
 
 
 
@@ -4322,12 +4310,12 @@ def administrador_trabajadores(request):
 
 
 
-            if len(password) < 6:
-                messages.error(request, "La contraseña debe tener al menos 6 caracteres por razones de seguridad.")
-                return redirect('administrador_trabajadores')
-
-            if password.lower() in ['123456', 'password', 'qwerty', 'admin', 'admin123']:
-                messages.error(request, "La contraseña elegida es demasiado trivial o predecible por razones de seguridad.")
+            msg_error_clave = _validar_clave_colaborador(
+                password,
+                user_candidate=User(username=username, first_name=nombre, last_name=apellido, email=email_opcional),
+            )
+            if msg_error_clave:
+                messages.error(request, msg_error_clave)
                 return redirect('administrador_trabajadores')
 
 
@@ -4342,7 +4330,7 @@ def administrador_trabajadores(request):
 
                 last_name=apellido,
 
-                email=f"{username}@parquesafari.cl"
+                email=email_opcional
 
             )
 
@@ -4388,19 +4376,17 @@ def administrador_trabajadores(request):
 
 
 
-            user.first_name = request.POST.get('nombre', user.first_name).strip()
+            user.first_name = limpiar_texto_seguro(request.POST.get('nombre', user.first_name), max_length=60) or user.first_name
 
-            user.last_name = request.POST.get('apellido', user.last_name).strip()
+            user.last_name = limpiar_texto_seguro(request.POST.get('apellido', user.last_name), max_length=60) or user.last_name
 
             nueva_pass = request.POST.get('password', '').strip()
 
             if nueva_pass:
 
-                if len(nueva_pass) < 6:
-                    messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres por razones de seguridad.")
-                    return redirect('administrador_trabajadores')
-                if nueva_pass.lower() in ['123456', 'password', 'qwerty', 'admin', 'admin123']:
-                    messages.error(request, "La nueva contraseña elegida es demasiado trivial o predecible por razones de seguridad.")
+                msg_error_clave = _validar_clave_colaborador(nueva_pass, user_candidate=user)
+                if msg_error_clave:
+                    messages.error(request, msg_error_clave)
                     return redirect('administrador_trabajadores')
 
                 user.set_password(nueva_pass)
@@ -4409,7 +4395,9 @@ def administrador_trabajadores(request):
 
 
 
-            perfil.rut = request.POST.get('rut', perfil.rut).strip()
+            rut_post = request.POST.get('rut', '').strip()
+            if rut_post:
+                perfil.rut = limpiar_texto_seguro(rut_post, max_length=12)
 
             nuevo_rol = request.POST.get('rol', perfil.rol)
 
@@ -4457,7 +4445,9 @@ def administrador_trabajadores(request):
 
 
 
-            perfil.telefono = request.POST.get('telefono', perfil.telefono).strip()
+            tel_post = request.POST.get('telefono', '').strip()
+            if tel_post:
+                perfil.telefono = limpiar_texto_seguro(tel_post, max_length=20)
 
 
 
@@ -6781,7 +6771,7 @@ def administrador_dashboard(request):
 
         'ventas': reporte['ventas']['total_recaudado'],
 
-        'ganancia': int(reporte['ventas']['total_recaudado'] * 0.46),
+        'ganancia': int(round(reporte['ventas'].get('total_neto_sin_iva', 0) * 0.46)),
 
         'margen': 46.0,
 
@@ -6835,6 +6825,76 @@ def administrador_dashboard(request):
 
 
 
+def _validar_jornada_y_caja_abierta_local(punto_venta, caja_asignada=None, exigir_caja_asignada=False, lock=False):
+    """
+    Valida de forma uniforme si el local posee una Jornada operativa ABIERTA hoy y una Caja ABIERTA.
+    Nunca autocrea jornadas; devuelve `(jornada, caja, error_msg)` para bloquear atención sin apertura.
+    """
+    hoy = timezone.localdate()
+    jornada_qs = Jornada.objects.select_for_update() if lock else Jornada.objects
+    jornada = jornada_qs.filter(estado='ABIERTA', fecha=hoy).first()
+    if not jornada:
+        return (
+            None,
+            None,
+            "No hay una jornada operativa abierta hoy. Solicita al cajero o administrador abrir jornada y caja antes de atender.",
+        )
+
+    if exigir_caja_asignada:
+        if (
+            caja_asignada is not None
+            and caja_asignada.jornada_id == jornada.id
+            and caja_asignada.estado == 'ABIERTA'
+            and (not punto_venta or caja_asignada.punto_venta_id == punto_venta.id)
+        ):
+            return jornada, caja_asignada, None
+        return (
+            jornada,
+            None,
+            "Debes abrir tu caja operativa antes de atender clientes, asignar mesas o emitir tickets.",
+        )
+
+    cajas_qs = Caja.objects.select_for_update() if lock else Caja.objects
+    caja = cajas_qs.filter(punto_venta=punto_venta, jornada=jornada, estado='ABIERTA').first()
+    if not caja:
+        caja_cerrada = Caja.objects.filter(punto_venta=punto_venta, jornada=jornada, estado='CERRADA').exists()
+        if caja_cerrada:
+            return (
+                jornada,
+                None,
+                "La caja del local está cerrada. Solicita al cajero abrir caja antes de atender mesas o emitir comandas.",
+            )
+        return (
+            jornada,
+            None,
+            "No hay ninguna caja abierta en este local. Solicita al cajero abrir caja antes de atender mesas o emitir comandas.",
+        )
+    return jornada, caja, None
+
+
+def _resolver_local_operativo(request, locales_qs, predeterminar_id=None):
+    """
+    Resuelve el PuntoVenta operativo aplicando Row-Level Security estricto:
+    - Colaborador con punto_venta_actual asignado queda bloqueado en su local.
+    - ADMINISTRADOR o superusuario sin local fijo puede filtrar vía ?local_id=.
+    - Colaborador sin local asignado no puede seleccionar otro local por ?local_id=.
+    """
+    perfil = getattr(request.user, 'perfil', None)
+    if perfil and perfil.punto_venta_actual:
+        return perfil.punto_venta_actual, False
+
+    es_admin = bool(request.user.is_superuser or (perfil and perfil.rol == 'ADMINISTRADOR'))
+    if not es_admin:
+        return None, True
+
+    local_id_raw = request.GET.get('local_id')
+    if local_id_raw:
+        return get_object_or_404(PuntoVenta, id=int(local_id_raw)) if str(local_id_raw).isdigit() else locales_qs.first(), False
+    if predeterminar_id is not None:
+        return PuntoVenta.objects.filter(id=predeterminar_id).first() or locales_qs.first(), False
+    return locales_qs.first(), False
+
+
 @requiere_rol(['MESERO'])
 
 def mesero(request):
@@ -6849,23 +6909,13 @@ def mesero(request):
 
 
 
-    # Regla de Negocio: El mesero no puede cambiarse de local libremente; pertenece rígidamente a su local asignado
+    # Regla de Negocio + RLS: El mesero no puede cambiarse de local ni acceder sin puesto asignado
 
-    if perfil_usuario and perfil_usuario.punto_venta_actual:
+    local_actual, bloqueado_rls = _resolver_local_operativo(request, locales, predeterminar_id=1)
 
-        local_actual = perfil_usuario.punto_venta_actual
+    if bloqueado_rls:
 
-    else:
-
-        try:
-
-            local_id = int(request.GET.get('local_id', 1))
-
-        except (ValueError, TypeError):
-
-            local_id = 1
-
-        local_actual = PuntoVenta.objects.filter(id=local_id).first() or locales.first()
+        return HttpResponse("Acceso denegado (RLS): no tienes un punto de venta asignado.", status=403)
 
 
 
@@ -6914,30 +6964,48 @@ def mesero(request):
 
 
         elif accion == 'ocupar_mesa':
+            es_ajax_mesa = (
+                request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('accept', '')
+            )
+            try:
+                mesa_id_int = int(mesa_id)
+            except (ValueError, TypeError):
+                err_mesa = "Debes especificar una mesa válida para operar."
+                if es_ajax_mesa:
+                    return JsonResponse({'ok': False, 'error': err_mesa}, status=400)
+                messages.error(request, err_mesa)
+                return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
             from ventas.utils import validar_ocupacion_mesa
 
             with transaction.atomic():
+                _, _, err_caja = _validar_jornada_y_caja_abierta_local(local_actual, lock=True)
+                if err_caja:
+                    if es_ajax_mesa:
+                        return JsonResponse({'ok': False, 'error': err_caja}, status=400)
+                    messages.error(request, err_caja)
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
-                mesa_obj = Mesa.objects.select_for_update().filter(id=mesa_id, punto_venta=local_actual).first()
-
+                mesa_obj = Mesa.objects.select_for_update().filter(id=mesa_id_int, punto_venta=local_actual).first()
                 if not mesa_obj:
-
-                    messages.error(request, "La mesa solicitada no existe o no pertenece a este local.")
-
+                    err_no_mesa = "La mesa solicitada no existe o no pertenece a este local."
+                    if es_ajax_mesa:
+                        return JsonResponse({'ok': False, 'error': err_no_mesa}, status=400)
+                    messages.error(request, err_no_mesa)
                 else:
-
                     try:
-
                         validar_ocupacion_mesa(mesa_obj)
-
                         mesa_obj.ocupar()
-
-                        messages.success(request, f"Mesa {mesa_obj.identificador} asignada y marcada como ocupada (RF17).")
-
+                        msg_ok = f"Mesa {mesa_obj.identificador} asignada y marcada como ocupada (RF17)."
+                        if es_ajax_mesa:
+                            return JsonResponse({'ok': True, 'mensaje': msg_ok, 'mesa_id': mesa_obj.id, 'estado': mesa_obj.estado})
+                        messages.success(request, msg_ok)
                     except ValidationError as e:
-
-                        messages.error(request, e.message if hasattr(e, 'message') else str(e))
+                        err = e.message if hasattr(e, 'message') else str(e)
+                        if es_ajax_mesa:
+                            return JsonResponse({'ok': False, 'error': err}, status=400)
+                        messages.error(request, err)
 
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
@@ -6945,9 +7013,15 @@ def mesero(request):
 
         elif accion == 'cerrar_cuenta_mesa':
 
+            es_ajax_cobro = request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', '')
+
             metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO').upper()
 
             if metodo_pago not in ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA']:
+
+                if es_ajax_cobro:
+
+                    return JsonResponse({'ok': False, 'error': f"Método de pago '{metodo_pago}' no permitido."}, status=400)
 
                 messages.error(request, f"Método de pago '{metodo_pago}' no permitido.")
 
@@ -6973,11 +7047,41 @@ def mesero(request):
 
                 if venta_abierta:
 
+                    caja_cobro = venta_abierta.caja
+
+                    if (
+                        not caja_cobro
+                        or caja_cobro.estado != 'ABIERTA'
+                        or (caja_cobro.jornada and caja_cobro.jornada.estado != 'ABIERTA')
+                    ):
+
+                        caja_cobro = Caja.objects.select_for_update().filter(
+
+                            punto_venta=local_actual,
+
+                            estado='ABIERTA',
+
+                            jornada__estado='ABIERTA',
+
+                        ).first()
+
+                    if not caja_cobro:
+
+                        err_caja = "No hay una caja abierta en este local para registrar cobros. Solicita al cajero abrir caja."
+
+                        if es_ajax_cobro:
+
+                            return JsonResponse({'ok': False, 'error': err_caja}, status=400)
+
+                        messages.error(request, err_caja)
+
+                        return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
+
+
+
                     from ventas.utils import calcular_redondeo_ley_20956
 
                     monto_pago_raw = request.POST.get('monto_pago')
-
-                    incluir_propina = request.POST.get('incluir_propina') in ['1', 'true', 'on', True]
 
                     monto_pago = None
 
@@ -6993,21 +7097,69 @@ def mesero(request):
 
 
 
+                    # Base de consumo gastronómico (alimentos y bebidas sujetos a IVA 19%)
+
+                    base_consumo = monto_pago if (monto_pago and Decimal('0') < monto_pago < venta_abierta.total) else venta_abierta.total
+
+
+
+                    # Opciones Dinámicas de Propina (0%, 10%, 15%, 20% o personalizada - EXENTA DE IVA Ley 20.918)
+
+                    porcentaje_propina = 0
+
+                    monto_propina_calculada = Decimal('0')
+
+                    pct_raw = request.POST.get('porcentaje_propina')
+
+                    monto_propina_raw = request.POST.get('monto_propina')
+
+                    incluir_propina = request.POST.get('incluir_propina') in ['1', 'true', 'on', True]
+
+
+
+                    if pct_raw is not None and str(pct_raw).strip() != '':
+
+                        try:
+
+                            porcentaje_propina = max(0, min(100, int(pct_raw)))
+
+                            monto_propina_calculada = Decimal(str(int(round(base_consumo * Decimal(str(porcentaje_propina)) / Decimal('100')))))
+
+                        except (ValueError, TypeError):
+
+                            porcentaje_propina = 0
+
+                    elif monto_propina_raw is not None and str(monto_propina_raw).strip() != '':
+
+                        try:
+
+                            monto_propina_calculada = max(Decimal('0'), Decimal(str(monto_propina_raw)))
+
+                            if base_consumo > 0:
+
+                                porcentaje_propina = int(round((monto_propina_calculada / base_consumo) * Decimal('100')))
+
+                        except Exception:
+
+                            monto_propina_calculada = Decimal('0')
+
+                    elif incluir_propina:
+
+                        porcentaje_propina = 10
+
+                        monto_propina_calculada = Decimal(str(int(round(base_consumo * Decimal('0.10')))))
+
+
+
                     # Soporte para División de Cuentas / Abono Parcial en Mesero (Split Bill)
 
                     if monto_pago and Decimal('0') < monto_pago < venta_abierta.total:
 
                         monto_abono = monto_pago
 
-                        if incluir_propina:
+                        total_con_propina = monto_abono + monto_propina_calculada
 
-                            propina_10 = int(round(monto_abono * Decimal('0.10')))
-
-                            monto_abono += propina_10
-
-
-
-                        monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(monto_abono, metodo_pago)
+                        monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(total_con_propina, metodo_pago)
 
                         saldo_restante = max(Decimal('0'), venta_abierta.total - monto_pago)
 
@@ -7015,7 +7167,7 @@ def mesero(request):
 
                         venta_parcial = Venta.objects.create(
 
-                            caja=venta_abierta.caja,
+                            caja=caja_cobro,
 
                             cajero=request.user,
 
@@ -7025,9 +7177,15 @@ def mesero(request):
 
                             mesa=mesa_obj,
 
+                            venta_origen=venta_abierta,
+
                             metodo_pago=metodo_pago,
 
-                            total_sin_redondeo=monto_abono,
+                            propina=monto_propina_calculada,
+
+                            porcentaje_propina=porcentaje_propina,
+
+                            total_sin_redondeo=total_con_propina,
 
                             redondeo_ley_20956=ajuste_redondeo,
 
@@ -7040,6 +7198,8 @@ def mesero(request):
                         emitir_comprobante_venta(venta_parcial, usuario_emisor=request.user)
 
 
+
+                        venta_abierta.monto_abonado_parcial = (venta_abierta.monto_abonado_parcial or Decimal('0.00')) + monto_abono
 
                         venta_abierta.total = saldo_restante
 
@@ -7061,19 +7221,21 @@ def mesero(request):
 
 
 
-                    monto_a_cobrar = venta_abierta.total
+                    monto_consumo_total = venta_abierta.total
 
-                    if incluir_propina:
+                    total_con_propina = monto_consumo_total + monto_propina_calculada
 
-                        propina_10 = int(round(monto_a_cobrar * Decimal('0.10')))
+                    monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(total_con_propina, metodo_pago)
 
-                        monto_a_cobrar += propina_10
+                    if venta_abierta.caja_id != caja_cobro.id:
 
+                        venta_abierta.caja = caja_cobro
 
+                    venta_abierta.propina = monto_propina_calculada
 
-                    monto_final, ajuste_redondeo = calcular_redondeo_ley_20956(monto_a_cobrar, metodo_pago)
+                    venta_abierta.porcentaje_propina = porcentaje_propina
 
-                    venta_abierta.total_sin_redondeo = monto_a_cobrar
+                    venta_abierta.total_sin_redondeo = total_con_propina
 
                     venta_abierta.redondeo_ley_20956 = ajuste_redondeo
 
@@ -7333,9 +7495,20 @@ def mesero(request):
 
         elif accion == 'enviar_comanda':
 
+            es_ajax_req = (
+                request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('accept', '')
+            )
+
             if not mesa_id:
 
-                messages.error(request, "Debe seleccionar una mesa válida para emitir pedidos en salón (RF11.1).")
+                err_msg = "Debe seleccionar una mesa válida para emitir pedidos en salón (RF11.1)."
+
+                if es_ajax_req:
+
+                    return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                messages.error(request, err_msg)
 
                 return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
@@ -7345,7 +7518,13 @@ def mesero(request):
 
             if not mesa_obj or mesa_obj.punto_venta_id != local_actual.id:
 
-                messages.error(request, "La mesa seleccionada no existe o no pertenece al local gastronómico actual.")
+                err_msg = "La mesa seleccionada no existe o no pertenece al local gastronómico actual."
+
+                if es_ajax_req:
+
+                    return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                messages.error(request, err_msg)
 
                 return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
@@ -7353,7 +7532,13 @@ def mesero(request):
 
             if mesa_obj.estado == 'INACTIVA':
 
-                messages.error(request, f"No es posible emitir pedidos en la mesa {mesa_obj.identificador} porque se encuentra inactiva o en mantenimiento (RF17).")
+                err_msg = f"No es posible emitir pedidos en la mesa {mesa_obj.identificador} porque se encuentra inactiva o en mantenimiento (RF17)."
+
+                if es_ajax_req:
+
+                    return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                messages.error(request, err_msg)
 
                 return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
@@ -7371,7 +7556,7 @@ def mesero(request):
 
 
 
-            # Sanitización de ítems: filtrar datos malformados y asegurar valores no negativos (OWASP)
+            # Sanitización de ítems: filtrar datos malformados y asegurar cantidades válidas (OWASP)
 
             items_validos = []
 
@@ -7381,8 +7566,6 @@ def mesero(request):
 
                     cant = max(1, int(it.get('cantidad', 1)))
 
-                    precio = max(0, int(it.get('precio', 0)))
-
                     raw_id = it.get('id') or it.get('producto_id')
 
                     p_id_int = int(raw_id) if raw_id and str(raw_id).isdigit() else None
@@ -7391,9 +7574,9 @@ def mesero(request):
 
                         'id': p_id_int,
 
-                        'nombre': str(it.get('nombre', 'Producto')).strip()[:120],
+                        'nombre': str(it.get('nombre', '')).strip()[:120],
 
-                        'precio': precio,
+                        'precio_especial': it.get('precio_especial'),
 
                         'cantidad': cant,
 
@@ -7403,7 +7586,7 @@ def mesero(request):
 
                         'convenio_id': it.get('convenio_id'),
 
-                        'motivo': it.get('motivo_precio_especial') or it.get('motivo')
+                        'motivo': (it.get('motivo_precio_especial') or it.get('motivo') or '').strip()
 
                     })
 
@@ -7415,137 +7598,51 @@ def mesero(request):
 
             if not items_validos:
 
-                messages.error(request, "La comanda debe contener al menos un producto válido.")
+                err_msg = "La comanda debe contener al menos un producto válido."
+
+                if es_ajax_req:
+
+                    return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                messages.error(request, err_msg)
 
                 return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
-
-            total_calculado = sum(it['cantidad'] * it['precio'] for it in items_validos)
 
 
 
             hoy = timezone.localdate()
 
             with transaction.atomic():
+                mesa_obj = Mesa.objects.select_for_update().filter(id=mesa_obj.id, punto_venta=local_actual).first()
+                if not mesa_obj:
+                    err_mesa = "La mesa solicitada no existe o no pertenece a este local."
+                    if es_ajax_req:
+                        return JsonResponse({'ok': False, 'error': err_mesa}, status=400)
+                    messages.error(request, err_mesa)
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
-                jornada, _ = Jornada.objects.get_or_create(
-
-                    estado='ABIERTA', fecha=hoy,
-
-                    defaults={'usuario_apertura': request.user, 'observaciones': 'Jornada Operativa en Curso'}
-
-                )
-
-                caja = Caja.objects.filter(punto_venta=local_actual, jornada=jornada).first()
-
-                if not caja:
-
-                    caja, _ = Caja.objects.get_or_create(
-
-                        jornada=jornada,
-
-                        cajero=request.user,
-
-                        defaults={
-
-                            'nombre': f"Caja {local_actual.nombre.split()[0]} - {request.user.first_name or request.user.username}",
-
-                            'punto_venta': local_actual,
-
-                            'monto_apertura': 0,
-
-                            'estado': 'ABIERTA',
-
-                            'observaciones': 'Caja de comandas y pedidos de salón'
-
-                        }
-
-                    )
+                jornada, caja, err_caja = _validar_jornada_y_caja_abierta_local(local_actual, lock=True)
+                if err_caja or not caja:
+                    if es_ajax_req:
+                        return JsonResponse({'ok': False, 'error': err_caja}, status=400)
+                    messages.error(request, err_caja)
+                    return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
 
 
-                # Regla de Cuenta Abierta: Si la mesa ya tiene una venta ABIERTA hoy, reutilizarla
+                es_autorizado_precio = (
 
-                venta_abierta = Venta.objects.select_for_update().filter(
+                    request.user.is_superuser or request.user.is_staff or
 
-                    mesa=mesa_obj,
-
-                    punto_venta=local_actual,
-
-                    estado='ABIERTA',
-
-                    fecha_hora__date=hoy
-
-                ).first()
-
-
-
-                if venta_abierta:
-
-                    venta = venta_abierta
-
-                    venta.total += total_calculado
-
-                    venta.save()
-
-                    es_ronda_adicional = True
-
-                else:
-
-                    venta = Venta.objects.create(
-
-                        caja=caja,
-
-                        cajero=request.user,
-
-                        punto_venta=local_actual,
-
-                        modalidad='MESA',
-
-                        mesa=mesa_obj,
-
-                        metodo_pago='EFECTIVO',
-
-                        total=total_calculado,
-
-                        estado='ABIERTA'
-
-                    )
-
-                    es_ronda_adicional = False
-
-
-
-                if mesa_obj:
-
-                    if not es_ronda_adicional:
-
-                        mesa_obj.ocupar()
-
-                    else:
-
-                        if mesa_obj.estado != 'OCUPADA':
-
-                            mesa_obj.estado = 'OCUPADA'
-
-                            mesa_obj.save(update_fields=['estado'])
-
-
-
-                num_ronda = venta.pedidos.count() + 1
-
-                nuevo_pedido = Pedido.objects.create(
-
-                    venta=venta,
-
-                    estado='PENDIENTE',
-
-                    observaciones=f"Ronda #{num_ronda} enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+                    (hasattr(request.user, 'perfil') and request.user.perfil.rol in ['ADMINISTRADOR', 'CAJERO'])
 
                 )
 
-
+                lineas_procesadas = []
 
                 subtotal_acumulado_ronda = Decimal('0')
+
+
 
                 for it in items_validos:
 
@@ -7553,13 +7650,13 @@ def mesero(request):
 
                     p_nom = it['nombre']
 
-                    p_precio = it['precio']
+                    p_precio_esp = it.get('precio_especial')
 
                     p_cant = it['cantidad']
 
                     p_conv_id = it.get('convenio_id')
 
-                    p_motivo = it.get('motivo_precio_especial') or it.get('motivo')
+                    p_motivo = it.get('motivo')
 
 
 
@@ -7579,43 +7676,11 @@ def mesero(request):
 
 
 
-
-
-
-
-                    if not prod_obj and p_nom:
-
-                        import re
-
-                        p_nom_limpio = re.sub(r'<[^>]*>', '', str(p_nom)).strip()[:100]
-
-                        if not p_nom_limpio:
-
-                            p_nom_limpio = "Producto Salón"
-
-                        p_precio_limpio = max(0, int(p_precio or 0))
-
-                        cat_general, _ = Categoria.objects.get_or_create(nombre="Gastronomía Safari")
-
-                        prod_obj, creado = Producto.objects.get_or_create(
-
-                            nombre=p_nom_limpio,
-
-                            defaults={'categoria': cat_general, 'precio_base': p_precio_limpio, 'activo': True}
-
-                        )
-
-                        if creado:
-
-                            prod_obj.puntos_venta.add(local_actual)
-
-
-
                     if not prod_obj:
 
                         err_msg = f"El producto '{p_nom or p_id}' no existe en el catálogo."
 
-                        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        if es_ajax_req:
 
                             return JsonResponse({'ok': False, 'error': err_msg}, status=400)
 
@@ -7633,7 +7698,7 @@ def mesero(request):
 
                         err_msg = ve.message if hasattr(ve, 'message') else str(ve)
 
-                        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        if es_ajax_req:
 
                             return JsonResponse({'ok': False, 'error': err_msg}, status=400)
 
@@ -7643,29 +7708,15 @@ def mesero(request):
 
 
 
-                    # RF07: Validación y cálculo blindado de precios con auditoría
-
-                    # Si el usuario es MESERO y no hay convenio ni autorización de supervisor,
-
-                    # el servidor ignora el precio manipulado en el frontend y usa el precio base oficial de BD (RF07.1 / Problema 10)
-
-                    es_autorizado_precio = (
-
-                        request.user.is_superuser or request.user.is_staff or
-
-                        (hasattr(request.user, 'perfil') and request.user.perfil.rol in ['ADMINISTRADOR', 'CAJERO'])
-
-                    )
-
-
+                    # RF07: Validación y cálculo servidor-autoritativo (ignora precio genérico del cliente; exige precio_especial + motivo)
 
                     precio_req = None
 
-                    if es_autorizado_precio and p_precio is not None:
+                    if es_autorizado_precio and p_precio_esp is not None:
 
                         try:
 
-                            p_dec = Decimal(str(p_precio))
+                            p_dec = Decimal(str(p_precio_esp))
 
                             if p_dec != prod_obj.precio_base:
 
@@ -7674,6 +7725,20 @@ def mesero(request):
                         except Exception:
 
                             precio_req = None
+
+
+
+                    if precio_req is not None and not p_motivo:
+
+                        err_msg = "Debes ingresar un motivo explícito para aplicar un precio especial."
+
+                        if es_ajax_req:
+
+                            return JsonResponse({'ok': False, 'error': err_msg}, status=400)
+
+                        messages.error(request, err_msg)
+
+                        return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
 
 
@@ -7691,15 +7756,13 @@ def mesero(request):
 
                             usuario=request.user,
 
-                            motivo=p_motivo or "Condición comercial autorizada",
+                            motivo=p_motivo,
 
-                            permite_manual=es_autorizado_precio
+                            permite_manual=bool(es_autorizado_precio and precio_req is not None and p_motivo)
 
                         )
 
-                    except ValidationError as ve:
-
-                        # Si hay un error de validación en precio manipulado, fallback seguro a precio base de BD
+                    except ValidationError:
 
                         calc = validar_y_calcular_precio_linea(
 
@@ -7727,15 +7790,133 @@ def mesero(request):
 
                     else:
 
-                        # Motor de ofertas por volumen (3x2, 2x1, 2da a $1 peso)
-
                         total_item, ahorro_item, texto_promo = prod_obj.calcular_total_promocion(p_cant)
 
 
 
                     subtotal_acumulado_ronda += total_item
 
+                    lineas_procesadas.append((it, prod_obj, calc, total_item, texto_promo))
 
+
+
+                if not caja:
+
+                    caja = Caja.objects.create(
+
+                        jornada=jornada,
+
+                        cajero=request.user,
+
+                        nombre=f"Caja {local_actual.nombre.split()[0]} - {request.user.first_name or request.user.username}",
+
+                        punto_venta=local_actual,
+
+                        monto_apertura=0,
+
+                        estado='ABIERTA',
+
+                        observaciones='Caja de comandas y pedidos de salón'
+
+                    )
+
+
+
+                # Regla de Cuenta Abierta: Si la mesa ya tiene una venta ABIERTA hoy, acumular preservando abonos parciales
+
+                venta_abierta = Venta.objects.select_for_update().filter(
+
+                    mesa=mesa_obj,
+
+                    punto_venta=local_actual,
+
+                    estado='ABIERTA',
+
+                    fecha_hora__date=hoy
+
+                ).first()
+
+
+
+                if venta_abierta:
+
+                    if not venta_abierta.caja or venta_abierta.caja.estado != 'ABIERTA':
+
+                        venta_abierta.caja = caja
+
+                    venta = venta_abierta
+
+                    venta.total = (venta.total or Decimal('0')) + subtotal_acumulado_ronda
+
+                    venta.total_sin_redondeo = (venta.total_sin_redondeo or Decimal('0')) + subtotal_acumulado_ronda
+
+                    venta.save()
+
+                    es_ronda_adicional = True
+
+                else:
+
+                    venta = Venta.objects.create(
+
+                        caja=caja,
+
+                        cajero=request.user,
+
+                        punto_venta=local_actual,
+
+                        modalidad='MESA',
+
+                        mesa=mesa_obj,
+
+                        metodo_pago='EFECTIVO',
+
+                        total=subtotal_acumulado_ronda,
+
+                        total_sin_redondeo=subtotal_acumulado_ronda,
+
+                        estado='ABIERTA'
+
+                    )
+
+                    es_ronda_adicional = False
+
+
+
+                if mesa_obj:
+
+                    if mesa_obj.estado == 'HABILITADA':
+
+                        mesa_obj.ocupar()
+
+                    elif mesa_obj.estado != 'OCUPADA':
+
+                        mesa_obj.estado = 'OCUPADA'
+
+                        mesa_obj.save(update_fields=['estado'])
+
+                    elif not mesa_obj.fecha_ocupacion:
+
+                        mesa_obj.fecha_ocupacion = timezone.now()
+
+                        mesa_obj.save(update_fields=['fecha_ocupacion'])
+
+
+
+                num_ronda = venta.pedidos.count() + 1
+
+                nuevo_pedido = Pedido.objects.create(
+
+                    venta=venta,
+
+                    estado='PENDIENTE',
+
+                    observaciones=f"Ronda #{num_ronda} enviada por mesero {request.user.get_full_name() or request.user.username} para {mesa_obj.identificador if mesa_obj else 'Mesa'}"
+
+                )
+
+
+
+                for it, prod_obj, calc, total_item, texto_promo in lineas_procesadas:
 
                     det = DetalleVenta.objects.create(
 
@@ -7743,7 +7924,7 @@ def mesero(request):
 
                         producto=prod_obj,
 
-                        cantidad=p_cant,
+                        cantidad=calc['cantidad'],
 
                         precio_aplicado=calc['precio_aplicado'],
 
@@ -7779,19 +7960,11 @@ def mesero(request):
 
                         producto=prod_obj,
 
-                        cantidad=p_cant,
+                        cantidad=calc['cantidad'],
 
                         observaciones=nota_item
 
                     )
-
-                # Recalcular total real de la venta
-
-                if subtotal_acumulado_ronda > 0:
-
-                    venta.total = sum(d.subtotal for d in venta.detalles.all())
-
-                    venta.save()
 
 
 
@@ -7823,13 +7996,41 @@ def mesero(request):
 
                 total_acumulado_txt = f"${int(venta.total):,}".replace(",", ".")
 
-                messages.success(request, f"¡Ronda #{num_ronda} agregada a la cuenta de {mesa_obj.identificador}! Despachada con éxito a {zonas_txt}. Total acumulado: {total_acumulado_txt}")
+                msg_ok = f"¡Ronda #{num_ronda} agregada a la cuenta de {mesa_obj.identificador}! Despachada con éxito a {zonas_txt}. Total acumulado: {total_acumulado_txt}"
 
             else:
 
-                messages.success(request, f"¡Cuenta abierta para {mesa_obj.identificador}! Comanda #{nuevo_pedido.id:04d} despachada con éxito a {zonas_txt}. Mesa marcada en atención.")
+                msg_ok = f"¡Cuenta abierta para {mesa_obj.identificador}! Comanda #{nuevo_pedido.id:04d} despachada con éxito a {zonas_txt}. Mesa marcada en atención."
 
 
+
+            if es_ajax_req:
+
+                return JsonResponse({
+
+                    'ok': True,
+
+                    'status': 'ok',
+
+                    'venta_id': venta.id,
+
+                    'pedido_id': nuevo_pedido.id,
+
+                    'num_ronda': num_ronda,
+
+                    'total': float(venta.total),
+
+                    'es_ronda_adicional': es_ronda_adicional,
+
+                    'zonas': zonas_txt,
+
+                    'mensaje': msg_ok,
+
+                })
+
+
+
+            messages.success(request, msg_ok)
 
             return redirect(f"/mesero/?local_id={local_actual.id}&mesero_id={mesero_activo.id if mesero_activo else ''}")
 
@@ -7941,9 +8142,15 @@ def mesero(request):
 
         venta__punto_venta=local_actual,
 
-        estado='LISTO',
-
         creado_en__date=hoy
+
+    ).filter(
+
+        Q(estado='LISTO') | Q(estado_cocina='LISTO') | Q(estado_barra='LISTO')
+
+    ).exclude(
+
+        estado__in=['ENTREGADO', 'CANCELADO']
 
     ).exclude(
 
@@ -8041,6 +8248,11 @@ def mesero(request):
 
 
 
+    jornada_activa, caja_abierta_local, motivo_bloqueo_atencion = _validar_jornada_y_caja_abierta_local(
+        local_actual, lock=False
+    )
+    puede_atender_salon = bool(jornada_activa and caja_abierta_local)
+
     context = {
 
         "local_actual": local_actual,
@@ -8075,6 +8287,14 @@ def mesero(request):
 
         "en_horario": en_horario,
 
+        "jornada_activa": jornada_activa,
+
+        "caja_abierta_local": caja_abierta_local,
+
+        "puede_atender_salon": puede_atender_salon,
+
+        "motivo_bloqueo_atencion": motivo_bloqueo_atencion or "",
+
         "horario_oficial": "10:00 a 18:00",
 
     }
@@ -8083,6 +8303,18 @@ def mesero(request):
 
 
 
+
+
+def _obtener_catalogo_stock_estacion(local_actual, estacion):
+    """Retorna productos del local filtrados por su destino operativo efectivo (COCINA o BARRA)."""
+    if not local_actual:
+        return []
+    qs = (
+        Producto.objects.filter(puntos_venta=local_actual)
+        .select_related('categoria')
+        .order_by('categoria__nombre', 'nombre')
+    )
+    return [p for p in qs if p.get_destino_operativo() == estacion]
 
 
 @requiere_rol(['COCINERO', 'ADMINISTRADOR'])
@@ -8117,23 +8349,13 @@ def cocina(request):
 
 
 
-    # Determinar el local operativo del cocinero
+    # Determinar el local operativo del cocinero respetando RLS
 
-    if perfil and perfil.punto_venta_actual:
+    local_actual, bloqueado_rls = _resolver_local_operativo(request, locales)
 
-        local_actual = perfil.punto_venta_actual
+    if bloqueado_rls:
 
-    else:
-
-        local_id = request.GET.get('local_id')
-
-        if local_id:
-
-            local_actual = get_object_or_404(PuntoVenta, id=local_id)
-
-        else:
-
-            local_actual = locales.first()
+        return HttpResponse("Acceso denegado (RLS): no tienes un punto de venta asignado.", status=403)
 
 
 
@@ -8157,7 +8379,9 @@ def cocina(request):
 
         creado_en__gte=hace_4_horas,
 
-        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
+        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO'],
+
+        estado_cocina__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
 
     ).exclude(
 
@@ -8234,15 +8458,17 @@ def cocina(request):
 
 
 
-        if ped.estado == 'PENDIENTE':
+        estado_estacion = ped.estado_cocina or ped.estado
+
+        if estado_estacion == 'PENDIENTE':
 
             total_pendientes += 1
 
-        elif ped.estado == 'EN_PREPARACION':
+        elif estado_estacion == 'EN_PREPARACION':
 
             total_en_preparacion += 1
 
-        elif ped.estado == 'LISTO':
+        elif estado_estacion == 'LISTO':
 
             total_listos += 1
 
@@ -8254,9 +8480,11 @@ def cocina(request):
 
             'codigo_ticket': f"COM-{ped.id:04d}",
 
-            'estado': ped.estado,
+            'estado': estado_estacion,
 
-            'estado_display': ped.get_estado_display(),
+            'estado_display': ped.get_estado_cocina_display(),
+
+            'estado_global': ped.estado,
 
             'mesa': ped.venta.mesa.identificador if ped.venta.mesa else 'Mostrador / Para Llevar',
 
@@ -8290,21 +8518,13 @@ def cocina(request):
 
         creado_en__date=hoy,
 
-        estado='ENTREGADO'
+        estado_cocina='ENTREGADO'
 
     ).select_related('venta__mesa').order_by('-actualizado_en')[:5]
 
 
 
-    catalogo_stock = Producto.objects.filter(
-
-        puntos_venta=local_actual
-
-    ).exclude(categoria__nombre__icontains='Barra').exclude(categoria__nombre__icontains='Bebida').order_by('categoria__nombre', 'nombre')
-
-    if not catalogo_stock.exists():
-
-        catalogo_stock = Producto.objects.all().order_by('nombre')
+    catalogo_stock = _obtener_catalogo_stock_estacion(local_actual, 'COCINA')
 
 
 
@@ -8390,21 +8610,11 @@ def barra(request):
 
 
 
-    if perfil and perfil.punto_venta_actual:
+    local_actual, bloqueado_rls = _resolver_local_operativo(request, locales)
 
-        local_actual = perfil.punto_venta_actual
+    if bloqueado_rls:
 
-    else:
-
-        local_id = request.GET.get('local_id')
-
-        if local_id:
-
-            local_actual = get_object_or_404(PuntoVenta, id=local_id)
-
-        else:
-
-            local_actual = locales.first()
+        return HttpResponse("Acceso denegado (RLS): no tienes un punto de venta asignado.", status=403)
 
 
 
@@ -8418,7 +8628,9 @@ def barra(request):
 
         creado_en__gte=hace_4_horas,
 
-        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
+        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO'],
+
+        estado_barra__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
 
     ).exclude(
 
@@ -8480,15 +8692,17 @@ def barra(request):
 
 
 
-        if ped.estado == 'PENDIENTE':
+        estado_estacion = ped.estado_barra or ped.estado
+
+        if estado_estacion == 'PENDIENTE':
 
             total_pendientes += 1
 
-        elif ped.estado == 'EN_PREPARACION':
+        elif estado_estacion == 'EN_PREPARACION':
 
             total_en_preparacion += 1
 
-        elif ped.estado == 'LISTO':
+        elif estado_estacion == 'LISTO':
 
             total_listos += 1
 
@@ -8500,9 +8714,11 @@ def barra(request):
 
             'codigo_ticket': f"BAR-{ped.id:04d}",
 
-            'estado': ped.estado,
+            'estado': estado_estacion,
 
-            'estado_display': ped.get_estado_display(),
+            'estado_display': ped.get_estado_barra_display(),
+
+            'estado_global': ped.estado,
 
             'mesa': ped.venta.mesa.identificador if ped.venta.mesa else 'Mostrador / Para Llevar',
 
@@ -8532,13 +8748,15 @@ def barra(request):
 
         creado_en__date=hoy,
 
-        estado='ENTREGADO',
+        estado_barra='ENTREGADO',
 
         detalles__producto__categoria__destino_defecto='BARRA'
 
     ).distinct().select_related('venta__mesa').order_by('-actualizado_en')[:5]
 
 
+
+    catalogo_stock = _obtener_catalogo_stock_estacion(local_actual, 'BARRA')
 
     context = {
 
@@ -8557,6 +8775,8 @@ def barra(request):
         'total_cola': len(pedidos_data),
 
         'ultimos_entregados': ultimos_entregados,
+
+        'catalogo_stock': catalogo_stock,
 
         'hoy_str': hoy.strftime("%d/%m/%Y"),
 
@@ -8596,7 +8816,7 @@ def cambiar_estado_pedido(request):
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
-                return JsonResponse({'status': 'error', 'mensaje': 'Identificador de pedido inválido'}, status=400)
+                return JsonResponse({'ok': False, 'status': 'error', 'mensaje': 'Identificador de pedido inválido'}, status=400)
 
             messages.error(request, "Identificador de pedido inválido.")
 
@@ -8614,7 +8834,7 @@ def cambiar_estado_pedido(request):
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
-                return JsonResponse({'status': 'error', 'mensaje': 'Estado inválido'}, status=400)
+                return JsonResponse({'ok': False, 'status': 'error', 'mensaje': 'Estado inválido'}, status=400)
 
             messages.error(request, "Estado de pedido inválido.")
 
@@ -8632,7 +8852,7 @@ def cambiar_estado_pedido(request):
 
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
-                    return JsonResponse({'status': 'error', 'mensaje': err_perm}, status=403)
+                    return JsonResponse({'ok': False, 'status': 'error', 'mensaje': err_perm}, status=403)
 
                 messages.error(request, err_perm)
 
@@ -8660,6 +8880,28 @@ def cambiar_estado_pedido(request):
 
 
 
+        estacion = (request.POST.get('estacion') or '').strip().upper()
+
+        if estacion not in ('COCINA', 'BARRA'):
+
+            referer_hdr = (request.META.get('HTTP_REFERER') or '').lower()
+
+            if '/barra/' in referer_hdr:
+
+                estacion = 'BARRA'
+
+            elif '/cocina/' in referer_hdr:
+
+                estacion = 'COCINA'
+
+            elif ticket_obj and ticket_obj.tipo_destino in ('COCINA', 'BARRA'):
+
+                estacion = ticket_obj.tipo_destino
+
+
+
+        usa_estacion = False
+
         try:
 
             with transaction.atomic():
@@ -8670,55 +8912,185 @@ def cambiar_estado_pedido(request):
 
                     raise ValidationError(f"El pedido #{pedido_id} no existe.")
 
+                if not validar_acceso_rls_local(request, pedido.venta.punto_venta):
+                    err_rls = "Acceso denegado (RLS): El pedido no corresponde a tu local asignado."
+                    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+                        return JsonResponse({'ok': False, 'status': 'error', 'mensaje': err_rls}, status=403)
+                    return error_403_view(request)
 
 
-                if nuevo_estado == 'ENTREGADO':
 
-                    entrega = registrar_entrega_pedido(
+                estaciones_activas = pedido.get_estaciones_activas()
 
-                        pedido_or_id=pedido,
+                usa_estacion = estacion in ('COCINA', 'BARRA') and estacion in estaciones_activas
 
-                        usuario_entrega=request.user if request.user.is_authenticated else None,
+                ahora = timezone.now()
 
-                        ticket=ticket_obj,
 
-                        observaciones=observaciones_entrega
 
-                    )
+                if usa_estacion:
 
-                else:
+                    campo_est = 'estado_cocina' if estacion == 'COCINA' else 'estado_barra'
 
-                    validar_transicion_estado_pedido(pedido, nuevo_estado)
+                    estado_actual_est = getattr(pedido, campo_est)
 
-                    if nuevo_estado != pedido.estado:
+                    validar_transicion_estado_pedido(pedido, nuevo_estado, estado_actual_override=estado_actual_est)
 
-                        pedido.estado = nuevo_estado
+                    setattr(pedido, campo_est, nuevo_estado)
 
-                        ahora = timezone.now()
 
-                        if nuevo_estado == 'EN_PREPARACION':
 
-                            if not pedido.fecha_inicio_preparacion:
+                    if nuevo_estado == 'EN_PREPARACION':
 
-                                pedido.fecha_inicio_preparacion = ahora
+                        if not pedido.fecha_inicio_preparacion:
 
-                            if ticket_obj:
+                            pedido.fecha_inicio_preparacion = ahora
 
-                                ticket_obj.estado = 'EN_PROCESO'
+                        if ticket_obj:
 
-                                ticket_obj.save(update_fields=['estado'])
+                            ticket_obj.estado = 'EN_PROCESO'
 
-                            else:
+                            ticket_obj.save(update_fields=['estado'])
 
-                                pedido.tickets.filter(estado='EMITIDO').update(estado='EN_PROCESO')
+                        else:
 
-                        elif nuevo_estado == 'LISTO':
+                            pedido.tickets.filter(tipo_destino=estacion, estado='EMITIDO').update(estado='EN_PROCESO')
+
+                    elif nuevo_estado == 'LISTO':
+
+                        if not pedido.fecha_listo:
+
+                            pedido.fecha_listo = ahora
+
+                    elif nuevo_estado == 'ENTREGADO':
+
+                        if ticket_obj:
+
+                            ticket_obj.estado = 'ENTREGADO'
+
+                            ticket_obj.save(update_fields=['estado'])
+
+                        else:
+
+                            pedido.tickets.filter(tipo_destino=estacion).exclude(estado='ENTREGADO').update(estado='ENTREGADO')
+
+
+
+                    estados_est = [pedido.estado_cocina if e == 'COCINA' else pedido.estado_barra for e in estaciones_activas]
+
+                    if all(es == 'CANCELADO' for es in estados_est):
+
+                        pedido.estado = 'CANCELADO'
+
+                        pedido.save()
+
+                    elif all(es == 'ENTREGADO' for es in estados_est):
+
+                        if pedido.estado != 'LISTO':
+
+                            pedido.estado = 'LISTO'
 
                             if not pedido.fecha_listo:
 
                                 pedido.fecha_listo = ahora
 
+                            pedido.save(update_fields=['estado', 'fecha_listo', 'estado_cocina', 'estado_barra', 'actualizado_en'])
+
+                        registrar_entrega_pedido(
+
+                            pedido_or_id=pedido,
+
+                            usuario_entrega=request.user if request.user.is_authenticated else None,
+
+                            ticket=ticket_obj,
+
+                            observaciones=observaciones_entrega
+
+                        )
+
+                    else:
+
+                        activos_no_cancel = [es for es in estados_est if es != 'CANCELADO'] or estados_est
+
+                        if all(es in ('LISTO', 'ENTREGADO') for es in activos_no_cancel):
+
+                            nuevo_global = 'LISTO'
+
+                            if not pedido.fecha_inicio_preparacion:
+
+                                pedido.fecha_inicio_preparacion = ahora
+
+                            if not pedido.fecha_listo:
+
+                                pedido.fecha_listo = ahora
+
+                        elif any(es in ('EN_PREPARACION', 'LISTO', 'ENTREGADO') for es in activos_no_cancel):
+
+                            nuevo_global = 'EN_PREPARACION'
+
+                            if not pedido.fecha_inicio_preparacion:
+
+                                pedido.fecha_inicio_preparacion = ahora
+
+                        else:
+
+                            nuevo_global = 'PENDIENTE'
+
+                        pedido.estado = nuevo_global
+
                         pedido.save()
+
+                else:
+
+                    if nuevo_estado == 'ENTREGADO':
+
+                        registrar_entrega_pedido(
+
+                            pedido_or_id=pedido,
+
+                            usuario_entrega=request.user if request.user.is_authenticated else None,
+
+                            ticket=ticket_obj,
+
+                            observaciones=observaciones_entrega
+
+                        )
+
+                    else:
+
+                        validar_transicion_estado_pedido(pedido, nuevo_estado)
+
+                        if nuevo_estado != pedido.estado:
+
+                            pedido.estado = nuevo_estado
+
+                            pedido.estado_cocina = nuevo_estado
+
+                            pedido.estado_barra = nuevo_estado
+
+                            if nuevo_estado == 'EN_PREPARACION':
+
+                                if not pedido.fecha_inicio_preparacion:
+
+                                    pedido.fecha_inicio_preparacion = ahora
+
+                                if ticket_obj:
+
+                                    ticket_obj.estado = 'EN_PROCESO'
+
+                                    ticket_obj.save(update_fields=['estado'])
+
+                                else:
+
+                                    pedido.tickets.filter(estado='EMITIDO').update(estado='EN_PROCESO')
+
+                            elif nuevo_estado == 'LISTO':
+
+                                if not pedido.fecha_listo:
+
+                                    pedido.fecha_listo = ahora
+
+                            pedido.save()
 
 
 
@@ -8742,7 +9114,7 @@ def cambiar_estado_pedido(request):
 
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
 
-                return JsonResponse({'status': 'error', 'mensaje': msg_err}, status=400)
+                return JsonResponse({'ok': False, 'status': 'error', 'mensaje': msg_err}, status=400)
 
             messages.error(request, msg_err)
 
@@ -8756,7 +9128,19 @@ def cambiar_estado_pedido(request):
 
 
 
-        mensaje_exito = f"Pedido #{pedido.id:04d} actualizado a '{pedido.get_estado_display()}' exitosamente."
+        if usa_estacion:
+
+            disp_est = pedido.get_estado_cocina_display() if estacion == 'COCINA' else pedido.get_estado_barra_display()
+
+            label_est = 'Cocina' if estacion == 'COCINA' else 'Barra'
+
+            mensaje_exito = f"Pedido #{pedido.id:04d} ({label_est}) actualizado a '{disp_est}' exitosamente."
+
+        else:
+
+            disp_est = pedido.get_estado_display()
+
+            mensaje_exito = f"Pedido #{pedido.id:04d} actualizado a '{disp_est}' exitosamente."
 
 
 
@@ -8764,13 +9148,21 @@ def cambiar_estado_pedido(request):
 
             return JsonResponse({
 
+                'ok': True,
+
                 'status': 'ok',
 
                 'pedido_id': pedido.id,
 
+                'estacion': estacion if usa_estacion else 'TODAS',
+
                 'nuevo_estado': nuevo_estado,
 
-                'estado_display': pedido.get_estado_display(),
+                'estado_cocina': pedido.estado_cocina,
+
+                'estado_barra': pedido.estado_barra,
+
+                'estado_display': disp_est,
 
                 'mensaje': mensaje_exito
 
@@ -8826,7 +9218,18 @@ def anular_venta(request, venta_id):
 
     if request.method == 'POST':
 
-        motivo = request.POST.get('motivo_anulacion', '').strip()
+        permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+            request,
+            namespace='anular_venta_ip',
+            max_requests=25,
+            window_seconds=60,
+        )
+        if not permitido_ip:
+            resp_429 = HttpResponse("Demasiadas solicitudes de anulación desde tu IP. Espera unos segundos.", status=429)
+            resp_429['Retry-After'] = str(retry_after)
+            return resp_429
+
+        motivo = limpiar_texto_seguro(request.POST.get('motivo_anulacion', ''), max_length=250)
 
         if not motivo or len(motivo) < 5:
 
@@ -8913,6 +9316,10 @@ def anular_venta(request, venta_id):
                 messages.error(request, f"La venta #{venta_id} no fue encontrada en el sistema.")
 
                 return redirect(obtener_url_redireccion_segura(request, 'vendedor'))
+
+            if not validar_acceso_rls_local(request, venta.punto_venta):
+
+                return error_403_view(request)
 
 
 
@@ -9080,9 +9487,11 @@ def administrador_backup(request):
 
             messages.success(request, "Copia de seguridad física generada con éxito en caliente, comprimida en GZIP y verificada con SHA-256.")
 
-        except Exception as e:
+        except Exception:
 
-            messages.error(request, f"Error al generar la copia de seguridad: {str(e)}")
+            logger.exception("Error interno generando respaldo de base de datos")
+
+            messages.error(request, "No fue posible generar la copia de seguridad. Revisa los registros del servidor.")
 
         return redirect('administrador')
 
@@ -9222,6 +9631,17 @@ def cambiar_clave_expirada(request):
 
     if request.method == 'POST':
 
+        permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+            request,
+            namespace='cambiar_clave_ip',
+            max_requests=20,
+            window_seconds=300,
+        )
+        if not permitido_ip:
+            resp_429 = HttpResponse("Demasiados intentos de cambio de clave desde tu IP. Espera unos minutos.", status=429)
+            resp_429['Retry-After'] = str(retry_after)
+            return resp_429
+
         clave_actual = request.POST.get('clave_actual', '')
 
         nueva_clave = request.POST.get('nueva_clave', '')
@@ -9326,14 +9746,27 @@ def cambiar_clave_expirada(request):
 
 # ==============================================================================
 
+@requiere_rol(['CAJERO', 'ADMINISTRADOR', 'MESERO'])
+
 def api_verificar_convenio_qr(request):
 
     """Verifica código QR o de barras con firma HMAC-SHA256 anti-fraude para cabañas y convenios"""
 
+    permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+        request,
+        namespace='api_verificar_convenio_qr',
+        max_requests=40,
+        window_seconds=60,
+    )
+    if not permitido_ip:
+        resp_429 = JsonResponse({'ok': False, 'mensaje': 'Límite de verificaciones por IP alcanzado. Espera unos segundos.'}, status=429)
+        resp_429['Retry-After'] = str(retry_after)
+        return resp_429
+
     from ventas.utils import generar_firma_qr_convenio, verificar_firma_qr_convenio
 
-    raw_codigo = request.GET.get('codigo', '').strip()
-    firma_param = request.GET.get('firma', '').strip()
+    raw_codigo = limpiar_texto_seguro(request.GET.get('codigo', ''), max_length=120)
+    firma_param = limpiar_texto_seguro(request.GET.get('firma', ''), max_length=64)
 
     if not raw_codigo:
 
@@ -9429,6 +9862,18 @@ def api_verificar_convenio_qr(request):
 
 
 
+    # Para convenios de huéspedes (ConvenioHuesped), la firma HMAC-SHA256 es estrictamente obligatoria
+    if not firma_qr or not verificar_firma_qr_convenio(convenio.codigo_qr, firma_qr):
+        return JsonResponse({
+            'ok': False,
+            'encontrado': False,
+            'tampered': True,
+            'error_criptografico': True,
+            'mensaje': 'Código QR rechazado: se requiere firma criptográfica HMAC-SHA256 válida.'
+        }, status=403)
+
+
+
     valido_hoy = convenio.es_valido_hoy()
 
     consumos_hoy = convenio.consumos_hoy_count()
@@ -9453,6 +9898,12 @@ def api_verificar_convenio_qr(request):
 
 
 
+    partes_titular = [p for p in (convenio.nombre_titular or '').split() if p]
+
+    titular_enmascarado = ' '.join((p[:2] + '***') if len(p) > 2 else (p[0] + '***') for p in partes_titular) or 'Huésped'
+
+
+
     return JsonResponse({
 
         'ok': True,
@@ -9467,7 +9918,7 @@ def api_verificar_convenio_qr(request):
 
         'cabana': convenio.numero_cabana,
 
-        'titular': (convenio.nombre_titular if (request.user.is_authenticated and hasattr(request.user, 'perfil')) else (convenio.nombre_titular[:2] + '***' if convenio.nombre_titular else 'Huésped')),
+        'titular': titular_enmascarado,
 
         'tipo_beneficio': convenio.tipo_beneficio,
 
@@ -9491,87 +9942,165 @@ def api_verificar_convenio_qr(request):
 
 def api_aplicar_consumo_convenio(request):
 
-    """Registra el consumo del beneficio (desayuno o descuento) asociado a un huésped de cabaña"""
+    """Registra el consumo del beneficio (desayuno o descuento) asociado a un huésped de cabaña de forma atómica"""
 
     if request.method != 'POST':
 
         return JsonResponse({'ok': False, 'mensaje': 'Método no permitido'}, status=405)
 
+    permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+        request,
+        namespace='api_aplicar_consumo_convenio',
+        max_requests=30,
+        window_seconds=60,
+    )
+    if not permitido_ip:
+        resp_429 = JsonResponse({'ok': False, 'mensaje': 'Límite de solicitudes por IP alcanzado.'}, status=429)
+        resp_429['Retry-After'] = str(retry_after)
+        return resp_429
 
+    from decimal import InvalidOperation
+    from ventas.utils import verificar_firma_qr_convenio
 
-    codigo = request.POST.get('codigo', '').strip()
+    raw_codigo = limpiar_texto_seguro(request.POST.get('codigo', ''), max_length=120)
+    firma_param = limpiar_texto_seguro(request.POST.get('firma', ''), max_length=64)
+
+    if ':' in raw_codigo:
+        partes_qr = raw_codigo.split(':', 1)
+        codigo = partes_qr[0].strip()
+        firma_qr = partes_qr[1].strip()
+    else:
+        codigo = raw_codigo
+        firma_qr = firma_param
+
+    if not codigo:
+        return JsonResponse({'ok': False, 'mensaje': 'Código de convenio requerido.'}, status=400)
+
+    if not firma_qr or not verificar_firma_qr_convenio(codigo, firma_qr):
+        return JsonResponse({
+            'ok': False,
+            'tampered': True,
+            'error_criptografico': True,
+            'mensaje': 'Firma criptográfica HMAC-SHA256 faltante o inválida.'
+        }, status=403)
 
     ticket_id = request.POST.get('ticket_id')
 
-    monto_original = request.POST.get('monto_original', '0')
-
-    monto_bonificado = request.POST.get('monto_bonificado', '0')
-
-    monto_pagado = request.POST.get('monto_pagado', '0')
-
-
-
-    convenio = ConvenioHuesped.objects.filter(codigo_qr__iexact=codigo).first()
-
-    if not convenio:
-
-        return JsonResponse({'ok': False, 'mensaje': 'Convenio no encontrado.'}, status=404)
-
-
-
-    if not convenio.puede_consumir_hoy():
-
-        return JsonResponse({'ok': False, 'mensaje': 'El huésped ya alcanzó su límite de consumos de hoy.'}, status=400)
-
-
-
-    ticket = Ticket.objects.filter(id=ticket_id).first() if ticket_id else None
-
-
-
     try:
 
-        from decimal import InvalidOperation
-
-        dec_orig = max(Decimal('0'), Decimal(str(monto_original)))
-
-        dec_bon = max(Decimal('0'), Decimal(str(monto_bonificado)))
-
-        dec_pag = max(Decimal('0'), Decimal(str(monto_pagado)))
+        dec_orig = max(Decimal('0'), Decimal(str(request.POST.get('monto_original', '0'))))
 
     except (InvalidOperation, TypeError, ValueError):
 
         return JsonResponse({'ok': False, 'mensaje': 'Valores numéricos de montos inválidos.'}, status=400)
 
+    with transaction.atomic():
 
+        convenio = ConvenioHuesped.objects.select_for_update().filter(codigo_qr__iexact=codigo).first()
 
-    consumo = ConsumoHuesped.objects.create(
+        if not convenio:
 
-        convenio=convenio,
+            return JsonResponse({'ok': False, 'mensaje': 'Convenio no encontrado.'}, status=404)
 
-        ticket=ticket,
+        if not convenio.puede_consumir_hoy():
 
-        monto_original=dec_orig,
+            return JsonResponse({'ok': False, 'mensaje': 'El huésped ya alcanzó su límite de consumos de hoy o pase fuera de vigencia.'}, status=400)
 
-        monto_bonificado=dec_bon,
+        ticket = Ticket.objects.select_for_update().select_related('venta', 'punto_venta', 'pedido__venta').filter(id=ticket_id).first() if ticket_id else None
 
-        monto_pagado=dec_pag,
+        if ticket_id and not ticket:
 
-        registrado_por=request.user,
+            return JsonResponse({'ok': False, 'mensaje': 'Ticket asociado no encontrado.'}, status=404)
 
-        observaciones=f"Descuento aplicado en local: {convenio.get_tipo_beneficio_display()}"
+        perfil_op = getattr(request.user, 'perfil', None)
 
-    )
+        pv_validar = ticket.get_punto_venta() if ticket else (perfil_op.punto_venta_actual if perfil_op else None)
 
+        if not pv_validar and obtener_rol_usuario(request.user) != 'ADMINISTRADOR':
 
+            return JsonResponse({'ok': False, 'mensaje': 'Acceso denegado (RLS): no tienes un local operativo asignado.'}, status=403)
+
+        if pv_validar and not validar_acceso_rls_local(request, pv_validar):
+
+            return JsonResponse({'ok': False, 'mensaje': 'Acceso denegado (RLS): el recurso pertenece a otro local.'}, status=403)
+
+        if ticket and ConsumoHuesped.objects.filter(ticket=ticket).exists():
+
+            return JsonResponse({'ok': False, 'mensaje': 'Este ticket ya registró un consumo de convenio.'}, status=400)
+
+        if ticket:
+
+            venta_ref = ticket.venta or (ticket.pedido.venta if ticket.pedido else None)
+
+            if venta_ref:
+
+                subtotal_det = sum(d.subtotal for d in venta_ref.detalles.all())
+
+                if subtotal_det > Decimal('0'):
+
+                    dec_orig = subtotal_det
+
+                elif venta_ref.total and venta_ref.total > Decimal('0'):
+
+                    dec_orig = venta_ref.total
+
+        if convenio.tipo_beneficio == 'DESAYUNO_INCLUIDO':
+
+            dec_bon = dec_orig
+
+        elif convenio.tipo_beneficio == 'DESCUENTO_PORCENTAJE':
+
+            pct_desc = max(Decimal('0'), min(Decimal('100'), Decimal(str(convenio.valor_descuento or 0))))
+
+            dec_bon = Decimal(str(int(round(dec_orig * pct_desc / Decimal('100')))))
+
+        elif convenio.tipo_beneficio == 'DESCUENTO_MONTO':
+
+            dec_bon = min(dec_orig, max(Decimal('0'), Decimal(str(convenio.valor_descuento or 0))))
+
+        else:
+
+            dec_bon = Decimal('0')
+
+        dec_pag = max(Decimal('0'), dec_orig - dec_bon)
+
+        ConsumoHuesped.objects.create(
+
+            convenio=convenio,
+
+            ticket=ticket,
+
+            monto_original=dec_orig,
+
+            monto_bonificado=dec_bon,
+
+            monto_pagado=dec_pag,
+
+            registrado_por=request.user,
+
+            observaciones=f"Descuento aplicado en local: {convenio.get_tipo_beneficio_display()}"
+
+        )
+
+        consumos_actuales = convenio.consumos_hoy_count()
+
+    partes_titular = [p for p in (convenio.nombre_titular or '').split() if p]
+
+    titular_enmascarado = ' '.join((p[:2] + '***') if len(p) > 2 else (p[0] + '***') for p in partes_titular) or 'Huésped'
 
     return JsonResponse({
 
         'ok': True,
 
-        'mensaje': f"Beneficio aplicado exitosamente para {convenio.numero_cabana} ({convenio.nombre_titular}).",
+        'monto_original': float(dec_orig),
 
-        'consumos_hoy': convenio.consumos_hoy_count()
+        'monto_bonificado': float(dec_bon),
+
+        'monto_pagado': float(dec_pag),
+
+        'mensaje': f"Beneficio aplicado exitosamente para {convenio.numero_cabana} ({titular_enmascarado}).",
+
+        'consumos_hoy': consumos_actuales
 
     })
 
@@ -9989,6 +10518,11 @@ def reimprimir_ticket_view(request, ticket_id):
 
     ticket = get_object_or_404(Ticket, id=ticket_id)
 
+    if not validar_acceso_rls_local(request, ticket.get_punto_venta()):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'mensaje': 'Acceso denegado (RLS): ticket de otro local.'}, status=403)
+        return error_403_view(request)
+
     reimprimir_ticket(ticket, usuario_solicitante=request.user)
 
 
@@ -10035,6 +10569,10 @@ def ver_imprimir_ticket_digital(request, ticket_id):
 
     ticket = get_object_or_404(Ticket.objects.select_related('punto_impresion', 'punto_venta', 'pedido', 'venta'), id=ticket_id)
 
+    if not validar_acceso_rls_local(request, ticket.get_punto_venta()):
+
+        return error_403_view(request)
+
     punto_imp = ticket.punto_impresion
 
     if not punto_imp and ticket.get_punto_venta():
@@ -10043,11 +10581,19 @@ def ver_imprimir_ticket_digital(request, ticket_id):
 
 
 
-    total_base = ticket.venta.total if ticket.venta else (ticket.pedido.venta.total if ticket.pedido and ticket.pedido.venta else Decimal('0'))
+    venta_obj = ticket.venta or (ticket.pedido.venta if ticket.pedido else None)
 
-    propina_sugerida = int(round(Decimal(str(total_base)) * Decimal('0.10')))
+    subtotal_consumo = venta_obj.get_subtotal_consumo() if venta_obj else Decimal('0')
 
-    total_con_propina = int(total_base) + propina_sugerida
+    propina_10 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.10')))
+
+    propina_15 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.15')))
+
+    propina_20 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.20')))
+
+    monto_neto = venta_obj.get_monto_neto() if venta_obj else Decimal('0')
+
+    monto_iva = venta_obj.get_monto_iva() if venta_obj else Decimal('0')
 
 
 
@@ -10055,11 +10601,25 @@ def ver_imprimir_ticket_digital(request, ticket_id):
 
         'ticket': ticket,
 
+        'venta': venta_obj,
+
         'punto_impresion': punto_imp,
 
-        'propina_sugerida': propina_sugerida,
+        'subtotal_consumo': subtotal_consumo,
 
-        'total_con_propina': total_con_propina
+        'monto_neto': monto_neto,
+
+        'monto_iva': monto_iva,
+
+        'propina_10': propina_10,
+
+        'propina_15': propina_15,
+
+        'propina_20': propina_20,
+
+        'propina_sugerida': propina_10,
+
+        'total_con_propina': int(subtotal_consumo) + propina_10
 
     })
 
@@ -10080,6 +10640,11 @@ def reintentar_impresion_view(request, ticket_id):
     """
 
     ticket = get_object_or_404(Ticket, id=ticket_id)
+
+    if not validar_acceso_rls_local(request, ticket.get_punto_venta()):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): ticket de otro local.'}, status=403)
+        return error_403_view(request)
 
     resultado = reintentar_despacho_impresion(ticket, usuario=request.user if request.user.is_authenticated else None)
 
@@ -10153,13 +10718,24 @@ def registrar_consumo_interno_view(request):
 
         return JsonResponse({'ok': False, 'error': 'Método no permitido. Se requiere POST.'}, status=405)
 
+    permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+        request,
+        namespace='consumo_interno_ip',
+        max_requests=35,
+        window_seconds=60,
+    )
+    if not permitido_ip:
+        resp_429 = JsonResponse({'ok': False, 'error': 'Límite de solicitudes alcanzado para este control.'}, status=429)
+        resp_429['Retry-After'] = str(retry_after)
+        return resp_429
+
 
 
     empleado_id = request.POST.get('empleado_id')
 
     tipo_consumo = request.POST.get('tipo_consumo', 'FIADO').upper()
 
-    observaciones = request.POST.get('observaciones', '').strip()
+    observaciones = limpiar_texto_seguro(request.POST.get('observaciones', ''), max_length=200)
 
     items_raw = request.POST.get('items_json', '[]')
 
@@ -10552,6 +11128,10 @@ def api_sincronizacion_estado(request):
 
             local_actual = None
 
+        if local_actual and not validar_acceso_rls_local(request, local_actual):
+
+            return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): no puedes consultar estados de otro local.'}, status=403)
+
     if not local_actual:
 
         perfil = getattr(request.user, 'perfil', None)
@@ -10560,9 +11140,13 @@ def api_sincronizacion_estado(request):
 
             local_actual = perfil.punto_venta_actual
 
-        else:
+        elif request.user.is_superuser or (perfil and perfil.rol == 'ADMINISTRADOR'):
 
             local_actual = PuntoVenta.objects.filter(activo=True).first()
+
+        else:
+
+            return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): trabajador sin punto de venta asignado.'}, status=403)
 
 
 
@@ -10594,11 +11178,37 @@ def api_sincronizacion_estado(request):
 
 
 
-    tot_pendientes = pedidos_qs.filter(estado='PENDIENTE').count()
+    if zona in ('COCINA', 'BARRA'):
 
-    tot_preparacion = pedidos_qs.filter(estado='EN_PREPARACION').count()
+        campo_zona = 'estado_cocina' if zona == 'COCINA' else 'estado_barra'
 
-    tot_listos = pedidos_qs.filter(estado='LISTO').count()
+        pedidos_lista_zona = []
+
+        for p in pedidos_qs.prefetch_related('detalles__producto__categoria'):
+
+            est_zona = getattr(p, campo_zona)
+
+            if zona in p.get_estaciones_activas() and est_zona in ('PENDIENTE', 'EN_PREPARACION', 'LISTO'):
+
+                pedidos_lista_zona.append(est_zona)
+
+        tot_pendientes = sum(1 for est in pedidos_lista_zona if est == 'PENDIENTE')
+
+        tot_preparacion = sum(1 for est in pedidos_lista_zona if est == 'EN_PREPARACION')
+
+        tot_listos = sum(1 for est in pedidos_lista_zona if est == 'LISTO')
+
+    else:
+
+        tot_pendientes = pedidos_qs.filter(estado='PENDIENTE').count()
+
+        tot_preparacion = pedidos_qs.filter(estado='EN_PREPARACION').count()
+
+        tot_listos = pedidos_qs.filter(
+
+            Q(estado='LISTO') | Q(estado_cocina='LISTO') | Q(estado_barra='LISTO')
+
+        ).count()
 
     tot_cola = tot_pendientes + tot_preparacion + tot_listos
 
@@ -10618,15 +11228,25 @@ def api_sincronizacion_estado(request):
     ult_venta = Venta.objects.filter(punto_venta=local_actual, fecha_hora__date=hoy).order_by('-id').first()
     venta_sig = f"{ult_venta.id}:{ult_venta.estado}:{int(ult_venta.total)}" if ult_venta else "0"
 
-    # Último pedido modificado en general (incluyendo ENTREGADO para actualizar campana de listos)
+    # Último pedido modificado en general (incluyendo ENTREGADO y estados por estación)
     ult_ped_general = Pedido.objects.filter(venta__punto_venta=local_actual, creado_en__date=hoy).order_by('-actualizado_en').first()
     ts_ped = int(ult_ped_general.actualizado_en.timestamp()) if ult_ped_general else 0
-    ped_estado_sig = f"{ult_ped_general.id}:{ult_ped_general.estado}:{ts_ped}" if ult_ped_general else "0"
+    ped_estado_sig = f"{ult_ped_general.id}:{ult_ped_general.estado}:{ult_ped_general.estado_cocina}:{ult_ped_general.estado_barra}:{ts_ped}" if ult_ped_general else "0"
 
     stock_count = Producto.objects.filter(activo=True).count()
 
+    jornada_sync, _, _ = _validar_jornada_y_caja_abierta_local(local_actual, lock=False)
+    cajas_abiertas_sig = (
+        "-".join(
+            str(cid) for cid in Caja.objects.filter(
+                punto_venta=local_actual, jornada=jornada_sync, estado='ABIERTA'
+            ).order_by('id').values_list('id', flat=True)
+        )
+        if jornada_sync else "sin_jornada"
+    )
+
     import hashlib
-    sig_str = f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:{mesas_sig}:{ventas_abiertas_count}:{ventas_abiertas_sum}:{venta_sig}:{ped_estado_sig}:{stock_count}"
+    sig_str = f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:{mesas_sig}:{ventas_abiertas_count}:{ventas_abiertas_sum}:{venta_sig}:{ped_estado_sig}:{stock_count}:{jornada_sync.id if jornada_sync else 0}:{cajas_abiertas_sig}"
     version_hash = hashlib.md5(sig_str.encode('utf-8')).hexdigest()[:12]
 
 
@@ -10675,6 +11295,17 @@ def api_toggle_stock_producto(request):
 
         return JsonResponse({'ok': False, 'error': 'Método no permitido. Se requiere POST.'}, status=405)
 
+    permitido_ip, retry_after, _ = verificar_rate_limit_ip(
+        request,
+        namespace='api_toggle_stock_ip',
+        max_requests=45,
+        window_seconds=60,
+    )
+    if not permitido_ip:
+        resp_429 = JsonResponse({'ok': False, 'error': 'Límite de solicitudes alcanzado para este control.'}, status=429)
+        resp_429['Retry-After'] = str(retry_after)
+        return resp_429
+
 
 
     prod_id = request.POST.get('producto_id')
@@ -10716,6 +11347,10 @@ def api_toggle_stock_producto(request):
         if not prod:
 
             return JsonResponse({'ok': False, 'error': f"El producto #{prod_id} no existe."}, status=404)
+
+        pvs_prod = list(prod.puntos_venta.all())
+        if pvs_prod and not any(validar_acceso_rls_local(request, pv) for pv in pvs_prod):
+            return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): el producto no pertenece a tu local.'}, status=403)
 
 
 

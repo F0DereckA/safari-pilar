@@ -77,7 +77,7 @@
                                     <span class="badge" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium); font-size: 0.7rem;">
                                         CARTA #{{ m.id }}
                                     </span>
-                                    <h4 class="fw-bold text-dark mt-1 mb-0">{{ m.nombre }}</h4>
+                                    <h3 class="h4 fw-bold text-dark mt-1 mb-0">{{ m.nombre }}</h3>
                                 </div>
                                 {% if m.activo %}
                                 <span class="badge badge-status-success rounded-pill px-2 py-1 small fw-bold">
@@ -104,7 +104,7 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold small text-dark">
-                                        <i class="bi bi-list-check text-warning me-1"></i>Productos en Carta ({{ m.productos.count }}):
+                                        <i class="bi bi-list-check text-warning-emphasis me-1" aria-hidden="true"></i>Productos en Carta ({{ m.productos.count }}):
                                     </span>
                                 </div>
                                 <div class="border rounded-3 p-2 bg-light" style="max-height: 200px; overflow-y: auto; border-color: var(--safari-cafe-pastel) !important;">
@@ -144,11 +144,11 @@
                             </form>
 
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 py-1" style="border-color: var(--safari-yellow-dark);" data-bs-toggle="modal" data-bs-target="#modalEditarMenu_{{ m.id }}" title="Modificar Carta">
-                                    <i class="bi bi-pencil-fill me-1"></i>Editar
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#modalEditarMenu_{{ m.id }}" title="Modificar Carta">
+                                    <i class="bi bi-pencil-fill me-1" aria-hidden="true"></i>Editar
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#modalEliminarMenu_{{ m.id }}" title="Eliminar Carta">
-                                    <i class="bi bi-trash3-fill me-1"></i>Eliminar
+                                    <i class="bi bi-trash3-fill me-1" aria-hidden="true"></i>Eliminar
                                 </button>
                             </div>
                         </div>
@@ -157,14 +157,14 @@
                 </div>
 
                 <!-- Modal Editar Menú -->
-                <div class="modal fade" id="modalEditarMenu_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalEditarMenu_{{ m.id }}" tabindex="-1" aria-labelledby="labelEditarMenu_{{ m.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-lg">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-light rounded-top-4 border-bottom">
-                                <h5 class="modal-title fw-bold text-dark">
-                                    <i class="bi bi-pencil-square text-primary me-2"></i>Modificar Menú: {{ m.nombre }}
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold text-dark" id="labelEditarMenu_{{ m.id }}">
+                                    <i class="bi bi-pencil-square text-primary me-2" aria-hidden="true"></i>Modificar Menú: {{ m.nombre }}
+                                </h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_menus' %}">
                                 {% csrf_token %}
@@ -173,12 +173,12 @@
                                 <div class="modal-body p-4">
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-7">
-                                            <label class="form-label fw-bold small text-muted">Nombre de la Carta / Menú:</label>
-                                            <input type="text" name="nombre" value="{{ m.nombre }}" required class="form-control rounded-3" maxlength="100">
+                                            <label for="editMenuNombre_{{ m.id }}" class="form-label fw-bold small text-muted">Nombre de la Carta / Menú:</label>
+                                            <input type="text" id="editMenuNombre_{{ m.id }}" name="nombre" value="{{ m.nombre }}" required class="form-control rounded-3" maxlength="100">
                                         </div>
                                         <div class="col-md-5">
-                                            <label class="form-label fw-bold small text-muted">Punto de Venta:</label>
-                                            <select name="punto_venta_id" class="form-select rounded-3" required>
+                                            <label for="editMenuLocal_{{ m.id }}" class="form-label fw-bold small text-muted">Punto de Venta:</label>
+                                            <select id="editMenuLocal_{{ m.id }}" name="punto_venta_id" class="form-select rounded-3" required>
                                                 {% for loc in locales %}
                                                 <option value="{{ loc.id }}" {% if m.punto_venta_id == loc.id %}selected{% endif %}>
                                                     {{ loc.nombre }}
@@ -221,14 +221,14 @@
                 </div>
 
                 <!-- Modal Eliminar Menú -->
-                <div class="modal fade" id="modalEliminarMenu_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalEliminarMenu_{{ m.id }}" tabindex="-1" aria-labelledby="labelEliminarMenu_{{ m.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-danger text-white rounded-top-4">
-                                <h5 class="modal-title fw-bold">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminar Menú
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold" id="labelEliminarMenu_{{ m.id }}">
+                                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>Eliminar Menú
+                                </h2>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_menus' %}">
                                 {% csrf_token %}
@@ -254,11 +254,11 @@
                 {% empty %}
                 <div class="col-12">
                     <div class="card border-0 shadow-sm rounded-4 menu-card-item p-5 text-center bg-white">
-                        <i class="bi bi-book text-muted fs-1 mb-2 d-block"></i>
-                        <h5 class="fw-bold text-dark">No hay cartas o menús registrados</h5>
+                        <i class="bi bi-book text-muted fs-1 mb-2 d-block" aria-hidden="true"></i>
+                        <h2 class="h5 fw-bold text-dark">No hay cartas o menús registrados</h2>
                         <p class="text-muted small mb-3">Crea una carta para agrupar productos y asignarla a un local gastronómico.</p>
                         <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold mx-auto" data-bs-toggle="modal" data-bs-target="#modalCrearMenu">
-                            <i class="bi bi-plus-circle me-1"></i> Crear Primer Menú
+                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i> Crear Primer Menú
                         </button>
                     </div>
                 </div>
@@ -269,14 +269,14 @@
     </main>
 
     <!-- Modal Crear Nuevo Menú -->
-    <div class="modal fade" id="modalCrearMenu" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalCrearMenu" tabindex="-1" aria-labelledby="labelCrearMenu" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header bg-danger text-white rounded-top-4">
-                    <h5 class="modal-title fw-bold">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Registrar Nueva Carta / Menú
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 fw-bold" id="labelCrearMenu">
+                        <i class="bi bi-plus-circle-fill me-2" aria-hidden="true"></i>Registrar Nueva Carta / Menú
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_menus' %}">
                     {% csrf_token %}
@@ -284,12 +284,12 @@
                     <div class="modal-body p-4">
                         <div class="row g-3 mb-3">
                             <div class="col-md-7">
-                                <label class="form-label fw-bold small text-muted">Nombre de la Carta (ej: Carta Almuerzos Verano):</label>
-                                <input type="text" name="nombre" placeholder="Nombre de la carta..." required class="form-control rounded-3" maxlength="100">
+                                <label for="crearMenuNombre" class="form-label fw-bold small text-muted">Nombre de la Carta (ej: Carta Almuerzos Verano):</label>
+                                <input type="text" id="crearMenuNombre" name="nombre" placeholder="Nombre de la carta..." required class="form-control rounded-3" maxlength="100">
                             </div>
                             <div class="col-md-5">
-                                <label class="form-label fw-bold small text-muted">Punto de Venta Asignado:</label>
-                                <select name="punto_venta_id" class="form-select rounded-3" required>
+                                <label for="crearMenuLocal" class="form-label fw-bold small text-muted">Punto de Venta Asignado:</label>
+                                <select id="crearMenuLocal" name="punto_venta_id" class="form-select rounded-3" required>
                                     <option value="">Selecciona local...</option>
                                     {% for loc in locales %}
                                     <option value="{{ loc.id }}">{{ loc.nombre }}</option>
@@ -333,7 +333,7 @@
     <!-- Footer Oficial -->
     <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
         <div class="container">
-            <small class="text-white-50">
+            <small class="text-on-brand-muted">
                 Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Cartas y Menús
             </small>
         </div>

@@ -52,7 +52,7 @@
             <div class="row align-items-center g-3">
                 <div class="col-lg-8">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="p-3 rounded-4 shadow-sm" style="background-color: {{ local.color }}20; color: {{ local.color }};">
+                        <div class="p-3 rounded-4 shadow-sm safari-local-icon-chip" style="--local-accent: {{ local.color }};">
                             <i class="bi {{ local.icono }} fs-1"></i>
                         </div>
                         <div>
@@ -70,9 +70,9 @@
                 </div>
                 <div class="col-lg-4 text-lg-end">
                     <span class="text-muted small d-block">VENTAS DE HOY ({{ hoy_str }})</span>
-                    <h1 class="fw-bold text-danger mb-0" style="font-family: 'Oswald', sans-serif; font-size: 2.8rem;">
+                    <div class="fw-bold text-danger mb-0" style="font-family: 'Oswald', sans-serif; font-size: 2.8rem;">
                         {{ local.total_ventas|pesos_clp }}
-                    </h1>
+                    </div>
                     <small class="text-success fw-bold">
                         <i class="bi bi-arrow-up-circle-fill me-1"></i>Jornada activa con {{ local.tickets_emitidos }} comandas emitidas hoy
                     </small>
@@ -102,7 +102,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Ticket Promedio</div>
-                        <div class="admin-kpi-val text-warning">{{ local.ticket_promedio|pesos_clp }}</div>
+                        <div class="admin-kpi-val text-warning-emphasis">{{ local.ticket_promedio|pesos_clp }}</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Consumo promedio por comensal</small>
                     </div>
                 </div>
@@ -144,7 +144,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Espera Total Promedio</div>
-                        <div class="admin-kpi-val text-info">{{ promedios_tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
+                        <div class="admin-kpi-val text-info-emphasis">{{ promedios_tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Desde comanda a entrega comensal</small>
                     </div>
                 </div>
@@ -157,7 +157,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Prep. Cocina Promedio</div>
-                        <div class="admin-kpi-val text-warning">{{ promedios_tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</div>
+                        <div class="admin-kpi-val text-warning-emphasis">{{ promedios_tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Tiempo en preparación culinaria</small>
                     </div>
                 </div>
@@ -197,10 +197,10 @@
                 <div class="detail-table-card h-100">
                     <div class="detail-table-header d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 class="mb-0 fw-bold">
-                                <i class="bi bi-people-fill text-warning me-2"></i>Personal que se Logueó en este Local
-                            </h5>
-                            <small class="text-white-50">Colaboradores activos prestando servicio en este punto</small>
+                            <h3 class="h5 mb-0 fw-bold">
+                                <i class="bi bi-people-fill text-lcd-amber me-2"></i>Personal que se Logueó en este Local
+                            </h3>
+                            <small class="text-on-brand-muted">Colaboradores activos prestando servicio en este punto</small>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-warning text-dark fw-bold">
@@ -235,7 +235,7 @@
                                             <strong class="text-dark">{{ p.nombre }}</strong>
                                         </div>
                                     </td>
-                                    <td class="text-muted font-monospace small">{{ p.rut }}</td>
+                                    <td class="text-muted font-monospace small">{{ p.rut|enmascarar_rut }}</td>
                                     <td><span class="badge bg-light text-dark border">{{ p.cargo }}</span></td>
                                     <td class="text-muted small"><i class="bi bi-pc-display me-1"></i>{{ p.caja }}</td>
                                     <td class="text-muted fw-bold small">{{ p.hora_login }} hrs</td>
@@ -275,10 +275,10 @@
                 <!-- Tarjeta Desglose por Categoría -->
                 <div class="detail-table-card mb-4">
                     <div class="detail-table-header">
-                        <h5 class="mb-0 fw-bold">
-                            <i class="bi bi-pie-chart-fill text-warning me-2"></i>Ventas por Categoría Gastronómica
-                        </h5>
-                        <small class="text-white-50">Distribución de ingresos en las categorías</small>
+                        <h3 class="h5 mb-0 fw-bold">
+                            <i class="bi bi-pie-chart-fill text-lcd-amber me-2"></i>Ventas por Categoría Gastronómica
+                        </h3>
+                        <small class="text-on-brand-muted">Distribución de ingresos en las categorías</small>
                     </div>
                     <div class="p-3">
                         {% for cat in local.ventas_categoria %}
@@ -305,10 +305,10 @@
                 <!-- Tarjeta Métodos de Pago -->
                 <div class="detail-table-card">
                     <div class="detail-table-header">
-                        <h5 class="mb-0 fw-bold">
-                            <i class="bi bi-credit-card-2-front-fill text-warning me-2"></i>Ventas por Método de Pago
-                        </h5>
-                        <small class="text-white-50">Recaudación por medio de pago</small>
+                        <h3 class="h5 mb-0 fw-bold">
+                            <i class="bi bi-credit-card-2-front-fill text-lcd-amber me-2"></i>Ventas por Método de Pago
+                        </h3>
+                        <small class="text-on-brand-muted">Recaudación por medio de pago</small>
                     </div>
                     <div class="p-3">
                         <div class="row g-2">
@@ -337,10 +337,10 @@
         <div class="detail-table-card mb-4">
             <div class="detail-table-header d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-clock-history text-warning me-2"></i>Últimas Comandas Emitidas en {{ local.nombre }}
-                    </h5>
-                    <small class="text-white-50">Auditoría y trazabilidad en vivo de tickets registrados por meseros y cajeros</small>
+                    <h3 class="h5 mb-0 fw-bold">
+                        <i class="bi bi-clock-history text-lcd-amber me-2"></i>Últimas Comandas Emitidas en {{ local.nombre }}
+                    </h3>
+                    <small class="text-on-brand-muted">Auditoría y trazabilidad en vivo de tickets registrados por meseros y cajeros</small>
                 </div>
                 <span class="badge bg-light text-dark fw-bold">
                     {{ local.tickets_recientes|length }} Comandas Registradas
@@ -352,12 +352,12 @@
                 <div class="row g-2 align-items-center">
                     <div class="col-md-3">
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="filtroTextoTicket" class="form-control" placeholder="Buscar Nº, mesa o personal..." oninput="filtrarTickets()">
+                            <span class="input-group-text bg-white text-muted"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input type="text" id="filtroTextoTicket" class="form-control" placeholder="Buscar Nº, mesa o personal..." aria-label="Buscar comanda por número, mesa o personal">
                         </div>
                     </div>
                     <div class="col-md-2 col-6">
-                        <select id="filtroHoraTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                        <select id="filtroHoraTicket" class="form-select form-select-sm" aria-label="Filtrar comandas por franja horaria">
                             <option value="todas">⏰ Todas las Horas</option>
                             <option value="14">14:00 - 14:59</option>
                             <option value="13">13:00 - 13:59</option>
@@ -366,14 +366,14 @@
                         </select>
                     </div>
                     <div class="col-md-2 col-6">
-                        <select id="filtroRolTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                        <select id="filtroRolTicket" class="form-select form-select-sm" aria-label="Filtrar comandas por rol responsable">
                             <option value="todos">👥 Todos los Roles</option>
                             <option value="Mesero">Meseros</option>
                             <option value="Cajero">Cajeros</option>
                         </select>
                     </div>
                     <div class="col-md-2 col-6">
-                        <select id="filtroEstadoTicket" class="form-select form-select-sm" onchange="filtrarTickets()">
+                        <select id="filtroEstadoTicket" class="form-select form-select-sm" aria-label="Filtrar comandas por estado">
                             <option value="todos">📋 Todos los Estados</option>
                             <option value="En Cocina">En Cocina</option>
                             <option value="En Barra">En Barra</option>
@@ -382,7 +382,7 @@
                         </select>
                     </div>
                     <div class="col-md-3 col-6 d-flex align-items-center justify-content-end gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="limpiarFiltrosTickets()">
+                        <button type="button" id="btnLimpiarFiltrosTickets" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
                         </button>
                         <span id="contadorTicketsVisibles" class="badge bg-white text-dark border px-2 py-1 small fw-bold">
@@ -466,20 +466,20 @@
         </div>
 
         <!-- MODAL DETALLE DE COMANDA / TICKET -->
-        <div class="modal fade" id="modalDetalleTicket" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="modalDetalleTicket" tabindex="-1" aria-labelledby="modalDetalleTicketLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-4 border-0 shadow-lg" style="background-color: #fdfaf5;">
                     <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-receipt-cutoff fs-4 text-warning"></i>
+                            <i class="bi bi-receipt-cutoff fs-4 text-lcd-amber"></i>
                             <div>
-                                <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
+                                <h2 class="modal-title h5 fw-bold mb-0" id="modalDetalleTicketLabel" style="font-family: 'Oswald', sans-serif;">
                                     DETALLE DE COMANDA <span id="mdlTicketCodigo">#COM-0000</span>
-                                </h5>
-                                <small class="text-white-50">{{ local.nombre }} • Parque Safari</small>
+                                </h2>
+                                <small class="text-on-brand-muted">{{ local.nombre }} • Parque Safari</small>
                             </div>
                         </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
 
                     <div class="modal-body p-3">
@@ -529,9 +529,9 @@
                                     <span class="text-muted small d-block">TOTAL DE LA VENTA (CLP):</span>
                                     <small class="text-muted" id="mdlTicketItemsConteo" style="font-size: 0.75rem;">0 productos</small>
                                 </div>
-                                <h3 class="fw-bold text-danger mb-0" id="mdlTicketTotal" style="font-family: 'Oswald', sans-serif;">
+                                <div class="h3 fw-bold text-danger mb-0" id="mdlTicketTotal" style="font-family: 'Oswald', sans-serif;">
                                     $0
-                                </h3>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -540,7 +540,7 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
                             <i class="bi bi-x-lg me-1"></i>Cerrar
                         </button>
-                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" onclick="window.print()">
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" data-safari-action="print">
                             <i class="bi bi-printer me-1"></i>Imprimir Comanda
                         </button>
                     </div>

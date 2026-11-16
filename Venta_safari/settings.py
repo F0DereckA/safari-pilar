@@ -11,7 +11,10 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import secrets
+import sys
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,18 +36,29 @@ if env_file.exists():
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-kbgkntm0$gq_w$q!^nsf@h#ch(9$g!p^8^rj3)h3_p4cb#y3a0')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+IS_TEST_RUNNER = any(arg in sys.argv for arg in ('test', 'pytest'))
+
+# SECURITY WARNING: keep the secret key used in production secret!
+_secret_key_env = os.environ.get('SECRET_KEY', '').strip()
+if not DEBUG and not IS_TEST_RUNNER:
+    if not _secret_key_env or _secret_key_env.startswith('django-insecure-') or _secret_key_env.startswith('REEMPLAZAR'):
+        raise ImproperlyConfigured(
+            "SECRET_KEY debe configurarse explícitamente mediante variable de entorno en producción (DEBUG=False)."
+        )
+    SECRET_KEY = _secret_key_env
+else:
+    SECRET_KEY = _secret_key_env or os.environ.setdefault('SAFARI_DEV_EPHEMERAL_KEY', secrets.token_urlsafe(50))
+
+SAFARI_PII_KEY = os.environ.get('SAFARI_PII_KEY', '').strip()
+SAFARI_DEMO_MODE = os.environ.get('SAFARI_DEMO_MODE', 'True' if (DEBUG or IS_TEST_RUNNER) else 'False').lower() in ('true', '1', 'yes')
 
 allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '*')
 if allowed_hosts_raw == '*':
-    ALLOWED_HOSTS = ['*'] if DEBUG else ['localhost', '127.0.0.1']
+    ALLOWED_HOSTS = ['*'] if (DEBUG or IS_TEST_RUNNER) else ['localhost', '127.0.0.1']
 else:
     ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
-
 
 # Application definition
 
@@ -55,17 +69,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'ventas',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'ventas.middleware.SafariSessionSecurityMiddleware',
     'ventas.middleware.SafariErrorHandlingMiddleware',
 ]
 
@@ -143,13 +160,19 @@ else:
 # Password validation & Hashing
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
-PASSWORD_HASHERS = [
+_BASE_PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
     'django.contrib.auth.hashers.Argon2PasswordHasher',
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
     'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
+
+PASSWORD_HASHERS = (
+    ['ventas.test_suites.hashers.FastTestPBKDF2PasswordHasher', *_BASE_PASSWORD_HASHERS]
+    if IS_TEST_RUNNER
+    else _BASE_PASSWORD_HASHERS
+)
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -199,8 +222,30 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Duración máxima de sesión activa (8 horas = 28800 segundos, turno operativo oficial 10:00 a 18:00)
 SESSION_COOKIE_AGE = 28800
 
+# Tiempo máximo de inactividad en servidor antes de caducar sesión automáticamente (15 min = 900s)
+SESSION_INACTIVITY_TIMEOUT = int(os.environ.get('SESSION_INACTIVITY_TIMEOUT', '900'))
+
 # Renovación de expiración en cada interacción activa del usuario
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Seguridad de cookies en producción HTTPS y cierre CORS estricto
+SESSION_COOKIE_SECURE = (not DEBUG) and (not IS_TEST_RUNNER)
+CSRF_COOKIE_SECURE = (not DEBUG) and (not IS_TEST_RUNNER)
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False' if (DEBUG or IS_TEST_RUNNER) else 'True').lower() in ('true', '1', 'yes')
+SAFARI_TRUST_PROXY = os.environ.get('SAFARI_TRUST_PROXY', 'False').lower() in ('true', '1', 'yes')
+if SAFARI_TRUST_PROXY:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if (not DEBUG) and (not IS_TEST_RUNNER):
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000' if SECURE_SSL_REDIRECT else '0'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() in ('true', '1', 'yes')
+    SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'True' if SECURE_SSL_REDIRECT else 'False').lower() in ('true', '1', 'yes')
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+_cors_raw = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(',') if o.strip() and o.strip() != '*']
+_csrf_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_raw.split(',') if o.strip() and o.strip() != '*']
 
 # Caché en memoria para Rate Limiting y protección contra ataques de fuerza bruta
 CACHES = {
@@ -226,7 +271,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
@@ -235,9 +281,28 @@ STATICFILES_DIRS = [
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@parquesafari.cl')
+
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': (
+            'django.core.mail.backends.console.EmailBackend'
+            if (DEBUG or IS_TEST_RUNNER)
+            else os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+        ),
+        **(
+            {}
+            if (DEBUG or IS_TEST_RUNNER)
+            else {
+                'OPTIONS': {
+                    'host': os.environ.get('EMAIL_HOST', 'localhost'),
+                    'port': int(os.environ.get('EMAIL_PORT', '587')),
+                    'username': os.environ.get('EMAIL_HOST_USER', ''),
+                    'password': os.environ.get('EMAIL_HOST_PASSWORD', ''),
+                    'use_tls': os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes'),
+                }
+            }
+        ),
     },
 }
 

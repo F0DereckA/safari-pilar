@@ -36,13 +36,13 @@
         {% if messages %}
         <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
             {% for message in messages %}
-            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+            <div class="toast align-items-center bg-{% if message.tags == 'error' %}danger text-white{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success text-white{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
                 <div class="d-flex">
                     <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
                         <i class="bi bi-info-circle-fill fs-5"></i>
                         <div>{{ message }}</div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close {% if message.tags != 'warning' and message.tags != 'info' %}btn-close-white{% endif %} me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
                 </div>
             </div>
             {% endfor %}
@@ -60,7 +60,7 @@
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2">
-                                <h5 class="fw-bold text-dark mb-0">Jornada Operativa #{{ jornada_activa.id }} en Curso</h5>
+                                <h2 class="h5 fw-bold text-dark mb-0">Jornada Operativa #{{ jornada_activa.id }} en Curso</h2>
                                 <span class="badge bg-success text-white rounded-pill px-3 py-1 fw-bold">
                                     <i class="bi bi-clock-history me-1"></i> ABIERTA
                                 </span>
@@ -69,7 +69,7 @@
                                 Fecha: <strong>{{ jornada_activa.fecha|date:"d/m/Y" }}</strong> &bull; Apertura: <strong>{{ jornada_activa.fecha_hora_apertura|date:"H:i" }} hrs</strong> por <strong>{{ jornada_activa.usuario_apertura.get_full_name|default:jornada_activa.usuario_apertura.username }}</strong> |
                                 Cajas del D&iacute;a: <strong>{{ cajas_jornada|length }}</strong>
                                 {% if cajas_abiertas_count > 0 %}
-                                    <span class="text-warning fw-bold">({{ cajas_abiertas_count }} abierta{{ cajas_abiertas_count|pluralize }})</span>
+                                    <span class="text-warning-emphasis fw-bold">({{ cajas_abiertas_count }} abierta{{ cajas_abiertas_count|pluralize }})</span>
                                 {% else %}
                                     <span class="text-success fw-bold">(Todas cerradas y cuadradas)</span>
                                 {% endif %}
@@ -94,7 +94,7 @@
                             <i class="bi bi-calendar-x fs-3"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold text-dark mb-0">Sin Jornada Operativa Activa para Hoy ({{ hoy_str }})</h5>
+                            <h2 class="h5 fw-bold text-dark mb-0">Sin Jornada Operativa Activa para Hoy ({{ hoy_str }})</h2>
                             <small class="text-muted d-block mt-1">
                                 Las jornadas se inician autom&aacute;ticamente cuando el primer cajero o supervisor abre turno en el parque.
                             </small>
@@ -173,9 +173,9 @@
         <!-- SECCIÓN PRINCIPAL: LOCALES GASTRONÓMICOS -->
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <div>
-                <h4 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                <h2 class="h4 fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
                     <i class="bi bi-shop me-2 text-danger"></i>ESTADO OPERATIVO DE LOS LOCALES GASTRONÓMICOS
-                </h4>
+                </h2>
                 <span class="text-muted small">Supervisión en vivo de los {{ locales|length }} locales gastronómicos, dotación asignada y comandas</span>
             </div>
             <button type="button" class="btn btn-danger btn-sm px-3 rounded-pill fw-bold shadow-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalCrearLocal">
@@ -190,22 +190,22 @@
                     <!-- Cabecera del Local -->
                     <div class="local-card-header" style="background-color: #fdfaf5;">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="rounded-3 p-2" style="background-color: {{ local.color }}20; color: {{ local.color }};">
+                            <div class="rounded-3 p-2 safari-local-icon-chip" style="--local-accent: {{ local.color }};">
                                 <i class="bi {{ local.icono }} fs-4"></i>
                             </div>
                             <div>
                                 <span class="badge" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium); font-size: 0.68rem;">
                                     LOCAL #{{ local.id }}
                                 </span>
-                                <h5 class="local-title">{{ local.nombre }}</h5>
+                                <h3 class="h5 local-title">{{ local.nombre }}</h3>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEditarLocal_{{ local.id }}" title="Modificar Local">
-                                <i class="bi bi-pencil-square"></i>
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEditarLocal_{{ local.id }}" title="Modificar Local" aria-label="Modificar local {{ local.nombre }}">
+                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEliminarLocal_{{ local.id }}" title="Eliminar Local">
-                                <i class="bi bi-trash3"></i>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill shadow-none" data-bs-toggle="modal" data-bs-target="#modalEliminarLocal_{{ local.id }}" title="Eliminar Local" aria-label="Eliminar local {{ local.nombre }}">
+                                <i class="bi bi-trash3" aria-hidden="true"></i>
                             </button>
                             <span class="badge {% if local.en_horario and local.estado != 'Inactivo' %}bg-success{% elif local.estado == 'Inactivo' %}bg-secondary{% else %}bg-warning text-dark{% endif %} px-2 py-1 ms-1 shadow-xs" title="Horario Oficial: 10:00 a 18:00">
                                 <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ local.estado }}
@@ -237,7 +237,7 @@
                         <div class="mb-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="fw-bold small text-dark">
-                                    <i class="bi bi-person-badge text-warning me-1"></i>Personal en Turno ({{ local.personal|length }}):
+                                    <i class="bi bi-person-badge text-warning-emphasis me-1"></i>Personal en Turno ({{ local.personal|length }}):
                                 </span>
                                 <small class="text-muted">{{ local.turno }}</small>
                             </div>
@@ -249,7 +249,7 @@
                                     {% if p.estado == 'Activo' %}
                                     <i class="bi bi-dot text-success fs-5 p-0" style="line-height:0;"></i>
                                     {% else %}
-                                    <i class="bi bi-dot text-warning fs-5 p-0" style="line-height:0;"></i>
+                                    <i class="bi bi-dot text-warning-emphasis fs-5 p-0" style="line-height:0;"></i>
                                     {% endif %}
                                 </span>
                                 {% empty %}
@@ -279,10 +279,10 @@
         <div class="detail-table-card mb-4">
             <div class="detail-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-person-check-fill text-warning me-2"></i>Personal Administrativo y Operativo en Turno Activo
-                    </h5>
-                    <small class="text-white-50">Registro en vivo de colaboradores que han iniciado sesión en cajas y cocinas hoy</small>
+                    <h2 class="h5 mb-0 fw-bold">
+                        <i class="bi bi-person-check-fill text-lcd-amber me-2"></i>Personal Administrativo y Operativo en Turno Activo
+                    </h2>
+                    <small class="text-on-brand-muted">Registro en vivo de colaboradores que han iniciado sesión en cajas y cocinas hoy</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-warning text-dark px-3 py-2 fw-bold">
@@ -318,7 +318,7 @@
                                     <strong class="text-dark">{{ p.nombre }}</strong>
                                 </div>
                             </td>
-                            <td class="text-muted font-monospace small">{{ p.rut }}</td>
+                            <td class="text-muted font-monospace small">{{ p.rut|enmascarar_rut }}</td>
                             <td>
                                 <a href="{% url 'administrador_local' p.local_id %}" class="fw-bold text-decoration-none" style="color: var(--safari-red);">
                                     {{ p.local_nombre }}
@@ -354,12 +354,12 @@
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header text-white" style="background: linear-gradient(135deg, #a71d1d 0%, #7f1d1d 100%);">
                     <div>
-                        <h5 class="modal-title fw-bold" id="modalCerrarJornadaLabel">
-                            <i class="bi bi-calendar-x-fill text-warning me-2"></i> Finalizar Jornada Diaria #{{ jornada_activa.id }}
-                        </h5>
-                        <small class="text-white-50">Cierre Operativo y Consolidaci&oacute;n de Supervisi&oacute;n del D&iacute;a ({{ hoy_str }})</small>
+                        <h2 class="modal-title h5 fw-bold" id="modalCerrarJornadaLabel">
+                            <i class="bi bi-calendar-x-fill text-lcd-amber me-2"></i> Finalizar Jornada Diaria #{{ jornada_activa.id }}
+                        </h2>
+                        <small class="text-on-brand-muted">Cierre Operativo y Consolidaci&oacute;n de Supervisi&oacute;n del D&iacute;a ({{ hoy_str }})</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'cerrar_jornada' %}">
                     {% csrf_token %}
@@ -386,9 +386,9 @@
                         </div>
 
                         <!-- Estado de las Cajas Asociadas a esta Jornada -->
-                        <h6 class="fw-bold text-dark mb-2">
+                        <h3 class="h6 fw-bold text-dark mb-2">
                             <i class="bi bi-safe2 text-danger me-1"></i> Auditor&iacute;a de Cajas del D&iacute;a:
-                        </h6>
+                        </h3>
 
                         {% if cajas_jornada %}
                         <div class="table-responsive rounded-3 border bg-white mb-3">
@@ -454,7 +454,7 @@
                         <!-- Alerta Informativa si a&uacute;n hay cajas abiertas -->
                         <div class="alert alert-warning border-0 rounded-3 p-3 mb-3" style="border-left: 4px solid #f59e0b !important;">
                             <div class="d-flex align-items-start gap-2">
-                                <i class="bi bi-exclamation-triangle-fill text-warning fs-5 mt-1"></i>
+                                <i class="bi bi-exclamation-triangle-fill text-warning-emphasis fs-5 mt-1"></i>
                                 <div>
                                     <strong class="text-dark small">Quedan {{ cajas_abiertas_count }} caja(s) individual(es) abierta(s):</strong>
                                     <div class="text-muted small mt-1">
@@ -482,8 +482,8 @@
 
                         <!-- Observaciones de Cierre de Supervisi&oacute;n -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold text-muted">Observaciones de Supervisi&oacute;n (Opcional):</label>
-                            <textarea name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Jornada dominical cerrada sin novedades operativas en locales."></textarea>
+                            <label for="obsCierreJornadaAdmin" class="form-label small fw-bold text-muted">Observaciones de Supervisi&oacute;n (Opcional):</label>
+                            <textarea id="obsCierreJornadaAdmin" name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Jornada dominical cerrada sin novedades operativas en locales."></textarea>
                         </div>
                     </div>
 
@@ -510,9 +510,9 @@
                             <div class="rounded-circle bg-white text-danger d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
                                 <i class="bi bi-shop fs-5"></i>
                             </div>
-                            <h5 class="modal-title fw-bold mb-0" id="modalCrearLocalLabel">Nuevo Local Gastronómico</h5>
+                            <h2 class="modal-title h5 fw-bold mb-0" id="modalCrearLocalLabel">Nuevo Local Gastronómico</h2>
                         </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <form method="POST" action="{% url 'administrador' %}" class="needs-validation">
                         {% csrf_token %}
@@ -524,17 +524,17 @@
                             </p>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="crearLocalNombre" class="form-label fw-bold text-dark small">
                                     Nombre del Local <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" name="nombre" class="form-control rounded-3" placeholder="Ej: Heladería Selva Safari" required maxlength="100">
+                                <input type="text" id="crearLocalNombre" name="nombre" class="form-control rounded-3" placeholder="Ej: Heladería Selva Safari" required maxlength="100">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="crearLocalTipo" class="form-label fw-bold text-dark small">
                                     Tipo de Servicio / Especialidad
                                 </label>
-                                <input type="text" name="tipo" list="listaTiposLocal" class="form-control rounded-3" placeholder="Ej: Heladería Artesanal, Cafetería Barista, Kiosco..." maxlength="50">
+                                <input type="text" id="crearLocalTipo" name="tipo" list="listaTiposLocal" class="form-control rounded-3" placeholder="Ej: Heladería Artesanal, Cafetería Barista, Kiosco..." maxlength="50">
                                 <datalist id="listaTiposLocal">
                                     <option value="Restaurante & Buffet Caliente">
                                     <option value="Cafetería Barista & Repostería">
@@ -547,16 +547,16 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="crearLocalDescripcion" class="form-label fw-bold text-dark small">
                                     Descripción Operativa
                                 </label>
-                                <textarea name="descripcion" class="form-control rounded-3" rows="2" placeholder="Detalle de productos ofrecidos, ubicación dentro del parque o modalidad de atención..."></textarea>
+                                <textarea id="crearLocalDescripcion" name="descripcion" class="form-control rounded-3" rows="2" placeholder="Detalle de productos ofrecidos, ubicación dentro del parque o modalidad de atención..."></textarea>
                             </div>
 
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-dark small">Ícono Distintivo</label>
-                                    <select name="icono" class="form-select rounded-3">
+                                    <label for="crearLocalIcono" class="form-label fw-bold text-dark small">Ícono Distintivo</label>
+                                    <select id="crearLocalIcono" name="icono" class="form-select rounded-3">
                                         <option value="bi-shop">🏪 Tienda / Local (bi-shop)</option>
                                         <option value="bi-building-fill">🏛️ Restaurante (bi-building-fill)</option>
                                         <option value="bi-cup-hot-fill">☕ Cafetería (bi-cup-hot-fill)</option>
@@ -569,8 +569,8 @@
                                     </select>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-dark small">Color Temático</label>
-                                    <select name="color" class="form-select rounded-3">
+                                    <label for="crearLocalColor" class="form-label fw-bold text-dark small">Color Temático</label>
+                                    <select id="crearLocalColor" name="color" class="form-select rounded-3">
                                         <option value="#c62828" style="color: #c62828; font-weight: bold;">🔴 Rojo Safari (#c62828)</option>
                                         <option value="#6b21a8" style="color: #6b21a8; font-weight: bold;">🟣 Púrpura Barista (#6b21a8)</option>
                                         <option value="#0284c7" style="color: #0284c7; font-weight: bold;">🔵 Celeste Oasis (#0284c7)</option>
@@ -596,15 +596,15 @@
         <!-- MODALES DE MODIFICACIÓN Y ELIMINACIÓN DE LOCALES -->
         {% for local in locales %}
         <!-- Modal Modificar Local #{{ local.id }} -->
-        <div class="modal fade" id="modalEditarLocal_{{ local.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="modalEditarLocal_{{ local.id }}" tabindex="-1" aria-labelledby="modalEditarLocalLabel_{{ local.id }}" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-4 border-0 shadow">
                     <div class="modal-header text-white" style="background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-pencil-square fs-5 text-warning"></i>
-                            <h5 class="modal-title fw-bold mb-0">Modificar Local #{{ local.id }}</h5>
+                            <i class="bi bi-pencil-square fs-5 text-lcd-amber"></i>
+                            <h2 class="modal-title h5 fw-bold mb-0" id="modalEditarLocalLabel_{{ local.id }}">Modificar Local #{{ local.id }}</h2>
                         </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <form method="POST" action="{% url 'administrador' %}">
                         {% csrf_token %}
@@ -613,30 +613,30 @@
                         
                         <div class="modal-body p-4">
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="editLocalNombre_{{ local.id }}" class="form-label fw-bold text-dark small">
                                     Nombre del Local <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" name="nombre" class="form-control rounded-3" value="{{ local.nombre }}" required maxlength="100">
+                                <input type="text" id="editLocalNombre_{{ local.id }}" name="nombre" class="form-control rounded-3" value="{{ local.nombre }}" required maxlength="100">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="editLocalTipo_{{ local.id }}" class="form-label fw-bold text-dark small">
                                     Tipo de Servicio / Especialidad
                                 </label>
-                                <input type="text" name="tipo" list="listaTiposLocal" class="form-control rounded-3" value="{{ local.tipo }}" maxlength="50">
+                                <input type="text" id="editLocalTipo_{{ local.id }}" name="tipo" list="listaTiposLocal" class="form-control rounded-3" value="{{ local.tipo }}" maxlength="50">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-dark small">
+                                <label for="editLocalDesc_{{ local.id }}" class="form-label fw-bold text-dark small">
                                     Descripción Operativa
                                 </label>
-                                <textarea name="descripcion" class="form-control rounded-3" rows="2">{{ local.descripcion }}</textarea>
+                                <textarea id="editLocalDesc_{{ local.id }}" name="descripcion" class="form-control rounded-3" rows="2">{{ local.descripcion }}</textarea>
                             </div>
 
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-dark small">Ícono</label>
-                                    <select name="icono" class="form-select rounded-3">
+                                    <label for="editLocalIcono_{{ local.id }}" class="form-label fw-bold text-dark small">Ícono</label>
+                                    <select id="editLocalIcono_{{ local.id }}" name="icono" class="form-select rounded-3">
                                         <option value="bi-shop" {% if local.icono == 'bi-shop' %}selected{% endif %}>🏪 Tienda (bi-shop)</option>
                                         <option value="bi-building-fill" {% if local.icono == 'bi-building-fill' %}selected{% endif %}>🏛️ Restaurante (bi-building-fill)</option>
                                         <option value="bi-cup-hot-fill" {% if local.icono == 'bi-cup-hot-fill' %}selected{% endif %}>☕ Cafetería (bi-cup-hot-fill)</option>
@@ -648,8 +648,8 @@
                                     </select>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-dark small">Color Temático</label>
-                                    <select name="color" class="form-select rounded-3">
+                                    <label for="editLocalColor_{{ local.id }}" class="form-label fw-bold text-dark small">Color Temático</label>
+                                    <select id="editLocalColor_{{ local.id }}" name="color" class="form-select rounded-3">
                                         <option value="#c62828" {% if local.color == '#c62828' %}selected{% endif %} style="color: #c62828; font-weight: bold;">🔴 Rojo Safari (#c62828)</option>
                                         <option value="#6b21a8" {% if local.color == '#6b21a8' %}selected{% endif %} style="color: #6b21a8; font-weight: bold;">🟣 Púrpura Barista (#6b21a8)</option>
                                         <option value="#0284c7" {% if local.color == '#0284c7' %}selected{% endif %} style="color: #0284c7; font-weight: bold;">🔵 Celeste Oasis (#0284c7)</option>
@@ -661,8 +661,8 @@
                             </div>
 
                             <div class="mb-2">
-                                <label class="form-label fw-bold text-dark small">Estado del Local</label>
-                                <select name="activo" class="form-select rounded-3">
+                                <label for="editLocalEstado_{{ local.id }}" class="form-label fw-bold text-dark small">Estado del Local</label>
+                                <select id="editLocalEstado_{{ local.id }}" name="activo" class="form-select rounded-3">
                                     <option value="true" {% if local.estado == 'En Servicio' or local.estado == 'Activo' %}selected{% endif %}>En Servicio / Activo</option>
                                     <option value="false" {% if local.estado == 'Inactivo' %}selected{% endif %}>Inactivo / En Mantenimiento</option>
                                 </select>
@@ -681,15 +681,15 @@
         </div>
 
         <!-- Modal Eliminar Local #{{ local.id }} -->
-        <div class="modal fade" id="modalEliminarLocal_{{ local.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="modalEliminarLocal_{{ local.id }}" tabindex="-1" aria-labelledby="modalEliminarLocalLabel_{{ local.id }}" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-4 border-0 shadow">
                     <div class="modal-header bg-danger text-white">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
-                            <h5 class="modal-title fw-bold mb-0">Confirmar Eliminación de Local</h5>
+                            <i class="bi bi-exclamation-triangle-fill fs-5 text-lcd-amber"></i>
+                            <h2 class="modal-title h5 fw-bold mb-0" id="modalEliminarLocalLabel_{{ local.id }}">Confirmar Eliminación de Local</h2>
                         </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <form method="POST" action="{% url 'administrador' %}">
                         {% csrf_token %}
@@ -700,7 +700,7 @@
                             <div class="display-6 text-danger mb-3">
                                 <i class="bi bi-trash3-fill"></i>
                             </div>
-                            <h5 class="fw-bold text-dark">¿Estás seguro de eliminar el local gastronómico?</h5>
+                            <h3 class="h5 fw-bold text-dark">¿Estás seguro de eliminar el local gastronómico?</h3>
                             <p class="text-danger fw-bold fs-5 mb-2">{{ local.nombre }}</p>
                             <p class="text-muted small mb-0">
                                 Al eliminar este local, se liberará a los colaboradores asignados (quedarán sin puesto asignado). Si el local posee transacciones históricas registradas, se desactivará de forma segura para proteger la auditoría del parque.

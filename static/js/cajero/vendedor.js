@@ -146,8 +146,8 @@ function renderizarTickets() {
                     statusBadgeHtml = `<span class="badge-status status-barra"><i class="bi bi-hourglass-split"></i> Pendiente en Barra</span>`;
                 }
                 actionBtnHtml = `
-                    <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="cambiarEstadoTicket(${ticket.pedido_id}, 'LISTO')">
-                        <i class="bi bi-check2-circle me-1"></i> Marcar Listo
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill fw-bold" data-ticket-accion-id="${ticket.pedido_id}" data-ticket-nuevo-estado="LISTO">
+                        <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Marcar Listo
                     </button>
                 `;
             } else if (ticket.estadoBd === 'EN_PREPARACION') {
@@ -157,15 +157,15 @@ function renderizarTickets() {
                     statusBadgeHtml = `<span class="badge-status status-barra"><i class="bi bi-cup-hot-fill"></i> Preparando en Barra</span>`;
                 }
                 actionBtnHtml = `
-                    <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="cambiarEstadoTicket(${ticket.pedido_id}, 'LISTO')">
-                        <i class="bi bi-check2-circle me-1"></i> Marcar Listo
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill fw-bold" data-ticket-accion-id="${ticket.pedido_id}" data-ticket-nuevo-estado="LISTO">
+                        <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Marcar Listo
                     </button>
                 `;
             } else if (ticket.estadoBd === 'LISTO') {
                 statusBadgeHtml = `<span class="badge-status status-listo"><i class="bi bi-bag-check-fill"></i> Listo para Entrega</span>`;
                 actionBtnHtml = `
-                    <button class="btn btn-sm btn-success rounded-pill fw-bold" onclick="cambiarEstadoTicket(${ticket.pedido_id}, 'ENTREGADO')">
-                        <i class="bi bi-check-all me-1"></i> Entregar a Comensal
+                    <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold" data-ticket-accion-id="${ticket.pedido_id}" data-ticket-nuevo-estado="ENTREGADO">
+                        <i class="bi bi-check-all me-1" aria-hidden="true"></i> Entregar a Comensal
                     </button>
                 `;
             } else {
@@ -205,7 +205,7 @@ function renderizarTickets() {
                     <div class="ticket-card-header">
                         <div>
                             <div class="ticket-id">
-                                <i class="bi bi-receipt text-warning me-1"></i>#${escapeHtml(ticket.id)} ${badgeCuentaHtml}
+                                <i class="bi bi-receipt text-warning-emphasis me-1" aria-hidden="true"></i>#${escapeHtml(ticket.id)} ${badgeCuentaHtml}
                             </div>
                             <small class="text-muted fw-semibold">${escapeHtml(ticket.hora)} • <i class="bi ${ticket.esMesa ? 'bi-geo-alt-fill text-danger' : 'bi-bag-check text-secondary'}"></i> ${escapeHtml(ticket.tipoEntrega)}</small>
                         </div>
@@ -267,14 +267,21 @@ async function cambiarEstadoTicket(pedidoId, nuevoEstado) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
-        const data = await resp.json();
-        if (data.ok) {
+        const ct = resp.headers.get('content-type') || '';
+        const data = ct.includes('application/json') ? await resp.json() : {};
+        if (resp.status === 401 || data.sesion_expirada) {
+            if (typeof swalErrorBootstrap !== 'undefined') {
+                swalErrorBootstrap.fire({ title: 'Sesión expirada', text: data.error || 'Inicia sesión nuevamente.', icon: 'warning' }).then(() => window.location.reload());
+            }
+            return;
+        }
+        if (resp.ok && (data.ok || data.status === 'ok')) {
             await autoActualizarVendedor(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: `Comanda #COM-${String(pedidoId).padStart(4, '0')} actualizada a ${data.estado_display}.` });
             }
         } else if (typeof swalErrorBootstrap !== 'undefined') {
-            swalErrorBootstrap.fire({ title: 'No se pudo actualizar', text: data.error || 'Error al cambiar estado.', icon: 'error' });
+            swalErrorBootstrap.fire({ title: 'No se pudo actualizar', text: data.mensaje || data.error || 'Error al cambiar estado.', icon: 'error' });
         }
     } catch (e) {
         console.error(e);
@@ -335,33 +342,83 @@ async function liberarMesaCajero(mesaId, mesaNombre) {
 }
 
 async function cobrarMesaCajero(mesaId, mesaNombre, totalAbierto) {
-    const propina10 = Math.round(totalAbierto * 0.10);
+    let porcentajeSeleccionado = 10; // 10% sugerido por defecto (Ley N° 20.918)
+    const totalNum = Math.max(0, Math.round(Number(totalAbierto) || 0));
+
     const htmlModal = `
-        <div class="text-start mb-3">
+        <div class="text-start mb-2">
             <div class="text-center py-2 mb-3 bg-light rounded-3 border">
-                <span class="text-muted small d-block">TOTAL CONSUMO ACUMULADO:</span>
-                <span class="text-danger fs-3 fw-bold">${formatearMoneda(totalAbierto)} CLP</span>
+                <span class="text-muted small d-block">TOTAL CONSUMO EN MESA:</span>
+                <span class="text-success fs-3 fw-bold" id="swalTotalConsumoDisplay">$${totalNum.toLocaleString('es-CL')} CLP</span>
             </div>
+
             <div class="mb-3">
-                <label class="form-label fw-bold small text-dark">Método de Pago:</label>
+                <label class="form-label fw-bold small text-dark mb-1">Método de Pago:</label>
                 <select id="swalMetodoPago" class="form-select form-select-sm">
                     <option value="EFECTIVO" selected>Efectivo (aplica redondeo Ley 20.956)</option>
-                    <option value="DEBITO">Tarjeta de Débito</option>
+                    <option value="DEBITO">Tarjeta de Débito (Redcompra)</option>
                     <option value="CREDITO">Tarjeta de Crédito</option>
                     <option value="TRANSFERENCIA">Transferencia Electrónica</option>
                 </select>
             </div>
+
             <div class="mb-3">
-                <label class="form-label fw-bold small text-dark">Monto a Cobrar / Abono Parcial (CLP):</label>
-                <input type="number" id="swalMontoPago" class="form-control form-control-sm font-monospace" value="${totalAbierto}" min="1" max="${totalAbierto}">
-                <small class="text-muted" style="font-size: 0.72rem;">Ingresa un monto menor para registrar un abono / división de cuenta (la mesa seguirá ocupada con el saldo).</small>
+                <label class="form-label fw-bold small text-dark mb-1">Monto a Cobrar / Abono Parcial (CLP):</label>
+                <input type="number" id="swalMontoPago" class="form-control form-control-sm font-monospace" value="${totalNum}" min="1" max="${totalNum}">
+                <small class="text-muted" style="font-size: 0.72rem;">Deja el total o ingresa un monto menor para registrar un abono / división de cuenta (Split Bill).</small>
             </div>
-            <div class="form-check form-switch p-2 bg-light rounded-3 border">
-                <input class="form-check-input ms-0 me-2" type="checkbox" id="swalIncluirPropina">
-                <label class="form-check-label fw-bold small text-dark" for="swalIncluirPropina">
-                    Sugerir Propina Voluntaria 10% (+${formatearMoneda(propina10)} CLP)
-                </label>
-                <div class="small text-muted ps-4" style="font-size: 0.7rem;">Ley N° 20.918 Art. 64 bis • 100% voluntaria</div>
+
+            <div class="p-3 bg-light rounded-3 border mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="fw-bold small text-dark mb-0">
+                        <i class="bi bi-heart-fill text-danger me-1"></i> Propina Voluntaria (Ley N° 20.918):
+                    </label>
+                    <span class="badge bg-secondary-subtle text-secondary px-2 py-1 rounded-pill small" style="font-size: 0.7rem;">Exenta de IVA</span>
+                </div>
+                <div class="btn-group w-100 mb-2" role="group" id="swalTipGroup">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="0">0%</button>
+                    <button type="button" class="btn btn-sm btn-success fw-bold" data-pct="10">10%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="15">15%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="20">20%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="custom">Otro $</button>
+                </div>
+                <div id="swalCustomTipContainer" class="mb-2 d-none">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">$</span>
+                        <input type="number" id="swalCustomTipInput" class="form-control font-monospace" placeholder="Ingresa monto voluntario" min="0">
+                    </div>
+                </div>
+                <div class="small text-muted" style="font-size: 0.7rem;">
+                    * 100% voluntaria para el personal de servicio. No se incluye en la base de IVA 19%.
+                </div>
+            </div>
+
+            <!-- Desglose Tributario y de Cobro en Vivo -->
+            <div class="card border rounded-3 p-2 bg-white" style="font-size: 0.78rem;">
+                <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                    <span>Subtotal Consumo (Alimentos/Bebidas):</span>
+                    <strong class="font-monospace text-dark" id="swalResumenConsumo">$0</strong>
+                </div>
+                <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                    <span>• Neto Imponible (19% IVA):</span>
+                    <span class="font-monospace" id="swalResumenNeto">$0</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                    <span>• IVA 19% (Gastronomía):</span>
+                    <span class="font-monospace" id="swalResumenIva">$0</span>
+                </div>
+                <div class="d-flex justify-content-between text-success py-1 border-bottom fw-semibold">
+                    <span>Propina Voluntaria (<span id="swalPctLabel">10%</span>):</span>
+                    <span class="font-monospace" id="swalResumenPropina">+$0</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted py-1 border-bottom" id="swalFilaRedondeo">
+                    <span>Redondeo Ley 20.956 (Efectivo):</span>
+                    <span class="font-monospace" id="swalResumenRedondeo">$0</span>
+                </div>
+                <div class="d-flex justify-content-between text-dark py-2 fs-6 fw-bold">
+                    <span>TOTAL A COBRAR:</span>
+                    <span class="font-monospace text-primary fs-5" id="swalResumenTotalFinal">$0 CLP</span>
+                </div>
             </div>
         </div>
     `;
@@ -377,11 +434,106 @@ async function cobrarMesaCajero(mesaId, mesaNombre, totalAbierto) {
             cancelButton: 'btn btn-outline-secondary rounded-pill px-3 mx-1'
         },
         buttonsStyling: false,
+        didOpen: () => {
+            const recalcularDesglose = () => {
+                const metodo = document.getElementById('swalMetodoPago')?.value || 'EFECTIVO';
+                const inputMonto = document.getElementById('swalMontoPago');
+                const montoBase = Math.max(0, parseFloat(inputMonto?.value) || totalNum);
+                const neto = Math.round(montoBase / 1.19);
+                const iva = Math.round(montoBase * 19 / 119);
+
+                let propina = 0;
+                if (porcentajeSeleccionado === 'custom') {
+                    propina = Math.max(0, parseFloat(document.getElementById('swalCustomTipInput')?.value) || 0);
+                } else {
+                    propina = Math.round(montoBase * (Number(porcentajeSeleccionado) / 100));
+                }
+
+                const totalSinRedondeo = montoBase + propina;
+                let ajusteRedondeo = 0;
+                if (metodo === 'EFECTIVO') {
+                    const resto = totalSinRedondeo % 10;
+                    if (resto >= 1 && resto <= 4) {
+                        ajusteRedondeo = -resto;
+                    } else if (resto >= 5 && resto <= 9) {
+                        ajusteRedondeo = 10 - resto;
+                    }
+                }
+                const totalFinal = totalSinRedondeo + ajusteRedondeo;
+
+                const elConsumo = document.getElementById('swalResumenConsumo');
+                const elNeto = document.getElementById('swalResumenNeto');
+                const elIva = document.getElementById('swalResumenIva');
+                const elPct = document.getElementById('swalPctLabel');
+                const elProp = document.getElementById('swalResumenPropina');
+                const elFilaRed = document.getElementById('swalFilaRedondeo');
+                const elRed = document.getElementById('swalResumenRedondeo');
+                const elTot = document.getElementById('swalResumenTotalFinal');
+
+                if (elConsumo) elConsumo.innerText = `$${Math.round(montoBase).toLocaleString('es-CL')}`;
+                if (elNeto) elNeto.innerText = `$${neto.toLocaleString('es-CL')}`;
+                if (elIva) elIva.innerText = `$${iva.toLocaleString('es-CL')}`;
+                if (elPct) elPct.innerText = porcentajeSeleccionado === 'custom' ? 'Manual' : `${porcentajeSeleccionado}%`;
+                if (elProp) elProp.innerText = `+$${Math.round(propina).toLocaleString('es-CL')}`;
+
+                if (elFilaRed && elRed) {
+                    if (metodo === 'EFECTIVO') {
+                        elFilaRed.classList.remove('d-none');
+                        elRed.innerText = `${ajusteRedondeo >= 0 ? '+' : ''}$${ajusteRedondeo} CLP`;
+                    } else {
+                        elFilaRed.classList.add('d-none');
+                    }
+                }
+                if (elTot) elTot.innerText = `$${Math.round(totalFinal).toLocaleString('es-CL')} CLP`;
+            };
+
+            const tipButtons = document.querySelectorAll('#swalTipGroup button');
+            const customContainer = document.getElementById('swalCustomTipContainer');
+            const customInput = document.getElementById('swalCustomTipInput');
+
+            tipButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    tipButtons.forEach(b => {
+                        b.classList.remove('btn-success', 'fw-bold');
+                        b.classList.add('btn-outline-secondary');
+                    });
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-success', 'fw-bold');
+
+                    const pctVal = btn.getAttribute('data-pct');
+                    if (pctVal === 'custom') {
+                        porcentajeSeleccionado = 'custom';
+                        customContainer?.classList.remove('d-none');
+                        customInput?.focus();
+                    } else {
+                        porcentajeSeleccionado = Number(pctVal);
+                        customContainer?.classList.add('d-none');
+                    }
+                    recalcularDesglose();
+                });
+            });
+
+            document.getElementById('swalMetodoPago')?.addEventListener('change', recalcularDesglose);
+            document.getElementById('swalMontoPago')?.addEventListener('input', recalcularDesglose);
+            customInput?.addEventListener('input', recalcularDesglose);
+
+            recalcularDesglose();
+        },
         preConfirm: () => {
-            const metodo = document.getElementById('swalMetodoPago').value;
-            const monto = parseFloat(document.getElementById('swalMontoPago').value) || totalAbierto;
-            const propina = document.getElementById('swalIncluirPropina').checked;
-            return { metodo, monto, propina };
+            const metodo = document.getElementById('swalMetodoPago')?.value || 'EFECTIVO';
+            const monto = parseFloat(document.getElementById('swalMontoPago')?.value) || totalNum;
+            let propinaCalculada = 0;
+            let pct = 0;
+
+            if (porcentajeSeleccionado === 'custom') {
+                propinaCalculada = Math.max(0, parseFloat(document.getElementById('swalCustomTipInput')?.value) || 0);
+                pct = monto > 0 ? Math.round((propinaCalculada / monto) * 100) : 0;
+            } else {
+                pct = Number(porcentajeSeleccionado) || 0;
+                propinaCalculada = Math.round(monto * (pct / 100));
+            }
+            return { metodo, monto, porcentajePropina: pct, montoPropina: propinaCalculada };
         }
     });
 
@@ -393,7 +545,9 @@ async function cobrarMesaCajero(mesaId, mesaNombre, totalAbierto) {
         formData.append('mesa_id', mesaId);
         formData.append('metodo_pago', formValues.metodo);
         formData.append('monto_pago', formValues.monto);
-        if (formValues.propina) {
+        formData.append('porcentaje_propina', String(formValues.porcentajePropina));
+        formData.append('monto_propina', String(formValues.montoPropina));
+        if (formValues.montoPropina > 0) {
             formData.append('incluir_propina', '1');
         }
         formData.append('csrfmiddlewaretoken', obtenerCsrfTokenVendedor());
@@ -423,7 +577,6 @@ async function cobrarMesaCajero(mesaId, mesaNombre, totalAbierto) {
     }
 }
 
-// Filtrar por pestaña de estado
 function filtrarEstado(estado, elemento) {
     estadoFiltroActual = estado;
     document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
@@ -518,6 +671,73 @@ document.addEventListener('DOMContentLoaded', () => {
         calcularArqueoCaja();
     }
 
+    const filtroTicketTexto = document.getElementById('filtroTicketTexto');
+    if (filtroTicketTexto) {
+        filtroTicketTexto.addEventListener('input', filtrarTickets);
+    }
+
+    const btnLimpiarFiltroTicket = document.getElementById('btnLimpiarFiltroTicket');
+    if (btnLimpiarFiltroTicket) {
+        btnLimpiarFiltroTicket.addEventListener('click', limpiarFiltroTicket);
+    }
+
+    document.querySelectorAll('#vendedorFilterEstadoGroup [data-filter-estado]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#vendedorFilterEstadoGroup [data-filter-estado]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+            btn.setAttribute('aria-pressed', 'true');
+            filtrarEstado(btn.getAttribute('data-filter-estado'), btn);
+        });
+    });
+
+    const panelMesasSalon = document.getElementById('panelMesasSalonCajero');
+    if (panelMesasSalon) {
+        panelMesasSalon.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-mesa-action]');
+            if (!btn) return;
+            const action = btn.getAttribute('data-mesa-action');
+            const id = Number(btn.getAttribute('data-mesa-id'));
+            const nombre = btn.getAttribute('data-mesa-nombre') || '';
+            if (action === 'ocupar') ocuparMesaCajero(id, nombre);
+            else if (action === 'cobrar') cobrarMesaCajero(id, nombre, Number(btn.getAttribute('data-mesa-total') || 0));
+            else if (action === 'liberar') liberarMesaCajero(id, nombre);
+        });
+    }
+
+    const contTickets = document.getElementById('contenedorTickets');
+    if (contTickets) {
+        contTickets.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-ticket-accion-id]');
+            if (btn) {
+                cambiarEstadoTicket(Number(btn.getAttribute('data-ticket-accion-id')), btn.getAttribute('data-ticket-nuevo-estado'));
+            }
+        });
+    }
+
+    const secVentasRecientes = document.getElementById('seccionVentasRecientesCajero');
+    if (secVentasRecientes) {
+        secVentasRecientes.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-anular-venta-id]');
+            if (btn) {
+                abrirModalAnular(btn.getAttribute('data-anular-venta-id'), btn.getAttribute('data-anular-venta-total'));
+            }
+        });
+    }
+
+    const formCerrarCaja = document.getElementById('formCerrarCaja');
+    if (formCerrarCaja) {
+        formCerrarCaja.addEventListener('input', (e) => {
+            if (e.target.matches('.input-arqueo')) {
+                limpiarCerosInicialesInput(e.target);
+                calcularArqueoCaja();
+            }
+        });
+    }
+
+    const btnConfirmarCierreCaja = document.getElementById('btnConfirmarCierreCaja');
+    if (btnConfirmarCierreCaja) {
+        btnConfirmarCierreCaja.addEventListener('click', confirmarCierreCaja);
+    }
+
     // Enfocar automáticamente el campo de monto al abrir modales de Jornada / Caja (ingreso directo sin borrar 0)
     ['modalAbrirJornada', 'modalAbrirCaja'].forEach(modalId => {
         const modalEl = document.getElementById(modalId);
@@ -567,8 +787,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Sincronización en tiempo real cada 1 segundo
-    setInterval(() => autoActualizarVendedor(false), 1000);
+    // Sincronización en tiempo real cada 1 segundo con ahorro inteligente de recursos
+    let vendedorInterval = setInterval(() => autoActualizarVendedor(false), 1000);
+
+    document.addEventListener('visibilitychange', () => {
+        clearInterval(vendedorInterval);
+        if (document.visibilityState === 'visible') {
+            autoActualizarVendedor(false);
+            vendedorInterval = setInterval(() => autoActualizarVendedor(false), 1000);
+        } else {
+            vendedorInterval = setInterval(() => autoActualizarVendedor(false), 5000);
+        }
+    });
 });
 
 // =========================================================================
@@ -665,128 +895,184 @@ function confirmarCierreCaja() {
 }
 
 // ==========================================================================
-// Ezio Auditore - Bloqueo Rápido de Terminal Compartido (PIN Lock)
+// Sistema de Bloqueo Rápido de Terminal Compartido (Verificación en Servidor)
 // ==========================================================================
 const PosPinLock = (() => {
     let pinIngresado = '';
-    let pinsValidos = ['1234'];
-    let pinHint = '1234';
     let inactividadTimer = null;
-    const TIEMPO_INACTIVIDAD_MS = 180000; // 3 minutos (ergonomía POS)
+    const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 minutos (ergonomía POS operativa)
     let bloqueado = false;
+    let enError = false;
+    let verificando = false;
+    let timerError = null;
+    let urlDesbloqueo = '/api/vendedor/desbloquear-pin/';
 
     function init() {
         const overlay = document.getElementById('safariPosLockOverlay');
         const btnBloquear = document.getElementById('btnBloquearCaja');
-        if (!overlay || !btnBloquear) return;
+        if (!overlay) return;
 
-        // Leer PINs válidos desde configuración inyectada
-        try {
-            const configEl = document.getElementById('vendedorConfigData');
-            if (configEl) {
-                const cfg = JSON.parse(configEl.textContent || '{}');
-                if (Array.isArray(cfg.pinsValidos) && cfg.pinsValidos.length > 0) {
-                    pinsValidos = cfg.pinsValidos.map(String);
-                }
-                if (cfg.pinHint) {
-                    pinHint = String(cfg.pinHint);
-                }
-            }
-        } catch (e) {
-            console.warn('Error leyendo pinsValidos:', e);
+        if (typeof vendedorConfig !== 'undefined' && vendedorConfig.urlDesbloquearPin) {
+            urlDesbloqueo = vendedorConfig.urlDesbloquearPin;
         }
-        if (!pinsValidos.includes('1234')) pinsValidos.push('1234');
 
-        btnBloquear.addEventListener('click', bloquear);
+        if (btnBloquear) {
+            btnBloquear.addEventListener('click', (e) => {
+                e.preventDefault();
+                bloquear();
+            });
+        }
 
-        // Teclado numérico en pantalla
         document.querySelectorAll('.btn-key[data-digit]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const dig = btn.getAttribute('data-digit');
-                ingresarDigito(dig);
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                ingresarDigito(btn.getAttribute('data-digit'));
             });
         });
 
-        document.getElementById('btnPinClear')?.addEventListener('click', limpiarPin);
-        document.getElementById('btnPinBackspace')?.addEventListener('click', borrarDigito);
+        document.getElementById('btnPinClear')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            limpiarPin();
+        });
+        document.getElementById('btnPinBackspace')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            borrarDigito();
+        });
 
-        // Botón de ayuda/pista de PIN
-        document.getElementById('btnPinAyuda')?.addEventListener('click', () => {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'PIN de Desbloqueo',
-                    html: `<p class="small mb-2 text-muted">Para desbloquear este terminal puedes utilizar:</p>
-                           <ul class="text-start small mb-0">
-                               <li>PIN maestro de terminal: <strong class="font-monospace">1234</strong></li>
-                               <li>Últimos 4 dígitos de tu RUT: <strong class="font-monospace">${pinHint}</strong></li>
-                           </ul>`,
-                    icon: 'info',
-                    confirmButtonText: 'Entendido',
-                    confirmButtonColor: '#198754'
-                });
-            } else {
-                alert(`PIN de desbloqueo: 1234 o últimos 4 dígitos de tu RUT (${pinHint})`);
+        document.getElementById('btnPosVerificarPassword')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            verificarPasswordTurno();
+        });
+        document.getElementById('posLockPasswordInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verificarPasswordTurno();
             }
         });
 
-        // Teclado físico
+        document.getElementById('btnToggleConfigPin')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('panelConfigPinPos')?.classList.toggle('d-none');
+        });
+        document.getElementById('btnGuardarPinPos')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            guardarPinOperativo();
+        });
+
+        // Teclado físico (ignorar mientras escribe en campos de contraseña)
         document.addEventListener('keydown', (e) => {
             if (!bloqueado) return;
+            const activeTag = document.activeElement?.tagName;
+            if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
             if (e.key >= '0' && e.key <= '9') {
                 ingresarDigito(e.key);
             } else if (e.key === 'Backspace') {
                 borrarDigito();
             } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
                 limpiarPin();
+            } else if (e.key === 'Enter' && pinIngresado.length === 4) {
+                verificarPin();
             }
         });
 
-        // Detector de inactividad
         const resetTimer = () => {
             if (bloqueado) return;
             clearTimeout(inactividadTimer);
             inactividadTimer = setTimeout(bloquear, TIEMPO_INACTIVIDAD_MS);
         };
 
-        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
             window.addEventListener(evt, resetTimer, { passive: true });
         });
         resetTimer();
     }
 
+    let ultimoElementoEnfocadoAntesBloqueo = null;
+
+    function trapLockOverlayTab(e) {
+        if (!bloqueado || e.key !== 'Tab') return;
+        const overlay = document.getElementById('safariPosLockOverlay');
+        if (!overlay) return;
+        const focusables = Array.from(overlay.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')).filter(el => el.offsetParent !== null);
+        if (!focusables.length) return;
+        const primero = focusables[0];
+        const ultimo = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === primero) {
+            e.preventDefault();
+            ultimo.focus();
+        } else if (!e.shiftKey && document.activeElement === ultimo) {
+            e.preventDefault();
+            primero.focus();
+        }
+    }
+
     function bloquear() {
+        ultimoElementoEnfocadoAntesBloqueo = document.activeElement;
         bloqueado = true;
         limpiarPin();
+        const passEl = document.getElementById('posLockPasswordInput');
+        if (passEl) passEl.value = '';
         const overlay = document.getElementById('safariPosLockOverlay');
         if (overlay) {
             overlay.classList.remove('d-none');
             overlay.style.setProperty('display', 'flex', 'important');
+            document.addEventListener('keydown', trapLockOverlayTab);
+            const firstKey = overlay.querySelector('.btn-key[data-digit="1"]') || passEl;
+            if (firstKey) firstKey.focus();
         }
     }
 
     function desbloquear() {
         bloqueado = false;
         limpiarPin();
+        const passEl = document.getElementById('posLockPasswordInput');
+        if (passEl) passEl.value = '';
         const overlay = document.getElementById('safariPosLockOverlay');
         if (overlay) {
             overlay.classList.add('d-none');
             overlay.style.setProperty('display', 'none', 'important');
         }
+        document.removeEventListener('keydown', trapLockOverlayTab);
+        if (ultimoElementoEnfocadoAntesBloqueo && typeof ultimoElementoEnfocadoAntesBloqueo.focus === 'function') {
+            ultimoElementoEnfocadoAntesBloqueo.focus();
+            ultimoElementoEnfocadoAntesBloqueo = null;
+        }
         clearTimeout(inactividadTimer);
         inactividadTimer = setTimeout(bloquear, TIEMPO_INACTIVIDAD_MS);
     }
 
-    function ingresarDigito(dig) {
-        if (pinIngresado.length >= 4) return;
-        pinIngresado += dig;
-        actualizarDots();
+    function mostrarErrorCredencial(mensaje) {
+        enError = true;
+        const msg = document.getElementById('pinErrorMessage');
+        if (msg) {
+            msg.textContent = mensaje || 'Credencial incorrecta. Intenta de nuevo.';
+            msg.classList.remove('invisible');
+        }
+        const display = document.querySelector('.lock-pin-display');
+        if (display) {
+            display.classList.add('shake');
+            setTimeout(() => display.classList.remove('shake'), 450);
+        }
+        timerError = setTimeout(limpiarPin, 1600);
+    }
 
+    function ingresarDigito(dig) {
+        if (verificando) return;
+        if (enError) limpiarPin();
+        if (pinIngresado.length >= 4) return;
+        pinIngresado += String(dig);
+        actualizarDots();
         if (pinIngresado.length === 4) {
             verificarPin();
         }
     }
 
     function borrarDigito() {
+        if (verificando) return;
+        if (enError) {
+            limpiarPin();
+            return;
+        }
         if (pinIngresado.length > 0) {
             pinIngresado = pinIngresado.slice(0, -1);
             actualizarDots();
@@ -794,10 +1080,17 @@ const PosPinLock = (() => {
     }
 
     function limpiarPin() {
+        if (timerError) clearTimeout(timerError);
+        timerError = null;
+        enError = false;
         pinIngresado = '';
         actualizarDots();
         const msg = document.getElementById('pinErrorMessage');
-        if (msg) msg.classList.add('invisible');
+        if (msg) {
+            msg.textContent = 'PIN incorrecto. Intenta de nuevo.';
+            msg.classList.add('invisible');
+        }
+        document.querySelector('.lock-pin-display')?.classList.remove('shake');
     }
 
     function actualizarDots() {
@@ -810,14 +1103,90 @@ const PosPinLock = (() => {
         }
     }
 
+    async function enviarVerificacionServidor(payloadExtra) {
+        if (verificando) return;
+        verificando = true;
+        try {
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', obtenerCsrfTokenVendedor());
+            Object.entries(payloadExtra).forEach(([k, v]) => formData.append(k, v));
+
+            const resp = await fetch(urlDesbloqueo, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            const ct = resp.headers.get('content-type') || '';
+            const data = ct.includes('application/json') ? await resp.json() : {};
+            if (resp.status === 401 || data.sesion_expirada) {
+                window.location.reload();
+                return;
+            }
+            if (resp.ok && data.ok) {
+                desbloquear();
+                if (typeof swalToast !== 'undefined') {
+                    swalToast.fire({ icon: 'success', title: data.mensaje || 'Terminal de caja desbloqueado exitosamente.' });
+                }
+            } else {
+                mostrarErrorCredencial(data.error || 'Credencial inválida.');
+            }
+        } catch (err) {
+            mostrarErrorCredencial('Error de conexión al verificar credenciales.');
+        } finally {
+            verificando = false;
+        }
+    }
+
     function verificarPin() {
         const pinLimpio = String(pinIngresado).trim();
-        if (pinsValidos.includes(pinLimpio) || pinLimpio === '1234') {
-            desbloquear();
-        } else {
-            const msg = document.getElementById('pinErrorMessage');
-            if (msg) msg.classList.remove('invisible');
-            setTimeout(limpiarPin, 800);
+        if (!/^\d{4}$/.test(pinLimpio)) {
+            mostrarErrorCredencial('Ingresa un PIN numérico de 4 dígitos.');
+            return;
+        }
+        enviarVerificacionServidor({ accion: 'desbloquear', pin: pinLimpio });
+    }
+
+    function verificarPasswordTurno() {
+        const passEl = document.getElementById('posLockPasswordInput');
+        const pwd = passEl ? passEl.value : '';
+        if (!pwd) {
+            mostrarErrorCredencial('Ingresa tu contraseña de turno.');
+            return;
+        }
+        enviarVerificacionServidor({ accion: 'desbloquear', password: pwd });
+    }
+
+    async function guardarPinOperativo() {
+        const passCur = document.getElementById('posConfigCurrentPassword')?.value || '';
+        const nuevoPin = document.getElementById('posConfigNuevoPin')?.value.trim() || '';
+        if (!passCur || !/^\d{4}$/.test(nuevoPin)) {
+            mostrarErrorCredencial('Ingresa tu contraseña actual y un PIN de 4 dígitos.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', obtenerCsrfTokenVendedor());
+        formData.append('accion', 'configurar_pin');
+        formData.append('password', passCur);
+        formData.append('nuevo_pin', nuevoPin);
+        try {
+            const resp = await fetch(urlDesbloqueo, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
+                document.getElementById('panelConfigPinPos')?.classList.add('d-none');
+                document.getElementById('posConfigCurrentPassword').value = '';
+                document.getElementById('posConfigNuevoPin').value = '';
+                if (typeof swalToast !== 'undefined') {
+                    swalToast.fire({ icon: 'success', title: data.mensaje || 'PIN cifrado configurado.' });
+                }
+            } else {
+                mostrarErrorCredencial(data.error || 'No se pudo configurar el PIN.');
+            }
+        } catch (err) {
+            mostrarErrorCredencial('Error de conexión al guardar PIN.');
         }
     }
 

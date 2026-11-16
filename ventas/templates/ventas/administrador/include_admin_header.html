@@ -214,8 +214,8 @@
 
                 <!-- Campana de Alertas de Traslado y Seguridad -->
                 <div class="dropdown">
-                    <button class="btn btn-light btn-sm position-relative rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center btn-alerta-campana" type="button" id="dropdownAlertasHeader" data-bs-toggle="dropdown" aria-expanded="false" title="Centro de Alertas de Seguridad y Traslado">
-                        <i class="bi bi-bell-fill text-warning fs-6"></i>
+                    <button class="btn btn-light btn-sm position-relative rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center btn-alerta-campana" type="button" id="dropdownAlertasHeader" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Centro de alertas de seguridad y traslado" title="Centro de Alertas de Seguridad y Traslado">
+                        <i class="bi bi-bell-fill text-warning-emphasis fs-6" aria-hidden="true"></i>
                         {% if total_alertas_no_leidas > 0 %}
                         <span id="badgeAlertasCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white badge-alerta-count">
                             {{ total_alertas_no_leidas }}
@@ -227,7 +227,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="fw-bold text-dark fs-6">
-                                    <i class="bi bi-bell-fill text-warning me-1"></i> Centro de Alertas
+                                    <i class="bi bi-bell-fill text-warning-emphasis me-1" aria-hidden="true"></i> Centro de Alertas
                                 </span>
                                 <span id="badgeAlertasEstado" class="badge {% if total_alertas_no_leidas > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %} rounded-pill px-2 py-1 small fw-bold">
                                     {% if total_alertas_no_leidas > 0 %}{{ total_alertas_no_leidas }} en vivo{% else %}Al día{% endif %}
@@ -286,6 +286,11 @@
                     <span class="small">Módulos</span>
                 </button>
 
+                <!-- PRIVACIDAD ARCO -->
+                <a href="{% url 'mi_privacidad' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill fw-bold d-none d-xl-inline-flex align-items-center" title="Mis Datos y Privacidad (ARCO)">
+                    <i class="bi bi-person-lock me-1"></i> Privacidad
+                </a>
+
                 <!-- CERRAR SESIÓN -->
                 <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm px-3 rounded-pill fw-bold btn-header-salir" title="Cerrar Sesión Segura">
                     <i class="bi bi-box-arrow-left me-1"></i> Salir
@@ -302,7 +307,7 @@
         <div class="d-flex align-items-center gap-2">
             <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 32px; width: auto;">
             <div>
-                <h5 class="offcanvas-title fw-bold text-dark m-0" id="offcanvasSafariMenuLabel" style="font-size: 1rem;">Venta Safari</h5>
+                <h2 class="h5 offcanvas-title fw-bold text-dark m-0" id="offcanvasSafariMenuLabel" style="font-size: 1rem;">Venta Safari</h2>
                 <small class="text-muted" style="font-size: 0.72rem;">Explorador de Módulos (3 Clases)</small>
             </div>
         </div>
@@ -315,7 +320,7 @@
             
             <!-- Acordeón 1: Locales & Salón -->
             <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
-                <h2 class="accordion-header" id="headingMobileLocales">
+                <h3 class="accordion-header" id="headingMobileLocales">
                     <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'general locales mesas' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileLocales" aria-expanded="{% if active_subclase in 'general locales mesas' %}true{% else %}false{% endif %}" aria-controls="collapseMobileLocales">
                         <i class="bi bi-building-fill text-danger me-2"></i> 1. Locales & Salón
                     </button>
@@ -368,11 +373,11 @@
 
             <!-- Acordeón 2: Catálogo & Cartas -->
             <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
-                <h2 class="accordion-header" id="headingMobileCatalogo">
+                <h3 class="accordion-header" id="headingMobileCatalogo">
                     <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'productos menus ofertas convenios' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileCatalogo" aria-expanded="{% if active_subclase in 'productos menus ofertas convenios' %}true{% else %}false{% endif %}" aria-controls="collapseMobileCatalogo">
-                        <i class="bi bi-egg-fried text-danger me-2"></i> 2. Catálogo & Cartas
+                        <i class="bi bi-egg-fried text-danger me-2" aria-hidden="true"></i> 2. Catálogo & Cartas
                     </button>
-                </h2>
+                </h3>
                 <div id="collapseMobileCatalogo" class="accordion-collapse collapse {% if active_subclase in 'productos menus ofertas convenios' %}show{% endif %}" aria-labelledby="headingMobileCatalogo" data-bs-parent="#accordionSafariMobile">
                     <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
                         <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_productos' %}">
@@ -413,11 +418,11 @@
 
             <!-- Acordeón 3: Control & Finanzas -->
             <div class="accordion-item rounded-3 mb-2 border overflow-hidden shadow-2xs">
-                <h2 class="accordion-header" id="headingMobileControl">
+                <h3 class="accordion-header" id="headingMobileControl">
                     <button class="accordion-button py-2.5 px-3 {% if active_subclase not in 'trabajadores consumos dashboard historial gestion' %}collapsed{% endif %} fw-bold small text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMobileControl" aria-expanded="{% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}true{% else %}false{% endif %}" aria-controls="collapseMobileControl">
-                        <i class="bi bi-shield-check text-danger me-2"></i> 3. Control & Finanzas
+                        <i class="bi bi-shield-check text-danger me-2" aria-hidden="true"></i> 3. Control & Finanzas
                     </button>
-                </h2>
+                </h3>
                 <div id="collapseMobileControl" class="accordion-collapse collapse {% if active_subclase in 'trabajadores consumos dashboard historial gestion' %}show{% endif %}" aria-labelledby="headingMobileControl" data-bs-parent="#accordionSafariMobile">
                     <div class="accordion-body p-2 bg-white d-flex flex-column gap-1">
                         <a class="dropdown-item safari-menu-item d-flex align-items-center py-2 px-2.5" href="{% url 'administrador_gestion' %}">
@@ -465,8 +470,20 @@
             </div>
 
         </div>
+
+        <div class="mt-3 pt-3 border-top d-flex flex-column gap-2">
+            <a href="{% url 'mi_privacidad' %}" class="btn btn-sm btn-outline-danger rounded-pill fw-bold">
+                <i class="bi bi-person-lock me-1"></i> Mis Datos y Privacidad (ARCO)
+            </a>
+            <div class="safari-legal-footer-links">
+                <a href="{% url 'politica_privacidad' %}">Política de Privacidad</a>
+                <a href="{% url 'terminos_condiciones' %}">Términos</a>
+                <button type="button" data-open-cookie-prefs="1">Cookies</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Script externo de control de cabecera y navegación fluida -->
 <script src="{% static 'js/administrador/admin_header.js' %}?v=3.5"></script>
+{% include 'ventas/acceso/include_cookie_banner.html' %}

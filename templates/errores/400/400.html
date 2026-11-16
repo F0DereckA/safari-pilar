@@ -37,7 +37,7 @@
             {% endif %}
                 <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 48px; width: auto; object-fit: contain;">
                 <div>
-                    <h5 class="mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</h5>
+                    <span class="h5 d-block mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</span>
                     <small class="text-muted d-block" style="font-size: 0.75rem;">Sistema Gastronómico Parque Safari</small>
                 </div>
             </a>
@@ -61,9 +61,9 @@
                         <div class="error-code-400">400</div>
                     </div>
 
-                    <h2 class="fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
+                    <h1 class="h2 fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
                         Solicitud o Parámetros Incorrectos
-                    </h2>
+                    </h1>
 
                     <p class="text-secondary fs-5 mb-4" style="max-width: 580px; margin: 0 auto;">
                         La solicitud enviada no pudo ser procesada debido a una sintaxis incorrecta, parámetros de formulario alterados o datos inválidos.
@@ -71,7 +71,7 @@
 
                     {% if path_solicitado or request.path %}
                     <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 bg-light border text-muted small mb-4">
-                        <i class="bi bi-link-45deg fs-6 text-warning"></i>
+                        <i class="bi bi-link-45deg fs-6 text-warning-emphasis" aria-hidden="true"></i>
                         <span>Ruta solicitada:</span>
                         <code class="text-warning-emphasis fw-bold">{{ path_solicitado|default:request.path }}</code>
                     </div>
@@ -79,7 +79,7 @@
 
                     <div class="alert alert-light border text-start p-3 mb-4 rounded-3" style="background-color: #f8fafc;">
                         <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-info-circle-fill text-warning fs-5 mt-1"></i>
+                            <i class="bi bi-info-circle-fill text-warning-emphasis fs-5 mt-1" aria-hidden="true"></i>
                             <div>
                                 <strong class="text-dark d-block">Integridad y Sanitización de Datos</strong>
                                 <span class="text-muted small">
@@ -92,11 +92,11 @@
                     <!-- Botones de Acción y Navegación Segura -->
                     <div class="d-flex flex-wrap justify-content-center gap-3 pt-2">
                         <a href="{% url 'index' %}" class="btn btn-safari btn-lg rounded-pill px-4 shadow-sm">
-                            <i class="bi bi-house-door-fill me-2"></i> Volver al Portal de Inicio
+                            <i class="bi bi-house-door-fill me-2" aria-hidden="true"></i> Volver al Portal de Inicio
                         </a>
 
-                        <button onclick="volverAtrasSafari()" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
-                            <i class="bi bi-arrow-left me-2"></i> Regresar atrás
+                        <button type="button" data-safari-action="back" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
+                            <i class="bi bi-arrow-left me-2" aria-hidden="true"></i> Regresar atrás
                         </button>
                     </div>
 

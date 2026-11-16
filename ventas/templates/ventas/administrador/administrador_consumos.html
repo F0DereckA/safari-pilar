@@ -140,9 +140,9 @@
 
                 <div class="d-flex align-items-center gap-3">
 
-                    <div class="p-3 rounded-circle bg-warning bg-opacity-10 text-warning fs-3">
+                    <div class="p-3 rounded-circle bg-warning-subtle text-warning-emphasis fs-3">
 
-                        <i class="bi bi-hourglass-split"></i>
+                        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
 
                     </div>
 
@@ -170,7 +170,7 @@
 
                 <div class="d-flex align-items-center gap-3">
 
-                    <div class="p-3 rounded-circle bg-success bg-opacity-10 text-success fs-3">
+                    <div class="p-3 rounded-circle bg-success bg-opacity-10 text-success-emphasis fs-3">
 
                         <i class="bi bi-check2-all"></i>
 
@@ -180,7 +180,7 @@
 
                         <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.72rem;">Total Descontado</div>
 
-                        <h3 class="mb-0 fw-bold text-success font-monospace">${{ total_descontado|floatformat:0 }}</h3>
+                        <h3 class="mb-0 fw-bold text-success-emphasis font-monospace">${{ total_descontado|floatformat:0 }}</h3>
 
                         <small class="text-muted" style="font-size: 0.7rem;">Liquidado en nómina</small>
 
@@ -200,7 +200,7 @@
 
                 <div class="d-flex align-items-center gap-3">
 
-                    <div class="p-3 rounded-circle bg-primary bg-opacity-10 text-primary fs-3">
+                    <div class="p-3 rounded-circle bg-primary bg-opacity-10 text-primary-emphasis fs-3">
 
                         <i class="bi bi-people-fill"></i>
 
@@ -296,11 +296,11 @@
 
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
 
-                    <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                    <h3 class="h5 fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
 
-                        <i class="bi bi-person-vcard text-warning me-2"></i>Estado de Cuentas Corrientes del Personal
+                        <i class="bi bi-person-vcard text-warning-emphasis me-2" aria-hidden="true"></i>Estado de Cuentas Corrientes del Personal
 
-                    </h5>
+                    </h3>
 
                     <span class="badge bg-secondary rounded-pill px-3 py-2 small">
 
@@ -390,7 +390,7 @@
 
                                 </td>
 
-                                <td class="font-monospace">{{ item.rut|default:"Sin registrar" }}</td>
+                                <td class="font-monospace">{{ item.rut|enmascarar_rut }}</td>
 
                                 <td>
 
@@ -452,7 +452,7 @@
 
                                     {% if item.total_pendiente > 0 %}
 
-                                    <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" onsubmit="return confirm('¿Confirmas liquidar y marcar como descontado por planilla el saldo pendiente de ${{ item.total_pendiente|floatformat:0 }} para {{ item.usuario.get_full_name|default:item.usuario.username }}?');">
+                                    <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" data-confirm-submit="¿Confirmas liquidar y marcar como descontado por planilla el saldo pendiente de ${{ item.total_pendiente|floatformat:0 }} para {{ item.usuario.get_full_name|default:item.usuario.username }}?">
 
                                         {% csrf_token %}
 
@@ -516,11 +516,11 @@
 
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
 
-                    <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                    <h3 class="h5 fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
 
-                        <i class="bi bi-journal-text text-danger me-2"></i>Registros Históricos de Consumo
+                        <i class="bi bi-journal-text text-danger me-2" aria-hidden="true"></i>Registros Históricos de Consumo
 
-                    </h5>
+                    </h3>
 
                     
 
@@ -528,7 +528,7 @@
 
                     <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
 
-                        <select name="estado" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <select name="estado" class="form-select form-select-sm rounded-pill" data-auto-submit="true" aria-label="Filtrar consumos por estado">
 
                             <option value="">Todos los estados</option>
 
@@ -540,7 +540,7 @@
 
                         </select>
 
-                        <select name="local_id" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <select name="local_id" class="form-select form-select-sm rounded-pill" data-auto-submit="true" aria-label="Filtrar consumos por local">
 
                             <option value="">Todos los locales</option>
 
@@ -602,7 +602,7 @@
 
                                     <div class="fw-bold text-dark">{{ c.empleado.get_full_name|default:c.empleado.username }}</div>
 
-                                    <small class="text-muted">RUT: {{ c.empleado.perfil.rut|default:"S/R" }}</small>
+                                    <small class="text-muted">RUT: {{ c.empleado.perfil.rut|enmascarar_rut }}</small>
 
                                 </td>
 
@@ -694,15 +694,15 @@
 
                                             <input type="hidden" name="consumo_id" value="{{ c.id }}">
 
-                                            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 fw-bold" title="Liquidar por planilla">
+                                            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 fw-bold" title="Liquidar por planilla" aria-label="Liquidar consumo por planilla">
 
-                                                <i class="bi bi-check-lg"></i>
+                                                <i class="bi bi-check-lg" aria-hidden="true"></i>
 
                                             </button>
 
                                         </form>
 
-                                        <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" onsubmit="return confirm('¿Seguro que deseas anular este consumo interno?');">
+                                        <form method="POST" action="{% url 'administrador_consumos' %}" class="d-inline" data-confirm-submit="¿Seguro que deseas anular este consumo interno?">
 
                                             {% csrf_token %}
 
@@ -710,9 +710,9 @@
 
                                             <input type="hidden" name="consumo_id" value="{{ c.id }}">
 
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 fw-bold" title="Anular consumo">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 fw-bold" title="Anular consumo" aria-label="Anular consumo interno">
 
-                                                <i class="bi bi-x-lg"></i>
+                                                <i class="bi bi-x-lg" aria-hidden="true"></i>
 
                                             </button>
 

@@ -17,7 +17,7 @@
 
 .badge-single-workplace.sin-local {
     background-color: #fef3c7;
-    color: #b45309;
+    color: #92400e;
     border-color: #fcd34d;
 }
 
@@ -75,12 +75,13 @@
 }
 
 .btn-trasladar-chip {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
     color: #ffffff !important;
     border: none;
     font-size: 0.78rem;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 6px 12px;
+    min-height: 36px;
     border-radius: 20px;
     display: inline-flex;
     align-items: center;
@@ -90,7 +91,7 @@
 }
 
 .btn-trasladar-chip:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    background: linear-gradient(135deg, #92400e 0%, #78350f 100%);
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(217, 119, 6, 0.35);
+    box-shadow: 0 3px 8px rgba(146, 64, 14, 0.35);
 }

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static safari_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -37,7 +37,7 @@
             <div class="alert alert-{% if message.tags == 'warning' %}warning border-2 border-warning shadow-sm{% elif message.tags == 'error' %}danger border-2 border-danger shadow-sm{% else %}success border-2 border-success shadow-sm{% endif %} alert-dismissible fade show rounded-4" role="alert">
                 <div class="d-flex align-items-center gap-2">
                     {% if message.tags == 'warning' %}
-                    <i class="bi bi-bell-fill fs-4 text-warning"></i>
+                    <i class="bi bi-bell-fill fs-4 text-warning-emphasis"></i>
                     {% else %}
                     <i class="bi bi-check-circle-fill fs-4 text-success"></i>
                     {% endif %}
@@ -45,7 +45,7 @@
                         <strong>Notificación del Sistema:</strong> {{ message }}
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
             {% endfor %}
         </div>
@@ -104,7 +104,7 @@
                     </div>
                     <div>
                         <div class="admin-kpi-label">Restricción Puesto</div>
-                        <div class="admin-kpi-val text-warning">1 Único</div>
+                        <div class="admin-kpi-val text-warning-emphasis">1 Único</div>
                         <small class="text-muted" style="font-size: 0.72rem;">Máx 1 local por trabajador</small>
                     </div>
                 </div>
@@ -128,19 +128,19 @@
             <div class="row g-3 align-items-center">
                 <!-- Búsqueda por Texto (Nombre / RUT / Usuario) -->
                 <div class="col-lg-5 col-md-12">
-                    <label class="form-label small fw-bold text-muted mb-1">
+                    <label for="buscarTrabajador" class="form-label small fw-bold text-muted mb-1">
                         <i class="bi bi-search text-danger me-1"></i> Búsqueda Dinámica en Tiempo Real
                     </label>
                     <div class="search-input-group">
-                        <i class="bi bi-search"></i>
+                        <i class="bi bi-search" aria-hidden="true"></i>
                         <input type="text" id="buscarTrabajador" class="form-control search-input-field" placeholder="Buscar por nombre, apellido, usuario o RUT (ej: 15.421...)...">
                     </div>
                 </div>
 
                 <!-- Filtrar por Punto de Venta / Local / Zona -->
                 <div class="col-lg-3 col-md-4">
-                    <label class="form-label small fw-bold text-muted mb-1">
-                        <i class="bi bi-shop text-warning me-1"></i> Filtrar por Área / Local
+                    <label for="filtroLocal" class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-shop text-warning-emphasis me-1"></i> Filtrar por Área / Local
                     </label>
                     <select id="filtroLocal" class="form-select filter-select">
                         <option value="todos">Todos los Locales</option>
@@ -153,7 +153,7 @@
 
                 <!-- Filtrar por Rol / Cargo -->
                 <div class="col-lg-2 col-md-4">
-                    <label class="form-label small fw-bold text-muted mb-1">
+                    <label for="filtroRol" class="form-label small fw-bold text-muted mb-1">
                         <i class="bi bi-person-gear text-primary me-1"></i> Rol
                     </label>
                     <select id="filtroRol" class="form-select filter-select">
@@ -166,7 +166,7 @@
 
                 <!-- Filtrar por Estado (Activo / Inactivo) y Botón Limpiar -->
                 <div class="col-lg-2 col-md-4">
-                    <label class="form-label small fw-bold text-muted mb-1">
+                    <label for="filtroEstado" class="form-label small fw-bold text-muted mb-1">
                         <i class="bi bi-toggle-on text-success me-1"></i> Estado
                     </label>
                     <div class="d-flex gap-2">
@@ -175,8 +175,8 @@
                             <option value="activo" selected>Solo Activos</option>
                             <option value="inactivo">Solo Inactivos</option>
                         </select>
-                        <button type="button" id="btnLimpiarFiltros" class="btn btn-outline-secondary rounded-3" title="Limpiar todos los filtros">
-                            <i class="bi bi-x-circle"></i>
+                        <button type="button" id="btnLimpiarFiltros" class="btn btn-outline-secondary rounded-3" title="Limpiar todos los filtros" aria-label="Limpiar todos los filtros">
+                            <i class="bi bi-x-circle" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -184,7 +184,7 @@
 
             <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-light-subtle flex-wrap gap-2">
                 <span id="contadorResultados" class="badge bg-light text-dark border px-3 py-2 fw-bold">
-                    <i class="bi bi-funnel-fill text-warning me-1"></i> Mostrando {{ total_activos }} colaboradores
+                    <i class="bi bi-funnel-fill text-warning-emphasis me-1"></i> Mostrando {{ total_activos }} colaboradores
                 </span>
                 <span class="small text-muted">
                     <i class="bi bi-info-circle me-1"></i> Presiona <strong>Trasladar</strong> en cualquier colaborador para reasignar su único local y notificarlo de inmediato.
@@ -196,10 +196,10 @@
         <div class="detail-table-card mb-4 shadow-sm">
             <div class="detail-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-person-lines-fill text-warning me-2"></i>Dotación General de Trabajadores Registrados
-                    </h5>
-                    <small class="text-white-50">Listado oficial de usuarios, roles operativos y punto de venta actual asignado</small>
+                    <h2 class="h5 mb-0 fw-bold">
+                        <i class="bi bi-person-lines-fill text-lcd-amber me-2"></i>Dotación General de Trabajadores Registrados
+                    </h2>
+                    <small class="text-on-brand-muted">Listado oficial de usuarios, roles operativos y punto de venta actual asignado</small>
                 </div>
                 <span class="badge bg-warning text-dark px-3 py-2 fw-bold">
                     Regla Activa: 1 Puesto por Trabajador
@@ -223,7 +223,7 @@
                         {% for t in trabajadores %}
                         <tr class="worker-row" id="worker-row-{{ t.id }}"
                             data-nombre="{{ t.usuario.first_name|lower }} {{ t.usuario.last_name|lower }} {{ t.usuario.username|lower }}"
-                            data-rut="{{ t.rut|default:''|lower }}"
+                            data-rut="{{ t.rut|enmascarar_rut|lower }}"
                             data-local-id="{% if t.punto_venta_actual %}{{ t.punto_venta_actual.id }}{% else %}sin_local{% endif %}"
                             data-rol="{{ t.rol }}"
                             data-estado="{% if t.activo %}activo{% else %}inactivo{% endif %}">
@@ -243,10 +243,10 @@
                                 </div>
                             </td>
 
-                            <!-- RUT -->
+                            <!-- RUT (enmascarado en tabla para minimizar exposición PII) -->
                             <td>
                                 <span class="font-monospace fw-bold small text-secondary">
-                                    {{ t.rut|default:"Sin RUT" }}
+                                    {{ t.rut|enmascarar_rut }}
                                 </span>
                             </td>
 
@@ -279,13 +279,13 @@
                                 {% endif %}
                             </td>
 
-                            <!-- Contacto -->
+                            <!-- Contacto (enmascarado) -->
                             <td>
                                 <small class="text-muted d-block">
-                                    <i class="bi bi-telephone text-success me-1"></i>{{ t.telefono|default:"No informado" }}
+                                    <i class="bi bi-telephone text-success me-1"></i>{{ t.telefono|enmascarar_telefono }}
                                 </small>
                                 <small class="text-muted" style="font-size: 0.75rem;">
-                                    <i class="bi bi-envelope me-1"></i>{{ t.usuario.email|default:"Sin email" }}
+                                    <i class="bi bi-envelope me-1"></i>{{ t.usuario.email|enmascarar_email }}
                                 </small>
                             </td>
 
@@ -321,16 +321,17 @@
                                     <!-- Botón Editar -->
                                     <button type="button" class="btn btn-outline-dark btn-action-icon"
                                             title="Modificar datos del colaborador"
+                                            aria-label="Modificar a {{ t.usuario.get_full_name|default:t.usuario.username }}"
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalEditarTrabajador"
                                             data-perfil-id="{{ t.id }}"
                                             data-first-name="{{ t.usuario.first_name }}"
                                             data-last-name="{{ t.usuario.last_name }}"
-                                            data-rut="{{ t.rut|default:'' }}"
+                                            data-rut-mask="{{ t.rut|enmascarar_rut }}"
                                             data-rol="{{ t.rol }}"
-                                            data-telefono="{{ t.telefono|default:'' }}"
+                                            data-telefono-mask="{{ t.telefono|enmascarar_telefono }}"
                                             data-local-id="{% if t.punto_venta_actual %}{{ t.punto_venta_actual.id }}{% else %}none{% endif %}">
-                                        <i class="bi bi-pencil-fill text-primary" style="font-size: 0.85rem;"></i>
+                                        <i class="bi bi-pencil-fill" style="font-size: 0.85rem;" aria-hidden="true"></i>
                                     </button>
 
                                     <!-- Botón Desactivar / Activar (Asíncrono con fallback) -->
@@ -340,8 +341,8 @@
                                             {% csrf_token %}
                                             <input type="hidden" name="accion" value="desactivar">
                                             <input type="hidden" name="perfil_id" value="{{ t.id }}">
-                                            <button type="submit" class="btn btn-outline-warning btn-action-icon" title="Desactivar colaborador">
-                                                <i class="bi bi-pause-fill text-warning" style="font-size: 0.95rem;"></i>
+                                            <button type="submit" class="btn btn-outline-warning btn-action-icon" title="Desactivar colaborador" aria-label="Desactivar a {{ t.usuario.get_full_name|default:t.usuario.username }}">
+                                                <i class="bi bi-pause-fill" style="font-size: 0.95rem;" aria-hidden="true"></i>
                                             </button>
                                         </form>
                                         {% else %}
@@ -349,8 +350,8 @@
                                             {% csrf_token %}
                                             <input type="hidden" name="accion" value="activar">
                                             <input type="hidden" name="perfil_id" value="{{ t.id }}">
-                                            <button type="submit" class="btn btn-outline-success btn-action-icon" title="Reactivar colaborador">
-                                                <i class="bi bi-play-fill text-success" style="font-size: 0.95rem;"></i>
+                                            <button type="submit" class="btn btn-outline-success btn-action-icon" title="Reactivar colaborador" aria-label="Reactivar a {{ t.usuario.get_full_name|default:t.usuario.username }}">
+                                                <i class="bi bi-play-fill" style="font-size: 0.95rem;" aria-hidden="true"></i>
                                             </button>
                                         </form>
                                         {% endif %}
@@ -361,8 +362,8 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="accion" value="eliminar">
                                         <input type="hidden" name="perfil_id" value="{{ t.id }}">
-                                        <button type="submit" class="btn btn-outline-danger btn-action-icon" title="Eliminar definitivamente">
-                                            <i class="bi bi-trash-fill text-danger" style="font-size: 0.85rem;"></i>
+                                        <button type="submit" class="btn btn-outline-danger btn-action-icon" title="Eliminar definitivamente" aria-label="Eliminar definitivamente a {{ t.usuario.get_full_name|default:t.usuario.username }}">
+                                            <i class="bi bi-trash-fill" style="font-size: 0.85rem;" aria-hidden="true"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -371,7 +372,7 @@
                         {% empty %}
                         <tr>
                             <td colspan="7" class="text-center py-4 text-muted">
-                                <i class="bi bi-people display-6 d-block mb-2 text-warning"></i>
+                                <i class="bi bi-people display-6 d-block mb-2 text-warning-emphasis"></i>
                                 No hay colaboradores registrados en el sistema.
                             </td>
                         </tr>
@@ -382,10 +383,10 @@
 
             <!-- Fila cuando no hay resultados de búsqueda -->
             <div id="sinResultadosMensaje" class="p-5 text-center d-none">
-                <i class="bi bi-search text-muted display-4 d-block mb-2"></i>
-                <h5 class="fw-bold text-dark mb-1">No se encontraron trabajadores que coincidan</h5>
+                <i class="bi bi-search text-muted display-4 d-block mb-2" aria-hidden="true"></i>
+                <h3 class="h5 fw-bold text-dark mb-1">No se encontraron trabajadores que coincidan</h3>
                 <p class="text-muted small mb-3">Intenta cambiar los términos de búsqueda o limpiar los filtros seleccionados.</p>
-                <button type="button" class="btn btn-outline-danger rounded-pill px-4" onclick="document.getElementById('btnLimpiarFiltros').click();">
+                <button type="button" id="btnLimpiarFiltrosEmpty" class="btn btn-outline-danger rounded-pill px-4">
                     <i class="bi bi-arrow-clockwise me-1"></i> Restablecer Filtros
                 </button>
             </div>
@@ -395,10 +396,10 @@
         <div class="detail-table-card mb-4 shadow-sm">
             <div class="detail-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-broadcast text-warning me-2"></i>Centro de Notificaciones y Alertas de Traslado
-                    </h5>
-                    <small class="text-white-50">Registro en vivo de los avisos despachados a los monitores de los puntos de venta al mover trabajadores</small>
+                    <h2 class="h5 mb-0 fw-bold">
+                        <i class="bi bi-broadcast text-lcd-amber me-2"></i>Centro de Notificaciones y Alertas de Traslado
+                    </h2>
+                    <small class="text-on-brand-muted">Registro en vivo de los avisos despachados a los monitores de los puntos de venta al mover trabajadores</small>
                 </div>
                 <span class="badge bg-danger text-white px-3 py-2 fw-bold">
                     {{ alertas_recientes|length }} Alertas Recientes
@@ -440,7 +441,7 @@
                 </div>
                 {% else %}
                 <div class="text-center py-4 text-muted">
-                    <i class="bi bi-bell-slash display-6 d-block mb-2 text-warning"></i>
+                    <i class="bi bi-bell-slash display-6 d-block mb-2 text-warning-emphasis"></i>
                     No se han registrado traslados de trabajadores en esta jornada. Cuando traslades a un colaborador, la alerta emitida aparecerá aquí y en el monitor del local correspondiente.
                 </div>
                 {% endif %}
@@ -454,71 +455,77 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 overflow-hidden shadow-lg">
                 <div class="modal-safari-header">
-                    <h5 class="modal-safari-title" id="modalCrearTrabajadorLabel">
-                        <i class="bi bi-person-plus-fill text-warning me-2"></i>Registrar Nuevo Trabajador
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-safari-title" id="modalCrearTrabajadorLabel">
+                        <i class="bi bi-person-plus-fill text-lcd-amber me-2"></i>Registrar Nuevo Trabajador
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_trabajadores' %}">
                     {% csrf_token %}
                     <input type="hidden" name="accion" value="crear">
                     <div class="modal-body p-4">
+                        <div class="alert alert-light border rounded-3 py-2 px-3 small text-muted mb-3">
+                            <i class="bi bi-shield-check text-success me-1"></i>
+                            <strong>Minimización de datos:</strong> Solo solicitamos información operativa indispensable para tu turno (no pedimos datos personales innecesarios).
+                        </div>
                         
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Nombre *</label>
-                                <input type="text" name="nombre" class="form-control" required placeholder="Ej: Marcela">
+                                <label for="crearTrabNombre" class="form-label small fw-bold">Nombre *</label>
+                                <input type="text" id="crearTrabNombre" name="nombre" class="form-control" required placeholder="Ej: Marcela">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Apellido *</label>
-                                <input type="text" name="apellido" class="form-control" required placeholder="Ej: Morales">
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-6">
-                                <label class="form-label small fw-bold">Usuario (Login)</label>
-                                <input type="text" name="username" class="form-control" placeholder="Ej: mmorales">
-                                <small class="text-muted" style="font-size: 0.7rem;">Opcional (se autogenera si se deja vacío)</small>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small fw-bold">RUT *</label>
-                                <input type="text" name="rut" class="form-control font-monospace" required placeholder="12.345.678-9">
+                                <label for="crearTrabApellido" class="form-label small fw-bold">Apellido *</label>
+                                <input type="text" id="crearTrabApellido" name="apellido" class="form-control" required placeholder="Ej: Morales">
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Rol Operativo *</label>
-                                <select name="rol" class="form-select" required>
+                                <label for="crearTrabUsuario" class="form-label small fw-bold">Usuario (Login)</label>
+                                <input type="text" id="crearTrabUsuario" name="username" class="form-control" placeholder="Ej: mmorales">
+                                <small class="text-muted safari-hint-xs">Opcional (se autogenera si se deja vacío)</small>
+                            </div>
+                            <div class="col-6">
+                                <label for="crearTrabRut" class="form-label small fw-bold">RUT *</label>
+                                <input type="text" id="crearTrabRut" name="rut" class="form-control font-monospace" required placeholder="12.345.678-9" aria-describedby="helpRutTrabajador">
+                                <small id="helpRutTrabajador" class="text-muted safari-hint-xs">Solo para control único de turno e ingreso seguro.</small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label for="crearTrabRol" class="form-label small fw-bold">Rol Operativo *</label>
+                                <select id="crearTrabRol" name="rol" class="form-select" required>
                                     <option value="CAJERO" selected>Cajero</option>
                                     <option value="MESERO">Mesero</option>
                                     <option value="ADMINISTRADOR">Administrador</option>
                                 </select>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Teléfono</label>
-                                <input type="text" name="telefono" class="form-control" placeholder="+56 9 ...">
+                                <label for="crearTrabTelefono" class="form-label small fw-bold">Teléfono (Opcional)</label>
+                                <input type="text" id="crearTrabTelefono" name="telefono" class="form-control" placeholder="+56 9 ..." aria-describedby="helpTelTrabajador">
+                                <small id="helpTelTrabajador" class="text-muted safari-hint-xs">Opcional: solo contacto de turno; puedes borrarlo luego en Mi Privacidad.</small>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">
+                            <label for="crearTrabPassword" class="form-label small fw-bold">
                                 <i class="bi bi-key-fill text-danger me-1"></i> Contraseña de Acceso (Login) *
                             </label>
-                            <input type="password" autocomplete="new-password" data-lpignore="true" name="password" class="form-control" required placeholder="Escribe la contraseña de acceso para este usuario">
-                            <small class="text-muted" style="font-size: 0.72rem;">El administrador debe establecer una contraseña para el colaborador.</small>
+                            <input type="password" id="crearTrabPassword" autocomplete="new-password" data-lpignore="true" name="password" class="form-control" required minlength="8" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9, símbolo)">
+                            <small class="text-muted" style="font-size: 0.72rem;">Mínimo 8 caracteres incluyendo mayúscula, minúscula, número y símbolo especial (ISO/IEC 27400).</small>
                         </div>
 
                         <!-- Límite 1 Puesto Único -->
                         <div class="mb-3 p-3 rounded-3" style="background-color: var(--safari-cafe-light); border: 1.5px solid var(--safari-cafe-medium);">
-                            <label class="form-label small fw-bold text-danger d-block mb-1">
+                            <label for="crearTrabLocal" class="form-label small fw-bold text-danger d-block mb-1">
                                 <i class="bi bi-pin-map-fill me-1"></i> Asignación de Puesto Único de Trabajo
                             </label>
                             <small class="text-muted d-block mb-2">
                                 Regla de Negocio: El colaborador solo puede tener 1 local asignado a la vez.
                             </small>
-                            <select name="local_id" class="form-select filter-select" required>
+                            <select id="crearTrabLocal" name="local_id" class="form-select filter-select" required>
                                 <option value="" disabled selected>-- Selecciona el Local Asignado --</option>
                                 {% for loc in locales %}
                                 <option value="{{ loc.id }}">{{ loc.nombre }} ({{ loc.tipo }})</option>
@@ -543,10 +550,10 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 overflow-hidden shadow-lg">
                 <div class="modal-safari-header">
-                    <h5 class="modal-safari-title" id="modalEditarTrabajadorLabel">
-                        <i class="bi bi-pencil-square text-warning me-2"></i>Modificar Datos del Trabajador
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-safari-title" id="modalEditarTrabajadorLabel">
+                        <i class="bi bi-pencil-square text-lcd-amber me-2"></i>Modificar Datos del Trabajador
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_trabajadores' %}">
                     {% csrf_token %}
@@ -556,28 +563,28 @@
                         
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Nombre *</label>
+                                <label for="editNombre" class="form-label small fw-bold">Nombre *</label>
                                 <input type="text" name="nombre" id="editNombre" class="form-control" required>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Apellido *</label>
+                                <label for="editApellido" class="form-label small fw-bold">Apellido *</label>
                                 <input type="text" name="apellido" id="editApellido" class="form-control" required>
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">RUT *</label>
-                                <input type="text" name="rut" id="editRut" class="form-control font-monospace" required>
+                                <label for="editRut" class="form-label small fw-bold">RUT (Opcional para actualizar)</label>
+                                <input type="text" name="rut" id="editRut" class="form-control font-monospace" placeholder="Dejar vacío para conservar actual">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Teléfono</label>
-                                <input type="text" name="telefono" id="editTelefono" class="form-control">
+                                <label for="editTelefono" class="form-label small fw-bold">Teléfono</label>
+                                <input type="text" name="telefono" id="editTelefono" class="form-control" placeholder="Dejar vacío para conservar actual">
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Rol Operativo *</label>
+                            <label for="editRol" class="form-label small fw-bold">Rol Operativo *</label>
                             <select name="rol" id="editRol" class="form-select" required>
                                 <option value="CAJERO">Cajero</option>
                                 <option value="MESERO">Mesero</option>
@@ -587,8 +594,8 @@
 
                         <!-- Cambio de Local con emisión de Alerta -->
                         <div class="mb-3 p-3 rounded-3" style="background-color: #fffbeb; border: 1.5px solid #fcd34d;">
-                            <label class="form-label small fw-bold text-dark d-block mb-1">
-                                <i class="bi bi-geo-alt-fill text-warning me-1"></i> Puesto Único Asignado (Reasignación / Traslado)
+                            <label for="editLocalId" class="form-label small fw-bold text-dark d-block mb-1">
+                                <i class="bi bi-geo-alt-fill text-warning-emphasis me-1"></i> Puesto Único Asignado (Reasignación / Traslado)
                             </label>
                             <small class="text-muted d-block mb-2">
                                 Si cambias el local, el sistema liberará su puesto anterior y emitirá una alerta inmediata al nuevo local.
@@ -600,8 +607,8 @@
                                 {% endfor %}
                             </select>
 
-                            <label class="form-label small fw-bold text-muted mb-1">Motivo del Traslado (si aplica):</label>
-                            <input type="text" name="motivo_traslado" class="form-control form-control-sm" placeholder="Ej: Apoyo horario punta en restaurante">
+                            <label for="editMotivoTraslado" class="form-label small fw-bold text-muted mb-1">Motivo del Traslado (si aplica):</label>
+                            <input type="text" id="editMotivoTraslado" name="motivo_traslado" class="form-control form-control-sm" placeholder="Ej: Apoyo horario punta en restaurante">
                         </div>
 
                     </div>
@@ -621,10 +628,10 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 overflow-hidden shadow-lg">
                 <div class="modal-safari-header" style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%);">
-                    <h5 class="modal-safari-title" id="modalTrasladarLabel">
-                        <i class="bi bi-arrow-left-right text-warning me-2"></i>Traslado de Puesto y Despacho de Alerta
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-safari-title" id="modalTrasladarLabel">
+                        <i class="bi bi-arrow-left-right text-lcd-amber me-2"></i>Traslado de Puesto y Despacho de Alerta
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_trabajadores' %}">
                     {% csrf_token %}
@@ -634,7 +641,7 @@
 
                         <div class="alert alert-warning border-2 border-warning rounded-3 mb-3">
                             <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-shield-exclamation fs-3 text-warning"></i>
+                                <i class="bi bi-shield-exclamation fs-3 text-warning-emphasis"></i>
                                 <div>
                                     <strong>Emisión Automática de Alerta:</strong> Al confirmar, el punto de venta de destino recibirá una notificación inmediata en su pantalla indicando que este colaborador ha sido reasignado.
                                 </div>
@@ -642,17 +649,17 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Colaborador Seleccionado:</label>
-                            <h5 class="fw-bold text-dark" id="trasladoColaboradorNombre">---</h5>
+                            <div class="form-label small fw-bold text-muted mb-1">Colaborador Seleccionado:</div>
+                            <div class="h5 fw-bold text-dark" id="trasladoColaboradorNombre">---</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Puesto / Local Actual:</label>
+                            <div class="form-label small fw-bold text-muted mb-1">Puesto / Local Actual:</div>
                             <div class="p-2 rounded-2 bg-light border fw-bold text-secondary" id="trasladoLocalActual">---</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-danger">Nuevo Local de Destino *</label>
+                            <label for="trasladoNuevoLocalSelect" class="form-label small fw-bold text-danger">Nuevo Local de Destino *</label>
                             <select name="nuevo_local_id" id="trasladoNuevoLocalSelect" class="form-select filter-select" required>
                                 <option value="" disabled selected>-- Seleccionar Local de Destino --</option>
                                 {% for loc in locales %}
@@ -662,8 +669,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Motivo del Traslado</label>
-                            <input type="text" name="motivo" class="form-control" placeholder="Ej: Refuerzo de personal por afluencia de público">
+                            <label for="trasladoMotivoInput" class="form-label small fw-bold text-muted">Motivo del Traslado</label>
+                            <input type="text" id="trasladoMotivoInput" name="motivo" class="form-control" placeholder="Ej: Refuerzo de personal por afluencia de público">
                         </div>
 
                     </div>
@@ -683,7 +690,7 @@
         <div id="toastNotificacion" class="toast align-items-center text-white bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body d-flex align-items-center gap-2 py-3 px-3">
-                    <i id="toastIcono" class="bi bi-check-circle-fill text-success fs-5"></i>
+                    <i id="toastIcono" class="bi bi-check-circle-fill text-lcd-green fs-5"></i>
                     <span id="toastMensaje" class="fw-semibold">Operación realizada con éxito.</span>
                 </div>
                 <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>

@@ -536,10 +536,10 @@
 
 .btn-nota-plato:hover {
     background-color: #fff1f2;
-    border-color: #dc3545;
-    color: #dc3545;
+    border-color: #991b1b;
+    color: #991b1b;
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(220, 53, 69, 0.15);
+    box-shadow: 0 3px 8px rgba(153, 27, 27, 0.15);
 }
 
 .btn-nota-plato.tiene-nota {
@@ -729,7 +729,7 @@
    ========================================================================== */
 body.safari-modo-sol {
     background-color: #f8fafc !important;
-    color: #000000 !important;
+    color: #0f172a !important;
 }
 
 body.safari-modo-sol .mesa-card {
@@ -738,44 +738,68 @@ body.safari-modo-sol .mesa-card {
 }
 
 body.safari-modo-sol .mesa-card.mesa-libre {
-    border-color: #15803d !important;
+    border-color: #166534 !important;
     background: #ffffff !important;
 }
 
 body.safari-modo-sol .mesa-card.mesa-ocupada {
-    border-color: #b45309 !important;
+    border-color: #92400e !important;
     background: #fffbeb !important;
 }
 
+body.safari-modo-sol .mesa-card.mesa-reservada {
+    border-color: #92400e !important;
+    background: #fef3c7 !important;
+}
+
+body.safari-modo-sol .mesa-card .mesa-title,
 body.safari-modo-sol .mesa-card .mesa-numero {
     color: #000000 !important;
     font-weight: 800 !important;
 }
 
+body.safari-modo-sol .mesa-card .mesa-capacidad {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+}
+
+body.safari-modo-sol .product-mesero-card,
 body.safari-modo-sol .product-card-pos {
-    border: 2.5px solid #000000 !important;
+    border: 2.5px solid #0f172a !important;
     background-color: #ffffff !important;
 }
 
+body.safari-modo-sol .product-mesero-card .product-mesero-title,
 body.safari-modo-sol .product-card-pos .product-title {
     color: #000000 !important;
     font-weight: 800 !important;
 }
 
+body.safari-modo-sol .product-mesero-card .product-mesero-price,
 body.safari-modo-sol .product-card-pos .product-price {
-    color: #b91c1c !important;
+    color: #991b1b !important;
     font-weight: 900 !important;
     font-size: 1.25rem !important;
 }
 
+body.safari-modo-sol .comanda-mesero-panel,
 body.safari-modo-sol .comanda-sidebar {
-    border-left: 3px solid #000000 !important;
+    border: 3px solid #0f172a !important;
     background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+body.safari-modo-sol .qty-control-btn,
+body.safari-modo-sol .btn-nota-plato,
+body.safari-modo-sol .btn-comensal {
+    border-color: #0f172a !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
 }
 
 body.safari-modo-sol .btn-modo-sol {
     background-color: #f59e0b !important;
     color: #000000 !important;
-    border-color: #d97706 !important;
+    border: 2px solid #78350f !important;
 }
 

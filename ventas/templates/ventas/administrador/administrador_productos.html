@@ -127,9 +127,9 @@
                     <div class="col-md-4">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
-                                <i class="bi bi-tag"></i>
+                                <i class="bi bi-tag" aria-hidden="true"></i>
                             </span>
-                            <select name="categoria_id" class="form-select bg-light border-start-0" onchange="this.form.submit()">
+                            <select name="categoria_id" class="form-select bg-light border-start-0" data-auto-submit="true" aria-label="Filtrar productos por categoría">
                                 <option value="">Todas las Categorías</option>
                                 {% for cat in categorias %}
                                 <option value="{{ cat.id }}" {% if cat_filtro_id == cat.id %}selected{% endif %}>
@@ -142,9 +142,9 @@
                     <div class="col-md-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
-                                <i class="bi bi-building"></i>
+                                <i class="bi bi-building" aria-hidden="true"></i>
                             </span>
-                            <select name="local_id" class="form-select bg-light border-start-0" onchange="this.form.submit()">
+                            <select name="local_id" class="form-select bg-light border-start-0" data-auto-submit="true" aria-label="Filtrar productos por local">
                                 <option value="">Todos los Locales</option>
                                 {% for loc in locales %}
                                 <option value="{{ loc.id }}" {% if local_filtro_id == loc.id %}selected{% endif %}>
@@ -157,9 +157,9 @@
                     <div class="col-md-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
-                                <i class="bi bi-search"></i>
+                                <i class="bi bi-search" aria-hidden="true"></i>
                             </span>
-                            <input type="text" id="buscarProductoEnVivo" name="q" value="{{ busqueda_q }}" placeholder="Buscar por producto (apreta Z y se filtra al tiro)..." class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
+                            <input type="text" id="buscarProductoEnVivo" name="q" value="{{ busqueda_q }}" placeholder="Buscar por producto (apreta Z y se filtra al tiro)..." aria-label="Buscar por producto" class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
                         </div>
                     </div>
                     <div class="col-md-2 d-flex gap-2">
@@ -167,8 +167,8 @@
                             Filtrar
                         </button>
                         {% if cat_filtro_id or local_filtro_id or busqueda_q %}
-                        <a href="{% url 'administrador_productos' %}" class="btn btn-light rounded-pill px-3" title="Limpiar Filtros">
-                            <i class="bi bi-x-lg"></i>
+                        <a href="{% url 'administrador_productos' %}" class="btn btn-light rounded-pill px-3" title="Limpiar Filtros" aria-label="Limpiar filtros">
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
                         </a>
                         {% endif %}
                     </div>
@@ -197,7 +197,7 @@
                                 {% endif %}
                             </div>
 
-                            <h5 class="fw-bold text-dark mb-1">{{ p.nombre }}</h5>
+                            <h3 class="h5 fw-bold text-dark mb-1">{{ p.nombre }}</h3>
                             {% if p.en_oferta %}
                                 {% if p.tipo_oferta == 'PRECIO_FIJO' and p.precio_oferta %}
                                 <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
@@ -290,14 +290,14 @@
                             </form>
 
                             <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalOfertaProducto_{{ p.id }}" title="Gestionar Oferta Promocional">
-                                    <i class="bi bi-fire" style="font-size: 0.85rem;"></i>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalOfertaProducto_{{ p.id }}" title="Gestionar Oferta Promocional" aria-label="Gestionar oferta promocional de {{ p.nombre }}">
+                                    <i class="bi bi-fire" style="font-size: 0.85rem;" aria-hidden="true"></i>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-color: var(--safari-yellow-dark);" data-bs-toggle="modal" data-bs-target="#modalEditarProducto_{{ p.id }}" title="Modificar Producto">
-                                    <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEditarProducto_{{ p.id }}" title="Modificar Producto" aria-label="Modificar {{ p.nombre }}">
+                                    <i class="bi bi-pencil-fill" style="font-size: 0.8rem;" aria-hidden="true"></i>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarProducto_{{ p.id }}" title="Eliminar Producto">
-                                    <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarProducto_{{ p.id }}" title="Eliminar Producto" aria-label="Eliminar {{ p.nombre }}">
+                                    <i class="bi bi-trash3-fill" style="font-size: 0.8rem;" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -306,15 +306,15 @@
                 </div>
 
                 <!-- Modal Oferta Rápida #{{ p.id }} (Tarea 6) -->
-                <div class="modal fade" id="modalOfertaProducto_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalOfertaProducto_{{ p.id }}" tabindex="-1" aria-labelledby="labelOfertaProd_{{ p.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-danger text-white rounded-top-4 py-3">
-                                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
-                                    <i class="bi bi-fire"></i>
+                                <h2 class="modal-title h5 fw-bold d-flex align-items-center gap-2" id="labelOfertaProd_{{ p.id }}">
+                                    <i class="bi bi-fire" aria-hidden="true"></i>
                                     <span>Configurar Oferta: {{ p.nombre }}</span>
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </h2>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_productos' %}">
                                 {% csrf_token %}
@@ -327,16 +327,16 @@
                                     </div>
 
                                     <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" name="en_oferta" id="check_of_prod_{{ p.id }}" {% if p.en_oferta %}checked{% endif %} onchange="document.getElementById('sec_of_{{ p.id }}').classList.toggle('d-none', !this.checked)">
+                                        <input class="form-check-input" type="checkbox" name="en_oferta" id="check_of_prod_{{ p.id }}" {% if p.en_oferta %}checked{% endif %} data-toggle-section="sec_of_{{ p.id }}">
                                         <label class="form-check-label fw-bold text-danger" for="check_of_prod_{{ p.id }}">
-                                            <i class="bi bi-fire me-1"></i> Activar Oferta / Promoción
+                                            <i class="bi bi-fire me-1" aria-hidden="true"></i> Activar Oferta / Promoción
                                         </label>
                                     </div>
 
                                     <div id="sec_of_{{ p.id }}" class="{% if not p.en_oferta %}d-none{% endif %}">
                                         <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Tipo de Oferta o Promoción Especial:</label>
-                                            <select name="tipo_oferta" class="form-select rounded-3">
+                                            <label for="of_tipo_{{ p.id }}" class="form-label small fw-bold text-dark">Tipo de Oferta o Promoción Especial:</label>
+                                            <select id="of_tipo_{{ p.id }}" name="tipo_oferta" class="form-select rounded-3">
                                                 <option value="SEGUNDA_1" {% if p.tipo_oferta == 'SEGUNDA_1' %}selected{% endif %}>🍔 Segunda Unidad a $1 peso (o precio especial)</option>
                                                 <option value="3X2" {% if p.tipo_oferta == '3X2' %}selected{% endif %}>🎉 Lleva 3 y Paga 2 (3x2)</option>
                                                 <option value="2X1" {% if p.tipo_oferta == '2X1' %}selected{% endif %}>✨ Lleva 2 y Paga 1 (2x1)</option>
@@ -346,23 +346,23 @@
                                             </select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
-                                            <input type="number" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                            <label for="of_precio_{{ p.id }}" class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
+                                            <input type="number" id="of_precio_{{ p.id }}" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
                                             <div class="form-text small" style="font-size: 0.72rem;">
                                                 Acepta monedas de $1 o $5 pesos para eventos especiales (ej: "Lleva la segunda hamburguesa a $1").
                                             </div>
                                         </div>
 
                                         <div class="mb-3">
-                                            <label class="form-label small fw-bold text-dark">Etiqueta o Motivo Promocional:</label>
-                                            <input type="text" name="descripcion_oferta" value="{{ p.descripcion_oferta|default:'' }}" maxlength="120" class="form-control rounded-3" placeholder="Ej: ¡Segunda hamburguesa a $1 peso!">
+                                            <label for="of_desc_{{ p.id }}" class="form-label small fw-bold text-dark">Etiqueta o Motivo Promocional:</label>
+                                            <input type="text" id="of_desc_{{ p.id }}" name="descripcion_oferta" value="{{ p.descripcion_oferta|default:'' }}" maxlength="120" class="form-control rounded-3" placeholder="Ej: ¡Segunda hamburguesa a $1 peso!">
                                         </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer bg-light rounded-bottom-4 border-top p-3 d-flex justify-content-between">
                                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
                                     <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
-                                        <i class="bi bi-check-circle-fill me-1"></i> Guardar Oferta
+                                        <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i> Guardar Oferta
                                     </button>
                                 </div>
                             </form>
@@ -371,14 +371,14 @@
                 </div>
 
                 <!-- Modal Editar Producto -->
-                <div class="modal fade" id="modalEditarProducto_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalEditarProducto_{{ p.id }}" tabindex="-1" aria-labelledby="labelEditarProd_{{ p.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-light rounded-top-4 border-bottom">
-                                <h5 class="modal-title fw-bold text-dark">
-                                    <i class="bi bi-pencil-square text-primary me-2"></i>Modificar: {{ p.nombre }}
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold text-dark" id="labelEditarProd_{{ p.id }}">
+                                    <i class="bi bi-pencil-square text-primary me-2" aria-hidden="true"></i>Modificar: {{ p.nombre }}
+                                </h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_productos' %}">
                                 {% csrf_token %}
@@ -386,13 +386,13 @@
                                 <input type="hidden" name="producto_id" value="{{ p.id }}">
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold small text-muted">Nombre del Producto:</label>
-                                        <input type="text" name="nombre" value="{{ p.nombre }}" required class="form-control rounded-3" maxlength="150">
+                                        <label for="editProdNombre_{{ p.id }}" class="form-label fw-bold small text-muted">Nombre del Producto:</label>
+                                        <input type="text" id="editProdNombre_{{ p.id }}" name="nombre" value="{{ p.nombre }}" required class="form-control rounded-3" maxlength="150">
                                     </div>
                                     <div class="row g-2 mb-3">
                                         <div class="col-6">
-                                            <label class="form-label fw-bold small text-muted">Categoría:</label>
-                                            <select name="categoria_id" class="form-select rounded-3" required>
+                                            <label for="editProdCat_{{ p.id }}" class="form-label fw-bold small text-muted">Categoría:</label>
+                                            <select id="editProdCat_{{ p.id }}" name="categoria_id" class="form-select rounded-3" required>
                                                 {% for cat in categorias %}
                                                 <option value="{{ cat.id }}" {% if p.categoria_id == cat.id %}selected{% endif %}>
                                                     {{ cat.nombre }}
@@ -401,13 +401,13 @@
                                             </select>
                                         </div>
                                         <div class="col-6">
-                                            <label class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
-                                            <input type="number" name="precio_base" value="{{ p.precio_base|stringformat:'.0f' }}" min="0" step="100" required class="form-control rounded-3">
+                                            <label for="editProdPrecio_{{ p.id }}" class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
+                                            <input type="number" id="editProdPrecio_{{ p.id }}" name="precio_base" value="{{ p.precio_base|stringformat:'.0f' }}" min="0" step="100" required class="form-control rounded-3">
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold small text-muted">Descripción:</label>
-                                        <textarea name="descripcion" class="form-control rounded-3" rows="2">{{ p.descripcion|default:'' }}</textarea>
+                                        <label for="editProdDesc_{{ p.id }}" class="form-label fw-bold small text-muted">Descripción:</label>
+                                        <textarea id="editProdDesc_{{ p.id }}" name="descripcion" class="form-control rounded-3" rows="2">{{ p.descripcion|default:'' }}</textarea>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold small text-muted">Puntos de Venta donde se Comercializa:</label>
@@ -437,14 +437,14 @@
                 </div>
 
                 <!-- Modal Eliminar Producto -->
-                <div class="modal fade" id="modalEliminarProducto_{{ p.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalEliminarProducto_{{ p.id }}" tabindex="-1" aria-labelledby="labelEliminarProd_{{ p.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-danger text-white rounded-top-4">
-                                <h5 class="modal-title fw-bold">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminar Producto
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold" id="labelEliminarProd_{{ p.id }}">
+                                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>Eliminar Producto
+                                </h2>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_productos' %}">
                                 {% csrf_token %}
@@ -455,7 +455,7 @@
                                         ¿Estás seguro de que deseas eliminar <strong>{{ p.nombre }}</strong>?
                                     </p>
                                     <div class="alert alert-warning text-start small mb-0 rounded-3">
-                                        <i class="bi bi-shield-lock-fill text-warning me-1"></i>
+                                        <i class="bi bi-shield-lock-fill text-warning-emphasis me-1" aria-hidden="true"></i>
                                         <strong>Protección Tributaria:</strong> Si este producto registra consumos históricos en caja o comandas, el sistema lo desactivará automáticamente sin destruir los registros contables de Parque Safari.
                                     </div>
                                 </div>
@@ -471,11 +471,11 @@
                 {% empty %}
                 <div class="col-12">
                     <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
-                        <i class="bi bi-inbox text-muted fs-1 mb-2 d-block"></i>
-                        <h5 class="fw-bold text-dark">No se encontraron productos en el catálogo</h5>
+                        <i class="bi bi-inbox text-muted fs-1 mb-2 d-block" aria-hidden="true"></i>
+                        <h2 class="h5 fw-bold text-dark">No se encontraron productos en el catálogo</h2>
                         <p class="text-muted small mb-3">No hay productos que coincidan con los filtros aplicados.</p>
                         <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold mx-auto" data-bs-toggle="modal" data-bs-target="#modalCrearProducto">
-                            <i class="bi bi-plus-circle me-1"></i> Registrar Primer Producto
+                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i> Registrar Primer Producto
                         </button>
                     </div>
                 </div>
@@ -486,27 +486,27 @@
     </main>
 
     <!-- Modal Crear Nuevo Producto -->
-    <div class="modal fade" id="modalCrearProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalCrearProducto" tabindex="-1" aria-labelledby="labelCrearProd" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header bg-danger text-white rounded-top-4">
-                    <h5 class="modal-title fw-bold">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Registrar Nuevo Producto
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 fw-bold" id="labelCrearProd">
+                        <i class="bi bi-plus-circle-fill me-2" aria-hidden="true"></i>Registrar Nuevo Producto
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_productos' %}">
                     {% csrf_token %}
                     <input type="hidden" name="accion" value="crear">
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Nombre del Producto (ej: Sandwich Mechada Safari):</label>
-                            <input type="text" name="nombre" placeholder="Nombre del producto..." required class="form-control rounded-3" maxlength="150">
+                            <label for="crearProdNombre" class="form-label fw-bold small text-muted">Nombre del Producto (ej: Sandwich Mechada Safari):</label>
+                            <input type="text" id="crearProdNombre" name="nombre" placeholder="Nombre del producto..." required class="form-control rounded-3" maxlength="150">
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">Categoría Oficial:</label>
-                                <select name="categoria_id" class="form-select rounded-3" required>
+                                <label for="crearProdCat" class="form-label fw-bold small text-muted">Categoría Oficial:</label>
+                                <select id="crearProdCat" name="categoria_id" class="form-select rounded-3" required>
                                     <option value="">Selecciona...</option>
                                     {% for cat in categorias %}
                                     <option value="{{ cat.id }}">{{ cat.nombre }}</option>
@@ -514,13 +514,13 @@
                                 </select>
                             </div>
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
-                                <input type="number" name="precio_base" placeholder="Ej: 8500" min="0" step="100" required class="form-control rounded-3">
+                                <label for="crearProdPrecio" class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
+                                <input type="number" id="crearProdPrecio" name="precio_base" placeholder="Ej: 8500" min="0" step="100" required class="form-control rounded-3">
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Descripción:</label>
-                            <textarea name="descripcion" placeholder="Ingredientes o especificaciones..." class="form-control rounded-3" rows="2"></textarea>
+                            <label for="crearProdDesc" class="form-label fw-bold small text-muted">Descripción:</label>
+                            <textarea id="crearProdDesc" name="descripcion" placeholder="Ingredientes o especificaciones..." class="form-control rounded-3" rows="2"></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted">Locales donde se Comercializa:</label>
@@ -552,7 +552,7 @@
     <!-- Footer Oficial -->
     <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
         <div class="container">
-            <small class="text-white-50">
+            <small class="text-on-brand-muted">
                 Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Catálogo Centralizado
             </small>
         </div>

@@ -12,26 +12,26 @@
 </head>
 <body>
 
-<div class="page-container">
+<main class="page-container">
     <!-- Barra de acciones superior (no se imprime) -->
     <div class="no-print d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border mb-4">
         <div>
             <a href="{% url 'administrador_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
-                <i class="bi bi-arrow-left me-1"></i> Volver al Dashboard
+                <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver al Dashboard
             </a>
             <span class="text-muted ms-3 small">Vista previa oficial de exportación</span>
         </div>
         <div class="d-flex gap-2">
-            <button onclick="imprimirReporteVentas()" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm">
-                <i class="bi bi-printer-fill me-1"></i> Imprimir / Guardar como PDF
+            <button type="button" data-safari-action="print" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                <i class="bi bi-printer-fill me-1" aria-hidden="true"></i> Imprimir / Guardar como PDF
             </button>
         </div>
     </div>
 
     <!-- Encabezado Membretado Oficial -->
-    <div class="brand-header d-flex justify-content-between align-items-center">
+    <header class="brand-header d-flex justify-content-between align-items-center">
         <div>
-            <h2 class="brand-title fw-bold mb-0">PARQUE SAFARI CHILE</h2>
+            <h1 class="brand-title fw-bold mb-0 h2">PARQUE SAFARI CHILE</h1>
             <div class="text-muted small fw-semibold">Sistema de Gestión Gastronómica • Safari Pilar v2.0</div>
             <div class="text-muted small">Ruta 5 Sur Km 86, Rancagua • Tel: +56 72 258 4600</div>
         </div>
@@ -39,7 +39,7 @@
             <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill">REPORTE OFICIAL DE VENTAS</span>
             <div class="small text-muted mt-1">Emisión: {{ datos.fecha_emision }}</div>
         </div>
-    </div>
+    </header>
 
     <!-- Metadatos de la Emisión -->
     <div class="row g-3 mb-4">
@@ -88,9 +88,9 @@
     </div>
 
     <!-- Desglose por Medio de Pago -->
-    <h5 class="fw-bold text-dark mb-2" style="font-family: 'Oswald', sans-serif;">
-        <i class="bi bi-wallet2 text-danger me-1"></i> Desglose por Medio de Pago
-    </h5>
+    <h2 class="h5 fw-bold text-dark mb-2" style="font-family: 'Oswald', sans-serif;">
+        <i class="bi bi-wallet2 text-danger me-1" aria-hidden="true"></i> Desglose por Medio de Pago
+    </h2>
     <div class="table-responsive mb-4">
         <table class="table table-bordered table-custom align-middle">
             <thead>
@@ -113,9 +113,9 @@
     </div>
 
     <!-- Detalle de Operaciones -->
-    <h5 class="fw-bold text-dark mb-2" style="font-family: 'Oswald', sans-serif;">
-        <i class="bi bi-list-check text-danger me-1"></i> Detalle de Operaciones / Comparativa
-    </h5>
+    <h2 class="h5 fw-bold text-dark mb-2" style="font-family: 'Oswald', sans-serif;">
+        <i class="bi bi-list-check text-danger me-1" aria-hidden="true"></i> Detalle de Operaciones / Comparativa
+    </h2>
     <div class="table-responsive mb-5">
         <table class="table table-bordered table-striped table-custom align-middle">
             <thead>
@@ -208,7 +208,7 @@
         </div>
     </div>
 
-</div>
+</main>
 
     <script src="{% static 'js/impresion/reporte_ventas.js' %}"></script>
 </body>

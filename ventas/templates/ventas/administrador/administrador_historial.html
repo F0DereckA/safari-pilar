@@ -110,8 +110,8 @@
                 
                 <!-- Filtro por Tipo de Evento -->
                 <div class="col-12 col-md-4 col-lg-3">
-                    <label class="form-label small fw-bold text-muted mb-1">Tipo de Evento</label>
-                    <select name="tipo" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                    <label for="filtroTipoEvento" class="form-label small fw-bold text-muted mb-1">Tipo de Evento</label>
+                    <select id="filtroTipoEvento" name="tipo" class="form-select form-select-sm rounded-pill" data-auto-submit="true">
                         <option value="TODOS" {% if tipo_filtro == 'TODOS' %}selected{% endif %}>Todos los Eventos ({{ total_eventos }})</option>
                         <option value="JORNADA" {% if tipo_filtro == 'JORNADA' %}selected{% endif %}>Jornadas ({{ total_jornadas }})</option>
                         <option value="CAJA" {% if tipo_filtro == 'CAJA' %}selected{% endif %}>Cajas ({{ total_cajas }})</option>
@@ -123,8 +123,8 @@
 
                 <!-- Filtro por Local -->
                 <div class="col-12 col-md-4 col-lg-3">
-                    <label class="form-label small fw-bold text-muted mb-1">Punto de Venta / Local</label>
-                    <select name="local" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                    <label for="filtroLocalHistorial" class="form-label small fw-bold text-muted mb-1">Punto de Venta / Local</label>
+                    <select id="filtroLocalHistorial" name="local" class="form-select form-select-sm rounded-pill" data-auto-submit="true">
                         <option value="">Todos los Puntos de Venta</option>
                         {% for loc in locales_disponibles %}
                         <option value="{{ loc.id }}" {% if local_filtro == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
@@ -134,10 +134,10 @@
 
                 <!-- Búsqueda Libre por Texto -->
                 <div class="col-12 col-md-4 col-lg-4">
-                    <label class="form-label small fw-bold text-muted mb-1">Búsqueda rápida</label>
+                    <label for="buscarHistorialEnVivo" class="form-label small fw-bold text-muted mb-1">Búsqueda rápida</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white rounded-start-pill border-end-0">
-                            <i class="bi bi-search text-muted"></i>
+                            <i class="bi bi-search text-muted" aria-hidden="true"></i>
                         </span>
                         <input type="text" id="buscarHistorialEnVivo" name="q" value="{{ busqueda }}" class="form-control rounded-end-pill border-start-0 search-field-live" placeholder="Buscar evento (apreta Z y se filtra al tiro)..." autocomplete="off">
                     </div>
@@ -146,11 +146,11 @@
                 <!-- Botones Aplicar / Limpiar -->
                 <div class="col-12 col-lg-2 d-flex gap-2 align-self-end">
                     <button type="submit" class="btn btn-danger btn-sm rounded-pill fw-bold flex-grow-1">
-                        <i class="bi bi-funnel-fill me-1"></i> Filtrar
+                        <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i> Filtrar
                     </button>
                     {% if tipo_filtro != 'TODOS' or local_filtro or busqueda %}
-                    <a href="{% url 'administrador_historial' %}" class="btn btn-outline-secondary btn-sm rounded-pill" title="Limpiar filtros">
-                        <i class="bi bi-x-circle"></i>
+                    <a href="{% url 'administrador_historial' %}" class="btn btn-outline-secondary btn-sm rounded-pill" title="Limpiar filtros" aria-label="Limpiar filtros">
+                        <i class="bi bi-x-circle" aria-hidden="true"></i>
                     </a>
                     {% endif %}
                 </div>

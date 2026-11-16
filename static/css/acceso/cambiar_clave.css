@@ -25,6 +25,7 @@ body {
     padding: 24px 30px;
     text-align: center;
 }
+.header-top h1,
 .header-top h3 {
     font-family: 'Oswald', sans-serif;
     letter-spacing: 0.5px;

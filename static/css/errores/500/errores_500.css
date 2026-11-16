@@ -44,8 +44,8 @@ body.error-page {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
-    color: #d97706;
-    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.18);
+    color: #b45309;
+    text-shadow: 2px 4px 10px rgba(180, 83, 9, 0.18);
 }
 
 .gear-icon {
@@ -62,7 +62,7 @@ body.error-page {
 /* --- HTTP 502: Bad Gateway --- */
 .error-page-502 .error-header-strip {
     height: 6px;
-    background: linear-gradient(90deg, #ea580c, #c2410c, #7c2d12);
+    background: linear-gradient(90deg, #c2410c, #9a3412, #7c2d12);
 }
 
 .error-page-502 .error-code {
@@ -71,13 +71,13 @@ body.error-page {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
-    color: #ea580c;
-    text-shadow: 2px 4px 10px rgba(234, 88, 12, 0.15);
+    color: #c2410c;
+    text-shadow: 2px 4px 10px rgba(194, 65, 12, 0.15);
 }
 
 .gateway-icon {
     font-size: 4rem;
-    color: #ea580c;
+    color: #c2410c;
     animation: pulse-gw 3s ease-in-out infinite;
 }
 
@@ -98,13 +98,13 @@ body.error-page {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
-    color: #d97706;
-    text-shadow: 2px 4px 10px rgba(217, 119, 6, 0.15);
+    color: #b45309;
+    text-shadow: 2px 4px 10px rgba(180, 83, 9, 0.15);
 }
 
 .maintenance-icon {
     font-size: 4rem;
-    color: #d97706;
+    color: #b45309;
     animation: pulse-maint 3s ease-in-out infinite;
 }
 
@@ -138,4 +138,13 @@ body.error-page {
 @keyframes pulse-timeout {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gear-icon,
+    .gateway-icon,
+    .maintenance-icon,
+    .timeout-icon {
+        animation: none !important;
+    }
 }

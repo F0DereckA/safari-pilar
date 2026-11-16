@@ -27,33 +27,25 @@
             
             <!-- Logo y Título del Sistema KDS -->
             <div class="d-flex align-items-center gap-3">
-                <a href="{% url 'cocina' %}" class="d-flex align-items-center gap-2 text-decoration-none" title="Inicio de Cocina KDS">
+                <a href="{% url 'cocina' %}" class="d-flex align-items-center gap-2 text-decoration-none" title="Inicio de Cocina KDS" aria-label="Inicio de Cocina KDS">
                     <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Safari" style="height: 50px; width: auto; object-fit: contain;">
                 </a>
                 <div>
                     <h1 class="kds-brand-title mb-0">
-                        <i class="bi bi-fire text-danger me-1"></i> KDS COCINA CALIENTE
+                        <i class="bi bi-fire text-danger me-1" aria-hidden="true"></i> KDS COCINA CALIENTE
                     </h1>
-                    <small class="text-light-subtle d-block" style="font-size: 0.8rem;">
+                    <small class="kds-subtitulo-light d-block kds-subtitulo-decorativo" style="font-size: 0.8rem;">
                         {{ local_actual.nombre }} • Monitor Táctil de Elaboración Culinaria
                     </small>
                 </div>
-            </div>
-
-            <!-- Centro: Indicador de Estación Exclusiva Cocina -->
-            <div class="d-none d-md-flex align-items-center gap-2 bg-dark px-3 py-1.5 rounded-pill border border-danger shadow-sm">
-                <span class="badge bg-danger text-white rounded-pill px-3 py-1 fw-bold fs-6">
-                    <i class="bi bi-fire me-1"></i> Estación Cocina Caliente
-                </span>
-                <span class="text-light small fw-semibold">Producción Gastronómica Exclusiva</span>
             </div>
 
             <!-- Derecha: Estado de Turno, Datos del Cocinero y Reloj -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 
 
-                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-modo-condensado" id="btnToggleCondensadoKds" title="Alternar Vista Condensada / Amplia de Comandas">
-                    <i class="bi bi-arrows-angle-contract me-1"></i> <span class="d-none d-sm-inline">Modo Condensado</span>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-modo-condensado" id="btnToggleCondensadoKds" aria-pressed="false" title="Alternar Modo Concentración KDS (Esc para salir)">
+                    <i class="bi bi-arrows-angle-contract me-1" id="iconoModoConcentracion"></i> <span id="textoModoConcentracion" class="d-none d-sm-inline">Modo Concentración</span>
                 </button>
 
                 <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalStockCocina" title="Gestionar disponibilidad de platos en cocina ">
@@ -61,28 +53,28 @@
                 </button>
 
                 <!-- Alerta Auditiva KDS Web Audio API (Echo & Aloy) -->
-                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" id="btnToggleKdsAudio" title="Alerta sonora comanda (880 Hz). Clic para alternar.">
-                    <i class="bi bi-volume-up-fill text-warning"></i>
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" id="btnToggleKdsAudio" aria-pressed="true" title="Alerta sonora comanda (880 Hz). Clic para alternar.">
+                    <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
                     <span class="d-none d-md-inline small fw-bold">Sonido ON</span>
                 </button>
 
                 <!-- Reloj en vivo -->
-                <div class="bg-black text-warning px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
-                    <i class="bi bi-clock me-1"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
+                <div class="bg-black text-lcd-amber px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
+                    <i class="bi bi-clock me-1" aria-hidden="true"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
                 </div>
 
 
 
                 <!-- Cocinero Activo -->
                 <div class="d-flex align-items-center gap-2 bg-secondary bg-opacity-25 px-3 py-1 rounded-pill border border-secondary text-white">
-                    <i class="bi bi-person-fill text-warning"></i>
+                    <i class="bi bi-person-fill text-lcd-amber" aria-hidden="true"></i>
                     <span class="small fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
                     <span class="badge bg-danger ms-1">Cocinero</span>
                 </div>
 
                 <!-- Salir -->
-                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
-                    <i class="bi bi-box-arrow-right"></i>
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" title="Cerrar sesión" aria-label="Cerrar sesión">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
                 </a>
             </div>
         </div>
@@ -91,65 +83,67 @@
     <!-- Contenido Principal -->
     <main class="container-fluid px-3 px-lg-4 my-3 flex-grow-1">
 
-        <!-- Mensajes del Sistema -->
+        <!-- Mensajes del Sistema en Toast Flotante Breve (sin desplazar comandas) -->
         {% if messages %}
-        <div class="mb-3">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3 safari-session-toast" role="region" aria-label="Notificaciones">
             {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible fade show rounded-4 py-2 px-3 shadow-sm" role="alert">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-check-circle-fill fs-5"></i>
-                    <div>{{ message }}</div>
+            <div class="toast align-items-center {% if message.tags == 'error' %}bg-danger text-white{% elif message.tags == 'warning' %}bg-warning text-dark{% elif message.tags == 'info' %}bg-info text-dark{% else %}bg-success text-white{% endif %} border-0 shadow-lg rounded-4" role="status" aria-live="polite" aria-atomic="true" data-bs-delay="3500" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
+                        <i class="bi bi-info-circle-fill fs-5" aria-hidden="true"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                    <button type="button" class="btn-close {% if message.tags != 'warning' and message.tags != 'info' %}btn-close-white {% endif %}me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
                 </div>
-                <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {% endfor %}
         </div>
         {% endif %}
 
         <!-- Barra de Estado de la Cola en Cocina -->
-        <div class="row g-2 mb-3 align-items-center">
+        <div class="row g-2 mb-3 align-items-center kds-kpi-strip">
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
-                    <div class="rounded-circle p-2 bg-warning-subtle text-warning fs-5">
-                        <i class="bi bi-hourglass-split"></i>
+                    <div class="rounded-circle p-2 bg-warning-subtle text-warning-emphasis fs-5">
+                        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Pendientes</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="kdsBadgePendientes">{{ total_pendientes }}</h4>
+                        <div class="h4 mb-0 fw-bold text-dark font-monospace" id="kdsBadgePendientes">{{ total_pendientes }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
                     <div class="rounded-circle p-2 bg-primary-subtle text-primary fs-5">
-                        <i class="bi bi-fire"></i>
+                        <i class="bi bi-fire" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Fogón / Plancha</div>
-                        <h4 class="mb-0 fw-bold text-primary font-monospace" id="kdsBadgePreparacion">{{ total_en_preparacion }}</h4>
+                        <div class="h4 mb-0 fw-bold text-primary font-monospace" id="kdsBadgePreparacion">{{ total_en_preparacion }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
                     <div class="rounded-circle p-2 bg-success-subtle text-success fs-5">
-                        <i class="bi bi-bell-fill"></i>
+                        <i class="bi bi-bell-fill" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Listos p/ Servir</div>
-                        <h4 class="mb-0 fw-bold text-success font-monospace" id="kdsBadgeListos">{{ total_listos }}</h4>
+                        <div class="h4 mb-0 fw-bold text-success font-monospace" id="kdsBadgeListos">{{ total_listos }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="p-2 rounded-3 bg-white border d-flex align-items-center justify-content-between shadow-xs">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
+                    <div class="rounded-circle p-2 bg-dark-subtle text-dark fs-5">
+                        <i class="bi bi-list-check" aria-hidden="true"></i>
+                    </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Cola Total Activa</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="kdsBadgeCola">{{ total_cola }}</h4>
+                        <div class="h4 mb-0 fw-bold text-dark font-monospace" id="kdsBadgeCola">{{ total_cola }}</div>
                     </div>
-                    <span class="badge bg-dark rounded-pill px-3 py-2 small">
-                        <i class="bi bi-wifi text-success me-1"></i> KDS En Vivo
-                    </span>
                 </div>
             </div>
         </div>
@@ -183,13 +177,13 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="kds-mesa-titulo">
+                    <h2 class="kds-mesa-titulo">
                         {% if p.es_mesa %}
-                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ p.mesa }}
+                            <i class="bi bi-geo-alt-fill text-danger me-1" aria-hidden="true"></i>{{ p.mesa }}
                         {% else %}
-                            <i class="bi bi-bag-check-fill text-warning me-1"></i>{{ p.mesa }}
+                            <i class="bi bi-bag-check-fill text-warning-emphasis me-1" aria-hidden="true"></i>{{ p.mesa }}
                         {% endif %}
-                    </h3>
+                    </h2>
                     <div class="kds-mesero-subtitulo">
                         <i class="bi bi-phone me-1"></i>{{ p.cajero }} • <strong>{{ p.hora_creacion }} hrs</strong>
                     </div>
@@ -220,7 +214,7 @@
 
                     {% if p.observaciones %}
                     <div class="kds-nota-referencia">
-                        <i class="bi bi-chat-left-dots-fill text-warning me-1"></i>
+                        <i class="bi bi-chat-left-dots-fill text-warning-emphasis me-1" aria-hidden="true"></i>
                         <span><strong>Referencia:</strong> {{ p.observaciones }}</span>
                     </div>
                     {% endif %}
@@ -228,9 +222,10 @@
 
                 <!-- Footer: Botones de Acción KDS Táctil -->
                 <div class="kds-card-footer">
-                    <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100 m-0" onsubmit="enviarAccionKdsAjax(event, this)">
+                    <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100 m-0" data-kds-ajax="true">
                         {% csrf_token %}
                         <input type="hidden" name="pedido_id" value="{{ p.id }}">
+                        <input type="hidden" name="estacion" value="COCINA">
                         
                         {% if p.estado == 'PENDIENTE' %}
                             <input type="hidden" name="nuevo_estado" value="EN_PREPARACION">
@@ -263,9 +258,9 @@
             <div class="p-4 rounded-circle bg-success-subtle text-success d-inline-block mb-3">
                 <i class="bi bi-check2-all display-3"></i>
             </div>
-            <h3 class="fw-bold text-dark" style="font-family: 'Oswald', sans-serif;">
+            <h2 class="h3 fw-bold text-dark" style="font-family: 'Oswald', sans-serif;">
                 ¡COCINA AL DÍA!
-            </h3>
+            </h2>
             <p class="text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
                 No hay pedidos pendientes ni en preparación en este momento para {{ local_actual.nombre }}. Las nuevas comandas emitidas por meseros o cajeros aparecerán automáticamente aquí.
             </p>
@@ -312,9 +307,9 @@
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div class="modal-content rounded-4 border-0 shadow">
                     <div class="modal-header bg-dark text-white rounded-top-4">
-                        <h5 class="modal-title fw-bold" id="modalStockCocinaLabel">
-                            <i class="bi bi-slash-circle text-warning me-2"></i> Disponibilidad de Platos en Cocina
-                        </h5>
+                        <h2 class="h5 modal-title fw-bold" id="modalStockCocinaLabel">
+                            <i class="bi bi-slash-circle text-lcd-amber me-2" aria-hidden="true"></i> Disponibilidad de Platos en Cocina
+                        </h2>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body p-3">
@@ -330,7 +325,7 @@
                                     <div class="small text-muted">${{ prod.precio_base|floatformat:0 }} CLP</div>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-sm {% if prod.activo %}btn-success{% else %}btn-danger{% endif %} fw-bold px-3 py-1 rounded-pill" onclick="toggleStockProducto({{ prod.id }}, this)">
+                                    <button type="button" class="btn btn-sm {% if prod.activo %}btn-success{% else %}btn-danger{% endif %} fw-bold px-3 py-1 rounded-pill" data-stock-toggle-id="{{ prod.id }}">
                                         <i class="bi {% if prod.activo %}bi-check-circle{% else %}bi-slash-circle{% endif %} me-1"></i>
                                         {% if prod.activo %}Disponible{% else %}Agotado en Cocina{% endif %}
                                     </button>
@@ -353,7 +348,12 @@
 
     <!-- Footer minimalista -->
     <footer class="py-2 text-center text-muted small bg-white border-top">
-        <strong>Safari Pilar KDS</strong> • Módulo Operativo de Cocina Caliente • Sincronización automática en tiempo real
+        <strong>Safari Pilar KDS</strong> • Módulo Operativo de Cocina Caliente •
+        <span class="safari-legal-footer-links ms-2">
+            <a href="{% url 'politica_privacidad' %}">Privacidad</a>
+            <a href="{% url 'terminos_condiciones' %}">Términos</a>
+            <button type="button" data-open-cookie-prefs="1">Cookies</button>
+        </span>
     </footer>
 
     <!-- Bootstrap JS -->
@@ -361,7 +361,9 @@
     <!-- Script Anti Doble Envío -->
     <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
     <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+    <script src="{% static 'js/global/toasts.js' %}"></script>
 
     <script src="{% static 'js/kds/cocina.js' %}"></script>
+    {% include 'ventas/acceso/include_cookie_banner.html' %}
 </body>
 </html>

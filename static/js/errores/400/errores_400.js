@@ -9,3 +9,14 @@ function volverAtrasSafari() {
         window.location.href = '/';
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', (ev) => {
+        const trigger = ev.target.closest('[data-safari-action]');
+        if (!trigger) return;
+        const accion = trigger.dataset.safariAction;
+        if (accion === 'back') {
+            volverAtrasSafari();
+        }
+    });
+});

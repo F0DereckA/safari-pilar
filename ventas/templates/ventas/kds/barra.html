@@ -27,14 +27,14 @@
             
             <!-- Logo y Título -->
             <div class="d-flex align-items-center gap-3">
-                <a href="{% url 'barra' %}" class="d-flex align-items-center gap-2 text-decoration-none" title="Inicio de Barra">
+                <a href="{% url 'barra' %}" class="d-flex align-items-center gap-2 text-decoration-none" title="Inicio de Barra" aria-label="Inicio de Barra">
                     <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Safari" style="height: 50px; width: auto; object-fit: contain;">
                 </a>
                 <div>
                     <h1 class="barra-brand-title mb-0">
-                        <i class="bi bi-cup-straw text-info me-1"></i> KDS BARRA & BEBIDAS
+                        <i class="bi bi-cup-straw text-lcd-cyan me-1" aria-hidden="true"></i> KDS BARRA & BEBIDAS
                     </h1>
-                    <small class="text-light-subtle d-block" style="font-size: 0.8rem;">
+                    <small class="kds-subtitulo-light d-block kds-subtitulo-decorativo" style="font-size: 0.8rem;">
                         {{ local_actual.nombre }} • Monitor Táctil de Barista & Tragos
                     </small>
                 </div>
@@ -46,16 +46,16 @@
                     <span class="btn btn-sm rounded-pill px-3 fw-bold btn-info text-dark">
                         <i class="bi bi-cup-straw me-1"></i> Barra Activa ({{ total_cola }})
                     </span>
-                    <a href="{% url 'cocina' %}" class="btn btn-sm rounded-pill px-3 fw-bold btn-outline-light text-white border-0">
-                        <i class="bi bi-fire me-1"></i> Ir a Cocina
+                    <a href="{% url 'cocina' %}" class="btn btn-sm rounded-pill px-3 fw-bold btn-outline-light border-0">
+                        <i class="bi bi-fire me-1" aria-hidden="true"></i> Ir a Cocina
                     </a>
                 </div>
             </div>
 
             <!-- Derecha: Reloj en vivo y Personal de Barra -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-modo-condensado" id="btnToggleCondensadoKds" title="Alternar Vista Condensada / Amplia de Comandas">
-                    <i class="bi bi-arrows-angle-contract me-1"></i> <span class="d-none d-sm-inline">Modo Condensado</span>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-modo-condensado" id="btnToggleCondensadoKds" aria-pressed="false" title="Alternar Modo Concentración KDS (Esc para salir)">
+                    <i class="bi bi-arrows-angle-contract me-1" id="iconoModoConcentracion"></i> <span id="textoModoConcentracion" class="d-none d-sm-inline">Modo Concentración</span>
                 </button>
 
                 <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalStockBarra" title="Gestionar disponibilidad de bebidas en barra ">
@@ -63,26 +63,26 @@
                 </button>
 
                 <!-- Alerta Auditiva KDS Web Audio API (Echo & Aloy) -->
-                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" id="btnToggleKdsAudio" title="Alerta sonora comanda (880 Hz). Clic para alternar.">
-                    <i class="bi bi-volume-up-fill text-warning"></i>
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" id="btnToggleKdsAudio" aria-pressed="true" title="Alerta sonora comanda (880 Hz). Clic para alternar.">
+                    <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
                     <span class="d-none d-md-inline small fw-bold">Sonido ON</span>
                 </button>
 
                 <!-- Reloj en vivo -->
-                <div class="bg-black text-warning px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
-                    <i class="bi bi-clock me-1"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
+                <div class="bg-black text-lcd-amber px-3 py-1 rounded-pill font-monospace fw-bold border border-warning shadow-sm" style="font-size: 0.95rem;">
+                    <i class="bi bi-clock me-1" aria-hidden="true"></i> <span id="relojVivo">{{ ahora_hora_str }}</span>
                 </div>
 
                 <!-- Personal Activo -->
                 <div class="d-flex align-items-center gap-2 bg-secondary bg-opacity-25 px-3 py-1 rounded-pill border border-secondary text-white">
-                    <i class="bi bi-person-fill text-info"></i>
+                    <i class="bi bi-person-fill text-lcd-cyan" aria-hidden="true"></i>
                     <span class="small fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
                     <span class="badge bg-primary ms-1">Barra</span>
                 </div>
 
                 <!-- Salir -->
-                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
-                    <i class="bi bi-box-arrow-right"></i>
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" title="Cerrar sesión" aria-label="Cerrar sesión">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
                 </a>
             </div>
         </div>
@@ -91,17 +91,17 @@
     <!-- Contenido Principal -->
     <main class="container-fluid px-3 px-lg-4 my-3 flex-grow-1">
 
-        <!-- Mensajes del Sistema en Toast Flotante -->
+        <!-- Mensajes del Sistema en Toast Flotante Breve -->
         {% if messages %}
-        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3 safari-session-toast" role="region" aria-label="Notificaciones">
             {% for message in messages %}
-            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" data-bs-delay="4000" data-bs-autohide="true">
+            <div class="toast align-items-center {% if message.tags == 'error' %}bg-danger text-white{% elif message.tags == 'warning' %}bg-warning text-dark{% elif message.tags == 'info' %}bg-info text-dark{% else %}bg-success text-white{% endif %} border-0 shadow-lg rounded-4" role="status" aria-live="polite" aria-atomic="true" data-bs-delay="3500" data-bs-autohide="true">
                 <div class="d-flex">
                     <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
-                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <i class="bi bi-info-circle-fill fs-5" aria-hidden="true"></i>
                         <div>{{ message }}</div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    <button type="button" class="btn-close {% if message.tags != 'warning' and message.tags != 'info' %}btn-close-white {% endif %}me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
                 </div>
             </div>
             {% endfor %}
@@ -109,49 +109,49 @@
         {% endif %}
 
         <!-- KPIs de Barra -->
-        <div class="row g-2 mb-3 align-items-center">
+        <div class="row g-2 mb-3 align-items-center kds-kpi-strip">
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
-                    <div class="rounded-circle p-2 bg-warning-subtle text-warning fs-5">
-                        <i class="bi bi-hourglass-split"></i>
+                    <div class="rounded-circle p-2 bg-warning-subtle text-warning-emphasis fs-5">
+                        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Pendientes Barra</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="barraBadgePendientes">{{ total_pendientes }}</h4>
+                        <div class="h4 mb-0 fw-bold text-dark font-monospace" id="barraBadgePendientes">{{ total_pendientes }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
-                    <div class="rounded-circle p-2 bg-info-subtle text-info fs-5">
-                        <i class="bi bi-cup-hot-fill"></i>
+                    <div class="rounded-circle p-2 bg-info-subtle text-info-emphasis fs-5">
+                        <i class="bi bi-cup-hot-fill" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">En Preparación</div>
-                        <h4 class="mb-0 fw-bold text-primary font-monospace" id="barraBadgePreparacion">{{ total_en_preparacion }}</h4>
+                        <div class="h4 mb-0 fw-bold text-primary font-monospace" id="barraBadgePreparacion">{{ total_en_preparacion }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
                     <div class="rounded-circle p-2 bg-success-subtle text-success fs-5">
-                        <i class="bi bi-bell-fill"></i>
+                        <i class="bi bi-bell-fill" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Listos p/ Servir</div>
-                        <h4 class="mb-0 fw-bold text-success font-monospace" id="barraBadgeListos">{{ total_listos }}</h4>
+                        <div class="h4 mb-0 fw-bold text-success font-monospace" id="barraBadgeListos">{{ total_listos }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="p-2 rounded-3 bg-white border d-flex align-items-center justify-content-between shadow-xs">
+                <div class="p-2 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-xs">
+                    <div class="rounded-circle p-2 bg-dark-subtle text-dark fs-5">
+                        <i class="bi bi-list-check" aria-hidden="true"></i>
+                    </div>
                     <div>
                         <div class="text-muted small text-uppercase" style="font-size: 0.7rem; font-weight: 700;">Cola Activa Barra</div>
-                        <h4 class="mb-0 fw-bold text-dark font-monospace" id="barraBadgeCola">{{ total_cola }}</h4>
+                        <div class="h4 mb-0 fw-bold text-dark font-monospace" id="barraBadgeCola">{{ total_cola }}</div>
                     </div>
-                    <span class="badge bg-dark rounded-pill px-3 py-2 small">
-                        <i class="bi bi-wifi text-success me-1"></i> Barra En Vivo
-                    </span>
                 </div>
             </div>
         </div>
@@ -185,9 +185,9 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="barra-mesa-titulo">
-                        <i class="bi {% if p.es_mesa %}bi-geo-alt-fill text-info{% else %}bi-bag-check-fill text-warning{% endif %} me-1"></i>{{ p.mesa }}
-                    </h3>
+                    <h2 class="barra-mesa-titulo">
+                        <i class="bi {% if p.es_mesa %}bi-geo-alt-fill text-info-emphasis{% else %}bi-bag-check-fill text-warning-emphasis{% endif %} me-1" aria-hidden="true"></i>{{ p.mesa }}
+                    </h2>
                     <div class="barra-mesero-subtitulo">
                         <i class="bi bi-phone me-1"></i>{{ p.cajero }} • <strong>{{ p.hora_creacion }} hrs</strong>
                     </div>
@@ -218,7 +218,7 @@
 
                     {% if p.observaciones %}
                     <div class="barra-nota-referencia">
-                        <i class="bi bi-chat-left-dots-fill text-warning me-1"></i>
+                        <i class="bi bi-chat-left-dots-fill text-warning-emphasis me-1" aria-hidden="true"></i>
                         <span><strong>Referencia:</strong> {{ p.observaciones }}</span>
                     </div>
                     {% endif %}
@@ -226,9 +226,10 @@
 
                 <!-- Footer de Acción Táctil -->
                 <div class="barra-card-footer">
-                    <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100 m-0" onsubmit="enviarAccionBarraAjax(event, this)">
+                    <form method="POST" action="{% url 'cambiar_estado_pedido' %}" class="w-100 m-0" data-barra-ajax="true">
                         {% csrf_token %}
                         <input type="hidden" name="pedido_id" value="{{ p.id }}">
+                        <input type="hidden" name="estacion" value="BARRA">
                         
                         {% if p.estado == 'PENDIENTE' %}
                             <input type="hidden" name="nuevo_estado" value="EN_PREPARACION">
@@ -258,17 +259,17 @@
         {% else %}
             <!-- Estado Vacío: Sin comandas de barra -->
             <div class="text-center py-5 bg-white rounded-4 border shadow-sm my-4">
-                <div class="p-4 rounded-circle bg-info-subtle text-info d-inline-block mb-3">
-                    <i class="bi bi-cup-hot-fill display-3"></i>
+                <div class="p-4 rounded-circle bg-info-subtle text-info-emphasis d-inline-block mb-3">
+                    <i class="bi bi-cup-hot-fill display-3" aria-hidden="true"></i>
                 </div>
-                <h3 class="fw-bold text-dark" style="font-family: 'Oswald', sans-serif;">
+                <h2 class="h3 fw-bold text-dark" style="font-family: 'Oswald', sans-serif;">
                     ¡BARRA AL DÍA!
-                </h3>
+                </h2>
                 <p class="text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
                     No hay bebidas ni comandas pendientes de barra en este momento para {{ local_actual.nombre }}. Los nuevos pedidos emitidos por meseros o cajeros aparecerán automáticamente aquí.
                 </p>
-                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-info-subtle text-info small fw-semibold border border-info-subtle">
-                    <span class="spinner-grow spinner-grow-sm text-info" role="status"></span>
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-info-subtle text-info-emphasis small fw-semibold border border-info-subtle">
+                    <span class="spinner-grow spinner-grow-sm text-info-emphasis" role="status"></span>
                     <span>Auto-actualización en vivo activa</span>
                 </div>
             </div>
@@ -309,9 +310,9 @@
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div class="modal-content rounded-4 border-0 shadow">
                     <div class="modal-header bg-dark text-white rounded-top-4">
-                        <h5 class="modal-title fw-bold" id="modalStockBarraLabel">
-                            <i class="bi bi-cup-straw text-info me-2"></i> Disponibilidad de Bebidas y Tragos en Barra
-                        </h5>
+                        <h2 class="h5 modal-title fw-bold" id="modalStockBarraLabel">
+                            <i class="bi bi-cup-straw text-lcd-cyan me-2" aria-hidden="true"></i> Disponibilidad de Bebidas y Tragos en Barra
+                        </h2>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body p-3">
@@ -327,7 +328,7 @@
                                     <div class="small text-muted">${{ prod.precio_base|floatformat:0 }} CLP</div>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-sm {% if prod.activo %}btn-success{% else %}btn-danger{% endif %} fw-bold px-3 py-1 rounded-pill" onclick="toggleStockProducto({{ prod.id }}, this)">
+                                    <button type="button" class="btn btn-sm {% if prod.activo %}btn-success{% else %}btn-danger{% endif %} fw-bold px-3 py-1 rounded-pill" data-stock-toggle-id="{{ prod.id }}">
                                         <i class="bi {% if prod.activo %}bi-check-circle{% else %}bi-slash-circle{% endif %} me-1"></i>
                                         {% if prod.activo %}Disponible{% else %}Agotado en Barra{% endif %}
                                     </button>
@@ -350,12 +351,19 @@
 
     <!-- Footer minimalista -->
     <footer class="py-2 text-center text-muted small bg-white border-top">
-        <strong>Safari Pilar BDS</strong> • Módulo Operativo de Barra & Cafetería • Auto-refresco activo en tiempo real
+        <strong>Safari Pilar BDS</strong> • Módulo Operativo de Barra & Cafetería •
+        <span class="safari-legal-footer-links ms-2">
+            <a href="{% url 'politica_privacidad' %}">Privacidad</a>
+            <a href="{% url 'terminos_condiciones' %}">Términos</a>
+            <button type="button" data-open-cookie-prefs="1">Cookies</button>
+        </span>
     </footer>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/global/toasts.js' %}"></script>
 
     <script src="{% static 'js/kds/barra.js' %}"></script>
+    {% include 'ventas/acceso/include_cookie_banner.html' %}
 </body>
 </html>

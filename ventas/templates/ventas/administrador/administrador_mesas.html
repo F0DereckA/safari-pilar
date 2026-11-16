@@ -127,9 +127,9 @@
                     <div class="col-md-5">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
-                                <i class="bi bi-building"></i>
+                                <i class="bi bi-building" aria-hidden="true"></i>
                             </span>
-                            <select name="local_id" class="form-select bg-light border-start-0" onchange="this.form.submit()">
+                            <select name="local_id" class="form-select bg-light border-start-0" data-auto-submit="true" aria-label="Filtrar mesas por local gastronómico">
                                 <option value="">Todos los Locales Gastronómicos</option>
                                 {% for loc in locales %}
                                 <option value="{{ loc.id }}" {% if local_seleccionado and local_seleccionado.id == loc.id %}selected{% endif %}>
@@ -142,9 +142,9 @@
                     <div class="col-md-5">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
-                                <i class="bi bi-search"></i>
+                                <i class="bi bi-search" aria-hidden="true"></i>
                             </span>
-                            <input type="text" id="buscarMesaEnVivo" name="q" value="{{ busqueda_q }}" placeholder="Buscar por mesa (apreta Z y se filtra al tiro)..." class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
+                            <input type="text" id="buscarMesaEnVivo" name="q" value="{{ busqueda_q }}" placeholder="Buscar por mesa (apreta Z y se filtra al tiro)..." aria-label="Buscar por mesa" class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
                         </div>
                     </div>
                     <div class="col-md-2 d-flex gap-2">
@@ -152,8 +152,8 @@
                             Filtrar
                         </button>
                         {% if local_seleccionado or busqueda_q %}
-                        <a href="{% url 'administrador_mesas' %}" class="btn btn-light rounded-pill px-3" title="Limpiar Filtros">
-                            <i class="bi bi-x-lg"></i>
+                        <a href="{% url 'administrador_mesas' %}" class="btn btn-light rounded-pill px-3" title="Limpiar Filtros" aria-label="Limpiar filtros">
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
                         </a>
                         {% endif %}
                     </div>
@@ -172,7 +172,7 @@
                                     <span class="badge" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium); font-size: 0.7rem;">
                                         ID #{{ m.id }}
                                     </span>
-                                    <h5 class="fw-bold text-dark mt-1 mb-0">{{ m.identificador }}</h5>
+                                    <h3 class="h5 fw-bold text-dark mt-1 mb-0">{{ m.identificador }}</h3>
                                 </div>
                                 <span class="badge rounded-pill px-2 py-1 small fw-bold {% if m.estado == 'HABILITADA' %}mesa-badge-habilitada{% elif m.estado == 'OCUPADA' %}mesa-badge-ocupada{% elif m.estado == 'RESERVADA' %}mesa-badge-reservada{% else %}mesa-badge-inactiva{% endif %}">
                                     {{ m.get_estado_display }}
@@ -182,10 +182,10 @@
                             <!-- Datos del Local y Capacidad -->
                             <div class="text-muted small mb-3">
                                 <div class="mb-1 text-truncate">
-                                    <i class="bi bi-building text-danger me-1"></i><strong>{{ m.punto_venta.nombre }}</strong>
+                                    <i class="bi bi-building text-danger me-1" aria-hidden="true"></i><strong>{{ m.punto_venta.nombre }}</strong>
                                 </div>
                                 <div>
-                                    <i class="bi bi-people-fill text-warning me-1"></i>Capacidad: <strong>{{ m.capacidad }} comensales</strong>
+                                    <i class="bi bi-people-fill text-warning-emphasis me-1" aria-hidden="true"></i>Capacidad: <strong>{{ m.capacidad }} comensales</strong>
                                 </div>
                             </div>
                         </div>
@@ -210,12 +210,12 @@
 
                             <div class="d-flex gap-1">
                                 <!-- Botón Modificar -->
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEditarMesa_{{ m.id }}" title="Modificar Mesa">
-                                    <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEditarMesa_{{ m.id }}" title="Modificar Mesa" aria-label="Modificar Mesa {{ m.identificador }}">
+                                    <i class="bi bi-pencil-fill" style="font-size: 0.8rem;" aria-hidden="true"></i>
                                 </button>
                                 <!-- Botón Eliminar -->
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarMesa_{{ m.id }}" title="Eliminar Mesa" {% if m.estado == 'OCUPADA' %}disabled{% endif %}>
-                                    <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminarMesa_{{ m.id }}" title="Eliminar Mesa" aria-label="Eliminar Mesa {{ m.identificador }}" {% if m.estado == 'OCUPADA' %}disabled{% endif %}>
+                                    <i class="bi bi-trash3-fill" style="font-size: 0.8rem;" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -228,10 +228,10 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-light rounded-top-4 border-bottom">
-                                <h5 class="modal-title fw-bold text-dark" id="labelEditarMesa_{{ m.id }}">
-                                    <i class="bi bi-pencil-square text-primary me-2"></i>Modificar Mesa: {{ m.identificador }}
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold text-dark" id="labelEditarMesa_{{ m.id }}">
+                                    <i class="bi bi-pencil-square text-primary me-2" aria-hidden="true"></i>Modificar Mesa: {{ m.identificador }}
+                                </h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_mesas' %}">
                                 {% csrf_token %}
@@ -239,12 +239,12 @@
                                 <input type="hidden" name="mesa_id" value="{{ m.id }}">
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold small text-muted">Identificador de la Mesa:</label>
-                                        <input type="text" name="identificador" value="{{ m.identificador }}" required class="form-control rounded-3" maxlength="20">
+                                        <label for="editMesaIdent_{{ m.id }}" class="form-label fw-bold small text-muted">Identificador de la Mesa:</label>
+                                        <input type="text" id="editMesaIdent_{{ m.id }}" name="identificador" value="{{ m.identificador }}" required class="form-control rounded-3" maxlength="20">
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold small text-muted">Punto de Venta / Local:</label>
-                                        <select name="punto_venta_id" class="form-select rounded-3" required>
+                                        <label for="editMesaLocal_{{ m.id }}" class="form-label fw-bold small text-muted">Punto de Venta / Local:</label>
+                                        <select id="editMesaLocal_{{ m.id }}" name="punto_venta_id" class="form-select rounded-3" required>
                                             {% for loc in locales %}
                                             <option value="{{ loc.id }}" {% if m.punto_venta_id == loc.id %}selected{% endif %}>
                                                 {{ loc.nombre }}
@@ -254,12 +254,12 @@
                                     </div>
                                     <div class="row g-2 mb-3">
                                         <div class="col-6">
-                                            <label class="form-label fw-bold small text-muted">Capacidad (Personas):</label>
-                                            <input type="number" name="capacidad" value="{{ m.capacidad }}" min="1" max="100" required class="form-control rounded-3">
+                                            <label for="editMesaCap_{{ m.id }}" class="form-label fw-bold small text-muted">Capacidad (Personas):</label>
+                                            <input type="number" id="editMesaCap_{{ m.id }}" name="capacidad" value="{{ m.capacidad }}" min="1" max="100" required class="form-control rounded-3">
                                         </div>
                                         <div class="col-6">
-                                            <label class="form-label fw-bold small text-muted">Estado Administrativo:</label>
-                                            <select name="estado" class="form-select rounded-3">
+                                            <label for="editMesaEstado_{{ m.id }}" class="form-label fw-bold small text-muted">Estado Administrativo:</label>
+                                            <select id="editMesaEstado_{{ m.id }}" name="estado" class="form-select rounded-3">
                                                 <option value="HABILITADA" {% if m.estado == 'HABILITADA' %}selected{% endif %}>Habilitada / Libre</option>
                                                 <option value="OCUPADA" {% if m.estado == 'OCUPADA' %}selected{% endif %}>Ocupada</option>
                                                 <option value="RESERVADA" {% if m.estado == 'RESERVADA' %}selected{% endif %}>Reservada</option>
@@ -278,14 +278,14 @@
                 </div>
 
                 <!-- Modal Eliminar Mesa -->
-                <div class="modal fade" id="modalEliminarMesa_{{ m.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="modalEliminarMesa_{{ m.id }}" tabindex="-1" aria-labelledby="labelEliminarMesa_{{ m.id }}" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content rounded-4 border-0 shadow">
                             <div class="modal-header bg-danger text-white rounded-top-4">
-                                <h5 class="modal-title fw-bold">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminar Mesa: {{ m.identificador }}
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <h2 class="modal-title h5 fw-bold" id="labelEliminarMesa_{{ m.id }}">
+                                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>Eliminar Mesa: {{ m.identificador }}
+                                </h2>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                             </div>
                             <form method="POST" action="{% url 'administrador_mesas' %}">
                                 {% csrf_token %}
@@ -296,7 +296,7 @@
                                         ¿Estás seguro de que deseas eliminar <strong>{{ m.identificador }}</strong> de <em>{{ m.punto_venta.nombre }}</em>?
                                     </p>
                                     <div class="alert alert-warning text-start small mb-0 rounded-3">
-                                        <i class="bi bi-shield-lock-fill text-warning me-1"></i>
+                                        <i class="bi bi-shield-lock-fill text-warning-emphasis me-1" aria-hidden="true"></i>
                                         <strong>Protección de Integridad:</strong> Si esta mesa registra consumos históricos, el sistema la desactivará automáticamente para preservar los registros de caja y auditoría tributaria sin provocar pérdida de datos.
                                     </div>
                                 </div>
@@ -312,11 +312,11 @@
                 {% empty %}
                 <div class="col-12">
                     <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
-                        <i class="bi bi-inbox text-muted fs-1 mb-2 d-block"></i>
-                        <h5 class="fw-bold text-dark">No se encontraron mesas registradas</h5>
+                        <i class="bi bi-inbox text-muted fs-1 mb-2 d-block" aria-hidden="true"></i>
+                        <h2 class="h5 fw-bold text-dark">No se encontraron mesas registradas</h2>
                         <p class="text-muted small mb-3">No hay mesas que coincidan con los filtros aplicados o aún no se han creado en este local.</p>
                         <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold mx-auto" data-bs-toggle="modal" data-bs-target="#modalCrearMesa">
-                            <i class="bi bi-plus-circle me-1"></i> Crear Primera Mesa
+                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i> Crear Primera Mesa
                         </button>
                     </div>
                 </div>
@@ -331,23 +331,23 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header bg-danger text-white rounded-top-4">
-                    <h5 class="modal-title fw-bold" id="labelCrearMesa">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Registrar Nueva Mesa de Atención
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 fw-bold" id="labelCrearMesa">
+                        <i class="bi bi-plus-circle-fill me-2" aria-hidden="true"></i>Registrar Nueva Mesa de Atención
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_mesas' %}">
                     {% csrf_token %}
                     <input type="hidden" name="accion" value="crear">
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Identificador de la Mesa (ej: Mesa 15, Terraza 3):</label>
-                            <input type="text" name="identificador" placeholder="Ej: Mesa 15" required class="form-control rounded-3" maxlength="20">
+                            <label for="crearMesaIdent" class="form-label fw-bold small text-muted">Identificador de la Mesa (ej: Mesa 15, Terraza 3):</label>
+                            <input type="text" id="crearMesaIdent" name="identificador" placeholder="Ej: Mesa 15" required class="form-control rounded-3" maxlength="20">
                             <div class="form-text">Debe ser único dentro del mismo local gastronómico.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Punto de Venta / Local Asignado:</label>
-                            <select name="punto_venta_id" class="form-select rounded-3" required>
+                            <label for="crearMesaLocal" class="form-label fw-bold small text-muted">Punto de Venta / Local Asignado:</label>
+                            <select id="crearMesaLocal" name="punto_venta_id" class="form-select rounded-3" required>
                                 <option value="">Selecciona el local...</option>
                                 {% for loc in locales %}
                                 <option value="{{ loc.id }}" {% if local_seleccionado and local_seleccionado.id == loc.id %}selected{% endif %}>
@@ -358,12 +358,12 @@
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">Capacidad Máxima:</label>
-                                <input type="number" name="capacidad" value="4" min="1" max="100" required class="form-control rounded-3">
+                                <label for="crearMesaCap" class="form-label fw-bold small text-muted">Capacidad Máxima:</label>
+                                <input type="number" id="crearMesaCap" name="capacidad" value="4" min="1" max="100" required class="form-control rounded-3">
                             </div>
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">Estado Inicial:</label>
-                                <select name="estado" class="form-select rounded-3">
+                                <label for="crearMesaEstado" class="form-label fw-bold small text-muted">Estado Inicial:</label>
+                                <select id="crearMesaEstado" name="estado" class="form-select rounded-3">
                                     <option value="HABILITADA" selected>Habilitada / Libre</option>
                                     <option value="INACTIVA">Inactiva (Mantenimiento)</option>
                                     <option value="RESERVADA">Reservada</option>
@@ -383,7 +383,7 @@
     <!-- Footer Oficial -->
     <footer class="safari-footer mt-auto py-3 bg-dark text-white text-center">
         <div class="container">
-            <small class="text-white-50">
+            <small class="text-on-brand-muted">
                 Parque Safari Rancagua &copy; 2026 · Sistema Integral de Ventas Gastronómicas · Módulo de Administración y Mesas
             </small>
         </div>

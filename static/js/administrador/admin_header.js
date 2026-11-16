@@ -57,7 +57,39 @@ document.addEventListener('DOMContentLoaded', function() {
     if (relojContenedor && !relojContenedor.hasChildNodes()) {
         const spanReloj = document.createElement('span');
         spanReloj.className = 'badge bg-white text-muted border border-secondary-subtle px-2.5 py-1 rounded-pill small d-none d-md-inline-flex align-items-center gap-1 shadow-xs';
-        spanReloj.innerHTML = '<i class="bi bi-clock-history text-secondary"></i> <span id="relojSesionTexto">Sesión Activa</span>';
+        spanReloj.innerHTML = '<i class="bi bi-clock-history text-secondary" aria-hidden="true"></i> <span id="relojSesionTexto">Sesión Activa</span>';
         relojContenedor.appendChild(spanReloj);
     }
+
+    // 4. Delegación global CSP-compliant para controles compartidos de Administración
+    document.addEventListener('change', function(e) {
+        const autoEl = e.target.closest('[data-auto-submit="true"]');
+        if (autoEl && autoEl.form) {
+            autoEl.form.submit();
+            return;
+        }
+        const toggleEl = e.target.closest('[data-toggle-section]');
+        if (toggleEl) {
+            const target = document.getElementById(toggleEl.getAttribute('data-toggle-section'));
+            if (target) {
+                target.classList.toggle('d-none', !toggleEl.checked);
+            }
+        }
+    });
+
+    document.addEventListener('submit', function(e) {
+        const formConfirm = e.target.closest('form[data-confirm-submit]');
+        if (formConfirm) {
+            const msg = formConfirm.getAttribute('data-confirm-submit') || '¿Confirmar acción?';
+            if (!window.confirm(msg)) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('[data-safari-action="print"]')) {
+            window.print();
+        }
+    });
 });

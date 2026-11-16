@@ -17,6 +17,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
 from ventas.models import Venta, DetalleVenta, PuntoVenta
+from ventas.utils import calcular_desglose_tributario_ventas, estimar_ganancia_neta_serie
 
 
 def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, local_id='todos'):
@@ -44,6 +45,7 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
 
     titulo_periodo = ""
     filas_detalle = []
+    ventas_periodo_qs = ventas_qs.none()
     total_ventas = Decimal('0')
     total_tickets = 0
 
@@ -59,6 +61,7 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
 
         titulo_periodo = f"Día {fecha_target.strftime('%d/%m/%Y')}"
         ventas_dia = ventas_qs.filter(fecha_hora__date=fecha_target)
+        ventas_periodo_qs = ventas_dia
         total_tickets = ventas_dia.count()
 
         for v in ventas_dia.select_related('punto_venta', 'cajero').order_by('fecha_hora'):
@@ -85,6 +88,7 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
         titulo_periodo = f"Semana del {inicio_semana.strftime('%d/%m/%Y')} al {fin_semana.strftime('%d/%m/%Y')}"
 
         ventas_sem = ventas_qs.filter(fecha_hora__date__gte=inicio_semana, fecha_hora__date__lte=fin_semana)
+        ventas_periodo_qs = ventas_sem
         total_tickets = ventas_sem.count()
         total_ventas = ventas_sem.aggregate(tot=Sum('total'))['tot'] or Decimal('0')
 
@@ -121,6 +125,7 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
         titulo_periodo = f"Mes de {meses_nombres.get(m, str(m))} {y}"
 
         ventas_mes = ventas_qs.filter(fecha_hora__date__gte=inicio_mes, fecha_hora__date__lte=fin_mes)
+        ventas_periodo_qs = ventas_mes
         total_tickets = ventas_mes.count()
         total_ventas = ventas_mes.aggregate(tot=Sum('total'))['tot'] or Decimal('0')
 
@@ -144,13 +149,19 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
     else:  # '15_meses' / comparativa histórica real
         tipo_rango = '15_meses'
         titulo_periodo = "Comparativa Histórica Real de Ventas y Rendimiento"
+        ventas_periodo_qs = ventas_qs
         total_tickets = ventas_qs.count()
         total_ventas = ventas_qs.aggregate(tot=Sum('total'))['tot'] or Decimal('0')
 
         meses_agrupados = (
             ventas_qs.annotate(mes_trunc=TruncMonth('fecha_hora'))
             .values('mes_trunc')
-            .annotate(ventas=Sum('total'), tickets=Count('id'))
+            .annotate(
+                ventas=Sum('total'),
+                propinas=Sum('propina'),
+                redondeos=Sum('redondeo_ley_20956'),
+                tickets=Count('id'),
+            )
             .order_by('mes_trunc')
         )
 
@@ -163,7 +174,8 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
             dt = row['mes_trunc']
             mes_label = f"{meses_nombres.get(dt.month, str(dt.month))} {dt.year}"
             v_monto = float(row['ventas'])
-            ganancia = round(v_monto * 0.46, 0)
+            # Margen estimado 46% aplicado sobre consumo neto sin IVA (excluyendo propinas e impuesto)
+            ganancia = estimar_ganancia_neta_serie(row['ventas'], row.get('propinas'), row.get('redondeos'))
             if venta_anterior and venta_anterior > 0:
                 crecimiento = round(((v_monto - venta_anterior) / venta_anterior) * 100, 1)
             else:
@@ -180,15 +192,20 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
                 "tickets": row['tickets']
             })
 
-    # Métricas reales derivadas
-    ganancia_estimada = int(Decimal(str(total_ventas)) * Decimal('0.46'))
+    # Desglose contable real: separa venta neta sin IVA, IVA débito (19%) y propinas (Ley 20.918)
+    desglose_tributario = calcular_desglose_tributario_ventas(ventas_periodo_qs)
+    total_neto_sin_iva = int(desglose_tributario['total_neto_sin_iva'])
+    total_iva_19 = int(desglose_tributario['total_iva_19'])
+    total_propinas = int(desglose_tributario['total_propinas'])
+    total_redondeo = int(desglose_tributario['total_redondeo'])
+    ganancia_estimada = int(round(total_neto_sin_iva * 0.46))
     ticket_promedio = int(total_ventas / max(1, total_tickets))
 
-    # Medios de pago reales desde BD
+    # Medios de pago reales desde BD en el período consultado
     dict_metodos = dict(Venta.METODOS_PAGO)
     medios_pago = []
     if total_ventas > 0:
-        mp_qs = ventas_qs.values('metodo_pago').annotate(total=Sum('total')).order_by('-total')
+        mp_qs = ventas_periodo_qs.values('metodo_pago').annotate(total=Sum('total')).order_by('-total')
         for mp in mp_qs:
             tot_p = float(mp['total'])
             pct = round(tot_p / float(total_ventas) * 100, 1)
@@ -201,10 +218,10 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
         for cod, nom in Venta.METODOS_PAGO:
             medios_pago.append({"medio": nom, "monto": 0, "porcentaje": "0%"})
 
-    # Desglose por local real desde BD
+    # Desglose por local real desde BD en el período consultado
     desglose_locales = []
     for loc in locales_qs:
-        v_loc = ventas_qs.filter(punto_venta=loc)
+        v_loc = ventas_periodo_qs.filter(punto_venta=loc)
         m_loc = v_loc.aggregate(tot=Sum('total'))['tot'] or Decimal('0')
         pct_loc = round(float(m_loc) / float(total_ventas) * 100, 1) if total_ventas > 0 else 0.0
         desglose_locales.append({
@@ -218,10 +235,14 @@ def obtener_datos_reporte(tipo_rango='15_meses', fecha_str=None, mes_str=None, l
         "titulo_periodo": titulo_periodo,
         "nombre_local": nombre_local,
         "total_ventas": int(total_ventas),
+        "total_neto_sin_iva": total_neto_sin_iva,
+        "total_iva_19": total_iva_19,
+        "total_propinas": total_propinas,
+        "total_redondeo": total_redondeo,
         "total_tickets": total_tickets,
         "ticket_promedio": ticket_promedio,
         "ganancia_estimada": ganancia_estimada,
-        "margen_promedio": "46.0%",
+        "margen_promedio": "46.0% (s/Neto)",
         "filas_detalle": filas_detalle,
         "medios_pago": medios_pago,
         "desglose_locales": desglose_locales,
@@ -289,12 +310,17 @@ def generar_excel_ventas(datos):
     ws["B4"] = datos["titulo_periodo"]
     ws["A5"] = "Punto de Venta:"
     ws["B5"] = datos["nombre_local"]
+    ws["A6"] = "Desglose Tributario:"
+    ws["B6"] = (
+        f"Neto ${datos.get('total_neto_sin_iva', 0):,} | IVA 19% ${datos.get('total_iva_19', 0):,} | "
+        f"Propinas ${datos.get('total_propinas', 0):,}"
+    ).replace(",", ".")
     ws["E4"] = "Fecha Emisión:"
     ws["F4"] = datos["fecha_emision"]
     ws["E5"] = "Sistema:"
     ws["F5"] = "Safari Pilar v2.0"
 
-    for row in range(4, 6):
+    for row in range(4, 7):
         ws[f"A{row}"].font = font_bold
         ws[f"E{row}"].font = font_bold
         ws[f"B{row}"].font = font_normal
@@ -476,12 +502,15 @@ def generar_word_ventas(datos):
     p_meta.runs[0].font.size = Pt(12)
     p_meta.runs[0].font.color.rgb = RGBColor(139, 0, 0)
 
-    t_meta = doc.add_table(rows=4, cols=2)
+    t_meta = doc.add_table(rows=7, cols=2)
     t_meta.alignment = WD_TABLE_ALIGNMENT.CENTER
     meta_rows = [
         ("Fecha y Hora de Emisión:", datos["fecha_emision"]),
         ("Punto Gastronómico:", datos["nombre_local"]),
         ("Total Ventas Recaudado:", f"${datos['total_ventas']:,} CLP".replace(",", ".")),
+        ("Consumo Neto Afecto (sin IVA):", f"${datos.get('total_neto_sin_iva', 0):,} CLP".replace(",", ".")),
+        ("IVA Débito Fiscal (19%):", f"${datos.get('total_iva_19', 0):,} CLP".replace(",", ".")),
+        ("Propinas Ley 20.918 (Exentas):", f"${datos.get('total_propinas', 0):,} CLP".replace(",", ".")),
         ("Total de Tickets / Clientes Atendidos:", f"{datos['total_tickets']:,}".replace(",", ".")),
     ]
     for idx, (k, v) in enumerate(meta_rows):

@@ -34,6 +34,25 @@ class PerfilEmpleado(models.Model):
     debe_cambiar_clave = models.BooleanField(default=True, help_text="Exige cambio forzoso de contrasena en primer ingreso")
     intentos_fallidos = models.PositiveIntegerField(default=0, help_text="Contador de intentos fallidos consecutivos")
     bloqueado_hasta = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora hasta cuando el acceso esta bloqueado")
+    pin_operativo_hash = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        help_text="Hash PBKDF2/Argon2 del PIN numérico rápido para desbloqueo de terminal POS"
+    )
+
+    def set_pin_operativo(self, raw_pin):
+        """Almacena el PIN de desbloqueo rápido únicamente cifrado/hasheado."""
+        from django.contrib.auth.hashers import make_password
+        self.pin_operativo_hash = make_password(str(raw_pin).strip())
+        self.save(update_fields=['pin_operativo_hash'])
+
+    def check_pin_operativo(self, raw_pin):
+        """Valida un PIN numérico ingresado contra su hash almacenado en BD."""
+        from django.contrib.auth.hashers import check_password
+        if not self.pin_operativo_hash or not raw_pin:
+            return False
+        return check_password(str(raw_pin).strip(), self.pin_operativo_hash)
 
     def clave_expirada(self):
         """Verifica si han transcurrido 6 meses (180 dias) desde el ultimo cambio de contrasena"""
@@ -68,6 +87,27 @@ class PerfilEmpleado(models.Model):
         from decimal import Decimal
         res = self.usuario.consumos_internos.filter(estado='REGISTRADO').aggregate(total=Sum('total'))['total']
         return res or Decimal('0.00')
+
+    def consentimiento_vigente(self):
+        """Retorna el último consentimiento válido de privacidad/términos registrado para el usuario."""
+        from ventas.security import VERSION_POLITICA_ACTUAL, VERSION_TERMINOS_ACTUAL
+        return self.usuario.consentimientos.filter(
+            acepto_privacidad=True,
+            acepto_terminos=True,
+            version_politica=VERSION_POLITICA_ACTUAL,
+            version_terminos=VERSION_TERMINOS_ACTUAL,
+        ).order_by('-aceptado_en').first()
+
+    def datos_minimizados_resumen(self):
+        """Devuelve una vista enmascarada de datos personales para paneles administrativos."""
+        from ventas.security import enmascarar_email, enmascarar_rut
+        return {
+            'username': self.usuario.username,
+            'nombre_completo': self.usuario.get_full_name() or self.usuario.username,
+            'rut_enmascarado': enmascarar_rut(self.rut),
+            'email_enmascarado': enmascarar_email(self.usuario.email),
+            'tiene_telefono': bool(self.telefono),
+        }
 
     def __str__(self):
         nombre = self.usuario.get_full_name() or self.usuario.username
@@ -278,7 +318,7 @@ class Producto(models.Model):
     precio_base = models.DecimalField(max_digits=10, decimal_places=2)
     descripcion = models.TextField(blank=True, null=True)
     puntos_venta = models.ManyToManyField(PuntoVenta, blank=True, related_name='productos_disponibles')
-    activo = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True, db_index=True)
     en_oferta = models.BooleanField(default=False, help_text="Indica si el producto tiene promoción u oferta activa")
     tipo_oferta = models.CharField(max_length=20, choices=TIPOS_OFERTA, default='NINGUNA', help_text="Tipo de promoción (3x2, 2da a $1 peso, etc.)")
     precio_oferta = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Precio promocional fijo o precio de la 2da unidad (ej. $1, $5, $500)")
@@ -482,6 +522,9 @@ class Producto(models.Model):
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ['categoria', 'nombre']
+        indexes = [
+            models.Index(fields=['activo', 'categoria']),
+        ]
 
 
 # ==============================================================================
@@ -558,7 +601,7 @@ class Mesa(models.Model):
     identificador = models.CharField(max_length=20, help_text="Ej: Mesa 1, Terraza 3")
     punto_venta = models.ForeignKey(PuntoVenta, on_delete=models.PROTECT, related_name='mesas')
     capacidad = models.PositiveIntegerField(default=4)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='HABILITADA')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='HABILITADA', db_index=True)
     fecha_ocupacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de ocupación actual de la mesa (RF17)")
 
     def get_venta_activa(self):
@@ -676,6 +719,9 @@ class Mesa(models.Model):
         verbose_name = "Mesa"
         verbose_name_plural = "Mesas"
         unique_together = ('identificador', 'punto_venta')
+        indexes = [
+            models.Index(fields=['punto_venta', 'estado']),
+        ]
 
 
 # ==============================================================================
@@ -707,9 +753,13 @@ class Venta(models.Model):
     metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO, default='EFECTIVO')
     total_sin_redondeo = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Monto antes de redondeo de ley")
     redondeo_ley_20956 = models.DecimalField(max_digits=8, decimal_places=2, default=0, help_text="Ajuste Ley 20.956 para efectivo")
+    propina = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Propina voluntaria Ley N° 20.918 (Exenta de IVA)")
+    porcentaje_propina = models.PositiveSmallIntegerField(default=0, help_text="Porcentaje de propina voluntaria seleccionado (0, 10, 15, 20 o personalizado)")
+    monto_abonado_parcial = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text="Total de abonos parciales previos aplicados sobre esta venta (Split Bill)")
+    venta_origen = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='abonos_parciales', help_text="Venta abierta original si este registro es un abono parcial")
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='PAGADA')
-    fecha_hora = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PAGADA', db_index=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def clean(self):
         super().clean()
@@ -755,6 +805,24 @@ class Venta(models.Model):
             return f"Mesa {self.mesa.identificador} (Salón)"
         return "Retiro Rápido / Mostrador"
 
+    def get_subtotal_consumo(self):
+        """Retorna el subtotal de consumo en alimentos y bebidas (base imponible para IVA, sin propina y excluyendo abonos parciales ya emitidos)"""
+        detalles_sum = self.detalles.aggregate(models.Sum('subtotal'))['subtotal__sum']
+        if detalles_sum is not None:
+            abonado_previo = self.monto_abonado_parcial or Decimal('0.00')
+            return max(Decimal('0'), detalles_sum - abonado_previo)
+        return max(Decimal('0'), (self.total_sin_redondeo or self.total) - self.propina)
+
+    def get_monto_neto(self):
+        """Retorna el monto neto (afecto a IVA 19%) derivado estrictamente de los productos consumidos"""
+        subtotal = self.get_subtotal_consumo()
+        return round(subtotal / Decimal('1.19'), 2)
+
+    def get_monto_iva(self):
+        """Retorna el IVA 19% calculado exclusivamente sobre el consumo gastronómico (la propina está 100% exenta)"""
+        subtotal = self.get_subtotal_consumo()
+        return round(subtotal * Decimal('19') / Decimal('119'), 0)
+
     def __str__(self):
         return f"Venta #{self.id} (${self.total:,.0f}) - {self.get_modalidad_display()}"
 
@@ -762,6 +830,11 @@ class Venta(models.Model):
         verbose_name = "Venta"
         verbose_name_plural = "Ventas"
         ordering = ['-fecha_hora']
+        indexes = [
+            models.Index(fields=['punto_venta', 'estado']),
+            models.Index(fields=['caja', 'estado']),
+            models.Index(fields=['fecha_hora', 'estado']),
+        ]
 
 
 # ==============================================================================
@@ -847,9 +920,26 @@ class Pedido(models.Model):
         ('CANCELADO', 'Cancelado'),
     ]
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='pedidos')
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE', db_index=True)
+    estado_cocina = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE', db_index=True)
+    estado_barra = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE', db_index=True)
     observaciones = models.TextField(blank=True, null=True, help_text="Instrucciones especiales para cocina/barra")
-    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.pk and self.estado != 'PENDIENTE':
+            if self.estado_cocina == 'PENDIENTE':
+                self.estado_cocina = self.estado
+            if self.estado_barra == 'PENDIENTE':
+                self.estado_barra = self.estado
+        super().save(*args, **kwargs)
+
+    def get_estaciones_activas(self):
+        """Determina qué estaciones (COCINA, BARRA) tienen productos reales asignados en este pedido."""
+        estaciones = set()
+        for det in self.detalles.select_related('producto__categoria').all():
+            estaciones.add('BARRA' if det.producto.get_destino_operativo() == 'BARRA' else 'COCINA')
+        return estaciones or {'COCINA'}
+    creado_en = models.DateTimeField(auto_now_add=True, db_index=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     fecha_inicio_preparacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de preparación en cocina/barra (RF13/RF16)")
     fecha_listo = models.DateTimeField(null=True, blank=True, help_text="Timestamp de marcado como listo para servir (RF13/RF16)")
@@ -1018,6 +1108,10 @@ class Pedido(models.Model):
         verbose_name = "Pedido / Comanda"
         verbose_name_plural = "Pedidos / Comandas"
         ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['estado', 'creado_en']),
+            models.Index(fields=['venta', 'estado']),
+        ]
 
 
 # ==============================================================================
@@ -1068,9 +1162,9 @@ class Ticket(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, null=True, blank=True, related_name='tickets')
     venta = models.ForeignKey('Venta', on_delete=models.CASCADE, null=True, blank=True, related_name='tickets_asociados', help_text="Venta asociada al ticket (RF08)")
     codigo = models.CharField(max_length=30, unique=True, help_text="Ej: COM-0085, TIK-C-0102")
-    tipo_destino = models.CharField(max_length=20, choices=DESTINOS, default='COCINA')
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='EMITIDO')
-    fecha_hora = models.DateTimeField(auto_now_add=True)
+    tipo_destino = models.CharField(max_length=20, choices=DESTINOS, default='COCINA', db_index=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='EMITIDO', db_index=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True)
     contenido_impresion = models.TextField(blank=True, null=True, help_text="Texto listo para impresora térmica futura")
     # Campos RF08.6: Reimpresión Trazable
     es_reimpresion = models.BooleanField(default=False, help_text="Indica si este ticket ha sido reimpreso (RF08.6)")
@@ -1108,6 +1202,11 @@ class Ticket(models.Model):
         verbose_name = "Ticket de Producción"
         verbose_name_plural = "Tickets de Producción"
         ordering = ['-fecha_hora']
+        indexes = [
+            models.Index(fields=['punto_venta', 'tipo_destino']),
+            models.Index(fields=['estado_impresion', 'fecha_hora']),
+            models.Index(fields=['estado', 'fecha_hora']),
+        ]
 
 
 # ==============================================================================
@@ -1380,6 +1479,12 @@ class ConvenioHuesped(models.Model):
         """Valida si aun le quedan consumos disponibles hoy"""
         return self.es_valido_hoy() and (self.consumos_hoy_count() < self.limite_diario)
 
+    @property
+    def token_qr_firmado(self):
+        """Retorna el pase QR completo sellado con HMAC-SHA256 (`CODIGO:FIRMA`)."""
+        from ventas.utils import generar_firma_qr_convenio
+        return f"{self.codigo_qr}:{generar_firma_qr_convenio(self.codigo_qr)}"
+
     def __str__(self):
         return f"{self.numero_cabana} - {self.nombre_titular} [{self.codigo_qr}] ({self.get_tipo_beneficio_display()})"
 
@@ -1489,4 +1594,227 @@ class OfertaTemporada(models.Model):
         verbose_name = "Oferta de Temporada"
         verbose_name_plural = "Ofertas de Temporada"
         ordering = ['-fecha_inicio']
+
+
+# ==============================================================================
+# 16. PRIVACIDAD, CONSENTIMIENTOS Y RETENCIÓN DE DATOS (LEY 19.628 / 21.719)
+# ==============================================================================
+class RegistroConsentimiento(models.Model):
+    """
+    Registro auditable de aceptación explícita (opt-in sin casilla premarcada)
+    de Política de Privacidad, Términos Académicos y Cookies de Análisis.
+    Registra QUIÉN aceptó, CUÁNDO y sella integridad criptográfica con HMAC-SHA256.
+    """
+    ORIGENES = [
+        ('LOGIN_PORTAL', 'Portal de Acceso'),
+        ('MI_PRIVACIDAD', 'Portal Derechos ARCO / Mi Privacidad'),
+        ('COOKIE_BANNER', 'Preferencias de Cookies'),
+        ('REVOKE_ARCO', 'Revocación / Baja ARCO'),
+    ]
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='consentimientos',
+    )
+    username_snapshot = models.CharField(
+        max_length=150,
+        help_text="Identificador del colaborador o visitante al momento del consentimiento",
+    )
+    rol_snapshot = models.CharField(max_length=30, blank=True, default='')
+    origen = models.CharField(max_length=40, choices=ORIGENES, default='LOGIN_PORTAL')
+    version_politica = models.CharField(max_length=30, default='1.0-academica')
+    version_terminos = models.CharField(max_length=30, default='1.0-academica')
+    acepto_privacidad = models.BooleanField(default=False)
+    acepto_terminos = models.BooleanField(default=False)
+    acepto_cookies_analisis = models.BooleanField(default=False)
+    aceptado_en = models.DateTimeField(default=timezone.now, db_index=True)
+    ip_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text="Resumen SHA-256 con sal de la IP cliente para minimizar exposición de datos de red",
+    )
+    user_agent_hash = models.CharField(max_length=64, blank=True, default='')
+    hash_integridad = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text="Firma HMAC-SHA256 que garantiza inmutabilidad de la prueba de consentimiento",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.aceptado_en:
+            self.aceptado_en = timezone.now()
+        if not self.hash_integridad:
+            from ventas.security import firmar_registro_consentimiento
+            self.hash_integridad = firmar_registro_consentimiento(
+                username=self.username_snapshot,
+                version_politica=self.version_politica,
+                version_terminos=self.version_terminos,
+                acepto_privacidad=self.acepto_privacidad,
+                acepto_terminos=self.acepto_terminos,
+                acepto_cookies_analisis=self.acepto_cookies_analisis,
+                timestamp_iso=self.aceptado_en.isoformat(),
+            )
+        super().save(*args, **kwargs)
+
+    def es_integro(self):
+        from ventas.security import verificar_integridad_consentimiento
+        return verificar_integridad_consentimiento(self)
+
+    def __str__(self):
+        estado = "ACEPTADO" if (self.acepto_privacidad and self.acepto_terminos) else "REVOCADO/PARCIAL"
+        return f"[{estado}] {self.username_snapshot} @ {self.aceptado_en:%Y-%m-%d %H:%M} ({self.origen})"
+
+    class Meta:
+        verbose_name = "Registro de Consentimiento y Privacidad"
+        verbose_name_plural = "Registros de Consentimiento y Privacidad"
+        ordering = ['-aceptado_en']
+        indexes = [
+            models.Index(fields=['username_snapshot', 'aceptado_en'], name='idx_cons_user_fecha'),
+        ]
+
+
+def registrar_evento_consentimiento(
+    request,
+    usuario=None,
+    username_override='',
+    origen='LOGIN_PORTAL',
+    acepto_privacidad=False,
+    acepto_terminos=False,
+    acepto_cookies_analisis=False,
+    minimizar_metadatos=False,
+):
+    """Registra de forma centralizada un evento verificable de aceptación o actualización ARCO/Cookies."""
+    from ventas.security import (
+        VERSION_POLITICA_ACTUAL,
+        VERSION_TERMINOS_ACTUAL,
+        hash_dato_sensible,
+        obtener_ip_segura,
+    )
+
+    user_obj = usuario if (usuario and getattr(usuario, 'is_authenticated', False)) else None
+    username_val = username_override or (user_obj.username if user_obj else 'visitante_anonimo')
+    perfil = getattr(user_obj, 'perfil', None) if user_obj else None
+    rol_val = perfil.rol if perfil else ('ANONIMO' if not user_obj else 'SIN_ROL')
+    if minimizar_metadatos or request is None:
+        ip_h = ''
+        ua_h = ''
+    else:
+        ip_h = hash_dato_sensible(obtener_ip_segura(request), contexto='consent-ip')
+        ua_h = hash_dato_sensible(request.META.get('HTTP_USER_AGENT', ''), contexto='consent-ua')
+
+    return RegistroConsentimiento.objects.create(
+        usuario=user_obj,
+        username_snapshot=username_val[:150],
+        rol_snapshot=rol_val[:30],
+        origen=origen,
+        version_politica=VERSION_POLITICA_ACTUAL,
+        version_terminos=VERSION_TERMINOS_ACTUAL,
+        acepto_privacidad=bool(acepto_privacidad),
+        acepto_terminos=bool(acepto_terminos),
+        acepto_cookies_analisis=bool(acepto_cookies_analisis),
+        ip_hash=ip_h,
+        user_agent_hash=ua_h,
+    )
+
+
+def anonimizar_datos_usuario(usuario, request=None, motivo='Solicitud de eliminación ARCO'):
+    """
+    Anonimiza datos personales identificables (PII) del usuario y su perfil conservando
+    la integridad referencial contable/académica de ventas o jornadas históricas.
+    """
+    from ventas.security import hash_dato_sensible
+
+    anon_tag = hash_dato_sensible(f"{usuario.id}:{usuario.username}:{timezone.now().isoformat()}", contexto='anon')[:12]
+    nuevo_username = f"anon_{anon_tag}"
+
+    if request is not None:
+        registrar_evento_consentimiento(
+            request=request,
+            usuario=None,
+            username_override=f"{nuevo_username} (baja)",
+            origen='REVOKE_ARCO',
+            acepto_privacidad=False,
+            acepto_terminos=False,
+            acepto_cookies_analisis=False,
+            minimizar_metadatos=True,
+        )
+
+    usuario.first_name = 'Usuario'
+    usuario.last_name = 'Anonimizado'
+    usuario.email = ''
+    usuario.username = nuevo_username
+    usuario.is_active = False
+    usuario.set_unusable_password()
+    usuario.save(update_fields=['first_name', 'last_name', 'email', 'username', 'is_active', 'password'])
+
+    perfil = getattr(usuario, 'perfil', None)
+    if perfil:
+        perfil.rut = None
+        perfil.telefono = ''
+        perfil.activo = False
+        perfil.save(update_fields=['rut', 'telefono', 'activo'])
+
+    RegistroConsentimiento.objects.filter(usuario=usuario).update(
+        usuario=None,
+        username_snapshot=nuevo_username,
+        ip_hash='',
+        user_agent_hash='',
+    )
+    return nuevo_username
+
+
+def purgar_datos_por_retencion(dias_consentimiento=365, dias_inactivos=180):
+    """
+    Ejecuta las reglas automáticas de retención definida:
+    - Depura huellas IP/User-Agent de registros con antigüedad mayor a logs_seguridad_ip (30 días).
+    - Elimina registros de preferencias de cookies anónimos antiguos (> 30 días) y auditorías expiradas (> dias_consentimiento).
+    - Anonimiza cuentas desactivadas sin actividad reciente mayor a `dias_inactivos`.
+    """
+    from ventas.security import RETENCION_DATOS_DIAS
+
+    ahora = timezone.now()
+    dias_ip = int(RETENCION_DATOS_DIAS.get('logs_seguridad_ip', 30))
+    limite_ip = ahora - timedelta(days=dias_ip)
+    limite_cons = ahora - timedelta(days=int(dias_consentimiento))
+    limite_inact = ahora - timedelta(days=int(dias_inactivos))
+
+    eliminados_cookies, _ = RegistroConsentimiento.objects.filter(
+        origen='COOKIE_BANNER',
+        usuario__isnull=True,
+        aceptado_en__lt=limite_ip,
+    ).delete()
+
+    hashes_ip_purgados = RegistroConsentimiento.objects.filter(
+        aceptado_en__lt=limite_ip,
+    ).filter(
+        models.Q(ip_hash__gt='') | models.Q(user_agent_hash__gt='')
+    ).update(ip_hash='', user_agent_hash='')
+
+    eliminados_antiguos, _ = RegistroConsentimiento.objects.filter(
+        aceptado_en__lt=limite_cons,
+    ).delete()
+
+    perfiles_inactivos = PerfilEmpleado.objects.filter(
+        activo=False,
+        usuario__is_active=False,
+        fecha_cambio_clave__lt=limite_inact,
+    ).exclude(usuario__username__startswith='anon_').select_related('usuario')
+
+    anonimizados = 0
+    for perfil in perfiles_inactivos:
+        anonimizar_datos_usuario(perfil.usuario, motivo='Retención académica expirada')
+        anonimizados += 1
+
+    return {
+        'cookies_anonimas_purgadas': eliminados_cookies,
+        'hashes_ip_purgados': hashes_ip_purgados,
+        'consentimientos_expirados_purgados': eliminados_antiguos,
+        'cuentas_anonimizadas_retencion': anonimizados,
+    }
+
 

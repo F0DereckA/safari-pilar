@@ -35,7 +35,7 @@
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
                     <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                 </div>
             {% endfor %}
         {% endif %}
@@ -44,9 +44,9 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
             <div>
                 <div class="d-flex align-items-center gap-2">
-                    <h3 class="mb-0 fw-bold text-dark font-oswald text-uppercase">
+                    <h2 class="h3 mb-0 fw-bold text-dark font-oswald text-uppercase">
                         <i class="bi bi-tags-fill text-danger me-2"></i>Centro de Promociones & Descuentos
-                    </h3>
+                    </h2>
                     <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold">
                         <i class="bi bi-shield-check me-1"></i>Módulo Administrador Realista
                     </span>
@@ -56,10 +56,10 @@
                 </p>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-warning rounded-pill px-3 py-2 fw-bold shadow-xs text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                <button type="button" class="btn btn-warning rounded-pill px-3 py-2 fw-bold shadow-xs text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
                     <i class="bi bi-plus-circle-fill me-1"></i> Nueva Promo por Producto
                 </button>
-                <button class="btn btn-danger rounded-pill px-3 py-2 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
+                <button type="button" class="btn btn-danger rounded-pill px-3 py-2 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
                     <i class="bi bi-credit-card-2-front-fill me-1"></i> Nueva Campaña / Tarjetas
                 </button>
             </div>
@@ -69,45 +69,45 @@
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-lg-3">
                 <div class="stat-kpi-card shadow-xs">
-                    <div class="stat-kpi-icon bg-warning bg-opacity-15 text-warning">
+                    <div class="stat-kpi-icon bg-warning bg-opacity-15 text-warning-emphasis">
                         <i class="bi bi-coin"></i>
                     </div>
                     <div>
                         <span class="text-muted small fw-bold text-uppercase d-block">Promos en Productos</span>
-                        <h4 class="mb-0 fw-bold font-oswald text-dark">{{ productos_oferta_count }} Activas</h4>
+                        <div class="h4 mb-0 fw-bold font-oswald text-dark">{{ productos_oferta_count }} Activas</div>
                     </div>
                 </div>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="stat-kpi-card shadow-xs">
-                    <div class="stat-kpi-icon bg-danger bg-opacity-15 text-danger">
+                    <div class="stat-kpi-icon bg-danger bg-opacity-15 text-danger-emphasis">
                         <i class="bi bi-credit-card"></i>
                     </div>
                     <div>
                         <span class="text-muted small fw-bold text-uppercase d-block">Campañas & Tarjetas</span>
-                        <h4 class="mb-0 fw-bold font-oswald text-dark">{{ activas_count }} / {{ ofertas.count }} en Vivo</h4>
+                        <div class="h4 mb-0 fw-bold font-oswald text-dark">{{ activas_count }} / {{ ofertas.count }} en Vivo</div>
                     </div>
                 </div>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="stat-kpi-card shadow-xs">
-                    <div class="stat-kpi-icon bg-success bg-opacity-15 text-success">
+                    <div class="stat-kpi-icon bg-success bg-opacity-15 text-success-emphasis">
                         <i class="bi bi-shield-lock"></i>
                     </div>
                     <div>
                         <span class="text-muted small fw-bold text-uppercase d-block">Control de Redondeo</span>
-                        <h4 class="mb-0 fw-bold font-oswald text-success">Ley N° 20.956</h4>
+                        <div class="h4 mb-0 fw-bold font-oswald text-success">Ley N° 20.956</div>
                     </div>
                 </div>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="stat-kpi-card shadow-xs">
-                    <div class="stat-kpi-icon bg-primary bg-opacity-15 text-primary">
+                    <div class="stat-kpi-icon bg-primary bg-opacity-15 text-primary-emphasis">
                         <i class="bi bi-receipt-cutoff"></i>
                     </div>
                     <div>
                         <span class="text-muted small fw-bold text-uppercase d-block">Límites Comerciales</span>
-                        <h4 class="mb-0 fw-bold font-oswald text-dark">Topes Activos</h4>
+                        <div class="h4 mb-0 fw-bold font-oswald text-dark">Topes Activos</div>
                     </div>
                 </div>
             </div>
@@ -139,12 +139,12 @@
                 <div class="card card-safari border-0 shadow-sm overflow-hidden mb-4">
                     <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
-                            <h5 class="mb-0 fw-bold text-dark font-oswald text-uppercase">
-                                <i class="bi bi-stars text-warning me-2"></i>Catálogo con Promociones Activas
-                            </h5>
+                            <h3 class="h5 mb-0 fw-bold text-dark font-oswald text-uppercase">
+                                <i class="bi bi-stars text-warning-emphasis me-2"></i>Catálogo con Promociones Activas
+                            </h3>
                             <span class="text-muted small">Configuración de precio de segunda unidad, 2x1, 3x2 y límite por comanda</span>
                         </div>
-                        <button class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                        <button type="button" class="btn btn-sm btn-outline-warning fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
                             <i class="bi bi-plus-lg me-1"></i> Asignar Promoción a Producto
                         </button>
                     </div>
@@ -218,7 +218,7 @@
                                         </td>
                                         <td>
                                             {% if p.en_oferta %}
-                                                <span class="badge bg-success bg-opacity-15 text-success fw-bold px-2 py-1">
+                                                <span class="badge bg-success bg-opacity-15 text-success-emphasis fw-bold px-2 py-1">
                                                     <i class="bi bi-check-circle-fill me-1"></i>Activa
                                                 </span>
                                             {% else %}
@@ -234,8 +234,8 @@
                                                     {% csrf_token %}
                                                     <input type="hidden" name="accion" value="toggle_promo_producto">
                                                     <input type="hidden" name="producto_id" value="{{ p.id }}">
-                                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="{% if p.en_oferta %}Pausar promoción{% else %}Reanudar promoción{% endif %}">
-                                                        <i class="bi {% if p.en_oferta %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="{% if p.en_oferta %}Pausar promoción{% else %}Reanudar promoción{% endif %}" aria-label="{% if p.en_oferta %}Pausar promoción de {{ p.nombre }}{% else %}Reanudar promoción de {{ p.nombre }}{% endif %}">
+                                                        <i class="bi {% if p.en_oferta %}bi-pause-fill{% else %}bi-play-fill{% endif %}" aria-hidden="true"></i>
                                                     </button>
                                                 </form>
 
@@ -250,17 +250,18 @@
                                                         data-limite="{{ p.limite_oferta_por_ticket|default:'0' }}"
                                                         data-desc="{{ p.descripcion_oferta|default:'' }}"
                                                         data-min-cant="{{ p.cantidad_minima_oferta|default:'2' }}"
-                                                        title="Editar parámetros de la promoción">
-                                                    <i class="bi bi-pencil-square"></i>
+                                                        title="Editar parámetros de la promoción"
+                                                        aria-label="Editar promoción de {{ p.nombre }}">
+                                                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
                                                 </button>
 
                                                 <!-- Eliminar Promo -->
-                                                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline m-0" onsubmit="return confirm('¿Seguro que deseas eliminar la promoción de {{ p.nombre }}? El producto volverá a su precio estándar.')">
+                                                <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="d-inline m-0" data-confirm-submit="¿Seguro que deseas eliminar la promoción de {{ p.nombre }}? El producto volverá a su precio estándar.">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="accion" value="eliminar_promo_producto">
                                                     <input type="hidden" name="producto_id" value="{{ p.id }}">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar promoción">
-                                                        <i class="bi bi-trash-fill"></i>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar promoción" aria-label="Eliminar promoción de {{ p.nombre }}">
+                                                        <i class="bi bi-trash-fill" aria-hidden="true"></i>
                                                     </button>
                                                 </form>
                                             </div>
@@ -269,10 +270,10 @@
                                     {% empty %}
                                     <tr>
                                         <td colspan="6" class="text-center py-5 text-muted">
-                                            <i class="bi bi-tag text-warning fs-1 d-block mb-2"></i>
-                                            <h5 class="fw-bold">No hay productos en promoción actualmente</h5>
+                                            <i class="bi bi-tag text-warning-emphasis fs-1 d-block mb-2" aria-hidden="true"></i>
+                                            <h4 class="h5 fw-bold">No hay productos en promoción actualmente</h4>
                                             <p class="small mb-3">Configura tu primera promo de 2da unidad a $1, $5, $500, 2x1 o porcentaje de descuento.</p>
-                                            <button class="btn btn-warning rounded-pill px-4 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
+                                            <button type="button" class="btn btn-warning rounded-pill px-4 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaPromoProducto">
                                                 <i class="bi bi-plus-circle-fill me-1"></i> Asignar Primera Promoción
                                             </button>
                                         </td>
@@ -307,7 +308,7 @@
                                 </div>
                             </div>
                             <div class="campaign-card-body">
-                                <h5 class="fw-bold text-dark mb-1">{{ o.nombre }}</h5>
+                                <h3 class="h5 fw-bold text-dark mb-1">{{ o.nombre }}</h3>
                                 <p class="text-secondary small mb-3 flex-grow-1">{{ o.descripcion|default:"Campaña comercial oficial de Parque Safari." }}</p>
 
                                 {% if o.banco_convenio %}
@@ -342,14 +343,14 @@
                                         <input type="hidden" name="accion" value="toggle">
                                         <input type="hidden" name="oferta_id" value="{{ o.id }}">
                                         <div class="form-check form-switch m-0" title="Activar / Desactivar Campaña">
-                                            <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" {% if o.activa %}checked{% endif %}>
+                                            <input class="form-check-input" type="checkbox" role="switch" data-auto-submit="true" aria-label="{% if o.activa %}Pausar campaña {{ o.nombre }}{% else %}Activar campaña {{ o.nombre }}{% endif %}" {% if o.activa %}checked{% endif %}>
                                         </div>
                                     </form>
                                     <span class="small fw-bold text-muted">{% if o.activa %}Activa{% else %}Pausada{% endif %}</span>
                                 </div>
                                 <div class="d-flex gap-1">
                                     <!-- Botón Editar -->
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5" 
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5" 
                                             data-bs-toggle="modal" data-bs-target="#modalEditarCampana"
                                             data-id="{{ o.id }}"
                                             data-nombre="{{ o.nombre }}"
@@ -366,17 +367,18 @@
                                             data-activa="{% if o.activa %}true{% else %}false{% endif %}"
                                             data-cat="{{ o.categoria_aplicable_id|default:'' }}"
                                             data-prod="{{ o.producto_especifico_id|default:'' }}"
-                                            title="Editar campaña">
-                                        <i class="bi bi-pencil-square"></i>
+                                            title="Editar campaña"
+                                            aria-label="Editar campaña {{ o.nombre }}">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
                                     </button>
 
                                     <!-- Botón Eliminar -->
-                                    <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="m-0" onsubmit="return confirm('¿Seguro que deseas eliminar permanentemente la campaña \'{{ o.nombre }}\'? Esta acción no se puede deshacer.')">
+                                    <form method="POST" action="{% url 'administrador_ofertas_temporada' %}" class="m-0" data-confirm-submit="¿Seguro que deseas eliminar permanentemente la campaña '{{ o.nombre }}'? Esta acción no se puede deshacer.">
                                         {% csrf_token %}
                                         <input type="hidden" name="accion" value="eliminar_campana">
                                         <input type="hidden" name="oferta_id" value="{{ o.id }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar campaña">
-                                            <i class="bi bi-trash-fill"></i>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Eliminar campaña" aria-label="Eliminar campaña {{ o.nombre }}">
+                                            <i class="bi bi-trash-fill" aria-hidden="true"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -386,11 +388,11 @@
                     {% empty %}
                     <div class="col-12">
                         <div class="card card-safari p-5 text-center text-secondary">
-                            <i class="bi bi-credit-card-2-front fs-1 text-danger opacity-50 mb-3 d-block"></i>
-                            <h4 class="fw-bold">No hay campañas de temporada configuradas</h4>
+                            <i class="bi bi-credit-card-2-front fs-1 text-danger opacity-50 mb-3 d-block" aria-hidden="true"></i>
+                            <h3 class="h4 fw-bold">No hay campañas de temporada configuradas</h3>
                             <p>Crea campañas para fechas festivas, convenios con tarjetas bancarias (Débito/Crédito) o Happy Hour.</p>
                             <div>
-                                <button class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
+                                <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevaCampana">
                                     <i class="bi bi-plus-circle me-1"></i> Crear Primera Campaña
                                 </button>
                             </div>
@@ -404,14 +406,14 @@
     </main>
 
     <!-- MODAL 1: NUEVA PROMOCIÓN POR PRODUCTO -->
-    <div class="modal fade" id="modalNuevaPromoProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalNuevaPromoProducto" tabindex="-1" aria-labelledby="modalNuevaPromoProductoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header bg-warning text-dark py-3 px-4">
-                    <h5 class="modal-title font-oswald text-uppercase fw-bold">
+                    <h2 class="modal-title h5 font-oswald text-uppercase fw-bold" id="modalNuevaPromoProductoLabel">
                         <i class="bi bi-tag-fill me-2"></i>Asignar Promoción a Producto
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
                     {% csrf_token %}
@@ -419,8 +421,8 @@
                     <div class="modal-body p-4">
                         <!-- Producto -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Producto Gastronómico:</label>
-                            <select name="producto_id" class="form-select rounded-3" required>
+                            <label for="promoProductoId" class="form-label small fw-bold text-dark">Producto Gastronómico:</label>
+                            <select id="promoProductoId" name="producto_id" class="form-select rounded-3" required>
                                 <option value="">-- Seleccionar producto de la carta --</option>
                                 {% for prod in todos_productos %}
                                 <option value="{{ prod.id }}">
@@ -432,7 +434,7 @@
 
                         <!-- Tipo de Promoción -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
+                            <label for="promoTipoOferta" class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
                             <select name="tipo_oferta" id="promoTipoOferta" class="form-select rounded-3" required>
                                 <option value="SEGUNDA_1" selected>Segunda Unidad a Precio Especial ($1, $5, $500 o a medida)</option>
                                 <option value="2X1">Lleva 2 y Paga 1 (2x1)</option>
@@ -447,7 +449,7 @@
 
                         <!-- Precio de Segunda Unidad / Precio Fijo -->
                         <div class="mb-3" id="campoPrecioOferta">
-                            <label class="form-label small fw-bold text-dark" id="labelPrecioOferta">Precio de la 2da Unidad (CLP):</label>
+                            <label for="promoPrecioOferta" class="form-label small fw-bold text-dark" id="labelPrecioOferta">Precio de la 2da Unidad (CLP):</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" name="precio_oferta" id="promoPrecioOferta" class="form-control" value="1" min="0" step="1">
@@ -455,7 +457,7 @@
                             </div>
                             <!-- Presets Rápidos -->
                             <div class="d-flex gap-1 mt-2 flex-wrap">
-                                <button type="button" class="btn btn-xs btn-outline-warning text-dark btn-preset-precio" data-valor="1">$1 (Ley 20.956)</button>
+                                <button type="button" class="btn btn-xs btn-outline-warning btn-preset-precio" data-valor="1">$1 (Ley 20.956)</button>
                                 <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="5">$5 Moneda</button>
                                 <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="500">$500</button>
                                 <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-precio" data-valor="990">$990</button>
@@ -465,7 +467,7 @@
 
                         <!-- Descuento Porcentual -->
                         <div class="mb-3 d-none" id="campoDescuentoPct">
-                            <label class="form-label small fw-bold text-dark" id="labelDescuentoPct">Porcentaje de Descuento (%):</label>
+                            <label for="promoDescuentoPct" class="form-label small fw-bold text-dark" id="labelDescuentoPct">Porcentaje de Descuento (%):</label>
                             <div class="input-group">
                                 <input type="number" name="descuento_pct" id="promoDescuentoPct" class="form-control" value="15" min="1" max="99">
                                 <span class="input-group-text">%</span>
@@ -474,7 +476,7 @@
 
                         <!-- Cantidad Mínima para Precio por Volumen -->
                         <div class="mb-3 d-none" id="campoCantidadMinima">
-                            <label class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
+                            <label for="promoCantidadMinima" class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-layers"></i></span>
                                 <input type="number" name="cantidad_minima_oferta" id="promoCantidadMinima" class="form-control" value="2" min="2" step="1">
@@ -485,15 +487,15 @@
 
                         <!-- Límite por Ticket / Mesa -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Límite de Promociones por Ticket / Comanda:</label>
-                            <input type="number" name="limite_oferta_por_ticket" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                            <label for="promoLimitePorTicket" class="form-label small fw-bold text-dark">Límite de Promociones por Ticket / Comanda:</label>
+                            <input type="number" id="promoLimitePorTicket" name="limite_oferta_por_ticket" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
                             <div class="form-text small">Indica cuántas promociones se pueden aplicar como máximo por comanda (0 para ilimitadas).</div>
                         </div>
 
                         <!-- Etiqueta Comercial Visible -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Descripción Comercial / Etiqueta Visible:</label>
-                            <input type="text" name="descripcion_oferta" class="form-control" placeholder="Ej: ¡2da hamburguesa por solo $1 peso con moneda física!">
+                            <label for="promoDescripcionOferta" class="form-label small fw-bold text-dark">Descripción Comercial / Etiqueta Visible:</label>
+                            <input type="text" id="promoDescripcionOferta" name="descripcion_oferta" class="form-control" placeholder="Ej: ¡2da hamburguesa por solo $1 peso con moneda física!">
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3 border-top">
@@ -508,14 +510,14 @@
     </div>
 
     <!-- MODAL 2: EDITAR PROMOCIÓN DE PRODUCTO -->
-    <div class="modal fade" id="modalEditarPromoProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalEditarPromoProducto" tabindex="-1" aria-labelledby="modalEditarPromoProductoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header bg-primary text-white py-3 px-4">
-                    <h5 class="modal-title font-oswald text-uppercase fw-bold">
+                    <h2 class="modal-title h5 font-oswald text-uppercase fw-bold" id="modalEditarPromoProductoLabel">
                         <i class="bi bi-pencil-square me-2"></i>Editar Promoción de Producto
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
                     {% csrf_token %}
@@ -527,7 +529,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
+                            <label for="edit_promo_tipo" class="form-label small fw-bold text-dark">Tipo de Promoción:</label>
                             <select name="tipo_oferta" id="edit_promo_tipo" class="form-select rounded-3" required>
                                 <option value="SEGUNDA_1">Segunda Unidad a Precio Especial ($1, $5, $500 o a medida)</option>
                                 <option value="2X1">Lleva 2 y Paga 1 (2x1)</option>
@@ -541,7 +543,7 @@
                         </div>
 
                         <div class="mb-3" id="edit_grupo_precio">
-                            <label class="form-label small fw-bold text-dark">Precio 2da Unidad / Precio Fijo (CLP):</label>
+                            <label for="edit_promo_precio" class="form-label small fw-bold text-dark">Precio 2da Unidad / Precio Fijo (CLP):</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" name="precio_oferta" id="edit_promo_precio" class="form-control" min="0" step="1">
@@ -550,7 +552,7 @@
                         </div>
 
                         <div class="mb-3 d-none" id="edit_grupo_pct">
-                            <label class="form-label small fw-bold text-dark" id="edit_label_pct">Porcentaje de Descuento (%):</label>
+                            <label for="edit_promo_pct" class="form-label small fw-bold text-dark" id="edit_label_pct">Porcentaje de Descuento (%):</label>
                             <div class="input-group">
                                 <input type="number" name="descuento_pct" id="edit_promo_pct" class="form-control" min="1" max="99">
                                 <span class="input-group-text">%</span>
@@ -558,7 +560,7 @@
                         </div>
 
                         <div class="mb-3 d-none" id="edit_grupo_min_cant">
-                            <label class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
+                            <label for="edit_promo_min_cant" class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-layers"></i></span>
                                 <input type="number" name="cantidad_minima_oferta" id="edit_promo_min_cant" class="form-control" value="2" min="2" step="1">
@@ -567,13 +569,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Límite por Ticket / Comanda:</label>
+                            <label for="edit_promo_limite" class="form-label small fw-bold text-dark">Límite por Ticket / Comanda:</label>
                             <input type="number" name="limite_oferta_por_ticket" id="edit_promo_limite" class="form-control" min="0">
                             <div class="form-text small">0 = Sin límite de uso por comanda.</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">Descripción Comercial:</label>
+                            <label for="edit_promo_desc" class="form-label small fw-bold text-dark">Descripción Comercial:</label>
                             <input type="text" name="descripcion_oferta" id="edit_promo_desc" class="form-control">
                         </div>
                     </div>
@@ -587,12 +589,12 @@
     </div>
 
     <!-- MODAL 3: NUEVA CAMPAÑA DE TEMPORADA / MEDIOS DE PAGO -->
-    <div class="modal fade" id="modalNuevaCampana" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalNuevaCampana" tabindex="-1" aria-labelledby="modalNuevaCampanaLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content card-safari overflow-hidden border-0 shadow-lg">
                 <div class="modal-header bg-danger text-white py-3 px-4">
-                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-credit-card-2-front-fill me-2"></i>Nueva Campaña / Convenio de Pago</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 font-oswald text-uppercase" id="modalNuevaCampanaLabel"><i class="bi bi-credit-card-2-front-fill me-2"></i>Nueva Campaña / Convenio de Pago</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
                     {% csrf_token %}
@@ -601,12 +603,12 @@
                         <div class="row g-3">
                             <!-- Nombre -->
                             <div class="col-md-7">
-                                <label class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
-                                <input type="text" name="nombre" class="form-control" required placeholder="Ej: 15% Descuento Tarjeta Santander, Promo Invierno">
+                                <label for="campanaNombre" class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
+                                <input type="text" id="campanaNombre" name="nombre" class="form-control" required placeholder="Ej: 15% Descuento Tarjeta Santander, Promo Invierno">
                             </div>
                             <!-- Tipo Campaña -->
                             <div class="col-md-5">
-                                <label class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
+                                <label for="campanaTipo" class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
                                 <select name="tipo_campana" id="campanaTipo" class="form-select" required>
                                     <option value="GENERAL">Descuento General de Temporada</option>
                                     <option value="MEDIO_PAGO" selected>Descuento por Medio de Pago / Tarjeta</option>
@@ -616,8 +618,8 @@
 
                             <!-- Medio de Pago Requerido -->
                             <div class="col-md-6" id="grupoMedioPago">
-                                <label class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
-                                <select name="medio_pago_requerido" class="form-select">
+                                <label for="campanaMedioPago" class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
+                                <select id="campanaMedioPago" name="medio_pago_requerido" class="form-select">
                                     <option value="TODOS">Todos los medios de pago</option>
                                     <option value="DEBITO" selected>Tarjeta de Débito (Redcompra)</option>
                                     <option value="CREDITO">Tarjeta de Crédito (Transbank/Bancos)</option>
@@ -628,59 +630,59 @@
 
                             <!-- Banco / Convenio -->
                             <div class="col-md-6" id="grupoBanco">
-                                <label class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
-                                <input type="text" name="banco_convenio" class="form-control" placeholder="Ej: Banco Santander, BancoEstado, Tarjeta Safari, Visa">
+                                <label for="campanaBanco" class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
+                                <input type="text" id="campanaBanco" name="banco_convenio" class="form-control" placeholder="Ej: Banco Santander, BancoEstado, Tarjeta Safari, Visa">
                             </div>
 
                             <!-- Porcentaje de Descuento -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Descuento (%):</label>
+                                <label for="campanaDescuentoPct" class="form-label small fw-bold text-secondary">Descuento (%):</label>
                                 <div class="input-group">
-                                    <input type="number" name="descuento_porcentaje" class="form-control" required min="1" max="100" value="15">
+                                    <input type="number" id="campanaDescuentoPct" name="descuento_porcentaje" class="form-control" required min="1" max="100" value="15">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
 
                             <!-- Compra Mínima -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
+                                <label for="campanaMontoMinimo" class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" name="monto_minimo_compra" class="form-control" value="0" min="0">
+                                    <input type="number" id="campanaMontoMinimo" name="monto_minimo_compra" class="form-control" value="0" min="0">
                                 </div>
                             </div>
 
                             <!-- Tope Descuento -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
+                                <label for="campanaTopeDesc" class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" name="tope_descuento_clp" class="form-control" value="5000" min="0" placeholder="0 = Sin tope">
+                                    <input type="number" id="campanaTopeDesc" name="tope_descuento_clp" class="form-control" value="5000" min="0" placeholder="0 = Sin tope">
                                 </div>
                             </div>
 
                             <!-- Límite de Usos -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
-                                <input type="number" name="limite_usos" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                                <label for="campanaLimiteUsos" class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
+                                <input type="number" id="campanaLimiteUsos" name="limite_usos" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
                             </div>
 
                             <!-- Fecha Inicio -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
-                                <input type="date" name="fecha_inicio" class="form-control" required value="{% now 'Y-m-d' %}">
+                                <label for="campanaFechaInicio" class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
+                                <input type="date" id="campanaFechaInicio" name="fecha_inicio" class="form-control" required value="{% now 'Y-m-d' %}">
                             </div>
 
                             <!-- Fecha Fin -->
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
-                                <input type="date" name="fecha_fin" class="form-control" required>
+                                <label for="campanaFechaFin" class="form-label small fw-bold text-secondary">Fecha Fin:</label>
+                                <input type="date" id="campanaFechaFin" name="fecha_fin" class="form-control" required>
                             </div>
 
                             <!-- Categoría Opcional -->
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
-                                <select name="categoria_aplicable" class="form-select">
+                                <label for="campanaCategoria" class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
+                                <select id="campanaCategoria" name="categoria_aplicable" class="form-select">
                                     <option value="">-- Toda la carta gastronómica --</option>
                                     {% for cat in categorias %}
                                     <option value="{{ cat.id }}">{{ cat.nombre }}</option>
@@ -688,8 +690,8 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
-                                <select name="producto_especifico" class="form-select">
+                                <label for="campanaProducto" class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
+                                <select id="campanaProducto" name="producto_especifico" class="form-select">
                                     <option value="">-- Sin restringir a un solo producto --</option>
                                     {% for prod in productos %}
                                     <option value="{{ prod.id }}">{{ prod.nombre }} (${{ prod.precio_base|floatformat:0 }} CLP)</option>
@@ -699,8 +701,8 @@
 
                             <!-- Descripción -->
                             <div class="col-12">
-                                <label class="form-label small fw-bold text-secondary">Descripción para Cajeros y Clientes:</label>
-                                <textarea name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación del beneficio comercial..."></textarea>
+                                <label for="campanaDescripcion" class="form-label small fw-bold text-secondary">Descripción para Cajeros y Clientes:</label>
+                                <textarea id="campanaDescripcion" name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación del beneficio comercial..."></textarea>
                             </div>
                         </div>
 
@@ -719,12 +721,12 @@
     </div>
 
     <!-- MODAL 4: EDITAR CAMPAÑA DE TEMPORADA -->
-    <div class="modal fade" id="modalEditarCampana" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalEditarCampana" tabindex="-1" aria-labelledby="modalEditarCampanaLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content card-safari overflow-hidden border-0 shadow-lg">
                 <div class="modal-header bg-dark text-white py-3 px-4">
-                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-pencil-square me-2"></i>Editar Campaña / Convenio</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 font-oswald text-uppercase" id="modalEditarCampanaLabel"><i class="bi bi-pencil-square me-2"></i>Editar Campaña / Convenio</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_ofertas_temporada' %}">
                     {% csrf_token %}
@@ -733,11 +735,11 @@
                     <div class="modal-body p-4">
                         <div class="row g-3">
                             <div class="col-md-7">
-                                <label class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
+                                <label for="edit_campana_nombre" class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
                                 <input type="text" name="nombre" id="edit_campana_nombre" class="form-control" required>
                             </div>
                             <div class="col-md-5">
-                                <label class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
+                                <label for="edit_campana_tipo" class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
                                 <select name="tipo_campana" id="edit_campana_tipo" class="form-select" required>
                                     <option value="GENERAL">Descuento General de Temporada</option>
                                     <option value="MEDIO_PAGO">Descuento por Medio de Pago / Tarjeta</option>
@@ -745,7 +747,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
+                                <label for="edit_campana_medio" class="form-label small fw-bold text-secondary">Medio de Pago Requerido:</label>
                                 <select name="medio_pago_requerido" id="edit_campana_medio" class="form-select">
                                     <option value="TODOS">Todos los medios de pago</option>
                                     <option value="DEBITO">Tarjeta de Débito (Redcompra)</option>
@@ -755,44 +757,44 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
+                                <label for="edit_campana_banco" class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
                                 <input type="text" name="banco_convenio" id="edit_campana_banco" class="form-control">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Descuento (%):</label>
+                                <label for="edit_campana_pct" class="form-label small fw-bold text-secondary">Descuento (%):</label>
                                 <div class="input-group">
                                     <input type="number" name="descuento_porcentaje" id="edit_campana_pct" class="form-control" required min="1" max="100">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
+                                <label for="edit_campana_minimo" class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" name="monto_minimo_compra" id="edit_campana_minimo" class="form-control" min="0">
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
+                                <label for="edit_campana_tope" class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" name="tope_descuento_clp" id="edit_campana_tope" class="form-control" min="0">
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
+                                <label for="edit_campana_limite" class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
                                 <input type="number" name="limite_usos" id="edit_campana_limite" class="form-control" min="0">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
+                                <label for="edit_campana_inicio" class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
                                 <input type="date" name="fecha_inicio" id="edit_campana_inicio" class="form-control" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Fecha Fin:</label>
+                                <label for="edit_campana_fin" class="form-label small fw-bold text-secondary">Fecha Fin:</label>
                                 <input type="date" name="fecha_fin" id="edit_campana_fin" class="form-control" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
+                                <label for="edit_campana_categoria" class="form-label small fw-bold text-secondary">Categoría Aplicable (Opcional):</label>
                                 <select name="categoria_aplicable" id="edit_campana_categoria" class="form-select">
                                     <option value="">-- Toda la carta gastronómica --</option>
                                     {% for cat in categorias %}
@@ -801,7 +803,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
+                                <label for="edit_campana_producto" class="form-label small fw-bold text-secondary">Producto Específico (Opcional):</label>
                                 <select name="producto_especifico" id="edit_campana_producto" class="form-select">
                                     <option value="">-- Sin restringir a un solo producto --</option>
                                     {% for prod in productos %}
@@ -810,7 +812,7 @@
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label class="form-label small fw-bold text-secondary">Descripción:</label>
+                                <label for="edit_campana_descripcion" class="form-label small fw-bold text-secondary">Descripción:</label>
                                 <textarea name="descripcion" id="edit_campana_descripcion" class="form-control" rows="2"></textarea>
                             </div>
                         </div>

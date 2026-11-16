@@ -76,7 +76,7 @@
 
                 <span class="badge px-3 py-1 mb-2 fw-bold" style="background-color: var(--safari-cafe-pastel); color: var(--safari-cafe-dark); border: 1px solid var(--safari-cafe-medium);">
 
-                    <i class="bi bi-bar-chart-line-fill text-warning me-1"></i> Inteligencia de Negocios Gastronómica
+                    <i class="bi bi-bar-chart-line-fill text-warning-emphasis me-1"></i> Inteligencia de Negocios Gastronómica
 
                 </span>
 
@@ -104,19 +104,19 @@
 
                     <div class="timeframe-selector">
 
-                        <button class="btn-timeframe" id="btnHora" onclick="cambiarTemporalidad('hora')">
+                        <button type="button" class="btn-timeframe" id="btnHora" data-timeframe="hora" aria-pressed="false">
 
                             <i class="bi bi-clock me-1"></i> Por Hora
 
                         </button>
 
-                        <button class="btn-timeframe" id="btnDia" onclick="cambiarTemporalidad('dia')">
+                        <button type="button" class="btn-timeframe" id="btnDia" data-timeframe="dia" aria-pressed="false">
 
                             <i class="bi bi-calendar-date me-1"></i> Por Día
 
                         </button>
 
-                        <button class="btn-timeframe active" id="btnMes" onclick="cambiarTemporalidad('mes')">
+                        <button type="button" class="btn-timeframe active" id="btnMes" data-timeframe="mes" aria-pressed="true">
 
                             <i class="bi bi-calendar-range me-1"></i> Por Mes (15 Meses)
 
@@ -150,25 +150,25 @@
 
                     <div class="col-md-3 col-sm-6">
 
-                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Inicio</label>
+                        <label for="dashFiltroFechaInicio" class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Inicio</label>
 
-                        <input type="date" name="fecha_inicio" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_inicio_str }}">
-
-                    </div>
-
-                    <div class="col-md-3 col-sm-6">
-
-                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Fin</label>
-
-                        <input type="date" name="fecha_fin" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_fin_str }}">
+                        <input type="date" id="dashFiltroFechaInicio" name="fecha_inicio" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_inicio_str }}">
 
                     </div>
 
                     <div class="col-md-3 col-sm-6">
 
-                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-shop me-1"></i>Punto de Venta / Local</label>
+                        <label for="dashFiltroFechaFin" class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Fecha Fin</label>
 
-                        <select name="local_id" class="form-select form-select-sm rounded-3">
+                        <input type="date" id="dashFiltroFechaFin" name="fecha_fin" class="form-control form-control-sm rounded-3" value="{{ filtros.fecha_fin_str }}">
+
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+
+                        <label for="dashFiltroLocal" class="form-label small fw-bold text-muted mb-1"><i class="bi bi-shop me-1"></i>Punto de Venta / Local</label>
+
+                        <select id="dashFiltroLocal" name="local_id" class="form-select form-select-sm rounded-3">
 
                             <option value="">Todos los Locales (Consolidado)</option>
 
@@ -184,9 +184,9 @@
 
                     <div class="col-md-2 col-sm-6">
 
-                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-person me-1"></i>Colaborador</label>
+                        <label for="dashFiltroUsuario" class="form-label small fw-bold text-muted mb-1"><i class="bi bi-person me-1"></i>Colaborador</label>
 
-                        <select name="usuario_id" class="form-select form-select-sm rounded-3">
+                        <select id="dashFiltroUsuario" name="usuario_id" class="form-select form-select-sm rounded-3">
 
                             <option value="">Todos los Colaboradores</option>
 
@@ -202,15 +202,15 @@
 
                     <div class="col-md-1 col-12 d-flex gap-1">
 
-                        <button type="submit" class="btn btn-danger btn-sm rounded-3 w-100 fw-bold" title="Aplicar filtros en vivo">
+                        <button type="submit" class="btn btn-danger btn-sm rounded-3 w-100 fw-bold" title="Aplicar filtros en vivo" aria-label="Aplicar filtros en vivo">
 
-                            <i class="bi bi-funnel-fill"></i>
+                            <i class="bi bi-funnel-fill" aria-hidden="true"></i>
 
                         </button>
 
-                        <a href="{% url 'administrador_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-3" title="Restablecer">
+                        <a href="{% url 'administrador_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-3" title="Restablecer" aria-label="Restablecer filtros">
 
-                            <i class="bi bi-arrow-clockwise"></i>
+                            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
 
                         </a>
 
@@ -298,11 +298,11 @@
 
                         <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px;">Tiempo Espera Total</span>
 
-                        <span class="badge bg-info text-white fw-bold">{{ tiempos.total_entregados }} entregas</span>
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle fw-bold">{{ tiempos.total_entregados }} entregas</span>
 
                     </div>
 
-                    <div class="comparison-val text-info" id="cardCompAno">{{ tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
+                    <div class="comparison-val text-info-emphasis" id="cardCompAno">{{ tiempos.promedio_tiempo_espera_total_minutos|default:"0.0" }} min</div>
 
                     <div class="text-muted small mt-1">
 
@@ -360,13 +360,13 @@
 
                 <div>
 
-                    <h4 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                    <h3 class="h4 fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
 
                         <i class="bi bi-bar-chart-fill text-danger me-2"></i>
 
                         <span id="chartTitulo">EVOLUCIÓN MENSUAL HISTÓRICA: VENTAS TOTALES Y COMPARATIVA DE GANANCIAS (15 MESES)</span>
 
-                    </h4>
+                    </h3>
 
                     <small class="text-muted" id="chartSubtitulo">
 
@@ -416,13 +416,13 @@
 
                 <div>
 
-                    <h5 class="mb-0 fw-bold">
+                    <h3 class="h5 mb-0 fw-bold">
 
-                        <i class="bi bi-clock-history text-warning me-2"></i>Historial Mensual de Rendimiento Oficial ({{ historico_15_meses|length }} meses registrados)
+                        <i class="bi bi-clock-history text-lcd-amber me-2"></i>Historial Mensual de Rendimiento Oficial ({{ historico_15_meses|length }} meses registrados)
 
-                    </h5>
+                    </h3>
 
-                    <small class="text-white-50">Comparativa mensual de ganancia neta, volumen de ventas y variación porcentual basada 100% en datos reales</small>
+                    <small class="text-on-brand-muted">Comparativa mensual de ganancia neta, volumen de ventas y variación porcentual basada 100% en datos reales</small>
 
                 </div>
 
@@ -566,13 +566,13 @@
 
                     <div>
 
-                        <h5 class="mb-0 fw-bold">
+                        <h3 class="h5 mb-0 fw-bold">
 
-                            <i class="bi bi-trophy-fill text-warning me-2"></i>Ranking de Productos Más Vendidos 
+                            <i class="bi bi-trophy-fill text-lcd-amber me-2"></i>Ranking de Productos Más Vendidos 
 
-                        </h5>
+                        </h3>
 
-                        <small class="text-white-50">Basado en volumen real de consumo en Parque Safari</small>
+                        <small class="text-on-brand-muted">Basado en volumen real de consumo en Parque Safari</small>
 
                     </div>
 
@@ -668,13 +668,13 @@
 
                     <div>
 
-                        <h5 class="mb-0 fw-bold">
+                        <h3 class="h5 mb-0 fw-bold">
 
-                            <i class="bi bi-stopwatch-fill text-warning me-2"></i>Tiempos de Servicio y Medios de Pago
+                            <i class="bi bi-stopwatch-fill text-lcd-amber me-2"></i>Tiempos de Servicio y Medios de Pago
 
-                        </h5>
+                        </h3>
 
-                        <small class="text-white-50">Despacho KDS y distribución de ingresos</small>
+                        <small class="text-on-brand-muted">Despacho KDS y distribución de ingresos</small>
 
                     </div>
 
@@ -682,7 +682,7 @@
 
                 <div class="p-4 bg-white">
 
-                    <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-fire text-danger me-1"></i>Tiempos Operativos de Cocina / KDS</h6>
+                    <h4 class="h6 fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-fire text-danger me-1"></i>Tiempos Operativos de Cocina / KDS</h4>
 
                     <div class="row g-2 mb-4">
 
@@ -704,7 +704,7 @@
 
                                 <small class="text-muted d-block">Prep. Cocina</small>
 
-                                <span class="fw-bold text-warning fs-5">{{ tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</span>
+                                <span class="fw-bold text-warning-emphasis fs-5">{{ tiempos.promedio_tiempo_preparacion_minutos|default:"0.0" }} min</span>
 
                             </div>
 
@@ -738,7 +738,7 @@
 
 
 
-                    <h6 class="fw-bold text-muted small text-uppercase mb-2"><i class="bi bi-pie-chart-fill text-danger me-1"></i>Distribución de Medios de Pago</h6>
+                    <h4 class="h6 fw-bold text-muted small text-uppercase mb-2"><i class="bi bi-pie-chart-fill text-danger me-1"></i>Distribución de Medios de Pago</h4>
 
                     <div class="p-3 bg-light rounded-4 border mb-3 text-center shadow-xs">
 
@@ -752,7 +752,7 @@
 
 
 
-                    <h6 class="fw-bold text-muted small text-uppercase mb-2"><i class="bi bi-credit-card text-primary me-1"></i>Detalle por Medio de Pago</h6>
+                    <h4 class="h6 fw-bold text-muted small text-uppercase mb-2"><i class="bi bi-credit-card text-primary me-1"></i>Detalle por Medio de Pago</h4>
 
                     <div class="list-group list-group-flush">
 
@@ -810,15 +810,15 @@
 
                 <div class="modal-header bg-danger text-white rounded-top-4 py-3">
 
-                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="modalExportarVentasLabel">
+                    <h2 class="modal-title h5 fw-bold d-flex align-items-center gap-2" id="modalExportarVentasLabel">
 
                         <i class="bi bi-file-earmark-arrow-down-fill"></i>
 
                         <span>Exportar Reporte de Ventas • Parque Safari</span>
 
-                    </h5>
+                    </h2>
 
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
 
                 </div>
 
@@ -856,17 +856,17 @@
 
                         <div class="mb-4">
 
-                            <label class="form-label fw-bold text-dark mb-2">
+                            <div class="form-label fw-bold text-dark mb-2">
 
                                 <i class="bi bi-calendar3 text-danger me-1"></i> 1. Rango de Tiempo / Temporalidad:
 
-                            </label>
+                            </div>
 
                             <div class="row g-2">
 
                                 <div class="col-md-3 col-6">
 
-                                    <input type="radio" class="btn-check" name="tipo_rango" id="rango15Meses" value="15_meses" checked onchange="actualizarControlesRango()">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rango15Meses" value="15_meses" checked>
 
                                     <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rango15Meses">
 
@@ -878,7 +878,7 @@
 
                                 <div class="col-md-3 col-6">
 
-                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoMes" value="mes" onchange="actualizarControlesRango()">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoMes" value="mes">
 
                                     <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoMes">
 
@@ -890,7 +890,7 @@
 
                                 <div class="col-md-3 col-6">
 
-                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoSemana" value="semana" onchange="actualizarControlesRango()">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoSemana" value="semana">
 
                                     <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoSemana">
 
@@ -902,7 +902,7 @@
 
                                 <div class="col-md-3 col-6">
 
-                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoDia" value="dia" onchange="actualizarControlesRango()">
+                                    <input type="radio" class="btn-check" name="tipo_rango" id="rangoDia" value="dia">
 
                                     <label class="btn btn-outline-danger w-100 rounded-3 py-2 small fw-bold" for="rangoDia">
 
@@ -1022,11 +1022,11 @@
 
                         <div class="mb-2">
 
-                            <label class="form-label fw-bold text-dark mb-2">
+                            <div class="form-label fw-bold text-dark mb-2">
 
                                 <i class="bi bi-file-earmark-text text-danger me-1"></i> 3. Formato de Salida:
 
-                            </label>
+                            </div>
 
                             <div class="row g-3">
 

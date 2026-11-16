@@ -45,7 +45,7 @@
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 fs-3">
+                    <div class="bg-primary bg-opacity-10 text-primary-emphasis rounded-circle p-3 fs-3">
                         <i class="bi bi-house-door-fill"></i>
                     </div>
                     <div>
@@ -56,7 +56,7 @@
             </div>
             <div class="col-md-4">
                 <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
-                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-3 fs-3">
+                    <div class="bg-success bg-opacity-10 text-success-emphasis rounded-circle p-3 fs-3">
                         <i class="bi bi-check-circle-fill"></i>
                     </div>
                     <div>
@@ -67,8 +67,8 @@
             </div>
             <div class="col-md-4">
                 <div class="card card-safari p-3 d-flex flex-row align-items-center gap-3">
-                    <div class="bg-warning bg-opacity-10 text-warning rounded-circle p-3 fs-3">
-                        <i class="bi bi-cup-hot-fill"></i>
+                    <div class="bg-warning-subtle text-warning-emphasis rounded-circle p-3 fs-3">
+                        <i class="bi bi-cup-hot-fill" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-secondary small fw-bold text-uppercase">Desayunos / Consumos Hoy</div>
@@ -81,8 +81,8 @@
         <!-- Buscador en tiempo real -->
         <div class="card card-safari p-3 mb-4">
             <div class="input-group">
-                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-secondary"></i></span>
-                <input type="text" id="buscadorConvenios" class="form-control border-start-0 ps-0" placeholder="Buscar por código QR, número de cabaña o nombre del huésped...">
+                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-secondary" aria-hidden="true"></i></span>
+                <input type="text" id="buscadorConvenios" class="form-control border-start-0 ps-0" placeholder="Buscar por código QR, número de cabaña o nombre del huésped..." aria-label="Buscar por código QR, número de cabaña o nombre del huésped">
             </div>
         </div>
 
@@ -90,9 +90,9 @@
             <!-- Listado de Pases y Cabañas -->
             <div class="col-lg-8">
                 <div class="card card-safari p-4">
-                    <h5 class="fw-bold font-oswald text-uppercase text-danger mb-3">
-                        <i class="bi bi-card-checklist me-1"></i> Pases y Cabañas con Beneficio
-                    </h5>
+                    <h2 class="h5 fw-bold font-oswald text-uppercase text-danger mb-3">
+                        <i class="bi bi-card-checklist me-1" aria-hidden="true"></i> Pases y Cabañas con Beneficio
+                    </h2>
 
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="tablaConvenios">
@@ -112,7 +112,7 @@
                                 <tr class="fila-convenio">
                                     <td class="fw-bold">{{ c.numero_cabana }}</td>
                                     <td>{{ c.nombre_titular }}</td>
-                                    <td><span class="qr-code-pill"><i class="bi bi-qr-code me-1"></i>{{ c.codigo_qr }}</span></td>
+                                    <td><span class="qr-code-pill" title="Token firmado HMAC-SHA256"><i class="bi bi-qr-code me-1"></i>{{ c.token_qr_firmado }}</span></td>
                                     <td>
                                         <span class="badge {% if c.tipo_beneficio == 'DESAYUNO_INCLUIDO' %}bg-success{% else %}bg-primary{% endif %}">
                                             {{ c.get_tipo_beneficio_display }}
@@ -125,7 +125,7 @@
                                         {% elif not c.activo %}
                                             <span class="badge bg-secondary">Inactivo</span>
                                         {% else %}
-                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Expirado</span>
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Expirado</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
@@ -155,9 +155,9 @@
             <!-- Registro de Consumos de Hoy (Auditoría Tarea 7) -->
             <div class="col-lg-4">
                 <div class="card card-safari p-4">
-                    <h5 class="fw-bold font-oswald text-uppercase text-danger mb-3">
-                        <i class="bi bi-journal-text me-1"></i> Desayunos Canjeados Hoy
-                    </h5>
+                    <h2 class="h5 fw-bold font-oswald text-uppercase text-danger mb-3">
+                        <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Desayunos Canjeados Hoy
+                    </h2>
 
                     <div class="list-group list-group-flush">
                         {% for con in consumos_hoy %}
@@ -188,35 +188,35 @@
     </main>
 
     <!-- Modal Crear Pase Huésped -->
-    <div class="modal fade" id="modalNuevoPase" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalNuevoPase" tabindex="-1" aria-labelledby="labelModalNuevoPase" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content card-safari overflow-hidden border-0">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title font-oswald text-uppercase"><i class="bi bi-qr-code me-2"></i>Crear Pase Huésped Cabaña</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5 font-oswald text-uppercase" id="labelModalNuevoPase"><i class="bi bi-qr-code me-2" aria-hidden="true"></i>Crear Pase Huésped Cabaña</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'administrador_convenios' %}">
                     {% csrf_token %}
                     <input type="hidden" name="accion" value="crear">
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">Número o Nombre de Cabaña:</label>
-                            <input type="text" name="numero_cabana" class="form-control" required placeholder="Ej: Cabaña 12, Suite Los Pumas">
+                            <label for="convNumeroCabana" class="form-label small fw-bold text-secondary">Número o Nombre de Cabaña:</label>
+                            <input type="text" id="convNumeroCabana" name="numero_cabana" class="form-control" required placeholder="Ej: Cabaña 12, Suite Los Pumas">
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-8">
-                                <label class="form-label small fw-bold text-secondary">Nombre del Huésped / Titular:</label>
-                                <input type="text" name="nombre_titular" class="form-control" required placeholder="Ej: Marcela Soto">
+                                <label for="convNombreTitular" class="form-label small fw-bold text-secondary">Nombre del Huésped / Titular:</label>
+                                <input type="text" id="convNombreTitular" name="nombre_titular" class="form-control" required placeholder="Ej: Marcela Soto">
                             </div>
                             <div class="col-4">
-                                <label class="form-label small fw-bold text-secondary">RUT / Pasaporte:</label>
-                                <input type="text" name="rut_titular" class="form-control" placeholder="12.345.678-9">
+                                <label for="convRutTitular" class="form-label small fw-bold text-secondary">RUT / Pasaporte:</label>
+                                <input type="text" id="convRutTitular" name="rut_titular" class="form-control" placeholder="12.345.678-9">
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">Tipo de Beneficio:</label>
+                            <label for="selectTipoBeneficio" class="form-label small fw-bold text-secondary">Tipo de Beneficio:</label>
                             <select name="tipo_beneficio" class="form-select" id="selectTipoBeneficio">
                                 <option value="DESAYUNO_INCLUIDO" selected>Desayuno Incluido (100% Bonificado)</option>
                                 <option value="DESCUENTO_PORCENTAJE">Descuento Porcentual (%)</option>
@@ -226,29 +226,29 @@
 
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-secondary">Valor / Porcentaje:</label>
-                                <input type="number" name="valor_descuento" class="form-control" value="100" min="1" step="1">
+                                <label for="convValorDescuento" class="form-label small fw-bold text-secondary">Valor / Porcentaje:</label>
+                                <input type="number" id="convValorDescuento" name="valor_descuento" class="form-control" value="100" min="1" step="1">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-secondary">Límite Canjes por Día:</label>
-                                <input type="number" name="limite_diario" class="form-control" value="1" min="1" max="10">
+                                <label for="convLimiteDiario" class="form-label small fw-bold text-secondary">Límite Canjes por Día:</label>
+                                <input type="number" id="convLimiteDiario" name="limite_diario" class="form-control" value="1" min="1" max="10">
                             </div>
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-secondary">Check-in:</label>
-                                <input type="date" name="fecha_checkin" class="form-control" required value="{% now 'Y-m-d' %}">
+                                <label for="convFechaCheckin" class="form-label small fw-bold text-secondary">Check-in:</label>
+                                <input type="date" id="convFechaCheckin" name="fecha_checkin" class="form-control" required value="{% now 'Y-m-d' %}">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-secondary">Check-out:</label>
-                                <input type="date" name="fecha_checkout" class="form-control" required>
+                                <label for="convFechaCheckout" class="form-label small fw-bold text-secondary">Check-out:</label>
+                                <input type="date" id="convFechaCheckout" name="fecha_checkout" class="form-control" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">Código QR o Barra (Opcional, se autogenera si se deja vacío):</label>
-                            <input type="text" name="codigo_qr" class="form-control font-monospace" placeholder="Ej: CAB-12-2026">
+                            <label for="convCodigoQr" class="form-label small fw-bold text-secondary">Código QR o Barra (Opcional, se autogenera si se deja vacío):</label>
+                            <input type="text" id="convCodigoQr" name="codigo_qr" class="form-control font-monospace" placeholder="Ej: CAB-12-2026">
                         </div>
                     </div>
                     <div class="modal-footer bg-light">

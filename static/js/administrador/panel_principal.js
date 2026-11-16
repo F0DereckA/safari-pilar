@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Actualizar badge interior
                     const badgeEstado = document.getElementById('badgeAlertasEstado');
                     if (badgeEstado) {
-                        badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
+                        badgeEstado.className = 'badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1 small fw-bold';
                         badgeEstado.textContent = 'Al día';
                     }
 
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             badgeCount.remove();
                             const badgeEstado = document.getElementById('badgeAlertasEstado');
                             if (badgeEstado) {
-                                badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
+                                badgeEstado.className = 'badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1 small fw-bold';
                                 badgeEstado.textContent = 'Al día';
                             }
                             const btnMarcar = document.getElementById('btnMarcarTodasLeidas');

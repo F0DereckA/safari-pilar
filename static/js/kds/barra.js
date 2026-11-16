@@ -11,8 +11,9 @@ setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
 // ==============================================================================
-// Echo & Aloy: Alerta Sonora Nativa Web Audio API (880 Hz / 150 ms senoidal)
-// Cero dependencias ni MP3s externos. Fiabilidad para estación Barra.
+// Echo & Aloy: Alerta Sonora de Comandas (Web Audio API - Campana Barista / Barra)
+// Sonido cristalino estilo timbre de cafetería/barra (G5 -> C6, ~680 ms)
+// Cero dependencias externas ni archivos MP3. Fiabilidad total en hardware BDS.
 // ==============================================================================
 const KdsAudio = (() => {
     let audioCtx = null;
@@ -30,27 +31,38 @@ const KdsAudio = (() => {
         }
     }
 
+    function reproducirTono(freq, inicio, duracion, vol = 0.25, tipo = 'triangle') {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = tipo;
+        osc.frequency.setValueAtTime(freq, inicio);
+
+        // Curva envolvente: ataque suave anti-clipping y decaimiento acústico natural
+        gain.gain.setValueAtTime(0.0001, inicio);
+        gain.gain.exponentialRampToValueAtTime(vol, inicio + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, inicio + duracion);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(inicio);
+        osc.stop(inicio + duracion + 0.05);
+    }
+
     function emitirCampanaComanda() {
         if (!habilitado) return;
         try {
             initContext();
             if (!audioCtx) return;
 
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-
-            gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.28, audioCtx.currentTime + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(audioCtx.currentTime);
-            osc.stop(audioCtx.currentTime + 0.16);
+            const t = audioCtx.currentTime;
+            // Doble campana barista de barra (~680 ms total)
+            // Golpe 1 (G5 / 783.99 Hz, tono cristalino de entrada, duración 260 ms)
+            reproducirTono(783.99, t, 0.26, 0.22, 'triangle');
+            // Golpe 2 (C6 / 1046.50 Hz, campana alta resonante, duración 480 ms)
+            reproducirTono(1046.50, t + 0.16, 0.48, 0.28, 'triangle');
         } catch (e) {
             console.debug('Aviso auditivo omitido:', e);
         }
@@ -68,11 +80,13 @@ const KdsAudio = (() => {
         if (!btn) return;
         if (habilitado) {
             btn.className = 'btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
-            btn.innerHTML = '<i class="bi bi-volume-up-fill text-warning"></i> <span class="d-none d-md-inline small fw-bold">Sonido ON</span>';
-            btn.title = 'Alerta sonora comanda activa (880 Hz). Clic para silenciar.';
+            btn.innerHTML = '<i class="bi bi-volume-up-fill" aria-hidden="true"></i> <span class="d-none d-md-inline small fw-bold">Sonido ON</span>';
+            btn.setAttribute('aria-pressed', 'true');
+            btn.title = 'Alerta sonora de barra activa (Campana G5-C6). Clic para silenciar.';
         } else {
-            btn.className = 'btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
-            btn.innerHTML = '<i class="bi bi-volume-mute-fill"></i> <span class="d-none d-md-inline small fw-bold">Sonido OFF</span>';
+            btn.className = 'btn btn-sm btn-outline-light text-on-brand-muted rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
+            btn.innerHTML = '<i class="bi bi-volume-mute-fill" aria-hidden="true"></i> <span class="d-none d-md-inline small fw-bold">Sonido OFF</span>';
+            btn.setAttribute('aria-pressed', 'false');
             btn.title = 'Alerta sonora silenciada. Clic para activar.';
         }
     }
@@ -211,23 +225,28 @@ window.toggleStockProducto = async function(productoId, btn) {
         const resp = await fetch('/api/kds/toggle-stock/', {
             method: 'POST',
             body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
 
-        if (resp.ok) {
-            const data = await resp.json();
-            if (data.ok) {
-                if (btn) {
-                    if (data.activo) {
-                        btn.className = 'btn btn-sm btn-success fw-bold';
-                        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Disponible';
-                    } else {
-                        btn.className = 'btn btn-sm btn-danger fw-bold';
-                        btn.innerHTML = '<i class="bi bi-slash-circle me-1"></i> Agotado en Barra';
-                    }
+        const ct = resp.headers.get('content-type') || '';
+        const data = ct.includes('application/json') ? await resp.json() : {};
+
+        if (resp.status === 401 || data.sesion_expirada) {
+            alert(data.error || 'Tu sesión expiró. Recarga la página e inicia sesión.');
+            return;
+        }
+
+        if (resp.ok && data.ok) {
+            if (btn) {
+                if (data.activo) {
+                    btn.className = 'btn btn-sm btn-success fw-bold';
+                    btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Disponible';
+                } else {
+                    btn.className = 'btn btn-sm btn-danger fw-bold';
+                    btn.innerHTML = '<i class="bi bi-slash-circle me-1"></i> Agotado en Barra';
                 }
-                ultimaVersionDeltaBarra = null;
             }
+            ultimaVersionDeltaBarra = null;
         }
     } catch (e) {
         console.error("Error al alternar stock en barra:", e);
@@ -249,18 +268,58 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Modo Condensado Táctico KDS
+// Modo Concentración Táctico KDS (Barra)
 function inicializarModoCondensado() {
+    const STORAGE_KEY = 'safari_barra_modo_condensado';
     const btn = document.getElementById('btnToggleCondensadoKds');
     if (!btn) return;
-    const guardado = localStorage.getItem('safari_kds_modo_condensado');
-    if (guardado === 'true') {
-        document.body.classList.add('kds-modo-condensado');
+
+    function aplicarEstadoConcentracion(activo) {
+        document.body.classList.toggle('kds-modo-condensado', activo);
+        btn.classList.toggle('active', activo);
+        btn.setAttribute('aria-pressed', activo ? 'true' : 'false');
+
+        const icono = document.getElementById('iconoModoConcentracion');
+        if (icono) {
+            icono.className = activo
+                ? 'bi bi-arrows-angle-expand me-1'
+                : 'bi bi-arrows-angle-contract me-1';
+        }
+
+        const texto = document.getElementById('textoModoConcentracion');
+        if (texto) {
+            texto.textContent = activo ? 'Salir Concentración' : 'Modo Concentración';
+        }
     }
+
+    let guardado = false;
+    try {
+        guardado = localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch (_err) {
+        guardado = false;
+    }
+    aplicarEstadoConcentracion(guardado);
+
     btn.addEventListener('click', () => {
-        document.body.classList.toggle('kds-modo-condensado');
-        const activo = document.body.classList.contains('kds-modo-condensado');
-        localStorage.setItem('safari_kds_modo_condensado', activo ? 'true' : 'false');
+        const activo = !document.body.classList.contains('kds-modo-condensado');
+        aplicarEstadoConcentracion(activo);
+        try {
+            localStorage.setItem(STORAGE_KEY, activo ? 'true' : 'false');
+        } catch (_err) {
+            // Ignorar si almacenamiento local está bloqueado
+        }
+    });
+
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        if (!document.body.classList.contains('kds-modo-condensado')) return;
+        if (document.querySelector('.modal.show, dialog[open]')) return;
+        aplicarEstadoConcentracion(false);
+        try {
+            localStorage.setItem(STORAGE_KEY, 'false');
+        } catch (_err) {
+            // Ignorar si almacenamiento local está bloqueado
+        }
     });
 }
 
@@ -282,12 +341,47 @@ async function enviarAccionBarraAjax(e, form) {
         const resp = await fetch(form.action, {
             method: 'POST',
             body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
+        const ct = resp.headers.get('content-type') || '';
+        const data = ct.includes('application/json') ? await resp.json() : {};
+        if (resp.status === 401 || data.sesion_expirada) {
+            alert(data.error || 'Tu sesión expiró. Inicia sesión nuevamente.');
+            return;
+        }
+        if (!resp.ok || (!data.ok && data.status !== 'ok')) {
+            alert(data.mensaje || data.error || 'No se pudo actualizar el estado del pedido.');
+            return;
+        }
         ultimaVersionDeltaBarra = null;
         await autoActualizarBarra(true);
         window.scrollTo(0, scrollPos);
     } catch (err) {
         form.submit();
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const contenedorComandas = document.getElementById('contenedorBarraComandas');
+    if (contenedorComandas) {
+        contenedorComandas.addEventListener('submit', function(e) {
+            const form = e.target.closest('form[data-barra-ajax="true"]');
+            if (form) {
+                enviarAccionBarraAjax(e, form);
+            }
+        });
+    }
+
+    const modalStock = document.getElementById('modalStockBarra');
+    if (modalStock) {
+        modalStock.addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-stock-toggle-id]');
+            if (btn) {
+                const prodId = btn.getAttribute('data-stock-toggle-id');
+                window.toggleStockProducto(prodId, btn);
+            }
+        });
+    }
+});

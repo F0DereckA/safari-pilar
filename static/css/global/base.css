@@ -28,6 +28,9 @@
     --safari-card-border: #ede4d3;
 
     /* Semántica Oficial Predefinida */
+    --bs-secondary-rgb: 71, 85, 105;
+    --safari-info-text: #0369a1;
+    --safari-warn-text: #78350f;
     /* 🔴 Alerta / Error / Cancelado / Inactivo / Anulado */
     --status-danger-bg: #fee2e2;
     --status-danger-text: #991b1b;
@@ -620,5 +623,392 @@ footer {
         margin-right: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+    }
+}
+
+/* ==========================================================================
+   Pulido Visual Corporativo, Formularios Accesibles, Sesion y Cookies
+   ========================================================================== */
+
+/* Refinamiento de tarjetas, focos visibles e interacciones suaves */
+.card-safari,
+.safari-card,
+.login-card-formal {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+.filter-pill:focus-visible,
+.mesa-card:focus-visible,
+.kpi-gestion-card:focus-visible {
+    outline: 2.5px solid var(--safari-red);
+    outline-offset: 2px;
+}
+
+.kds-header :focus-visible,
+.barra-header :focus-visible,
+.safari-legal-hero :focus-visible,
+[data-bs-theme="dark"] :focus-visible,
+.modal-header.bg-dark :focus-visible,
+.modal-header.bg-danger :focus-visible,
+.modal-header.bg-primary :focus-visible,
+.modal-header.bg-success :focus-visible,
+.modal-safari-header :focus-visible,
+.detail-table-header :focus-visible,
+.bg-dark :focus-visible {
+    outline: 3px solid #fde047 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 5px rgba(15, 23, 42, 0.72) !important;
+}
+
+/* Validación progresiva tras interacción del usuario (sin errores prematuros) */
+.safari-form-validated :is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) {
+    border-color: var(--safari-red) !important;
+    background-color: #fff5f5;
+}
+
+.safari-consent-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    background-color: var(--safari-cafe-light);
+    border: 1.5px solid var(--safari-cafe-medium);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.safari-consent-box:has(input:checked) {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+}
+
+.safari-consent-box.consent-error,
+.safari-consent-box:has(input.user-invalid-fallback) {
+    border-color: var(--safari-red);
+    background-color: #fef2f2;
+}
+
+.safari-consent-box.consent-already-accepted {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+    color: #166534;
+}
+
+.safari-consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+}
+
+.safari-consent-row[hidden] {
+    display: none;
+}
+
+.safari-consent-ack-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    font-size: 0.83rem;
+    line-height: 1.35;
+}
+
+.safari-consent-ack-msg[hidden] {
+    display: none;
+}
+
+.safari-consent-box input[type="checkbox"] {
+    flex-shrink: 0;
+    margin-top: 0.2rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    cursor: pointer;
+}
+
+.safari-consent-box label {
+    font-size: 0.83rem;
+    line-height: 1.38;
+    color: var(--safari-cafe-deep);
+    cursor: pointer;
+}
+
+.safari-consent-feedback {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--safari-red);
+    margin-top: 0.35rem;
+}
+
+.safari-hint-xs {
+    font-size: 0.74rem;
+    color: #475569;
+}
+
+/* Indicador y Toast de Seguridad de Sesión */
+.safari-session-pill {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1.5px solid #e2e8f0;
+    font-size: 0.84rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    transition: border-color 0.25s ease, background-color 0.25s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.safari-session-pill.is-warning {
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+}
+
+.safari-session-pill.is-danger {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+}
+
+.safari-session-floating {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 1080;
+}
+
+.safari-session-toast {
+    z-index: 1095;
+    min-width: 310px;
+}
+
+/* Banner de Cookies y Diálogo Modal Nativo (Cero analítica previa al consentimiento) */
+.safari-cookie-banner {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    max-width: 960px;
+    margin: 0 auto;
+    z-index: 1085;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-top: 4px solid var(--safari-red);
+    border-radius: 16px;
+    box-shadow: 0 18px 40px rgba(34, 22, 14, 0.22);
+    padding: 1rem 1.25rem;
+    backdrop-filter: blur(8px);
+}
+
+.safari-cookie-banner[hidden] {
+    display: none !important;
+}
+
+dialog.safari-cookie-dialog {
+    border: 1.5px solid var(--safari-cafe-medium);
+    border-radius: 18px;
+    padding: 0;
+    max-width: 560px;
+    width: calc(100vw - 2rem);
+    background: #ffffff;
+    color: var(--safari-cafe-deep);
+    box-shadow: 0 24px 55px rgba(28, 17, 10, 0.34);
+}
+
+dialog.safari-cookie-dialog:modal {
+    overscroll-behavior: contain;
+}
+
+dialog.safari-cookie-dialog::backdrop {
+    background: rgba(28, 17, 10, 0.58);
+    backdrop-filter: blur(3px);
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+.safari-cookie-dialog-head {
+    background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);
+    color: #ffffff;
+    padding: 1rem 1.25rem;
+    border-bottom: 3px solid var(--safari-yellow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.safari-cookie-dialog-body {
+    padding: 1.25rem;
+}
+
+.safari-cookie-dialog-footer {
+    padding: 0.9rem 1.25rem;
+    background: var(--safari-cafe-light);
+    border-top: 1px solid var(--safari-cafe-pastel);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.safari-legal-footer-links {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem 0.9rem;
+}
+
+.safari-legal-footer-links a,
+.safari-legal-footer-links button {
+    font-size: 0.8rem;
+    color: var(--safari-cafe-dark);
+    text-decoration: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-weight: 700;
+}
+
+.safari-legal-footer-links a:hover,
+.safari-legal-footer-links button:hover {
+    color: var(--safari-red);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Refuerzos WCAG AA (Positivo/Negativo), Botones Outline, LCD, Touch y Motion
+   ========================================================================== */
+[role="button"] {
+    cursor: pointer;
+}
+
+.text-on-brand-muted {
+    color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.text-lcd-label {
+    color: #cbd5e1 !important;
+}
+
+.text-lcd-green {
+    color: #4ade80 !important;
+}
+
+.text-lcd-amber {
+    color: #fde047 !important;
+}
+
+.text-lcd-cyan {
+    color: #38bdf8 !important;
+}
+
+.btn-outline-warning {
+    --bs-btn-color: #78350f;
+    --bs-btn-border-color: #b45309;
+    --bs-btn-hover-bg: #f59e0b;
+    --bs-btn-hover-border-color: #b45309;
+    --bs-btn-hover-color: #1f2937;
+    --bs-btn-active-bg: #d97706;
+    --bs-btn-active-border-color: #92400e;
+    --bs-btn-active-color: #1f2937;
+}
+
+.btn-outline-info {
+    --bs-btn-color: #055160;
+    --bs-btn-border-color: #0369a1;
+    --bs-btn-hover-bg: #0369a1;
+    --bs-btn-hover-border-color: #0369a1;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-active-bg: #075985;
+    --bs-btn-active-border-color: #075985;
+    --bs-btn-active-color: #ffffff;
+}
+
+.kds-header .btn-outline-warning,
+.barra-header .btn-outline-warning,
+[data-bs-theme="dark"] .btn-outline-warning {
+    --bs-btn-color: #fde047;
+    --bs-btn-border-color: #fbbf24;
+    --bs-btn-hover-bg: #fbbf24;
+    --bs-btn-hover-border-color: #fbbf24;
+    --bs-btn-hover-color: #0f172a;
+}
+
+.kds-header .btn-outline-info,
+.barra-header .btn-outline-info,
+[data-bs-theme="dark"] .btn-outline-info {
+    --bs-btn-color: #38bdf8;
+    --bs-btn-border-color: #38bdf8;
+    --bs-btn-hover-bg: #38bdf8;
+    --bs-btn-hover-border-color: #38bdf8;
+    --bs-btn-hover-color: #0f172a;
+}
+
+.kds-header .btn-outline-danger,
+.barra-header .btn-outline-danger,
+[data-bs-theme="dark"] .btn-outline-danger {
+    --bs-btn-color: #fca5a5;
+    --bs-btn-border-color: #f87171;
+    --bs-btn-hover-bg: #dc2626;
+    --bs-btn-hover-border-color: #dc2626;
+    --bs-btn-hover-color: #ffffff;
+}
+
+.safari-logo-header {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+}
+
+.safari-local-icon-chip {
+    background-color: var(--safari-cafe-pastel);
+    color: var(--safari-cafe-deep);
+    border: 2px solid var(--safari-cafe-medium);
+    border-left: 5px solid var(--local-accent, var(--safari-red));
+}
+
+.safari-footer-institutional {
+    background-color: var(--safari-cafe-pastel);
+    border-top: 2px solid var(--safari-cafe-medium);
+    font-size: 0.85rem;
+}
+
+@media (pointer: coarse) {
+    .btn-sm,
+    .filter-pill,
+    .btn-action-icon {
+        min-height: 36px;
+    }
+}
+
+@media (forced-colors: active) {
+    :focus-visible {
+        outline: 3px solid Highlight !important;
+        outline-offset: 2px !important;
+    }
+    .safari-cookie-banner,
+    dialog.safari-cookie-dialog,
+    .local-card,
+    .kds-card,
+    .barra-card,
+    .mesa-card,
+    .product-card {
+        border: 2px solid CanvasText !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

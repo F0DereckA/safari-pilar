@@ -366,7 +366,7 @@
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: #9ca3af;
+    color: #475569;
     font-size: 1.1rem;
     pointer-events: none;
 }
@@ -418,8 +418,10 @@
 
 /* Botones de Acción de Trabajadores */
 .btn-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;

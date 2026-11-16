@@ -1,12 +1,17 @@
 from django.urls import path
-from . import views
+from . import privacy_views, views
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('privacidad/', privacy_views.politica_privacidad_view, name='politica_privacidad'),
+    path('terminos/', privacy_views.terminos_condiciones_view, name='terminos_condiciones'),
+    path('privacidad/consentimiento/', privacy_views.registrar_consentimiento_view, name='registrar_consentimiento'),
+    path('mi-privacidad/', privacy_views.mi_privacidad_view, name='mi_privacidad'),
     path('qr-acceso/', views.qr_acceso_view, name='qr_acceso'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('vendedor/', views.vendedor, name='vendedor'),
+    path('api/vendedor/desbloquear-pin/', views.api_desbloquear_pin_pos, name='api_desbloquear_pin_pos'),
     path('vendedor/abrir-jornada/', views.abrir_jornada, name='abrir_jornada'),
     path('vendedor/abrir-caja/', views.abrir_caja, name='abrir_caja'),
     path('vendedor/cerrar-caja/', views.cerrar_caja, name='cerrar_caja'),

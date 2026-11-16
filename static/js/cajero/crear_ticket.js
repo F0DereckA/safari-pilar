@@ -1,3 +1,19 @@
+let posPorcentajePropina = 0;
+
+function cambiarPropinaPos(pct, btn) {
+    posPorcentajePropina = Number(pct) || 0;
+    document.querySelectorAll('#posTipButtonGroup button').forEach(b => {
+        b.classList.remove('active', 'btn-success', 'fw-bold');
+        b.classList.add('btn-outline-secondary');
+    });
+    if (btn) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('active', 'btn-success', 'fw-bold');
+    }
+    actualizarResumen();
+}
+window.cambiarPropinaPos = cambiarPropinaPos;
+
 const posConfig = (() => {
 
     const el = document.getElementById('posConfigData');
@@ -62,7 +78,7 @@ function abrirNotaCajeroModal(id, nombre) {
 
     document.getElementById('notaCajeroProductoId').value = id;
 
-    document.getElementById('modalNotaCajeroTitulo').innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i>Nota para: ${escapeHtml(nombre)}`;
+    document.getElementById('modalNotaCajeroTitulo').innerHTML = `<i class="bi bi-pencil-square text-lcd-amber me-2" aria-hidden="true"></i>Nota para: ${escapeHtml(nombre)}`;
 
     const notaActual = notasProductosCajero[id] || '';
 
@@ -436,15 +452,15 @@ function actualizarResumen() {
 
                     <div>
 
-                        <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-2" onclick="cambiarCantidad(${id}, -1)" title="Restar">
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-2" data-cart-qty-id="${id}" data-cart-qty-delta="-1" title="Restar" aria-label="Restar ${escapeHtml(prod.nombre)}">
 
-                            <i class="bi bi-dash-circle fs-5"></i>
+                            <i class="bi bi-dash-circle fs-5" aria-hidden="true"></i>
 
                         </button>
 
-                        <button type="button" class="btn btn-sm btn-link text-warning p-0 ms-1" onclick="cambiarCantidad(${id}, 1)" title="Sumar">
+                        <button type="button" class="btn btn-sm btn-link text-warning-emphasis p-0 ms-1" data-cart-qty-id="${id}" data-cart-qty-delta="1" title="Sumar" aria-label="Sumar ${escapeHtml(prod.nombre)}">
 
-                            <i class="bi bi-plus-circle fs-5"></i>
+                            <i class="bi bi-plus-circle fs-5" aria-hidden="true"></i>
 
                         </button>
 
@@ -615,21 +631,29 @@ function actualizarResumen() {
         filaDescTarjeta.classList.remove('d-flex');
     }
 
-    const totalFinalPagar = Math.max(0, total - montoBonificado - descMedioPago);
+    const baseConsumoAfecto = Math.max(0, total - montoBonificado - descMedioPago);
+    const netoAfecto = Math.round(baseConsumoAfecto / 1.19);
+    const iva19 = Math.round(baseConsumoAfecto * 19 / 119);
+    const montoPropinaPos = Math.round(baseConsumoAfecto * (posPorcentajePropina / 100));
+    const totalConPropina = baseConsumoAfecto + montoPropinaPos;
+
+    const elNeto = document.getElementById('posNetoTxt');
+    const elIva = document.getElementById('posIvaTxt');
+    const elProp = document.getElementById('posPropinaTxt');
+    if (elNeto) elNeto.innerText = formatearMoneda(netoAfecto);
+    if (elIva) elIva.innerText = formatearMoneda(iva19);
+    if (elProp) elProp.innerText = `+${formatearMoneda(montoPropinaPos)}`;
+
+    const totalFinalPagar = totalConPropina;
 
 
 
     // Detección de promo con monedas físicas de $1 o $5 pesos
-
-    const tienePromoMoneda = pedidoItems.some(it => {
-
-        const p = catalogoProductos.find(x => x.id === it.id);
-
+    const tienePromoMoneda = Object.entries(cantidades).some(([prodId, qty]) => {
+        if (Number(qty) <= 0) return false;
+        const p = productos[prodId];
         return p && (p.tipo_oferta === 'SEGUNDA_1' || Number(p.precio_oferta) === 1 || Number(p.precio_oferta) === 5);
-
     });
-
-
 
     const resRedondeo = calcularRedondeoChile(totalFinalPagar, metodoSeleccionado, tienePromoMoneda);
 
@@ -649,7 +673,7 @@ function actualizarResumen() {
 
             boxRedondeo.classList.remove('d-none');
 
-            txtRedondeo.innerHTML = `<i class="bi bi-coin text-warning me-1"></i> <strong>Promo Moneda Física:</strong> Cobro exacto sin redondeo. Recibir moneda física de $1 o $5 en caja.`;
+            txtRedondeo.innerHTML = `<i class="bi bi-coin text-warning-emphasis me-1" aria-hidden="true"></i> <strong>Promo Moneda Física:</strong> Cobro exacto sin redondeo. Recibir moneda física de $1 o $5 en caja.`;
 
         } else if (modoCobroMesa === 'PAGADA' && metodoSeleccionado === 'EFECTIVO' && total > 0 && resRedondeo.ajuste !== 0) {
 
@@ -1147,6 +1171,9 @@ async function procesarCobroPOS() {
 
     const metodoCobro = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || 'EFECTIVO';
 
+    const baseConsumoParaPropina = Math.max(0, subtotalBruto - montoBonificado);
+    const montoPropinaFinal = Math.round(baseConsumoParaPropina * (posPorcentajePropina / 100));
+
     const datosPedido = {
         itemsPayload,
         metodoCobro,
@@ -1154,7 +1181,10 @@ async function procesarCobroPOS() {
         mesaIdCobro,
         modoCuenta,
         montoBonificado,
-        subtotalBruto
+        codigoConvenio: convenioActivo ? (convenioActivo.codigoCompleto || convenioActivo.codigo || '') : '',
+        subtotalBruto,
+        porcentajePropina: posPorcentajePropina,
+        montoPropina: montoPropinaFinal
     };
 
     // Si es pago electrónico con tarjeta, simular Terminal POS Bancario Transbank/Getnet (Cortana & Inspector Legal)
@@ -1213,7 +1243,7 @@ function simularTransaccionPos() {
         setTimeout(() => {
             const codAuth = 'AUTH-' + Math.floor(100000 + Math.random() * 900000);
             if (statusText) {
-                statusText.innerHTML = `<strong class="text-success"><i class="bi bi-check-circle-fill me-1"></i> ¡Transacción Aprobada! Aut: #${codAuth}</strong>`;
+                statusText.innerHTML = `<strong class="text-lcd-green"><i class="bi bi-check-circle-fill me-1"></i> ¡Transacción Aprobada! Aut: #${codAuth}</strong>`;
             }
             setTimeout(() => {
                 completarCobroPosExitoso();
@@ -1253,6 +1283,14 @@ async function ejecutarDespachoTicketBackend(datos) {
         formData.append('mesa_id', mesaIdCobro);
         formData.append('modo_cuenta', modoCuenta);
         formData.append('monto_bonificado', String(montoBonificado));
+        if (datos.codigoConvenio) {
+            formData.append('codigo_convenio', datos.codigoConvenio);
+        }
+        formData.append('porcentaje_propina', String(datos.porcentajePropina || 0));
+        formData.append('monto_propina', String(datos.montoPropina || 0));
+        if ((datos.montoPropina || 0) > 0) {
+            formData.append('incluir_propina', '1');
+        }
         formData.append('csrfmiddlewaretoken', csrfToken);
 
         const resp = await fetch((posConfig.urlCrearTicket || window.location.pathname), {
@@ -1264,11 +1302,26 @@ async function ejecutarDespachoTicketBackend(datos) {
             }
         });
 
+        const contentType = resp.headers.get('content-type') || '';
         let data = {};
-        try {
-            data = await resp.json();
-        } catch (jsonErr) {
-            data = { ok: false, error: `Respuesta del servidor no válida (código HTTP ${resp.status}).` };
+        if (contentType.includes('application/json')) {
+            try {
+                data = await resp.json();
+            } catch (jsonErr) {
+                data = { ok: false, error: `Respuesta del servidor no válida (código HTTP ${resp.status}).` };
+            }
+        } else {
+            data = { ok: false, sesion_expirada: resp.status === 401, error: 'Tu sesión expiró o el servidor respondió en formato inesperado. Recarga la página e inicia sesión.' };
+        }
+
+        if (resp.status === 401 || data.sesion_expirada) {
+            swalErrorBootstrap.fire({
+                title: "Sesión expirada",
+                text: data.error || "Debes iniciar sesión nuevamente para emitir la comanda.",
+                icon: "warning",
+                confirmButtonText: "Ir al acceso"
+            }).then(() => { window.location.reload(); });
+            return;
         }
 
         if (!resp.ok || !data.ok) {
@@ -1281,15 +1334,25 @@ async function ejecutarDespachoTicketBackend(datos) {
             return;
         }
 
-        // Registrar beneficio QR de cabaña si aplica
-        if (convenioActivo && montoBonificado > 0) {
+        // Registrar beneficio QR de cabaña si aplica y no fue registrado atómicamente en crear_ticket
+        if (convenioActivo && montoBonificado > 0 && !data.convenio_aplicado_en_venta) {
             const qrData = new FormData();
-            qrData.append('codigo', convenioActivo.codigo);
+            qrData.append('codigo', datos.codigoConvenio || convenioActivo.codigo || '');
             qrData.append('monto_original', subtotalBruto);
             qrData.append('monto_bonificado', montoBonificado);
             qrData.append('monto_pagado', Math.max(0, subtotalBruto - montoBonificado));
+            if (data.ticket_comprobante_id) {
+                qrData.append('ticket_id', String(data.ticket_comprobante_id));
+            }
             qrData.append('csrfmiddlewaretoken', csrfToken);
-            fetch('/api/convenios/aplicar/', { method: 'POST', body: qrData }).catch(e => console.error(e));
+            const respConv = await fetch('/api/convenios/aplicar/', {
+                method: 'POST',
+                body: qrData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            if (!respConv.ok) {
+                console.warn('No se pudo confirmar registro secundario de convenio QR:', respConv.status);
+            }
         }
 
         document.getElementById('modalTicketId').innerText = '#' + data.codigo_comanda;
@@ -1330,12 +1393,8 @@ async function ejecutarDespachoTicketBackend(datos) {
             btnCobro.disabled = false;
             btnCobro.innerHTML = '<i class="bi bi-cash-coin me-2"></i>Cobrar y Enviar a Cocina/Barra';
         }
-    }
-
         actualizarResumen();
-
     }
-
 }
 
 
@@ -1439,6 +1498,86 @@ function aplicarFiltros() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    const filtroTexto = document.getElementById('filtroTexto');
+    if (filtroTexto) {
+        filtroTexto.addEventListener('input', filtrarProductos);
+    }
+
+    const btnLimpiarTexto = document.getElementById('btnLimpiarFiltroTexto');
+    if (btnLimpiarTexto) {
+        btnLimpiarTexto.addEventListener('click', limpiarFiltroTexto);
+    }
+
+    document.querySelectorAll('#posFilterCatGroup [data-filter-cat]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#posFilterCatGroup [data-filter-cat]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+            btn.setAttribute('aria-pressed', 'true');
+            filtrarCategoria(btn.getAttribute('data-filter-cat'), btn);
+        });
+    });
+
+    document.querySelectorAll('input[name="pos_modalidad"]').forEach(radio => {
+        radio.addEventListener('change', () => cambiarModalidadOperativa(radio.value));
+    });
+
+    const selectMesaPos = document.getElementById('pos_mesa_id');
+    if (selectMesaPos) {
+        selectMesaPos.addEventListener('change', actualizarResumen);
+    }
+
+    document.querySelectorAll('input[name="pos_modo_cuenta"], input[name="pos_metodo_pago"]').forEach(radio => {
+        radio.addEventListener('change', actualizarResumen);
+    });
+
+    document.querySelectorAll('#posTipButtonGroup [data-pct]').forEach(btn => {
+        btn.addEventListener('click', () => cambiarPropinaPos(Number(btn.getAttribute('data-pct')), btn));
+    });
+
+    const listaItemsPedido = document.getElementById('listaItemsPedido');
+    if (listaItemsPedido) {
+        listaItemsPedido.addEventListener('click', (e) => {
+            const btnQty = e.target.closest('[data-cart-qty-id]');
+            if (btnQty) {
+                cambiarCantidad(Number(btnQty.getAttribute('data-cart-qty-id')), Number(btnQty.getAttribute('data-cart-qty-delta')));
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const btnNota = e.target.closest('[data-nota-cajero-id]');
+        if (btnNota) {
+            abrirNotaCajeroModal(Number(btnNota.getAttribute('data-nota-cajero-id')), btnNota.getAttribute('data-nota-cajero-nombre') || '');
+            return;
+        }
+        const btnQtyCatalog = e.target.closest('[data-qty-id]');
+        if (btnQtyCatalog) {
+            cambiarCantidad(Number(btnQtyCatalog.getAttribute('data-qty-id')), Number(btnQtyCatalog.getAttribute('data-qty-delta')));
+            return;
+        }
+        const btnPosAction = e.target.closest('[data-pos-action]');
+        if (btnPosAction) {
+            const action = btnPosAction.getAttribute('data-pos-action');
+            if (action === 'procesar-cobro') procesarCobroPOS();
+            else if (action === 'abrir-consumo') abrirModalConsumoInterno();
+            else if (action === 'abrir-balanza') abrirModalBalanzaDigital();
+            else if (action === 'limpiar-pedido') limpiarPedido();
+            else if (action === 'scroll-comanda') scrollHaciaComanda();
+            else if (action === 'quitar-nota') quitarNotaCajero();
+        }
+    });
+
+    const btnGuardarNota = document.getElementById('btnGuardarNotaCajero');
+    if (btnGuardarNota) btnGuardarNota.addEventListener('click', guardarNotaCajero);
+
+    const btnSimularPos = document.getElementById('btnSimularAcercarTarjeta');
+    if (btnSimularPos) btnSimularPos.addEventListener('click', simularTransaccionPos);
+
+    const btnBypassPos = document.getElementById('btnBypassPosDocente');
+    if (btnBypassPos) btnBypassPos.addEventListener('click', completarCobroPosExitoso);
+
+    const btnConfirmarConsumo = document.getElementById('btnConfirmarConsumoInterno');
+    if (btnConfirmarConsumo) btnConfirmarConsumo.addEventListener('click', confirmarConsumoInterno);
 
     const inputNota = document.getElementById('notaCajeroTextoInput');
 
@@ -1596,8 +1735,14 @@ async function verificarCodigoQR() {
 
 
 
-        const resp = await fetch(`/api/convenios/verificar/?codigo=${encodeURIComponent(codigo)}`);
+        const resp = await fetch(`/api/convenios/verificar/?codigo=${encodeURIComponent(codigo)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
 
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            throw new Error(`Respuesta inválida HTTP ${resp.status}`);
+        }
         const data = await resp.json();
 
 
@@ -1606,9 +1751,9 @@ async function verificarCodigoQR() {
 
 
 
-        if (data.ok && data.puede_consumir) {
+        if (resp.ok && data.ok && data.puede_consumir) {
 
-            convenioActivo = data;
+            convenioActivo = { ...data, codigoCompleto: codigo };
 
             badge.className = 'badge bg-success';
 
@@ -1617,13 +1762,9 @@ async function verificarCodigoQR() {
             infoBox.className = 'mt-2 small p-2 rounded-2 border bg-success-subtle text-success border-success-subtle';
 
             infoBox.innerHTML = `
-
-                <div class="fw-bold"><i class="bi bi-check-circle-fill me-1"></i>${data.cabana} • ${data.titular}</div>
-
-                <div><strong>Beneficio:</strong> ${data.tipo_display}</div>
-
-                <div class="text-muted" style="font-size: 0.75rem;">Consumos hoy: ${data.consumos_hoy} de ${data.limite_diario} permitidos.</div>
-
+                <div class="fw-bold"><i class="bi bi-check-circle-fill me-1"></i>${escapeHtml(data.cabana || data.nombre_condicion || 'Convenio')} • ${escapeHtml(data.titular || data.producto_nombre || 'Autorizado')}</div>
+                <div><strong>Beneficio:</strong> ${escapeHtml(data.tipo_display || data.mensaje || 'Convenio vigente')}</div>
+                ${data.limite_diario ? `<div class="text-muted small">Consumos hoy: ${Number(data.consumos_hoy || 0)} de ${Number(data.limite_diario || 1)} permitidos.</div>` : ''}
             `;
 
             actualizarResumen();
@@ -1638,7 +1779,7 @@ async function verificarCodigoQR() {
 
             infoBox.className = 'mt-2 small p-2 rounded-2 border bg-danger-subtle text-danger border-danger-subtle';
 
-            infoBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${data.mensaje || 'Código no válido o límite diario alcanzado.'}`;
+            infoBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${escapeHtml(data.mensaje || data.error || 'Código no válido o límite diario alcanzado.')}`;
 
             actualizarResumen();
 
@@ -1843,6 +1984,24 @@ const BalanzaDigital = (() => {
 })();
 
 window.abrirModalBalanzaDigital = () => BalanzaDigital.abrirModal();
+
+// Exportación global explícita para invocaciones desde atributos del DOM
+window.cambiarCantidad = cambiarCantidad;
+window.actualizarResumen = actualizarResumen;
+window.procesarCobroPOS = procesarCobroPOS;
+window.simularCobro = simularCobro;
+window.limpiarPedido = limpiarPedido;
+window.cambiarModalidadOperativa = cambiarModalidadOperativa;
+window.filtrarCategoria = filtrarCategoria;
+window.filtrarProductos = filtrarProductos;
+window.limpiarFiltroTexto = limpiarFiltroTexto;
+window.abrirNotaCajeroModal = abrirNotaCajeroModal;
+window.quitarNotaCajero = quitarNotaCajero;
+window.guardarNotaCajero = guardarNotaCajero;
+window.abrirModalConsumoInterno = abrirModalConsumoInterno;
+window.confirmarConsumoInterno = confirmarConsumoInterno;
+window.simularTransaccionPos = simularTransaccionPos;
+window.completarCobroPosExitoso = completarCobroPosExitoso;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', BalanzaDigital.init);

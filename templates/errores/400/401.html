@@ -26,13 +26,13 @@
             <a href="{% url 'login' %}" class="d-flex align-items-center text-decoration-none gap-2" title="Volver al Acceso">
                 <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 48px; width: auto; object-fit: contain;">
                 <div>
-                    <h5 class="mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</h5>
+                    <span class="h5 d-block mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</span>
                     <small class="text-muted d-block" style="font-size: 0.75rem;">Sistema Gastronómico Parque Safari</small>
                 </div>
             </a>
             <div>
                 <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
-                    <i class="bi bi-shield-lock text-warning me-1"></i> Autenticación Requerida
+                    <i class="bi bi-shield-lock text-warning-emphasis me-1" aria-hidden="true"></i> Autenticación Requerida
                 </span>
             </div>
         </div>
@@ -46,13 +46,13 @@
                     <div class="error-header-strip mb-4"></div>
 
                     <div class="d-flex justify-content-center align-items-center gap-3 mb-2">
-                        <i class="bi bi-key-fill lock-icon"></i>
+                        <i class="bi bi-key-fill lock-icon" aria-hidden="true"></i>
                         <div class="error-code">401</div>
                     </div>
 
-                    <h2 class="fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
+                    <h1 class="h2 fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
                         Autenticación Requerida
-                    </h2>
+                    </h1>
 
                     <p class="text-secondary fs-5 mb-4" style="max-width: 580px; margin: 0 auto;">
                         Para acceder a este terminal o módulo del parque debes identificarte con tu usuario o RUT y contraseña institucional. Tu sesión previa puede haber finalizado por inactividad o seguridad.
@@ -60,7 +60,7 @@
 
                     <div class="alert alert-light border text-start p-3 mb-4 rounded-3" style="background-color: #f8fafc;">
                         <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-shield-exclamation text-warning fs-5 mt-1"></i>
+                            <i class="bi bi-shield-exclamation text-warning-emphasis fs-5 mt-1" aria-hidden="true"></i>
                             <div>
                                 <strong class="text-dark d-block">Norma de Seguridad y Cifrado ISO/IEC 27400</strong>
                                 <span class="text-muted small">

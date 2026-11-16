@@ -13,3 +13,16 @@ function volverAtrasSafari() {
 function reintentarCargaSafari() {
     window.location.reload();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', (ev) => {
+        const trigger = ev.target.closest('[data-safari-action]');
+        if (!trigger) return;
+        const accion = trigger.dataset.safariAction;
+        if (accion === 'back') {
+            volverAtrasSafari();
+        } else if (accion === 'reload') {
+            reintentarCargaSafari();
+        }
+    });
+});

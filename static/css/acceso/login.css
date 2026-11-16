@@ -61,7 +61,7 @@
 
 .role-icon-vendedor {
     background-color: #fef3c7;
-    color: var(--safari-yellow-dark);
+    color: #92400e;
     border: 1px solid #fde68a;
 }
 
@@ -73,7 +73,7 @@
 
 .role-icon-cocina {
     background-color: #ffedd5;
-    color: #ea580c;
+    color: #9a3412;
     border: 1px solid #fed7aa;
 }
 

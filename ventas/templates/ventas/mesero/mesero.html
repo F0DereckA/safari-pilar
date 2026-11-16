@@ -42,20 +42,20 @@
                     
                     <!-- Local Asignado (Inmutable para Mesero según asignación de RRHH/Administración) -->
                     <div class="d-flex align-items-center gap-2 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Local asignado: {{ local_actual.nombre }}">
-                        <i class="bi bi-shop text-warning"></i>
+                        <i class="bi bi-shop text-warning-emphasis" aria-hidden="true"></i>
                         <span class="fw-bold text-dark small">{{ local_actual.nombre }}</span>
                     </div>
 
                     <!-- Horario Oficial Parque Safari: 10:00 a 18:00 -->
                     <div class="d-none d-lg-flex align-items-center gap-1 bg-white px-3 py-1 rounded-pill border shadow-sm" title="Horario Oficial de Operación: 10:00 a 18:00">
-                        <i class="bi bi-clock-history text-danger"></i>
+                        <i class="bi bi-clock-history text-danger" aria-hidden="true"></i>
                         <span class="fw-bold text-dark small">10:00 - 18:00 ({% if en_horario %}Abierto{% else %}Cerrado{% endif %})</span>
                     </div>
 
                     <!-- Datos del Mesero en Turno -->
                     <div class="d-none d-md-flex flex-column text-end">
                         <span class="fw-bold text-dark" style="font-size: 0.9rem;">
-                            <i class="bi bi-person-check-fill text-success me-1"></i> Mesero: <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</strong>
+                            <i class="bi bi-person-check-fill text-success me-1" aria-hidden="true"></i> Mesero: <strong>{{ mesero_activo.usuario.get_full_name|default:mesero_activo.usuario.username }}</strong>
                         </span>
                         <small class="text-muted">{{ mesero_activo.rut|default:"En Turno Activo" }}</small>
                     </div>
@@ -65,20 +65,20 @@
                     </span>
 
                     <!-- Modo Sol / Alto Contraste Exterior (Aloy Ergonomía Salón) -->
-                    <button type="button" class="btn btn-sm btn-outline-warning bg-white text-dark rounded-pill px-3 fw-bold shadow-xs btn-modo-sol" id="btnToggleModoSol" title="Alternar Modo Sol / Alto Contraste para exteriores">
-                        <i class="bi bi-sun-fill text-warning me-1"></i> <span class="d-none d-sm-inline">Modo Sol</span>
+                    <button type="button" class="btn btn-sm btn-outline-warning bg-white rounded-pill px-3 fw-bold shadow-xs btn-modo-sol" id="btnToggleModoSol" aria-pressed="false" title="Alternar Modo Sol / Alto Contraste para exteriores">
+                        <i class="bi bi-sun-fill text-warning-emphasis me-1" aria-hidden="true"></i> <span class="d-none d-sm-inline">Modo Sol</span>
                     </button>
 
-                    <!-- Píldora de Estado de Red / Terreno Exterior (Aloy & Echo) -->
-                    <div id="pildoraRedMesero" class="d-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-white text-success small fw-bold" title="Estado de conexión a la red de Parque Safari">
-                        <i class="bi bi-wifi" id="iconoRedMesero"></i>
-                        <span id="textoRedMesero" class="d-none d-sm-inline">Online</span>
+                    <!-- Indicador de Red (solo visible si cae la conexión en terreno exterior) -->
+                    <div id="pildoraRedMesero" class="d-none" title="Sin conexión de red exterior. Las operaciones se sincronizarán al reconectar." hidden>
+                        <i class="bi bi-wifi-off" id="iconoRedMesero" aria-hidden="true"></i>
+                        <span id="textoRedMesero" class="d-none d-sm-inline">Sin conexión</span>
                     </div>
 
                     <!-- Centro de Alertas de Cocina: Pedidos Listos para Servir -->
                     <div class="dropdown" id="contenedorCampanaListos">
                         <button class="btn btn-sm position-relative rounded-pill px-3 fw-bold {% if total_pedidos_listos > 0 %}btn-success text-white shadow-sm{% else %}btn-outline-secondary bg-white text-muted{% endif %}" type="button" id="dropdownPedidosListos" data-bs-toggle="dropdown" aria-expanded="false" title="Pedidos listos en cocina para retirar">
-                            <i class="bi bi-bell-fill {% if total_pedidos_listos > 0 %}text-warning{% endif %} me-1"></i>
+                            <i class="bi bi-bell-fill {% if total_pedidos_listos > 0 %}text-lcd-amber{% endif %} me-1" aria-hidden="true"></i>
                             Cocina
                             {% if total_pedidos_listos > 0 %}
                             <span class="badge bg-danger rounded-pill ms-1">{{ total_pedidos_listos }} Listo{{ total_pedidos_listos|pluralize }}</span>
@@ -86,9 +86,9 @@
                         </button>
                         <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-3 mt-2" aria-labelledby="dropdownPedidosListos" style="min-width: 320px; max-width: 380px; z-index: 1050;">
                             <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark">
-                                    <i class="bi bi-fire text-danger me-1"></i> Pedidos Listos en Cocina / Barra
-                                </h6>
+                                <span class="h6 fw-bold mb-0 text-dark d-block">
+                                    <i class="bi bi-fire text-danger me-1" aria-hidden="true"></i> Pedidos Listos en Cocina / Barra
+                                </span>
                                 <span class="badge bg-success rounded-pill">{{ total_pedidos_listos }} listos</span>
                             </div>
                             {% if pedidos_listos %}
@@ -142,15 +142,40 @@
         </div>
         {% endif %}
 
+        <div id="alertaCajaMeseroBox">
+            {% if not puede_atender_salon %}
+            <div class="alert alert-warning border-2 border-warning rounded-4 shadow-sm mb-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert" aria-live="assertive">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded-circle bg-white text-warning-emphasis shadow-xs">
+                        <i class="bi bi-lock-fill fs-4" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark">
+                            {% if not jornada_activa %}
+                                Salón Bloqueado • Jornada Operativa No Abierta
+                            {% else %}
+                                Salón Bloqueado • Caja del Local Sin Apertura
+                            {% endif %}
+                        </div>
+                        <small class="text-dark">{{ motivo_bloqueo_atencion }}</small>
+                    </div>
+                </div>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 rounded-pill fw-bold">
+                    <i class="bi bi-shield-lock-fill me-1" aria-hidden="true"></i> Atención Bloqueada sin Caja
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
         <!-- Barra Superior: Resumen Operativo y Estado de Impresoras -->
         <div class="mesero-top-bar d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
                 <span class="badge bg-success px-3 py-1 mb-1 fw-bold text-white">
                     <i class="bi bi-tablet-fill me-1"></i> MÓDULO RÁPIDO PARA MESEROS
                 </span>
-                <h3 class="fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
+                <h2 class="h3 fw-bold mb-0" style="color: var(--safari-cafe-deep); font-family: 'Oswald', sans-serif;">
                     SALÓN DE MESAS Y PEDIDOS • {{ local_actual.nombre }}
-                </h3>
+                </h2>
                 <p class="text-muted mb-0 small">
                     Asigna una mesa, selecciona comensales y envía el pedido. <strong>El sistema imprimirá automáticamente en Cocina solo lo de cocina, y en Barra solo lo de barra.</strong>
                 </p>
@@ -166,19 +191,15 @@
                     <span class="badge bg-danger rounded-circle p-1"> </span>
                     <strong class="small text-dark">{{ mesas_ocupadas }} Ocupadas</strong>
                 </div>
-                <div class="d-flex align-items-center gap-2 bg-light p-2 px-3 rounded-pill border">
-                    <i class="bi bi-printer-fill text-primary"></i>
-                    <strong class="small text-muted">Cocina & Barra: Online</strong>
-                </div>
             </div>
         </div>
 
         <!-- SECCIÓN 1: SELECTOR Y MAPA VISUAL DE MESAS -->
         <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
-                    <i class="bi bi-grid-3x3-gap-fill text-warning me-2"></i>1. Selecciona o Asigna una Mesa
-                </h5>
+                <h3 class="h5 fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif;">
+                    <i class="bi bi-grid-3x3-gap-fill text-warning-emphasis me-2" aria-hidden="true"></i>1. Selecciona o Asigna una Mesa
+                </h3>
                 <small class="text-muted">Haz clic en una mesa para tomar el pedido de inmediato</small>
             </div>
 
@@ -187,11 +208,13 @@
                 <div class="col-6 col-sm-4 col-md-3 col-xl-2">
                     <div class="mesa-card {% if m.estado == 'HABILITADA' %}mesa-libre{% elif m.estado == 'OCUPADA' %}mesa-ocupada{% else %}mesa-reservada{% endif %} {% if forloop.first %}mesa-seleccionada{% endif %}"
                          id="cardMesa_{{ m.id }}"
+                         role="button"
+                         tabindex="0"
+                         aria-label="Seleccionar {{ m.identificador }}, capacidad {{ m.capacidad }} personas, estado {{ m.get_estado_display|default:m.estado }}"
                          data-mesa-id="{{ m.id }}"
                          data-identificador="{{ m.identificador }}"
                          data-capacidad="{{ m.capacidad }}"
-                         data-estado="{{ m.estado }}"
-                         onclick="seleccionarMesa({{ m.id }}, '{{ m.identificador|escapejs }}', {{ m.capacidad }}, '{{ m.estado }}')">
+                         data-estado="{{ m.estado }}">
                         
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <span class="mesa-title">{{ m.identificador }}</span>
@@ -251,23 +274,23 @@
                             <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold">
                                 Estado: <span id="mesaActivaEstado" class="{% if mesas and mesas.0.estado == 'OCUPADA' %}text-danger{% else %}text-success{% endif %}">{% if mesas and mesas.0.estado == 'OCUPADA' %}Ocupada por Comensales{% else %}Libre / Habilitada{% endif %}</span>
                             </span>
-                            <button type="button" id="btnOcuparMesaRapido" class="btn btn-sm btn-outline-success rounded-pill fw-bold px-3" style="display: none;" onclick="ejecutarAccionMesaRapida('ocupar_mesa')">
-                                <i class="bi bi-person-plus-fill me-1"></i>Asignar Comensales
+                            <button type="button" id="btnOcuparMesaRapido" class="btn btn-sm btn-outline-success rounded-pill fw-bold px-3{% if not puede_atender_salon %} opacity-50{% endif %}" style="display: none;" data-mesa-rapida="ocupar_mesa" aria-disabled="{% if not puede_atender_salon %}true{% else %}false{% endif %}"{% if not puede_atender_salon %} aria-describedby="alertaCajaMeseroBox"{% endif %}>
+                                <i class="bi bi-person-plus-fill me-1" aria-hidden="true"></i>Asignar Comensales
                             </button>
-                            <button type="button" id="btnLiberarMesaRapido" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold px-3" style="display: none;" onclick="ejecutarAccionMesaRapida('liberar_mesa')">
-                                <i class="bi bi-check2-circle me-1"></i>Liberar Mesa
+                            <button type="button" id="btnLiberarMesaRapido" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold px-3" style="display: none;" data-mesa-rapida="liberar_mesa">
+                                <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Liberar Mesa
                             </button>
                         </div>
 
                         <!-- Selector Rápido de Comensales -->
                         <div class="d-flex align-items-center gap-2">
                             <small class="fw-bold text-muted">Comensales:</small>
-                            <button type="button" class="btn-comensal active" onclick="setComensales(1, this)">1</button>
-                            <button type="button" class="btn-comensal" onclick="setComensales(2, this)">2</button>
-                            <button type="button" class="btn-comensal" onclick="setComensales(3, this)">3</button>
-                            <button type="button" class="btn-comensal" onclick="setComensales(4, this)">4</button>
-                            <button type="button" class="btn-comensal" onclick="setComensales(5, this)">5</button>
-                            <button type="button" class="btn-comensal" onclick="setComensales(6, this)">6+</button>
+                            <button type="button" class="btn-comensal active" data-comensales="1" aria-label="1 comensal">1</button>
+                            <button type="button" class="btn-comensal" data-comensales="2" aria-label="2 comensales">2</button>
+                            <button type="button" class="btn-comensal" data-comensales="3" aria-label="3 comensales">3</button>
+                            <button type="button" class="btn-comensal" data-comensales="4" aria-label="4 comensales">4</button>
+                            <button type="button" class="btn-comensal" data-comensales="5" aria-label="5 comensales">5</button>
+                            <button type="button" class="btn-comensal" data-comensales="6" aria-label="6 o más comensales">6+</button>
                         </div>
                     </div>
 
@@ -294,14 +317,14 @@
                             </div>
 
                             <div class="d-flex gap-2 align-items-center flex-wrap">
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold px-3 bg-white shadow-sm" onclick="abrirModalReasignarMesa()" title="Reasignar atención activa a otra mesa disponible ">
-                                    <i class="bi bi-arrow-left-right me-1"></i> Reasignar Mesa
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold px-3 bg-white shadow-sm" data-mesero-action="reasignar-mesa" title="Reasignar atención activa a otra mesa disponible">
+                                    <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i> Reasignar Mesa
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-bold px-3 bg-white" onclick="abrirModalDetalleCuenta()">
-                                    <i class="bi bi-list-check me-1 text-primary"></i> Ver Consumos
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-bold px-3 bg-white" data-mesero-action="detalle-cuenta">
+                                    <i class="bi bi-list-check me-1 text-primary" aria-hidden="true"></i> Ver Consumos
                                 </button>
-                                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3 shadow-sm" onclick="abrirModalCerrarCuenta()">
-                                    <i class="bi bi-cash-coin me-1"></i> Cobrar y Cerrar Mesa
+                                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3 shadow-sm" data-mesero-action="cerrar-cuenta">
+                                    <i class="bi bi-cash-coin me-1" aria-hidden="true"></i> Cobrar y Cerrar Mesa
                                 </button>
                             </div>
                         </div>
@@ -312,28 +335,28 @@
 
                     <!-- Pestañas de Categoría con Indicador de Destino de Impresión -->
                     <div class="d-flex flex-wrap gap-2 mb-3 filter-cat-scroll">
-                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold filter-cat-btn active" onclick="filtrarCategoria('todos', this)">
-                            <i class="bi bi-grid-fill me-1"></i> Todo el Menú
+                        <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold filter-cat-btn active" data-filter-cat="todos">
+                            <i class="bi bi-grid-fill me-1" aria-hidden="true"></i> Todo el Menú
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cocinar', this)">
-                            <i class="bi bi-fire me-1"></i> Comida por Cocinar <span class="badge bg-danger ms-1">Cocina</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold filter-cat-btn" data-filter-cat="cocinar">
+                            <i class="bi bi-fire me-1" aria-hidden="true"></i> Comida por Cocinar <span class="badge bg-danger ms-1">Cocina</span>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('preparada', this)">
-                            <i class="bi bi-basket2-fill me-1"></i> Comida Preparada <span class="badge bg-warning text-dark ms-1">Salón</span>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold filter-cat-btn" data-filter-cat="preparada">
+                            <i class="bi bi-basket2-fill me-1" aria-hidden="true"></i> Comida Preparada <span class="badge bg-warning text-dark ms-1">Salón</span>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('envasada', this)">
-                            <i class="bi bi-cup-straw me-1"></i> Bebidas Envasadas <span class="badge bg-primary ms-1">Barra</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold filter-cat-btn" data-filter-cat="envasada">
+                            <i class="bi bi-cup-straw me-1" aria-hidden="true"></i> Bebidas Envasadas <span class="badge bg-primary ms-1">Barra</span>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-info text-dark rounded-pill px-3 fw-bold filter-cat-btn" onclick="filtrarCategoria('cafeteria', this)">
-                            <i class="bi bi-cup-hot-fill me-1"></i> Cafetería & Jugos <span class="badge bg-info text-dark ms-1">Barra</span>
+                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold filter-cat-btn" data-filter-cat="cafeteria">
+                            <i class="bi bi-cup-hot-fill me-1" aria-hidden="true"></i> Cafetería & Jugos <span class="badge bg-info text-dark ms-1">Barra</span>
                         </button>
                     </div>
 
                     <!-- Buscador Rápido de Producto -->
                     <div class="mb-3">
                         <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" placeholder="Buscar plato, hamburguesa, bebida, café..." onkeyup="filtrarTextoPlatos()">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" placeholder="Buscar plato, hamburguesa, bebida, café..." aria-label="Buscar plato, hamburguesa, bebida o café">
                         </div>
                     </div>
 
@@ -346,20 +369,20 @@
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         {% if p.destino == 'COCINA' %}
                                         <span class="badge-dest-cocina">
-                                            <i class="bi bi-fire"></i> {{ p.destino_badge }}
+                                            <i class="bi bi-fire" aria-hidden="true"></i> {{ p.destino_badge }}
                                         </span>
                                         {% elif p.destino == 'BARRA' %}
                                         <span class="badge-dest-barra">
-                                            <i class="bi bi-cup-straw"></i> {{ p.destino_badge }}
+                                            <i class="bi bi-cup-straw" aria-hidden="true"></i> {{ p.destino_badge }}
                                         </span>
                                         {% else %}
                                         <span class="badge-dest-salon">
-                                            <i class="bi bi-bag-check-fill"></i> {{ p.destino_badge }}
+                                            <i class="bi bi-bag-check-fill" aria-hidden="true"></i> {{ p.destino_badge }}
                                         </span>
                                         {% endif %}
                                         {% if p.en_oferta %}
                                         <span class="badge bg-danger text-white py-1 px-2" style="font-size: 0.72rem;">
-                                            <i class="bi bi-fire me-1"></i>{{ p.descripcion_oferta|default:"PROMO" }}
+                                            <i class="bi bi-fire me-1" aria-hidden="true"></i>{{ p.descripcion_oferta|default:"PROMO" }}
                                         </span>
                                         <span class="product-mesero-price text-danger fw-bold">
                                             <del class="text-muted small me-1" style="font-size: 0.75rem;">${{ p.precio_base }}</del>
@@ -369,24 +392,24 @@
                                         <span class="product-mesero-price">{{ p.precio|pesos_clp }}</span>
                                         {% endif %}
                                     </div>
-                                    <h6 class="product-mesero-title">{{ p.nombre }}</h6>
+                                    <h3 class="product-mesero-title">{{ p.nombre }}</h3>
                                     <p class="text-muted small mb-3">{{ p.descripcion }}</p>
                                 </div>
 
                                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                    <button type="button" class="btn-nota-plato" id="btnNota_{{ p.id }}" onclick="abrirNotaModal({{ p.id }}, '{{ p.nombre|escapejs }}')">
-                                        <i class="bi bi-chat-left-text-fill text-danger"></i>
+                                    <button type="button" class="btn-nota-plato" id="btnNota_{{ p.id }}" data-nota-plato-id="{{ p.id }}" data-nota-plato-nombre="{{ p.nombre }}">
+                                        <i class="bi bi-chat-left-text-fill text-danger" aria-hidden="true"></i>
                                         <span id="btnNotaText_{{ p.id }}">Nota</span>
                                     </button>
 
                                     <!-- Controles sumar / restar -->
                                     <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', -1)">
-                                            <i class="bi bi-dash"></i>
+                                        <button type="button" class="qty-control-btn" data-qty-id="{{ p.id }}" data-qty-nombre="{{ p.nombre }}" data-qty-precio="{{ p.precio }}" data-qty-destino="{{ p.destino }}" data-qty-delta="-1" aria-label="Restar 1 {{ p.nombre }}">
+                                            <i class="bi bi-dash" aria-hidden="true"></i>
                                         </button>
                                         <span class="qty-display" id="qty_{{ p.id }}">0</span>
-                                        <button type="button" class="qty-control-btn" onclick="modificarCantidad({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, '{{ p.destino }}', 1)">
-                                            <i class="bi bi-plus"></i>
+                                        <button type="button" class="qty-control-btn" data-qty-id="{{ p.id }}" data-qty-nombre="{{ p.nombre }}" data-qty-precio="{{ p.precio }}" data-qty-destino="{{ p.destino }}" data-qty-delta="1" aria-label="Agregar 1 {{ p.nombre }}">
+                                            <i class="bi bi-plus" aria-hidden="true"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -405,16 +428,16 @@
                     <div class="comanda-header">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h4 class="fw-bold mb-0" style="font-family: 'Oswald', sans-serif; color: var(--safari-cafe-deep);">
-                                    <i class="bi bi-receipt text-danger me-2"></i>Comanda en Vivo
-                                </h4>
+                                <h3 class="h4 fw-bold mb-0" style="font-family: 'Oswald', sans-serif; color: var(--safari-cafe-deep);">
+                                    <i class="bi bi-receipt text-danger me-2" aria-hidden="true"></i>Comanda en Vivo
+                                </h3>
                                 <small class="text-muted">
                                     Mesa: <strong id="comandaMesaNombre" class="text-dark">Mesa 1</strong> • 
                                     <span id="comandaComensales">1 Persona</span>
                                 </small>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="vaciarComanda()" title="Vaciar Comanda">
-                                <i class="bi bi-trash"></i>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-mesero-action="vaciar-comanda" title="Vaciar Comanda" aria-label="Vaciar comanda">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -422,7 +445,7 @@
                     <!-- Lista de Ítems Agregados -->
                     <div class="mb-3" style="max-height: 320px; overflow-y: auto;" id="listaComandaItems">
                         <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
-                            <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning"></i>
+                            <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning-emphasis" aria-hidden="true"></i>
                             Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
                         </div>
                     </div>
@@ -430,18 +453,18 @@
                     <!-- Desglose Inteligente por Zonas de Impresión -->
                     <div class="p-3 rounded-3 mb-3" style="background-color: var(--safari-cafe-light); border: 1.5px dashed var(--safari-cafe-medium);">
                         <div class="small fw-bold text-muted mb-2">
-                            <i class="bi bi-diagram-2-fill text-warning me-1"></i> Desglose de Impresión por Zona:
+                            <i class="bi bi-diagram-2-fill text-warning-emphasis me-1" aria-hidden="true"></i> Desglose de Impresión por Zona:
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1 small">
-                            <span><i class="bi bi-fire text-danger me-1"></i> Para Comandera Cocina:</span>
+                            <span><i class="bi bi-fire text-danger me-1" aria-hidden="true"></i> Para Comandera Cocina:</span>
                             <strong id="contadorCocina">0 ítems</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1 small">
-                            <span><i class="bi bi-cup-straw text-primary me-1"></i> Para Comandera Barra:</span>
+                            <span><i class="bi bi-cup-straw text-primary me-1" aria-hidden="true"></i> Para Comandera Barra:</span>
                             <strong id="contadorBarra">0 ítems</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center small">
-                            <span><i class="bi bi-bag-check text-warning me-1"></i> Para Salón / Entrega:</span>
+                            <span><i class="bi bi-bag-check text-warning-emphasis me-1" aria-hidden="true"></i> Para Salón / Entrega:</span>
                             <strong id="contadorSalon">0 ítems</strong>
                         </div>
                     </div>
@@ -449,7 +472,7 @@
                     <!-- Resumen de Cuenta Abierta en Lateral -->
                     <div id="lateralCuentaAbiertaBox" class="p-3 rounded-3 mb-3" style="background-color: #fffbeb; border: 1.5px solid #fcd34d; display: none;">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small fw-bold text-dark"><i class="bi bi-receipt text-warning me-1"></i> Cuenta en Mesa:</span>
+                            <span class="small fw-bold text-dark"><i class="bi bi-receipt text-warning-emphasis me-1" aria-hidden="true"></i> Cuenta en Mesa:</span>
                             <span class="badge bg-warning text-dark fw-bold" id="lateralRondasBadge">Ronda 1</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-baseline">
@@ -461,30 +484,38 @@
                     <!-- Total de la Mesa -->
                     <div class="d-flex justify-content-between align-items-center mb-4 pt-2 border-top">
                         <span class="fs-5 fw-bold text-dark" id="labelTotalComanda">Total Comanda:</span>
-                        <h2 class="fw-bold text-danger mb-0" id="totalComandaTexto" style="font-family: 'Oswald', sans-serif;">
+                        <div class="h2 fw-bold text-danger mb-0" id="totalComandaTexto" style="font-family: 'Oswald', sans-serif;">
                             $0
-                        </h2>
+                        </div>
                     </div>
 
                     <!-- Botón Despachar Comanda Directo (Ágil para Hora Pico) -->
-                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" onclick="enviarComandaDirecta()" disabled>
-                        <i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a Cocina y Barra
+                    <div id="avisoBloqueoComandaBox">
+                        {% if not puede_atender_salon %}
+                        <div class="alert alert-warning border border-warning rounded-3 py-2 px-3 small mb-2 text-dark fw-semibold" role="status">
+                            <i class="bi bi-lock-fill text-warning-emphasis me-1" aria-hidden="true"></i>
+                            Requiere caja abierta en el local para enviar comandas.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn-despachar-comanda" id="btnDespacharComanda" data-mesero-action="enviar-comanda" disabled>
+                        <i class="bi bi-send-check-fill me-2 fs-4" aria-hidden="true"></i> {% if not puede_atender_salon %}Requiere Caja Abierta{% else %}Enviar a Cocina y Barra{% endif %}
                     </button>
 
                     <!-- Acceso opcional a vista previa / reimpresión de tickets térmicos -->
                     <div class="text-center mt-2" id="boxVerTicketsPreview" style="display: none;">
-                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none py-0" onclick="abrirModalTickets()">
-                            <i class="bi bi-receipt me-1"></i> Ver comanda térmica de 80mm
+                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none py-0" data-mesero-action="abrir-tickets">
+                            <i class="bi bi-receipt me-1" aria-hidden="true"></i> Ver comanda térmica de 80mm
                         </button>
                     </div>
 
                     <!-- Botón Cerrar Cuenta y Cobrar Mesa (Lateral) -->
-                    <button type="button" class="btn btn-success w-100 py-3 rounded-4 fw-bold mt-2 shadow-sm" id="btnCerrarCuentaLateral" style="display: none;" onclick="abrirModalCerrarCuenta()">
-                        <i class="bi bi-cash-coin me-2 fs-5"></i> Cobrar y Cerrar Mesa
+                    <button type="button" class="btn btn-success w-100 py-3 rounded-4 fw-bold mt-2 shadow-sm" id="btnCerrarCuentaLateral" style="display: none;" data-mesero-action="cerrar-cuenta">
+                        <i class="bi bi-cash-coin me-2 fs-5" aria-hidden="true"></i> Cobrar y Cerrar Mesa
                     </button>
 
                     <small class="text-muted text-center d-block mt-2" style="font-size: 0.72rem;">
-                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Despacho instantáneo a producción con alerta rápida para agilizar la atención en hora pico.
+                        <i class="bi bi-lightning-charge-fill text-warning-emphasis me-1" aria-hidden="true"></i> Despacho instantáneo a producción con alerta rápida para agilizar la atención en hora pico.
                     </small>
 
                 </div>
@@ -500,42 +531,42 @@
             <span class="total-comanda-label" id="mobileComandaMesa">Mesa 1 • 0 ítems</span>
             <span class="total-comanda-monto" id="mobileComandaTotal">$0</span>
         </div>
-        <button type="button" class="btn-ver-comanda-flotante" onclick="scrollHaciaComanda()">
-            <i class="bi bi-receipt-cutoff"></i> Ver Comanda
+        <button type="button" class="btn-ver-comanda-flotante" data-mesero-action="scroll-comanda">
+            <i class="bi bi-receipt-cutoff" aria-hidden="true"></i> Ver Comanda
         </button>
     </div>
 
     <!-- MODAL DE NOTA ESPECIAL LIBRE (SIN FILTROS RÍGIDOS) -->
-    <div class="modal fade" id="modalNota" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalNota" tabindex="-1" aria-labelledby="modalNotaTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header bg-dark text-white p-3">
                     <div>
-                        <h6 class="modal-title fw-bold mb-0" id="modalNotaTitulo">
-                            <i class="bi bi-pencil-square text-warning me-2"></i>Nota de Preparación
-                        </h6>
-                        <small class="text-white-50" style="font-size: 0.78rem;">Instrucción libre para Cocina o Barra</small>
+                        <h2 class="modal-title h6 fw-bold mb-0" id="modalNotaTitulo">
+                            <i class="bi bi-pencil-square text-lcd-amber me-2" aria-hidden="true"></i>Nota de Preparación
+                        </h2>
+                        <small class="text-on-brand-muted" style="font-size: 0.78rem;">Instrucción libre para Cocina o Barra</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="notaProductoId">
-                    <label class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
+                    <label for="notaTextoInput" class="form-label small fw-bold text-dark">Instrucción o preferencia para este producto:</label>
                     <textarea id="notaTextoInput" class="form-control mb-2" rows="3" placeholder="Ej: sin queso cheddar, sin cebolla, mayonesa aparte, poco hielo..." style="font-size: 0.95rem; border-radius: 12px; resize: none;"></textarea>
                     <small class="text-muted d-block">
-                        <i class="bi bi-info-circle me-1 text-primary"></i> Escribe libremente lo que el cliente solicita. Aparecerá destacado en el ticket debajo del producto.
+                        <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i> Escribe libremente lo que el cliente solicita. Aparecerá destacado en el ticket debajo del producto.
                     </small>
                 </div>
                 <div class="modal-footer p-2 bg-light d-flex justify-content-between">
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNota" onclick="quitarNota()">
-                        <i class="bi bi-trash me-1"></i> Quitar Nota
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnQuitarNota" data-mesero-action="quitar-nota">
+                        <i class="bi bi-trash me-1" aria-hidden="true"></i> Quitar Nota
                     </button>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-dismiss="modal">
                             Cancelar
                         </button>
-                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" onclick="guardarNota()">
-                            <i class="bi bi-check2-circle me-1"></i> Guardar Nota
+                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-4" data-mesero-action="guardar-nota">
+                            <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Guardar Nota
                         </button>
                     </div>
                 </div>
@@ -544,17 +575,17 @@
     </div>
 
     <!-- MODAL SIMULADOR DE IMPRESIÓN INTELIGENTE DE TICKETS POR ZONA -->
-    <div class="modal fade" id="modalTickets" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalTickets" tabindex="-1" aria-labelledby="modalTicketsTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header text-white p-3" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
                     <div>
-                        <h5 class="modal-title fw-bold" style="font-family: 'Oswald', sans-serif;">
-                            <i class="bi bi-printer-fill text-warning me-2"></i>DESPACHO Y EMISIÓN DE TICKETS POR ZONA
-                        </h5>
-                        <small class="text-white-50">Comandas separadas listas para impresión en comanderas térmicas de 80mm</small>
+                        <h2 class="modal-title h5 fw-bold" id="modalTicketsTitulo" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-printer-fill text-lcd-amber me-2" aria-hidden="true"></i>DESPACHO Y EMISIÓN DE TICKETS POR ZONA
+                        </h2>
+                        <small class="text-on-brand-muted">Comandas separadas listas para impresión en comanderas térmicas de 80mm</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body p-4" style="background-color: #f3f4f6;">
                     
@@ -682,12 +713,12 @@
                         <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
                             Cerrar
                         </button>
-                        <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
-                            <i class="bi bi-printer me-1"></i> Imprimir Comandas (80mm)
+                        <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" data-mesero-action="print">
+                            <i class="bi bi-printer me-1" aria-hidden="true"></i> Imprimir Comandas (80mm)
                         </button>
                     </div>
-                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="enviarComandaDirecta()">
-                        <i class="bi bi-send-check-fill me-1"></i> Despachar Pedido a Preparar
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" data-mesero-action="enviar-comanda">
+                        <i class="bi bi-send-check-fill me-1" aria-hidden="true"></i> Despachar Pedido a Preparar
                     </button>
                 </div>
             </div>
@@ -695,17 +726,17 @@
     </div>
 
     <!-- MODAL DETALLE DE CONSUMOS ACUMULADOS EN MESA -->
-    <div class="modal fade" id="modalDetalleCuenta" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalDetalleCuenta" tabindex="-1" aria-labelledby="modalDetalleCuentaTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 680px; width: 95%;">
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header bg-dark text-white p-3 px-4">
                     <div>
-                        <h4 class="modal-title fw-bold mb-1" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
-                            <i class="bi bi-list-check text-warning me-2 fs-4"></i>Consumos Acumulados • <span id="modalDetalleMesaNom">Mesa</span>
-                        </h4>
-                        <span class="text-white-50" style="font-size: 0.95rem;">Rondas despachadas a Cocina y Barra</span>
+                        <h2 class="modal-title h4 fw-bold mb-1" id="modalDetalleCuentaTitulo" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">
+                            <i class="bi bi-list-check text-lcd-amber me-2 fs-4" aria-hidden="true"></i>Consumos Acumulados • <span id="modalDetalleMesaNom">Mesa</span>
+                        </h2>
+                        <span class="text-on-brand-muted" style="font-size: 0.95rem;">Rondas despachadas a Cocina y Barra</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
@@ -731,19 +762,19 @@
 
                     <div class="d-flex justify-content-between align-items-center p-3 px-4 rounded-4 bg-light border shadow-sm">
                         <span class="fs-5 fw-bold text-dark">Total Acumulado a Cobrar:</span>
-                        <h2 class="fw-bold text-danger mb-0" id="modalDetalleTotal" style="font-family: 'Oswald', sans-serif; font-size: 2.3rem;">$0</h2>
+                        <div class="h2 fw-bold text-danger mb-0" id="modalDetalleTotal" style="font-family: 'Oswald', sans-serif; font-size: 2.3rem;">$0</div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between flex-wrap gap-2">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 fs-6 fw-semibold" data-bs-dismiss="modal">
-                        <i class="bi bi-arrow-left me-1"></i> Volver a la Mesa
+                        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a la Mesa
                     </button>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-primary fw-bold rounded-pill px-3 py-2 fs-6 shadow-sm" onclick="pasarDeDetalleAReasignar()">
-                            <i class="bi bi-arrow-left-right me-1"></i> Cambiar Mesa
+                        <button type="button" class="btn btn-outline-primary fw-bold rounded-pill px-3 py-2 fs-6 shadow-sm" data-mesero-action="detalle-a-reasignar">
+                            <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i> Cambiar Mesa
                         </button>
-                        <button type="button" class="btn btn-success fw-bold rounded-pill px-4 py-2 fs-6 shadow-sm" onclick="pasarDeDetalleACobro()">
-                            <i class="bi bi-cash-coin me-1 fs-5"></i> Ir a Cobrar Cuenta
+                        <button type="button" class="btn btn-success fw-bold rounded-pill px-4 py-2 fs-6 shadow-sm" data-mesero-action="detalle-a-cobro">
+                            <i class="bi bi-cash-coin me-1 fs-5" aria-hidden="true"></i> Ir a Cobrar Cuenta
                         </button>
                     </div>
                 </div>
@@ -752,17 +783,17 @@
     </div>
 
     <!-- MODAL DE CIERRE DE CUENTA Y PAGO DE MESA -->
-    <div class="modal fade" id="modalCerrarCuenta" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalCerrarCuenta" tabindex="-1" aria-labelledby="modalCerrarCuentaTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 650px; width: 95%;">
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header text-white p-3 px-4" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%);">
                     <div>
-                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
-                            <i class="bi bi-cash-coin text-warning me-2"></i>COBRO Y CIERRE DE CUENTA
-                        </h5>
-                        <small class="text-white-50"><span id="modalCerrarMesaNom">Mesa</span> • Liberación de Comensales</small>
+                        <h2 class="modal-title h5 fw-bold mb-0" id="modalCerrarCuentaTitulo" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-cash-coin text-lcd-amber me-2" aria-hidden="true"></i>COBRO Y CIERRE DE CUENTA
+                        </h2>
+                        <small class="text-on-brand-muted"><span id="modalCerrarMesaNom">Mesa</span> • Liberación de Comensales</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="" id="formCerrarCuenta">
                     {% csrf_token %}
@@ -771,55 +802,97 @@
                     <div class="modal-body p-4">
                         <div class="text-center py-2 mb-3 bg-light rounded-4 border">
                             <span class="text-muted small d-block">TOTAL FINAL A PAGAR:</span>
-                            <h1 class="display-6 fw-bold text-success mb-0" id="modalCerrarTotal" style="font-family: 'Oswald', sans-serif;">$0</h1>
+                            <div class="display-6 fw-bold text-success mb-0" id="modalCerrarTotal" style="font-family: 'Oswald', sans-serif;">$0</div>
                             <small class="text-muted" id="modalCerrarResumen">En 0 rondas acumuladas</small>
                         </div>
 
                         <label class="form-label fw-bold small text-dark mb-2">
-                            <i class="bi bi-credit-card-2-front-fill text-primary me-1"></i>Selecciona el Método de Pago:
+                            <i class="bi bi-credit-card-2-front-fill text-primary me-1" aria-hidden="true"></i>Selecciona el Método de Pago:
                         </label>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <input type="radio" class="btn-check" name="metodo_pago" id="pago_efectivo" value="EFECTIVO" checked>
                                 <label class="btn btn-outline-success w-100 py-2 rounded-3 fw-bold small text-start" for="pago_efectivo">
-                                    <i class="bi bi-cash-stack me-1 fs-5"></i> Efectivo
+                                    <i class="bi bi-cash-stack me-1 fs-5" aria-hidden="true"></i> Efectivo
                                 </label>
                             </div>
                             <div class="col-6">
                                 <input type="radio" class="btn-check" name="metodo_pago" id="pago_debito" value="DEBITO">
                                 <label class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold small text-start" for="pago_debito">
-                                    <i class="bi bi-credit-card-2-back me-1 fs-5"></i> Débito (Redcompra)
+                                    <i class="bi bi-credit-card-2-back me-1 fs-5" aria-hidden="true"></i> Débito (Redcompra)
                                 </label>
                             </div>
                             <div class="col-6">
                                 <input type="radio" class="btn-check" name="metodo_pago" id="pago_credito" value="CREDITO">
-                                <label class="btn btn-outline-warning text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_credito">
-                                    <i class="bi bi-credit-card me-1 fs-5"></i> Crédito
+                                <label class="btn btn-outline-warning w-100 py-2 rounded-3 fw-bold small text-start" for="pago_credito">
+                                    <i class="bi bi-credit-card me-1 fs-5" aria-hidden="true"></i> Crédito
                                 </label>
                             </div>
                             <div class="col-6">
                                 <input type="radio" class="btn-check" name="metodo_pago" id="pago_transferencia" value="TRANSFERENCIA">
-                                <label class="btn btn-outline-info text-dark w-100 py-2 rounded-3 fw-bold small text-start" for="pago_transferencia">
-                                    <i class="bi bi-phone-fill me-1 fs-5"></i> Transferencia
+                                <label class="btn btn-outline-info w-100 py-2 rounded-3 fw-bold small text-start" for="pago_transferencia">
+                                    <i class="bi bi-phone-fill me-1 fs-5" aria-hidden="true"></i> Transferencia
                                 </label>
                             </div>
                         </div>
 
-                        <!-- Sugerencia Voluntaria de Propina 10% (Ley N° 20.918 Art. 64 bis) -->
-                        <div class="card border-0 bg-light p-3 rounded-3 mb-3">
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" id="checkPropinaVoluntaria" name="incluir_propina" value="1">
-                                <label class="form-check-label fw-bold small text-dark" for="checkPropinaVoluntaria">
-                                    <i class="bi bi-heart-fill text-danger me-1"></i> Sugerir Propina Voluntaria 10% (Ley N° 20.918)
-                                </label>
-                                <div class="small text-muted" id="txtMontoPropinaSugerida">Opción voluntaria para el comensal.</div>
+                        <!-- Opciones Dinámicas de Propina Voluntaria (Ley N° 20.918 • Exenta de IVA) -->
+                        <div class="card border-0 bg-light p-3 rounded-4 mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold small text-dark mb-0">
+                                    <i class="bi bi-heart-fill text-danger me-1" aria-hidden="true"></i> Propina Voluntaria (Ley N° 20.918):
+                                </span>
+                                <span class="badge bg-secondary-subtle text-secondary px-2 py-1 rounded-pill small" style="font-size: 0.7rem;">Exenta de IVA</span>
+                            </div>
+                            <input type="hidden" name="porcentaje_propina" id="meseroPorcentajePropina" value="10">
+                            <input type="hidden" name="monto_propina" id="meseroMontoPropina" value="0">
+                            <input type="hidden" name="incluir_propina" id="meseroIncluirPropina" value="1">
+                            <div class="btn-group w-100 mb-2" role="group" id="meseroTipButtonGroup">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="0">0%</button>
+                                <button type="button" class="btn btn-sm btn-success fw-bold" data-pct="10">10%</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="15">15%</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="20">20%</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-pct="custom">Otro $</button>
+                            </div>
+                            <div id="meseroCustomTipBox" class="mb-2 d-none">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" id="meseroCustomTipInput" class="form-control font-monospace" placeholder="Monto voluntario personalizado" min="0" aria-label="Monto voluntario de propina personalizado">
+                                </div>
+                            </div>
+                            <div class="small text-muted" id="meseroTxtPropinaInfo" style="font-size: 0.72rem;">
+                                Sugerencia legal voluntaria para el personal (no se grava con el 19% de IVA).
+                            </div>
+                        </div>
+
+                        <!-- Desglose Tributario y de Consumo en Salón -->
+                        <div class="card border rounded-3 p-3 bg-white mb-3" style="font-size: 0.8rem;">
+                            <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                                <span>Subtotal Consumo (Alimentos/Bebidas):</span>
+                                <strong class="font-monospace text-dark" id="meseroDesgloseConsumo">$0</strong>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                                <span>• Neto Imponible (19% IVA):</span>
+                                <span class="font-monospace" id="meseroDesgloseNeto">$0</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted py-1 border-bottom">
+                                <span>• IVA 19% (Gastronomía):</span>
+                                <span class="font-monospace" id="meseroDesgloseIva">$0</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-success py-1 border-bottom fw-semibold">
+                                <span>Propina Voluntaria (<span id="meseroDesglosePctLabel">10%</span>):</span>
+                                <span class="font-monospace" id="meseroDesglosePropina">+$0</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted py-1 border-bottom" id="meseroFilaRedondeo">
+                                <span>Redondeo Ley 20.956 (Efectivo):</span>
+                                <span class="font-monospace" id="meseroDesgloseRedondeo">$0</span>
                             </div>
                         </div>
 
                         <!-- Soporte para División de Cuentas / Abonos Parciales (Split Bill) -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-dark mb-1">
-                                <i class="bi bi-pie-chart-fill text-warning me-1"></i> Monto a Pagar / Abono (Dejar vacío para Total Completo):
+                            <label for="inputMontoPagoParcial" class="form-label fw-bold small text-dark mb-1">
+                                <i class="bi bi-pie-chart-fill text-warning-emphasis me-1" aria-hidden="true"></i> Monto a Pagar / Abono (Dejar vacío para Total Completo):
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white fw-bold small">$</span>
@@ -832,14 +905,14 @@
                         <div id="boxRedondeoLey" class="alert alert-light border rounded-3 py-2 px-3 mb-3" style="border-left: 4px solid #16a34a !important;">
                             <div class="d-flex align-items-center justify-content-between">
                                 <span class="small text-muted">
-                                    <i class="bi bi-shield-check text-success me-1"></i>
+                                    <i class="bi bi-shield-check text-success me-1" aria-hidden="true"></i>
                                     <strong>Ley N&deg; 20.956 (Efectivo):</strong> <span id="txtDetalleRedondeo">Sin ajuste necesario</span>
                                 </span>
                                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold" id="badgeRedondeoMonto">$0</span>
                             </div>
                         </div>
                         <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 border-0">
-                            <i class="bi bi-info-circle-fill me-1"></i>
+                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>
                             Al liquidar el total completo, la cuenta quedará <strong>PAGADA</strong> y la mesa se marcará automáticamente como <strong>LIBRE / HABILITADA</strong>.
                         </div>
                     </div>
@@ -848,7 +921,7 @@
                             Cancelar
                         </button>
                         <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">
-                            <i class="bi bi-check2-circle me-1"></i> Confirmar Pago y Liberar Mesa
+                            <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Confirmar Pago y Liberar Mesa
                         </button>
                     </div>
                 </form>
@@ -857,17 +930,17 @@
     </div>
 
     <!-- MODAL DE REASIGNACIÓN DE MESAS  -->
-    <div class="modal fade" id="modalReasignarMesa" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalReasignarMesa" tabindex="-1" aria-labelledby="modalReasignarMesaTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 620px; width: 95%;">
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header text-white p-3 px-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
                     <div>
-                        <h5 class="modal-title fw-bold mb-0" style="font-family: 'Oswald', sans-serif;">
-                            <i class="bi bi-arrow-left-right me-2 text-warning"></i>Reasignar Comensales a Nueva Mesa 
-                        </h5>
-                        <small class="text-white-50">Traslado de cuenta abierta sin pérdida de comanda ni tickets</small>
+                        <h2 class="modal-title h5 fw-bold mb-0" id="modalReasignarMesaTitulo" style="font-family: 'Oswald', sans-serif;">
+                            <i class="bi bi-arrow-left-right me-2 text-lcd-amber" aria-hidden="true"></i>Reasignar Comensales a Nueva Mesa
+                        </h2>
+                        <small class="text-on-brand-muted">Traslado de cuenta abierta sin pérdida de comanda ni tickets</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
 
                 <form method="POST" action="{% url 'mesero' %}?local_id={{ local_actual.id }}&mesero_id={{ mesero_activo.id|default:'' }}">
@@ -881,7 +954,7 @@
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <div>
                                     <small class="text-muted text-uppercase fw-bold">Mesa de Origen Actual</small>
-                                    <h4 class="fw-bold text-dark mb-0" id="modalReasignarOrigenNom">Mesa --</h4>
+                                    <div class="h4 fw-bold text-dark mb-0" id="modalReasignarOrigenNom">Mesa --</div>
                                 </div>
                                 <div class="text-end">
                                     <span class="badge bg-danger rounded-pill px-3 py-2 fs-6 shadow-sm" id="modalReasignarRondasBadge">
@@ -894,8 +967,8 @@
 
                         <!-- Selector Mesa Destino -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">
-                                <i class="bi bi-geo-alt-fill text-success me-1"></i> Selecciona la Mesa de Destino:
+                            <label for="modalReasignarDestinoSelect" class="form-label fw-bold text-dark">
+                                <i class="bi bi-geo-alt-fill text-success me-1" aria-hidden="true"></i> Selecciona la Mesa de Destino:
                             </label>
                             <select name="mesa_destino_id" id="modalReasignarDestinoSelect" class="form-select form-select-lg rounded-3 border-2" required>
                                 <option value="" disabled selected>-- Elige una mesa libre --</option>
@@ -926,15 +999,15 @@
 
                         <!-- Motivo del Traslado -->
                         <div class="mb-3">
-                            <label class="form-label fw-semibold text-secondary small">
-                                <i class="bi bi-chat-text me-1"></i> Motivo del cambio (opcional):
+                            <label for="inputMotivoReasignar" class="form-label fw-semibold text-secondary small">
+                                <i class="bi bi-chat-text me-1" aria-hidden="true"></i> Motivo del cambio (opcional):
                             </label>
-                            <input type="text" name="motivo" class="form-control rounded-3" placeholder="Ej: Comensal prefirió mesa cerca de la ventana / sombra" maxlength="200">
+                            <input type="text" name="motivo" id="inputMotivoReasignar" class="form-control rounded-3" placeholder="Ej: Comensal prefirió mesa cerca de la ventana / sombra" maxlength="200">
                         </div>
 
                         <!-- Banner Informativo de Garantía Operativa -->
                         <div class="alert alert-info d-flex align-items-center py-2 px-3 small border-0 rounded-3 mb-0" style="background-color: #eff6ff; color: #1e40af;">
-                            <i class="bi bi-shield-check fs-4 me-2 flex-shrink-0 text-primary"></i>
+                            <i class="bi bi-shield-check fs-4 me-2 flex-shrink-0 text-primary" aria-hidden="true"></i>
                             <div>
                                 <strong>Garantía de Continuidad del Servicio:</strong> El saldo total, productos y tickets enviados a Cocina/Barra se transfieren íntegros. La mesa de origen quedará libre automáticamente.
                             </div>
@@ -946,7 +1019,7 @@
                             Cancelar
                         </button>
                         <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4 py-2 fs-6 shadow-sm btn-anti-doble-envio">
-                            <i class="bi bi-arrow-left-right me-1"></i> Confirmar Traslado de Mesa
+                            <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i> Confirmar Traslado de Mesa
                         </button>
                     </div>
                 </form>
@@ -954,13 +1027,20 @@
         </div>
     </div>
 
-    <!-- Pie de página -->
-    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
-        <div class="container d-flex align-items-center justify-content-center gap-2">
-            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
-            <span class="text-muted">
-                <strong>Safari Pilar</strong> • Terminal Meseros <em>Venta_safari</em> © 2026. Todos los derechos reservados.
-            </span>
+    <!-- Pie de página institucional único -->
+    <footer class="safari-footer-institutional py-3 text-center mt-auto">
+        <div class="container d-flex flex-column align-items-center justify-content-center gap-2">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+                <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 24px; width: auto;">
+                <span class="text-muted">
+                    <strong>Safari Pilar</strong> • Terminal Meseros <em>Venta_safari</em> © 2026. Todos los derechos reservados.
+                </span>
+            </div>
+            <div class="safari-legal-footer-links small">
+                <a href="{% url 'politica_privacidad' %}">Política de Privacidad</a>
+                <a href="{% url 'terminos_condiciones' %}">Términos y Condiciones</a>
+                <button type="button" data-open-cookie-prefs="1">Preferencias de Cookies</button>
+            </div>
         </div>
     </footer>
 
@@ -978,6 +1058,8 @@
     <script id="meseroConfigData" type="application/json">
     {
         "urlCambiarEstadoPedido": "{% url 'cambiar_estado_pedido' %}",
+        "puedeAtenderSalon": {% if puede_atender_salon %}true{% else %}false{% endif %},
+        "motivoBloqueoAtencion": "{{ motivo_bloqueo_atencion|escapejs }}",
         "mesaInicial": {% if mesas %}{"id": {{ mesas.0.id|stringformat:"d" }}, "identificador": "{{ mesas.0.identificador|escapejs }}", "capacidad": {{ mesas.0.capacidad|stringformat:"d" }}, "estado": "{{ mesas.0.estado }}"}{% else %}{"id": 1, "identificador": "Mesa 1", "capacidad": 4, "estado": "HABILITADA"}{% endif %},
         "mensajes": [{% for message in messages %}{"icon": "{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}", "title": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
     }
@@ -986,5 +1068,6 @@
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
     <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
+    {% include 'ventas/acceso/include_cookie_banner.html' %}
 </body>
 </html>

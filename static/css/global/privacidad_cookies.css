@@ -1,0 +1,68 @@
+/* ==========================================================================
+   Estilos Legales, Privacidad Académica, Retención y Derechos ARCO
+   Zona: global / acceso
+   ========================================================================== */
+
+.safari-legal-hero {
+    background: linear-gradient(135deg, var(--safari-red) 0%, var(--safari-red-dark) 100%);
+    color: #ffffff;
+    border-bottom: 4px solid var(--safari-yellow);
+    border-radius: 18px;
+    padding: 1.75rem 2rem;
+    box-shadow: 0 10px 26px rgba(130, 20, 20, 0.16);
+}
+
+.safari-academic-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    background-color: rgba(15, 23, 42, 0.48);
+    border: 1px solid rgba(253, 230, 138, 0.85);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+.safari-legal-card {
+    background: #ffffff;
+    border: 1.5px solid var(--safari-cafe-pastel);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 16px rgba(59, 40, 29, 0.05);
+    height: 100%;
+}
+
+.safari-legal-card h2,
+.safari-legal-card h3 {
+    color: var(--safari-cafe-deep);
+    font-weight: 800;
+}
+
+.safari-retention-table th {
+    background-color: var(--safari-cafe-pastel);
+    color: var(--safari-cafe-deep);
+    font-weight: 800;
+    font-size: 0.83rem;
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+}
+
+.safari-arco-danger-zone {
+    background-color: #fff5f5;
+    border: 1.5px solid #fca5a5;
+    border-radius: 16px;
+    padding: 1.35rem;
+}
+
+.safari-audit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+}

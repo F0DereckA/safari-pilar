@@ -14,6 +14,8 @@ Normativas Oficiales:
 
 
 
+import logging
+
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
@@ -21,6 +23,9 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from django.db import transaction
+
+
+logger = logging.getLogger(__name__)
 
 from django.db.models import Sum
 
@@ -330,9 +335,11 @@ def validar_y_calcular_precio_linea(
 
             raise
 
-        except Exception as e:
+        except Exception:
 
-            raise ValidationError(f"Error al validar convenio comercial: {str(e)}")
+            logger.exception("Error interno al validar convenio comercial seleccionado")
+
+            raise ValidationError("No se pudo validar el convenio comercial seleccionado.")
 
 
 
@@ -817,11 +824,25 @@ def generar_contenido_comprobante_venta(venta, es_reimpresion=False, num_reimpre
 
     lineas.append("----------------------------------------")
 
-    subtotal_bruto = venta.total_sin_redondeo or subtotal_items or (venta.total if venta.total else Decimal('0'))
+    subtotal_consumo = venta.get_subtotal_consumo() if hasattr(venta, 'get_subtotal_consumo') else (subtotal_items or venta.total)
 
-    subtotal_str = f"${int(subtotal_bruto):,}".replace(",", ".")
+    neto_calculado = venta.get_monto_neto() if hasattr(venta, 'get_monto_neto') else round(subtotal_consumo / Decimal('1.19'), 2)
 
-    lineas.append(f"Subtotal Bruto:             {subtotal_str:>16}")
+    iva_calculado = venta.get_monto_iva() if hasattr(venta, 'get_monto_iva') else round(subtotal_consumo * Decimal('19') / Decimal('119'), 0)
+
+
+
+    sub_str = f"${int(subtotal_consumo):,}".replace(",", ".")
+
+    lineas.append(f"Subtotal Consumo:           {sub_str:>16}")
+
+    neto_str = f"${int(neto_calculado):,}".replace(",", ".")
+
+    lineas.append(f"Neto Afecto (19% IVA):      {neto_str:>16}")
+
+    iva_str = f"${int(iva_calculado):,}".replace(",", ".")
+
+    lineas.append(f"IVA 19% (Gastronomía):      {iva_str:>16}")
 
 
 
@@ -830,6 +851,16 @@ def generar_contenido_comprobante_venta(venta, es_reimpresion=False, num_reimpre
         desc_str = f"-${int(descuento_total):,}".replace(",", ".")
 
         lineas.append(f"Descuentos / Convenios:     {desc_str:>16}")
+
+
+
+    if getattr(venta, 'propina', 0) and venta.propina > 0:
+
+        pct_txt = f"{venta.porcentaje_propina}%" if getattr(venta, 'porcentaje_propina', None) else "Vol."
+
+        prop_val_str = f"+${int(venta.propina):,}".replace(",", ".")
+
+        lineas.append(f"Propina {pct_txt} (Exenta IVA):    {prop_val_str:>16}")
 
 
 
@@ -855,25 +886,31 @@ def generar_contenido_comprobante_venta(venta, es_reimpresion=False, num_reimpre
 
 
 
-    # Cumplimiento Ley N° 20.918 Art. 64 bis: Desglose y sugerencia voluntaria de propina del 10%
+    # Cumplimiento Ley N° 20.918: Sugerencias dinámicas (10%, 15%, 20%) si no tiene propina pagada
 
-    if venta.modalidad == 'MESA' or (venta.mesa is not None):
+    if (venta.modalidad == 'MESA' or (venta.mesa is not None)) and (not getattr(venta, 'propina', 0) or venta.propina == 0):
 
-        propina_sug = int(round(Decimal(str(subtotal_bruto)) * Decimal('0.10')))
+        p10 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.10')))
 
-        total_con_propina = int(venta.total) + propina_sug
+        p15 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.15')))
+
+        p20 = int(round(Decimal(str(subtotal_consumo)) * Decimal('0.20')))
 
         lineas.append("----------------------------------------")
 
-        prop_str = f"${propina_sug:,}".replace(",", ".")
+        lineas.append("   OPCIONES DE PROPINA (LEY N° 20.918)  ")
 
-        tot_prop_str = f"${total_con_propina:,}".replace(",", ".")
+        lineas.append("   (100% voluntaria • Exenta de IVA)    ")
 
-        lineas.append(f"Propina Sugerida 10% (Ley 20.918): {prop_str:>9}")
+        lineas.append(f"Propina Sugerida 10% (Ley 20.918): +${p10:,}".replace(",", "."))
 
-        lineas.append(f"Total Sugerido c/Propina:         {tot_prop_str:>9}")
+        lineas.append(f"Total Sugerido c/Propina: ${int(subtotal_consumo) + p10:,}".replace(",", "."))
 
-        lineas.append(" * La propina es 100% voluntaria")
+        lineas.append(f" [10%] +${p10:,} -> Total: ${int(subtotal_consumo) + p10:,}".replace(",", "."))
+
+        lineas.append(f" [15%] +${p15:,} -> Total: ${int(subtotal_consumo) + p15:,}".replace(",", "."))
+
+        lineas.append(f" [20%] +${p20:,} -> Total: ${int(subtotal_consumo) + p20:,}".replace(",", "."))
 
     lineas.append("========================================")
 
@@ -1165,9 +1202,17 @@ def enviar_a_impresora(ticket, usuario=None, forzar_reintento=False):
 
         except Exception as e:
 
+            logger.warning(
+                "Error de conexión RAW con impresora '%s' (%s:%s): %s",
+                getattr(punto_imp, 'nombre', 'N/D'),
+                getattr(punto_imp, 'direccion_ip', 'N/D'),
+                getattr(punto_imp, 'puerto', 'N/D'),
+                e,
+            )
+
             ticket.estado_impresion = 'FALLO'
 
-            ticket.error_impresion = f"Error de conexión RAW ({punto_imp.direccion_ip}:{punto_imp.puerto}): {str(e)}"
+            ticket.error_impresion = "Error de conexión con impresora térmica de red. Verifica el equipo y la red local."
 
             ticket.save()
 
@@ -1847,7 +1892,7 @@ def validar_modalidad_operativa(modalidad, mesa=None, punto_venta=None):
 
     - MESA exige obligatoriamente una mesa física asignada y perteneciente al mismo local.
 
-    - VENTA_RAPIDA / MOSTRADOR no debe ocupar mesa (mesa=None).
+    - VENTA_RAPIDA / MOSTRADOR / LLEVAR / RETIRO no debe ocupar mesa (mesa=None).
 
     """
 
@@ -1861,7 +1906,7 @@ def validar_modalidad_operativa(modalidad, mesa=None, punto_venta=None):
 
             raise ValidationError("La mesa seleccionada no pertenece al local gastronómico de la operación.")
 
-    elif modalidad in ['VENTA_RAPIDA', 'MOSTRADOR']:
+    elif modalidad in ['VENTA_RAPIDA', 'MOSTRADOR', 'LLEVAR', 'RETIRO']:
 
         return 'VENTA_RAPIDA', None
 
@@ -1929,7 +1974,7 @@ TRANSICIONES_PERMITIDAS_PEDIDO = {
 
 
 
-def validar_transicion_estado_pedido(pedido, nuevo_estado):
+def validar_transicion_estado_pedido(pedido, nuevo_estado, estado_actual_override=None):
 
     """
 
@@ -1941,9 +1986,11 @@ def validar_transicion_estado_pedido(pedido, nuevo_estado):
 
     """
 
-    if pedido.estado == nuevo_estado:
+    estado_actual = estado_actual_override or pedido.estado
 
-        if pedido.estado == 'ENTREGADO':
+    if estado_actual == nuevo_estado:
+
+        if estado_actual == 'ENTREGADO':
 
             raise ValidationError("El pedido ya fue entregado previamente y no puede entregarse nuevamente (RF13.4).")
 
@@ -1951,7 +1998,7 @@ def validar_transicion_estado_pedido(pedido, nuevo_estado):
 
 
 
-    permitidos = TRANSICIONES_PERMITIDAS_PEDIDO.get(pedido.estado, [])
+    permitidos = TRANSICIONES_PERMITIDAS_PEDIDO.get(estado_actual, [])
 
     if nuevo_estado not in permitidos:
 
@@ -1961,21 +2008,21 @@ def validar_transicion_estado_pedido(pedido, nuevo_estado):
 
                 f"No se puede entregar un pedido que no ha sido marcado como LISTO previamente "
 
-                f"(estado actual: {pedido.get_estado_display()}) (RF13.1)."
+                f"(estado actual: {estado_actual}) (RF13.1)."
 
             )
 
-        if pedido.estado == 'CANCELADO':
+        if estado_actual == 'CANCELADO':
 
             raise ValidationError("Un pedido cancelado no puede cambiar de estado ni ser entregado (RF13).")
 
-        if pedido.estado == 'ENTREGADO':
+        if estado_actual == 'ENTREGADO':
 
             raise ValidationError("El pedido ya fue entregado previamente y no admite modificaciones posteriores (RF13.4).")
 
         raise ValidationError(
 
-            f"Transición de estado inválida: no se puede cambiar de {pedido.get_estado_display()} a {nuevo_estado}."
+            f"Transición de estado inválida: no se puede cambiar de {estado_actual} a {nuevo_estado}."
 
         )
 
@@ -2092,8 +2139,10 @@ def registrar_entrega_pedido(pedido_or_id, usuario_entrega=None, ticket=None, ob
 
 
         pedido.estado = 'ENTREGADO'
+        pedido.estado_cocina = 'ENTREGADO'
+        pedido.estado_barra = 'ENTREGADO'
 
-        pedido.save(update_fields=['estado', 'actualizado_en'])
+        pedido.save(update_fields=['estado', 'estado_cocina', 'estado_barra', 'actualizado_en'])
 
 
 
@@ -2633,6 +2682,44 @@ def calcular_metricas_ocupacion_local(punto_venta=None):
 
 
 
+def calcular_desglose_tributario_ventas(ventas_qs):
+    """
+    Separa el total cobrado en consumo afecto bruto, neto sin IVA (19%), IVA débito fiscal,
+    propinas exentas (Ley 20.918) y ajuste de redondeo (Ley 20.956).
+    """
+    from django.db.models import Sum
+
+    agg = ventas_qs.aggregate(
+        total_ventas=Sum('total'),
+        total_propinas=Sum('propina'),
+        total_red=Sum('redondeo_ley_20956'),
+        total_sin_red=Sum('total_sin_redondeo'),
+    )
+    tot_recaudado = agg['total_ventas'] or Decimal('0')
+    tot_propinas = agg['total_propinas'] or Decimal('0')
+    tot_redondeo = agg['total_red'] or Decimal('0')
+    tot_sin_red = agg['total_sin_red'] or Decimal('0')
+    consumo_bruto = max(Decimal('0'), tot_recaudado - tot_propinas - tot_redondeo)
+    neto_sin_iva = (consumo_bruto / Decimal('1.19')).quantize(Decimal('1'))
+    iva_debito = consumo_bruto - neto_sin_iva
+    return {
+        'total_recaudado': tot_recaudado,
+        'total_consumo_bruto': consumo_bruto,
+        'total_neto_sin_iva': neto_sin_iva,
+        'total_iva_19': iva_debito,
+        'total_propinas': tot_propinas,
+        'total_redondeo': tot_redondeo,
+        'total_sin_redondeo': tot_sin_red,
+    }
+
+
+def estimar_ganancia_neta_serie(total, propinas=0, redondeo=0, factor_margen=0.46):
+    """Estima ganancia sobre consumo neto sin IVA, excluyendo propinas y redondeo legal."""
+    consumo_bruto = max(0.0, float(total or 0) - float(propinas or 0) - float(redondeo or 0))
+    neto_sin_iva = round(consumo_bruto / 1.19)
+    return int(round(neto_sin_iva * float(factor_margen)))
+
+
 def generar_reporte_estadistico_integral(
 
     fecha_inicio=None,
@@ -2805,23 +2892,23 @@ def generar_reporte_estadistico_integral(
 
 
 
-    # 4. Agregación financiera de ventas (RF18.3)
+    # 4. Agregación financiera de ventas (RF18.3) con separación tributaria real
 
-    agg_ventas = ventas_base.aggregate(
+    desglose_trib = calcular_desglose_tributario_ventas(ventas_base)
 
-        total_ventas=Sum('total'),
+    total_recaudado = desglose_trib['total_recaudado']
 
-        total_sin_red=Sum('total_sin_redondeo'),
+    total_consumo_bruto = desglose_trib['total_consumo_bruto']
 
-        total_red=Sum('redondeo_ley_20956')
+    total_neto_sin_iva = desglose_trib['total_neto_sin_iva']
 
-    )
+    total_iva_19 = desglose_trib['total_iva_19']
 
-    total_recaudado = agg_ventas['total_ventas'] or Decimal('0')
+    total_propinas = desglose_trib['total_propinas']
 
-    total_sin_redondeo = agg_ventas['total_sin_red'] or Decimal('0')
+    total_sin_redondeo = desglose_trib['total_sin_redondeo']
 
-    total_redondeo = agg_ventas['total_red'] or Decimal('0')
+    total_redondeo = desglose_trib['total_redondeo']
 
     cantidad_ventas = ventas_base.count()
 
@@ -2999,7 +3086,12 @@ def generar_reporte_estadistico_integral(
 
         .values('mes_trunc')
 
-        .annotate(ventas=Sum('total'), tickets=Count('id'))
+        .annotate(
+            ventas=Sum('total'),
+            propinas=Sum('propina'),
+            redondeos=Sum('redondeo_ley_20956'),
+            tickets=Count('id'),
+        )
 
         .order_by('mes_trunc')
 
@@ -3019,7 +3111,7 @@ def generar_reporte_estadistico_integral(
 
         v_monto = float(row['ventas'])
 
-        ganancia = round(v_monto * 0.46, 0)
+        ganancia = estimar_ganancia_neta_serie(row['ventas'], row.get('propinas'), row.get('redondeos'))
 
         margen = 46.0
 
@@ -3063,7 +3155,12 @@ def generar_reporte_estadistico_integral(
 
         .values('dia_trunc')
 
-        .annotate(ventas=Sum('total'), tickets=Count('id'))
+        .annotate(
+            ventas=Sum('total'),
+            propinas=Sum('propina'),
+            redondeos=Sum('redondeo_ley_20956'),
+            tickets=Count('id'),
+        )
 
         .order_by('dia_trunc')
 
@@ -3085,7 +3182,7 @@ def generar_reporte_estadistico_integral(
 
         chart_dias_ventas.append(v)
 
-        chart_dias_ganancias.append(int(round(v * 0.46)))
+        chart_dias_ganancias.append(estimar_ganancia_neta_serie(d['ventas'], d.get('propinas'), d.get('redondeos')))
 
 
 
@@ -3095,7 +3192,12 @@ def generar_reporte_estadistico_integral(
 
         .values('hora_trunc')
 
-        .annotate(ventas=Sum('total'), tickets=Count('id'))
+        .annotate(
+            ventas=Sum('total'),
+            propinas=Sum('propina'),
+            redondeos=Sum('redondeo_ley_20956'),
+            tickets=Count('id'),
+        )
 
         .order_by('hora_trunc')
 
@@ -3117,7 +3219,7 @@ def generar_reporte_estadistico_integral(
 
         chart_horas_ventas.append(v)
 
-        chart_horas_ganancias.append(int(round(v * 0.46)))
+        chart_horas_ganancias.append(estimar_ganancia_neta_serie(h['ventas'], h.get('propinas'), h.get('redondeos')))
 
 
 
@@ -3202,6 +3304,14 @@ def generar_reporte_estadistico_integral(
         'ventas': {
 
             'total_recaudado': int(total_recaudado),
+
+            'total_consumo_bruto': int(total_consumo_bruto),
+
+            'total_neto_sin_iva': int(total_neto_sin_iva),
+
+            'total_iva_19': int(total_iva_19),
+
+            'total_propinas': int(total_propinas),
 
             'total_sin_redondeo': int(total_sin_redondeo),
 
@@ -3809,7 +3919,8 @@ def generar_firma_qr_convenio(codigo_qr):
     Genera una firma criptográfica HMAC-SHA256 (16 hex) para blindar pases QR
     de cabañas y convenios institucionales contra falsificación y predicción matemática.
     """
-    clave = getattr(settings, 'SECRET_KEY', 'safari_secret_key_antifraude_default').encode('utf-8')
+    from ventas.security import obtener_clave_maestra_entorno
+    clave = obtener_clave_maestra_entorno().encode('utf-8')
     codigo_norm = str(codigo_qr).strip().upper().encode('utf-8')
     return hmac.new(clave, codigo_norm, hashlib.sha256).hexdigest()[:16]
 

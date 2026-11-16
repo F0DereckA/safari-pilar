@@ -37,7 +37,7 @@
             {% endif %}
                 <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Parque Safari" style="height: 48px; width: auto; object-fit: contain;">
                 <div>
-                    <h5 class="mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</h5>
+                    <span class="h5 d-block mb-0 fw-bold text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;">VENTA SAFARI</span>
                     <small class="text-muted d-block" style="font-size: 0.75rem;">Sistema Gastronómico Parque Safari</small>
                 </div>
             </a>
@@ -61,9 +61,9 @@
                         <div class="error-code">404</div>
                     </div>
 
-                    <h2 class="fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
+                    <h1 class="h2 fw-bold text-dark mb-3" style="font-family: 'Oswald', sans-serif;">
                         Ruta o Recurso No Encontrado
-                    </h2>
+                    </h1>
 
                     <p class="text-secondary fs-5 mb-4" style="max-width: 580px; margin: 0 auto;">
                         La página o recurso que buscas no existe en el sistema de Parque Safari, fue reubicada o el enlace ingresado es incorrecto.
@@ -101,7 +101,7 @@
                                     <i class="bi bi-speedometer2 me-2"></i> Panel de Administrador
                                 </a>
                             {% elif request.user.perfil.rol == 'CAJERO' %}
-                                <a href="{% url 'vendedor' %}" class="btn btn-outline-warning text-dark btn-lg rounded-pill px-4">
+                                <a href="{% url 'vendedor' %}" class="btn btn-outline-warning btn-lg rounded-pill px-4">
                                     <i class="bi bi-shop me-2"></i> Terminal de Caja
                                 </a>
                             {% elif request.user.perfil.rol == 'MESERO' %}
@@ -115,8 +115,8 @@
                             {% endif %}
                         {% endif %}
 
-                        <button onclick="volverAtrasSafari()" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
-                            <i class="bi bi-arrow-left me-2"></i> Regresar atrás
+                        <button type="button" data-safari-action="back" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
+                            <i class="bi bi-arrow-left me-2" aria-hidden="true"></i> Regresar atrás
                         </button>
                     </div>
 

@@ -15,26 +15,26 @@
 </head>
 <body>
 
-<div class="container py-4">
+<main class="container py-4">
     <div class="card-password mx-auto">
         <div class="header-top">
-            <i class="bi bi-shield-lock-fill fs-1 d-block mb-2 text-warning"></i>
-            <h3>Actualización Obligatoria de Contraseña</h3>
-            <p class="mb-0 small text-white-50">Norma ISO/IEC 27400 • Parque Safari</p>
+            <i class="bi bi-shield-lock-fill fs-1 d-block mb-2 text-lcd-amber" aria-hidden="true"></i>
+            <h1 class="h3">Actualización Obligatoria de Contraseña</h1>
+            <p class="mb-0 small text-on-brand-muted">Norma ISO/IEC 27400 • Parque Safari</p>
         </div>
 
         <div class="p-4">
             <!-- Aviso dinámico según motivo -->
             {% if request.user.perfil.debe_cambiar_clave %}
-            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #92400e;">
-                <i class="bi bi-info-circle-fill fs-4 me-2 flex-shrink-0 text-warning"></i>
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #78350f;">
+                <i class="bi bi-info-circle-fill fs-4 me-2 flex-shrink-0 text-warning-emphasis" aria-hidden="true"></i>
                 <div>
                     <strong>Primer inicio de sesión:</strong> Has ingresado con una credencial temporal. Por seguridad obligatoria, debes configurar tu contraseña personal antes de ingresar a tu terminal.
                 </div>
             </div>
             {% else %}
-            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #92400e;">
-                <i class="bi bi-shield-exclamation fs-4 me-2 flex-shrink-0 text-warning"></i>
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2 px-3 small border-0 rounded-3 shadow-xs" role="alert" style="background-color: #fef3c7; color: #78350f;">
+                <i class="bi bi-shield-exclamation fs-4 me-2 flex-shrink-0 text-warning-emphasis" aria-hidden="true"></i>
                 <div>
                     <strong>Rotación semestral de contraseña:</strong> Han transcurrido más de 6 meses desde tu última actualización. Debes renovar tu clave para mantener segura tu cuenta.
                 </div>
@@ -55,28 +55,28 @@
 
                 <!-- Contraseña Actual / Temporal -->
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-dark mb-1">
-                        <i class="bi bi-key-fill text-danger me-1"></i> Contraseña Actual o Temporal:
+                    <label for="claveActual" class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-key-fill text-danger me-1" aria-hidden="true"></i> Contraseña Actual o Temporal:
                     </label>
                     <div class="input-group input-group-pass">
-                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                        <span class="input-group-text"><i class="bi bi-key" aria-hidden="true"></i></span>
                         <input type="password" name="clave_actual" id="claveActual" class="form-control" required placeholder="Ingresa tu contraseña actual" autocomplete="current-password">
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('claveActual', this)" title="Mostrar u ocultar contraseña">
-                            <i class="bi bi-eye"></i>
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-pass="claveActual" aria-label="Mostrar u ocultar contraseña actual" aria-pressed="false">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Nueva Contraseña -->
                 <div class="mb-2">
-                    <label class="form-label small fw-bold text-dark mb-1">
-                        <i class="bi bi-lock-fill text-danger me-1"></i> Nueva Contraseña Segura:
+                    <label for="nuevaClave" class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-lock-fill text-danger me-1" aria-hidden="true"></i> Nueva Contraseña Segura:
                     </label>
                     <div class="input-group input-group-pass">
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
                         <input type="password" name="nueva_clave" id="nuevaClave" class="form-control" required placeholder="Escribe tu nueva clave..." autocomplete="new-password">
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('nuevaClave', this)" title="Mostrar u ocultar contraseña">
-                            <i class="bi bi-eye"></i>
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-pass="nuevaClave" aria-label="Mostrar u ocultar nueva contraseña" aria-pressed="false">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -123,14 +123,14 @@
 
                 <!-- Confirmar Nueva Contraseña -->
                 <div class="mb-4">
-                    <label class="form-label small fw-bold text-dark mb-1">
-                        <i class="bi bi-check2-circle text-danger me-1"></i> Confirmar Nueva Contraseña:
+                    <label for="confirmarClave" class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-check2-circle text-danger me-1" aria-hidden="true"></i> Confirmar Nueva Contraseña:
                     </label>
                     <div class="input-group input-group-pass">
-                        <span class="input-group-text"><i class="bi bi-check-all"></i></span>
+                        <span class="input-group-text"><i class="bi bi-check-all" aria-hidden="true"></i></span>
                         <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control" required placeholder="Repite exactamente la nueva clave" autocomplete="new-password">
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePass('confirmarClave', this)" title="Mostrar u ocultar contraseña">
-                            <i class="bi bi-eye"></i>
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-pass="confirmarClave" aria-label="Mostrar u ocultar confirmación de contraseña" aria-pressed="false">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div id="matchNotice" class="small mt-1 text-danger d-none fw-bold">
@@ -148,7 +148,7 @@
             </form>
         </div>
     </div>
-</div>
+</main>
 
 <script src="{% static 'js/acceso/cambiar_clave.js' %}"></script>
 </body>

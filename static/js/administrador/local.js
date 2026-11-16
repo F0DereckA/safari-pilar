@@ -6,113 +6,114 @@ function escapeHtml(text) {
 
 document.addEventListener('DOMContentLoaded', function () {
     const dropdownAlertasBtn = document.getElementById('dropdownAlertas');
-    if (!dropdownAlertasBtn) return;
 
-    const csrfToken = document.querySelector('#formCsrfAlertas [name=csrfmiddlewaretoken]')?.value || '';
+    if (dropdownAlertasBtn) {
+        const csrfToken = document.querySelector('#formCsrfAlertas [name=csrfmiddlewaretoken]')?.value || '';
 
-    function marcarAlertasLeidas(alertaId = 'todas') {
-        const formData = new FormData();
-        formData.append('accion', 'marcar_leida_alerta');
-        formData.append('alerta_id', alertaId);
+        function marcarAlertasLeidas(alertaId = 'todas') {
+            const formData = new FormData();
+            formData.append('accion', 'marcar_leida_alerta');
+            formData.append('alerta_id', alertaId);
 
-        fetch(document.getElementById('formCsrfAlertas')?.getAttribute('action') || window.location.pathname, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                if (alertaId === 'todas') {
-                    // Ocultar suavemente el badge contador de la campana
-                    const badgeCount = document.getElementById('badgeAlertasCount');
-                    if (badgeCount) {
-                        badgeCount.style.transition = 'all 0.3s ease';
-                        badgeCount.style.opacity = '0';
-                        badgeCount.style.transform = 'scale(0.5)';
-                        setTimeout(() => { badgeCount.remove(); }, 300);
-                    }
+            fetch(document.getElementById('formCsrfAlertas')?.getAttribute('action') || window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    if (alertaId === 'todas') {
+                        // Ocultar suavemente el badge contador de la campana
+                        const badgeCount = document.getElementById('badgeAlertasCount');
+                        if (badgeCount) {
+                            badgeCount.style.transition = 'all 0.3s ease';
+                            badgeCount.style.opacity = '0';
+                            badgeCount.style.transform = 'scale(0.5)';
+                            setTimeout(() => { badgeCount.remove(); }, 300);
+                        }
 
-                    // Actualizar badge interior
-                    const badgeEstado = document.getElementById('badgeAlertasEstado');
-                    if (badgeEstado) {
-                        badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
-                        badgeEstado.textContent = 'Al día';
-                    }
+                        // Actualizar badge interior
+                        const badgeEstado = document.getElementById('badgeAlertasEstado');
+                        if (badgeEstado) {
+                            badgeEstado.className = 'badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1 small fw-bold';
+                            badgeEstado.textContent = 'Al día';
+                        }
 
-                    // Ocultar botón de marcar todas
-                    const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
-                    if (btnMarcar) btnMarcar.remove();
+                        // Ocultar botón de marcar todas
+                        const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
+                        if (btnMarcar) btnMarcar.remove();
 
-                    // Quitar etiquetas NUEVA y botones individuales
-                    document.querySelectorAll('.badge-alerta-nueva').forEach(el => el.remove());
-                    document.querySelectorAll('.btn-descartar-alerta').forEach(el => el.remove());
-                    document.querySelectorAll('.alerta-item').forEach(el => {
-                        el.classList.remove('border-warning');
-                        el.classList.add('border-light-subtle', 'text-muted');
-                    });
-                } else {
-                    // Si se descartó una individual
-                    const item = document.getElementById(`alerta-item-${alertaId}`);
-                    if (item) {
-                        item.querySelector('.badge-alerta-nueva')?.remove();
-                        item.querySelector('.btn-descartar-alerta')?.remove();
-                        item.classList.remove('border-warning');
-                        item.classList.add('border-light-subtle', 'text-muted');
-                    }
-                    const badgeCount = document.getElementById('badgeAlertasCount');
-                    if (badgeCount) {
-                        if (data.pendientes > 0) {
-                            badgeCount.textContent = data.pendientes;
-                        } else {
-                            badgeCount.remove();
-                            const badgeEstado = document.getElementById('badgeAlertasEstado');
-                            if (badgeEstado) {
-                                badgeEstado.className = 'badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-bold';
-                                badgeEstado.textContent = 'Al día';
+                        // Quitar etiquetas NUEVA y botones individuales
+                        document.querySelectorAll('.badge-alerta-nueva').forEach(el => el.remove());
+                        document.querySelectorAll('.btn-descartar-alerta').forEach(el => el.remove());
+                        document.querySelectorAll('.alerta-item').forEach(el => {
+                            el.classList.remove('border-warning');
+                            el.classList.add('border-light-subtle', 'text-muted');
+                        });
+                    } else {
+                        // Si se descartó una individual
+                        const item = document.getElementById(`alerta-item-${alertaId}`);
+                        if (item) {
+                            item.querySelector('.badge-alerta-nueva')?.remove();
+                            item.querySelector('.btn-descartar-alerta')?.remove();
+                            item.classList.remove('border-warning');
+                            item.classList.add('border-light-subtle', 'text-muted');
+                        }
+                        const badgeCount = document.getElementById('badgeAlertasCount');
+                        if (badgeCount) {
+                            if (data.pendientes > 0) {
+                                badgeCount.textContent = data.pendientes;
+                            } else {
+                                badgeCount.remove();
+                                const badgeEstado = document.getElementById('badgeAlertasEstado');
+                                if (badgeEstado) {
+                                    badgeEstado.className = 'badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1 small fw-bold';
+                                    badgeEstado.textContent = 'Al día';
+                                }
+                                const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
+                                if (btnMarcar) btnMarcar.remove();
                             }
-                            const btnMarcar = document.getElementById('btnMarcarTodasLeidas');
-                            if (btnMarcar) btnMarcar.remove();
                         }
                     }
                 }
-            }
-        })
-        .catch(err => console.error('Error al actualizar alertas del local:', err));
-    }
-
-    // 1. Al abrir el dropdown de alertas, marcarlas automáticamente como leídas
-    const dropdownElement = dropdownAlertasBtn.closest('.dropdown');
-    if (dropdownElement) {
-        dropdownElement.addEventListener('show.bs.dropdown', function () {
-            const badgeCount = document.getElementById('badgeAlertasCount');
-            if (badgeCount) {
-                marcarAlertasLeidas('todas');
-            }
-        });
-    }
-
-    // 2. Botón explícito "Marcar leídas"
-    const btnMarcarTodas = document.getElementById('btnMarcarTodasLeidas');
-    if (btnMarcarTodas) {
-        btnMarcarTodas.addEventListener('click', function (e) {
-            e.stopPropagation();
-            marcarAlertasLeidas('todas');
-        });
-    }
-
-    // 3. Botones individuales para descartar/leer una alerta específica
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.btn-descartar-alerta');
-        if (btn) {
-            e.stopPropagation();
-            const alertaId = btn.getAttribute('data-alerta-id');
-            marcarAlertasLeidas(alertaId);
+            })
+            .catch(err => console.error('Error al actualizar alertas del local:', err));
         }
-    });
+
+        // 1. Al abrir el dropdown de alertas, marcarlas automáticamente como leídas
+        const dropdownElement = dropdownAlertasBtn.closest('.dropdown');
+        if (dropdownElement) {
+            dropdownElement.addEventListener('show.bs.dropdown', function () {
+                const badgeCount = document.getElementById('badgeAlertasCount');
+                if (badgeCount) {
+                    marcarAlertasLeidas('todas');
+                }
+            });
+        }
+
+        // 2. Botón explícito "Marcar leídas"
+        const btnMarcarTodas = document.getElementById('btnMarcarTodasLeidas');
+        if (btnMarcarTodas) {
+            btnMarcarTodas.addEventListener('click', function (e) {
+                e.stopPropagation();
+                marcarAlertasLeidas('todas');
+            });
+        }
+
+        // 3. Botones individuales para descartar/leer una alerta específica
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-descartar-alerta');
+            if (btn) {
+                e.stopPropagation();
+                const alertaId = btn.getAttribute('data-alerta-id');
+                marcarAlertasLeidas(alertaId);
+            }
+        });
+    }
 
     // ==========================================
     // FILTRADO DINÁMICO EN TIEMPO REAL DE TICKETS
@@ -170,6 +171,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('filtroEstadoTicket')) document.getElementById('filtroEstadoTicket').value = 'todos';
         window.filtrarTickets();
     };
+
+    const filtroTexto = document.getElementById('filtroTextoTicket');
+    if (filtroTexto) {
+        filtroTexto.addEventListener('input', window.filtrarTickets);
+    }
+    ['filtroHoraTicket', 'filtroRolTicket', 'filtroEstadoTicket'].forEach(function (id) {
+        const selectEl = document.getElementById(id);
+        if (selectEl) {
+            selectEl.addEventListener('change', window.filtrarTickets);
+        }
+    });
+    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosTickets');
+    if (btnLimpiarFiltros) {
+        btnLimpiarFiltros.addEventListener('click', window.limpiarFiltrosTickets);
+    }
 
     // ==========================================
     // APERTURA DE MODAL DETALLE DE TICKET
@@ -232,8 +248,8 @@ document.addEventListener('DOMContentLoaded', function () {
             items.forEach(it => {
                 const tr = document.createElement('tr');
                 const destBadge = it.destino === 'Cocina'
-                    ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Cocina</span>'
-                    : '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Barra</span>';
+                    ? '<span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Cocina</span>'
+                    : '<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">Barra</span>';
                 const notaHtml = it.nota ? `<small class="text-danger d-block fst-italic">* ${escapeHtml(it.nota)}</small>` : '';
                 tr.innerHTML = `
                     <td><strong>${it.cantidad}x</strong></td>

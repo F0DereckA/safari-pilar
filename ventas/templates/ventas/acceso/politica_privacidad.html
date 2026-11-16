@@ -1,0 +1,174 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad Académica | Venta Safari</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/global/privacidad_cookies.css' %}">
+</head>
+<body>
+    <div class="tribal-divider"></div>
+
+    <header class="bg-white border-bottom py-3 shadow-xs">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <a href="{% url 'index' %}" class="d-flex align-items-center gap-2 text-decoration-none">
+                <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Logo Venta Safari" height="38">
+                <div>
+                    <span class="fw-bold text-dark d-block lh-1">VENTA SAFARI</span>
+                    <small class="text-muted">Privacidad y Protección de Datos</small>
+                </div>
+            </a>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="{% url 'terminos_condiciones' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">Términos</a>
+                {% if es_administrador %}
+                <a href="{% url 'mi_privacidad' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                    <i class="bi bi-person-lock me-1"></i> Mis Datos (ARCO)
+                </a>
+                {% endif %}
+                <a href="{% url 'index' %}" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold">Volver al Portal</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container my-4 flex-grow-1">
+        <section class="safari-legal-hero mb-4">
+            <span class="safari-academic-pill mb-2">
+                <i class="bi bi-mortarboard-fill"></i> PROTOTIPO ACADÉMICO REALISTA (TIHI43) • VERSIÓN {{ version_politica }}
+            </span>
+            <h1 class="h2 fw-bold mb-2">Política de Privacidad y Gobernanza de Datos</h1>
+            <p class="mb-0 text-on-brand-muted">
+                Explicamos de forma transparente <strong>para qué</strong> se solicitan datos, <strong>qué datos mínimos</strong> se guardan,
+                <strong>con quién</strong> se comparten, <strong>cuánto tiempo</strong> se conservan y cómo puedes <strong>ver, corregir o borrar</strong> tu información.
+            </p>
+        </section>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <article class="safari-legal-card">
+                    <h2 class="h5 mb-3"><i class="bi bi-bullseye text-danger me-2"></i>1. ¿Para qué usamos los datos?</h2>
+                    <ul class="small text-muted ps-3 mb-0">
+                        <li class="mb-2">Controlar el acceso autenticado por rol y punto de venta (RLS por local).</li>
+                        <li class="mb-2">Mantener trazabilidad operativa simulada en comandas KDS, caja y arqueo diario.</li>
+                        <li class="mb-2">Registrar prueba verificable de quién y cuándo aceptó estas políticas y cookies.</li>
+                        <li>Proteger el entorno frente a accesos indebidos (límites por IP y caducidad de sesión).</li>
+                    </ul>
+                </article>
+            </div>
+
+            <div class="col-md-4">
+                <article class="safari-legal-card">
+                    <h2 class="h5 mb-3"><i class="bi bi-card-checklist text-danger me-2"></i>2. ¿Qué datos pedimos?</h2>
+                    <p class="small text-muted mb-2">
+                        Aplicamos <strong>minimización estricta</strong>: solo solicitamos los datos estrictamente necesarios para simular la operación del turno.
+                    </p>
+                    <ul class="small text-muted ps-3 mb-0">
+                        <li class="mb-1"><strong>Esenciales:</strong> Usuario, nombre, apellido, rol operativo y local asignado.</li>
+                        <li class="mb-1"><strong>Credencial cifrada:</strong> Contraseña protegida con hash PBKDF2 / Argon2 (nunca en texto plano).</li>
+                        <li class="mb-1"><strong>Opcionales / Enmascarados:</strong> RUT interno, teléfono o correo solo cuando sean requeridos.</li>
+                        <li><strong>Seguridad técnica:</strong> IP y User-Agent almacenados únicamente como resumen criptográfico SHA-256 con sal.</li>
+                    </ul>
+                </article>
+            </div>
+
+            <div class="col-md-4">
+                <article class="safari-legal-card">
+                    <h2 class="h5 mb-3"><i class="bi bi-people-fill text-danger me-2"></i>3. ¿Con quién se comparten?</h2>
+                    <p class="small text-muted mb-2">
+                        <strong>No vendemos, cedemos ni transferimos datos a terceros externos.</strong>
+                    </p>
+                    <ul class="small text-muted ps-3 mb-0">
+                        <li class="mb-2">Acceso restringido al equipo académico evaluador y al rol Administrador del proyecto en este servidor.</li>
+                        <li class="mb-2">Cero rastreadores publicitarios de terceros y política CORS cerrada al origen autorizado.</li>
+                        <li>Este sistema es una simulación académica sin conexión real con el SII ni pasarelas bancarias reales.</li>
+                    </ul>
+                </article>
+            </div>
+        </div>
+
+        <section class="safari-legal-card mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h2 class="h5 m-0"><i class="bi bi-clock-history text-danger me-2"></i>4. Plazos Definidos de Retención y Eliminación</h2>
+                <button type="button" data-open-cookie-prefs="1" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                    <i class="bi bi-sliders me-1"></i> Gestionar Cookies
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-2 safari-retention-table">
+                    <thead>
+                        <tr>
+                            <th>Categoría de Dato</th>
+                            <th>Plazo Máximo de Retención</th>
+                            <th>Acción al Vencimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <tr>
+                            <td><strong>Registros técnicos de tasa por IP y cookies anónimas</strong></td>
+                            <td>{{ retencion_dias.logs_seguridad_ip }} días (caché temporal / 30 días banner)</td>
+                            <td>Expiración automática o purga programada mediante <code>aplicar_retencion_datos</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Operaciones académicas simuladas y cuentas desactivadas</strong></td>
+                            <td>{{ retencion_dias.operacion_academica_simulada }} días (1 ciclo académico semestral)</td>
+                            <td>Anonimización irreversible de identificadores personales (PII), preservando estadísticas contables agregadas.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Auditoría de consentimiento (quién, cuándo y firma HMAC)</strong></td>
+                            <td>{{ retencion_dias.consentimientos_auditoria }} días (o anonimizado ante baja ARCO)</td>
+                            <td>Eliminación automática cumplida la vigencia o disociación inmediata ante solicitud del titular.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="safari-hint-xs mb-0">
+                Estado actual de telemetría de análisis en este navegador:
+                {% if analytics_habilitado %}
+                <span class="badge bg-success">Análisis autorizado explícitamente</span>
+                {% else %}
+                <span class="badge bg-secondary">Análisis bloqueado (Solo esenciales)</span>
+                {% endif %}
+            </p>
+        </section>
+
+        <section class="safari-legal-card">
+            <h2 class="h5 mb-2"><i class="bi bi-person-check-fill text-danger me-2"></i>5. Derechos ARCO y Gobierno Centralizado</h2>
+            <p class="small text-muted mb-3">
+                En sintonía con los estándares de la Ley N° 19.628 / Ley N° 21.719 y control interno operativo, la consulta completa, rectificación, limpieza de campos opcionales y anonimización de fichas personales se gestiona de forma centralizada exclusivamente a través del rol Administrador, evitando alteraciones autónomas desde terminales operativos.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                {% if es_administrador %}
+                <a href="{% url 'mi_privacidad' %}" class="btn btn-danger rounded-pill px-4 fw-bold">
+                    <i class="bi bi-shield-check me-1"></i> Ir a Mi Privacidad (Ver / Corregir / Borrar)
+                </a>
+                {% endif %}
+                <a href="{% url 'terminos_condiciones' %}" class="btn btn-outline-dark rounded-pill px-4 fw-bold">
+                    Leer Términos y Condiciones
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="py-3 text-center text-muted small bg-white border-top mt-auto">
+        <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+            <span>Venta Safari © 2026 • Prototipo Académico TIHI43</span>
+            <div class="safari-legal-footer-links">
+                <a href="{% url 'politica_privacidad' %}">Política de Privacidad</a>
+                <a href="{% url 'terminos_condiciones' %}">Términos y Condiciones</a>
+                {% if es_administrador %}
+                <a href="{% url 'mi_privacidad' %}">Mis Datos (ARCO)</a>
+                {% endif %}
+                <button type="button" data-open-cookie-prefs="1">Preferencias de Cookies</button>
+            </div>
+        </div>
+    </footer>
+
+    {% include 'ventas/acceso/include_cookie_banner.html' %}
+</body>
+</html>

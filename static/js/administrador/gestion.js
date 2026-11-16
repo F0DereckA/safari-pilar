@@ -93,14 +93,47 @@ document.addEventListener('DOMContentLoaded', function () {
             { selectId: 'filtroLocalMenu', dataAttr: 'local' }
         ]
     });
+
+    // 5. Tarjetas KPI interactivas con soporte de teclado (Enter / Espacio)
+    document.querySelectorAll('.kpi-gestion-card[data-gestion-tab]').forEach(function (card) {
+        const activar = function () {
+            const tab = card.getAttribute('data-gestion-tab');
+            if (tab) cambiarPestana(tab);
+        };
+        card.addEventListener('click', activar);
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activar();
+            }
+        });
+    });
+
+    // 6. Delegación AJAX para formularios de ofertas y menús (CSP estricto sin onsubmit inline)
+    document.addEventListener('submit', function (e) {
+        const formOferta = e.target.closest('form[data-ajax-oferta]');
+        if (formOferta) {
+            guardarOfertaGestionAjax(e, formOferta.getAttribute('data-ajax-oferta'));
+            return;
+        }
+        const formMenu = e.target.closest('form[data-ajax-menu]');
+        if (formMenu) {
+            guardarMenuGestionAjax(e, formMenu.getAttribute('data-ajax-menu'));
+        }
+    });
 });
 
 function mostrarToastSafari(mensaje, tipo='success') {
     const toastEl = document.getElementById('toastSafariNotif');
     const textoEl = document.getElementById('toastSafariTexto');
+    const closeBtn = toastEl ? toastEl.querySelector('.btn-close') : null;
     if (textoEl) textoEl.textContent = mensaje;
     if (toastEl) {
-        toastEl.className = `toast align-items-center text-white bg-${tipo} border-0 rounded-4 shadow-lg`;
+        const esClaro = (tipo === 'warning' || tipo === 'info');
+        toastEl.className = `toast align-items-center ${esClaro ? 'text-dark' : 'text-white'} bg-${tipo} border-0 rounded-4 shadow-lg`;
+        if (closeBtn) {
+            closeBtn.classList.toggle('btn-close-white', !esClaro);
+        }
         const toastInst = bootstrap.Toast.getInstance(toastEl) || new bootstrap.Toast(toastEl, { delay: 3500 });
         toastInst.show();
     }
@@ -132,7 +165,7 @@ function guardarMenuGestionAjax(e, menuId) {
             if (elModalTit) elModalTit.textContent = data.nombre;
 
             const elLoc = document.getElementById(`menu_local_val_${menuId}`);
-            if (elLoc) elLoc.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${data.local_nombre}`;
+            if (elLoc) elLoc.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(data.local_nombre)}`;
 
             const elBadge = document.getElementById(`menu_badge_count_${menuId}`);
             if (elBadge) elBadge.textContent = `${data.productos_count} platos vinculados`;
@@ -215,7 +248,7 @@ function guardarOfertaGestionAjax(e, prodId) {
                                 <strong class="text-danger fs-6">$${Math.round(data.precio_oferta).toLocaleString('es-CL')} CLP</strong>
                             </div>
                             <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
-                                <i class="bi bi-tag-fill me-1"></i>${data.descripcion_oferta || 'PRECIO FIJO'}
+                                <i class="bi bi-tag-fill me-1"></i>${escapeHtml(data.descripcion_oferta || 'PRECIO FIJO')}
                             </span>
                         `;
                     } else {
@@ -228,7 +261,7 @@ function guardarOfertaGestionAjax(e, prodId) {
                                 <strong class="text-dark fs-6">$${Math.round(data.precio_base).toLocaleString('es-CL')} CLP</strong>
                             </div>
                             <span class="badge bg-danger shadow-xs py-1 px-2" style="font-size: 0.68rem;">
-                                <i class="bi bi-fire me-1"></i>${bText}
+                                <i class="bi bi-fire me-1"></i>${escapeHtml(bText)}
                             </span>
                         `;
                     }

@@ -41,7 +41,7 @@
                 <div class="d-flex align-items-center gap-3">
                     <div class="d-none d-md-flex flex-column text-end">
                         <span class="fw-bold text-dark" style="font-size: 0.9rem;">
-                            <i class="bi bi-person-badge text-warning me-1"></i> Cajero: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                            <i class="bi bi-person-badge text-warning-emphasis me-1" aria-hidden="true"></i> Cajero: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
                         </span>
                         <small class="text-muted">{{ punto_venta.nombre|default:"Restaurante Central Safari" }}</small>
                     </div>
@@ -83,13 +83,13 @@
         {% if messages %}
         <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
             {% for message in messages %}
-            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% elif message.tags == 'info' %}info text-dark{% else %}success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
+            <div class="toast align-items-center {% if message.tags == 'error' %}text-white bg-danger{% elif message.tags == 'warning' %}text-dark bg-warning{% elif message.tags == 'info' %}text-dark bg-info{% else %}text-white bg-success{% endif %} border-0 shadow-lg rounded-4 show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" data-bs-autohide="true">
                 <div class="d-flex">
                     <div class="toast-body d-flex align-items-center gap-2 fw-semibold">
                         <i class="bi bi-info-circle-fill fs-5"></i>
                         <div>{{ message }}</div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close {% if message.tags != 'warning' and message.tags != 'info' %}btn-close-white {% endif %}me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
                 </div>
             </div>
             {% endfor %}
@@ -106,7 +106,7 @@
                         <span class="badge bg-danger text-white px-3 py-2 fw-bold rounded-pill mb-2">
                             <i class="bi bi-sunrise-fill me-1"></i> REQUERIMIENTO OPERATIVO 
                         </span>
-                        <h3 class="fw-bold text-dark mb-2">Apertura Diaria de Jornada Requerida</h3>
+                        <h2 class="h3 fw-bold text-dark mb-2">Apertura Diaria de Jornada Requerida</h2>
                         <p class="text-muted mb-0">
                             No existe una jornada operativa abierta para hoy en el parque. Como cajero(a), debes realizar la apertura oficial para habilitar el ciclo operativo del día y abrir tu caja individual.
                         </p>
@@ -129,7 +129,7 @@
                         <span class="badge bg-warning text-dark px-3 py-2 fw-bold rounded-pill mb-2">
                             <i class="bi bi-cash-stack me-1"></i> REQUERIMIENTO OPERATIVO 
                         </span>
-                        <h3 class="fw-bold text-dark mb-2">Apertura de Caja Individual Requerida</h3>
+                        <h2 class="h3 fw-bold text-dark mb-2">Apertura de Caja Individual Requerida</h2>
                         <p class="text-muted mb-0">
                             La <strong>Jornada #{{ jornada_activa.id }}</strong> se encuentra activa (abierta por {{ jornada_activa.usuario_apertura.get_full_name|default:jornada_activa.usuario_apertura.username }}). Para comenzar tu turno de cobro y emisión de tickets, debes ingresar tu fondo de sencillo y abrir tu caja individual.
                         </p>
@@ -255,9 +255,9 @@
         <div id="panelMesasSalonCajero" class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: #ffffff; border: 1.5px solid var(--safari-cafe-medium) !important;">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
                 <div>
-                    <h6 class="fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.4px;">
-                        <i class="bi bi-grid-3x3-gap-fill text-danger me-1"></i> CONTROL DE MESAS EN SALÓN ({{ punto_venta.nombre|default:"Local Activo" }})
-                    </h6>
+                    <h2 class="h6 fw-bold mb-0 text-dark" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.4px;">
+                        <i class="bi bi-grid-3x3-gap-fill text-danger me-1" aria-hidden="true"></i> CONTROL DE MESAS EN SALÓN ({{ punto_venta.nombre|default:"Local Activo" }})
+                    </h2>
                     <small class="text-muted">Asigna clientes a una mesa, envía pedidos o cobra cuentas abiertas sincronizadas con Meseros, Cocina y Barra.</small>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -298,8 +298,8 @@
                                 </div>
                                 {% endif %}
                                 {% if m.pedidos_activos > 0 %}
-                                <div class="badge bg-dark text-warning w-100 mt-1 py-1" style="font-size: 0.68rem;">
-                                    <i class="bi bi-fire me-1"></i>{{ m.pedidos_activos }} comanda{{ m.pedidos_activos|pluralize }} activa{{ m.pedidos_activos|pluralize }}
+                                <div class="badge bg-dark text-lcd-amber w-100 mt-1 py-1" style="font-size: 0.68rem;">
+                                    <i class="bi bi-fire me-1" aria-hidden="true"></i>{{ m.pedidos_activos }} comanda{{ m.pedidos_activos|pluralize }} activa{{ m.pedidos_activos|pluralize }}
                                 </div>
                                 {% endif %}
                             </div>
@@ -307,22 +307,26 @@
 
                         <div class="d-grid gap-1">
                             {% if m.estado == 'HABILITADA' %}
-                                <button type="button" class="btn btn-xs btn-sm btn-outline-success fw-bold py-1" style="font-size: 0.72rem;" onclick="ocuparMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}')">
-                                    <i class="bi bi-person-plus-fill me-1"></i>Enviar Clientes
-                                </button>
                                 {% if caja_activa %}
+                                <button type="button" class="btn btn-xs btn-sm btn-outline-success fw-bold py-1" style="font-size: 0.72rem;" data-mesa-action="ocupar" data-mesa-id="{{ m.id }}" data-mesa-nombre="{{ m.identificador }}">
+                                    <i class="bi bi-person-plus-fill me-1" aria-hidden="true"></i>Enviar Clientes
+                                </button>
                                 <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-warning text-dark fw-bold py-1" style="font-size: 0.72rem;">
-                                    <i class="bi bi-cart-plus-fill me-1"></i>Tomar Pedido
+                                    <i class="bi bi-cart-plus-fill me-1" aria-hidden="true"></i>Tomar Pedido
                                 </a>
+                                {% else %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold py-1" data-bs-toggle="modal" data-bs-target="{% if not jornada_activa %}#modalAbrirJornada{% else %}#modalAbrirCaja{% endif %}" aria-label="Requiere Caja Abierta para atender {{ m.identificador }}">
+                                    <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Requiere Caja Abierta
+                                </button>
                                 {% endif %}
                             {% elif m.estado == 'OCUPADA' %}
                                 {% if m.tiene_deuda_abierta %}
                                     {% if caja_activa %}
-                                    <button type="button" class="btn btn-sm btn-success fw-bold py-1" style="font-size: 0.72rem;" onclick="cobrarMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}', {{ m.total_abierto }})">
-                                        <i class="bi bi-cash-coin me-1"></i>Cobrar Mesa
+                                    <button type="button" class="btn btn-sm btn-success fw-bold py-1" style="font-size: 0.72rem;" data-mesa-action="cobrar" data-mesa-id="{{ m.id }}" data-mesa-nombre="{{ m.identificador }}" data-mesa-total="{{ m.total_abierto|stringformat:'.0f' }}">
+                                        <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Cobrar Mesa
                                     </button>
                                     <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-outline-dark fw-bold py-1" style="font-size: 0.72rem;">
-                                        <i class="bi bi-plus-circle me-1"></i>+ Pedido
+                                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>+ Pedido
                                     </a>
                                     {% else %}
                                     <span class="badge bg-light text-muted border py-1" style="font-size: 0.68rem;">Requiere Caja Abierta</span>
@@ -330,11 +334,11 @@
                                 {% else %}
                                     {% if caja_activa %}
                                     <a href="{% url 'crear_ticket' %}?mesa_id={{ m.id }}" class="btn btn-sm btn-warning text-dark fw-bold py-1" style="font-size: 0.72rem;">
-                                        <i class="bi bi-cart-plus-fill me-1"></i>Tomar Pedido
+                                        <i class="bi bi-cart-plus-fill me-1" aria-hidden="true"></i>Tomar Pedido
                                     </a>
                                     {% endif %}
-                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold py-1" style="font-size: 0.72rem;" onclick="liberarMesaCajero({{ m.id }}, '{{ m.identificador|escapejs }}')">
-                                        <i class="bi bi-check2-circle me-1"></i>Liberar Mesa
+                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold py-1" style="font-size: 0.72rem;" data-mesa-action="liberar" data-mesa-id="{{ m.id }}" data-mesa-nombre="{{ m.identificador }}">
+                                        <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Liberar Mesa
                                     </button>
                                 {% endif %}
                             {% endif %}
@@ -358,29 +362,29 @@
                         <span class="input-group-text bg-white border-end-0 text-muted">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" placeholder="Buscar por #Ticket, mesa, producto (ej. hamburguesa, café, jugo)..." onkeyup="filtrarTickets()">
-                        <button class="btn btn-outline-secondary" type="button" onclick="limpiarFiltroTicket()">
-                            <i class="bi bi-x"></i>
+                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" placeholder="Buscar por #Ticket, mesa, producto (ej. hamburguesa, café, jugo)..." aria-label="Buscar ticket por número, mesa o producto">
+                        <button class="btn btn-outline-secondary" type="button" id="btnLimpiarFiltroTicket" aria-label="Limpiar búsqueda de tickets">
+                            <i class="bi bi-x" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
                 <div class="col-lg-7">
-                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end align-items-center">
-                        <span class="filter-pill active" onclick="filtrarEstado('activos', this)">
-                            <i class="bi bi-collection-play-fill me-1"></i> Todos en Curso
-                        </span>
-                        <span class="filter-pill" onclick="filtrarEstado('cocina', this)">
-                            <i class="bi bi-fire me-1"></i> Cocina
-                        </span>
-                        <span class="filter-pill" onclick="filtrarEstado('barra', this)">
-                            <i class="bi bi-cup-hot me-1"></i> Barra
-                        </span>
-                        <span class="filter-pill" onclick="filtrarEstado('listo', this)">
-                            <i class="bi bi-bag-check me-1"></i> Listos
-                        </span>
-                        <span class="filter-pill" onclick="filtrarEstado('entregado', this)">
-                            <i class="bi bi-check2-all me-1"></i> Entregados
-                        </span>
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end align-items-center" id="vendedorFilterEstadoGroup">
+                        <button type="button" class="filter-pill active" data-filter-estado="activos" aria-pressed="true">
+                            <i class="bi bi-collection-play-fill me-1" aria-hidden="true"></i> Todos en Curso
+                        </button>
+                        <button type="button" class="filter-pill" data-filter-estado="cocina" aria-pressed="false">
+                            <i class="bi bi-fire me-1" aria-hidden="true"></i> Cocina
+                        </button>
+                        <button type="button" class="filter-pill" data-filter-estado="barra" aria-pressed="false">
+                            <i class="bi bi-cup-hot me-1" aria-hidden="true"></i> Barra
+                        </button>
+                        <button type="button" class="filter-pill" data-filter-estado="listo" aria-pressed="false">
+                            <i class="bi bi-bag-check me-1" aria-hidden="true"></i> Listos
+                        </button>
+                        <button type="button" class="filter-pill" data-filter-estado="entregado" aria-pressed="false">
+                            <i class="bi bi-check2-all me-1" aria-hidden="true"></i> Entregados
+                        </button>
                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 ms-1">
                             <i class="bi bi-broadcast me-1"></i> En Vivo
                         </span>
@@ -398,7 +402,7 @@
         <div id="sinTickets" class="text-center py-5 d-none">
             <div class="card border-0 shadow-sm p-5 rounded-4 mx-auto" style="max-width: 500px; background-color: #ffffff; border: 1.5px dashed var(--safari-cafe-medium) !important;">
                 <i class="bi bi-clipboard2-check fs-1 text-muted mb-2"></i>
-                <h5 class="fw-bold text-dark">No hay tickets en este estado</h5>
+                <h2 class="h5 fw-bold text-dark">No hay tickets en este estado</h2>
                 <p class="text-muted small mb-3">No se registran comandas pendientes con el filtro actual o la búsqueda ingresada.</p>
                 <div>
                     <a href="{% url 'crear_ticket' %}" class="btn btn-warning fw-bold px-4 rounded-pill">
@@ -419,7 +423,7 @@
                         <i class="bi bi-shield-lock-fill fs-5"></i>
                     </div>
                     <div>
-                        <h6 class="fw-bold mb-0 text-dark">Control Anti-Fraude: Ventas Recientes de la Caja</h6>
+                        <h2 class="h6 fw-bold mb-0 text-dark">Control Anti-Fraude: Ventas Recientes de la Caja</h2>
                         <small class="text-muted">Las anulaciones requieren obligatoriamente visado de Supervisor y motivo justificado para auditoría</small>
                     </div>
                 </div>
@@ -448,12 +452,12 @@
                             <td>{{ v.fecha_hora|date:"H:i" }} hrs</td>
                             <td>
                                 {% if v.modalidad == 'MESA' and v.mesa %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">
-                                        <i class="bi bi-shop me-1"></i> Mesa {{ v.mesa.identificador }}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary-emphasis border border-primary">
+                                        <i class="bi bi-shop me-1" aria-hidden="true"></i> Mesa {{ v.mesa.identificador }}
                                     </span>
                                 {% else %}
                                     <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                                        <i class="bi bi-bag-check me-1"></i> Mostrador
+                                        <i class="bi bi-bag-check me-1" aria-hidden="true"></i> Mostrador
                                     </span>
                                 {% endif %}
                             </td>
@@ -461,23 +465,23 @@
                             <td>{{ v.get_metodo_pago_display }}</td>
                             <td>
                                 {% if v.estado == 'PAGADA' %}
-                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
-                                        <i class="bi bi-check-circle-fill me-1"></i> Pagada
+                                    <span class="badge bg-success bg-opacity-10 text-success-emphasis border border-success">
+                                        <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i> Pagada
                                     </span>
                                 {% elif v.estado == 'ANULADA' %}
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">
-                                        <i class="bi bi-x-circle-fill me-1"></i> Anulada
+                                    <span class="badge bg-danger bg-opacity-10 text-danger-emphasis border border-danger">
+                                        <i class="bi bi-x-circle-fill me-1" aria-hidden="true"></i> Anulada
                                     </span>
                                 {% else %}
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
                                         {{ v.get_estado_display }}
                                     </span>
                                 {% endif %}
                             </td>
                             <td class="text-end">
                                 {% if v.estado == 'PAGADA' %}
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="abrirModalAnular('{{ v.id }}', '{{ v.total|floatformat:0 }}')">
-                                    <i class="bi bi-shield-x me-1"></i> Anular Venta
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-anular-venta-id="{{ v.id }}" data-anular-venta-total="{{ v.total|floatformat:0 }}">
+                                    <i class="bi bi-shield-x me-1" aria-hidden="true"></i> Anular Venta
                                 </button>
                                 {% else %}
                                 <span class="text-muted small">Sin acción</span>
@@ -498,52 +502,52 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header text-white" style="background: linear-gradient(135deg, #c62828 0%, #8e0000 100%);">
-                    <h5 class="modal-title fw-bold" id="modalAbrirJornadaLabel">
-                        <i class="bi bi-sunrise-fill text-warning me-2"></i> Apertura Diaria de Jornada 
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-title fw-bold" id="modalAbrirJornadaLabel">
+                        <i class="bi bi-sunrise-fill text-lcd-amber me-2" aria-hidden="true"></i> Apertura Diaria de Jornada
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'abrir_jornada' %}">
                     {% csrf_token %}
                     <div class="modal-body p-4">
                         <div class="alert alert-info border-0 rounded-3 small mb-3">
-                            <i class="bi bi-info-circle-fill me-1"></i>
+                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>
                             Como primer cajero del día, tu acción abrirá el ciclo oficial de jornada del parque y dejará operativa tu caja individual.
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-muted">Cajero Responsable</label>
-                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                                <label for="jornadaCajeroResp" class="form-label small fw-bold text-muted">Cajero Responsable</label>
+                                <input type="text" id="jornadaCajeroResp" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
-                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                                <label for="jornadaPuntoVenta" class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" id="jornadaPuntoVenta" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
                             </div>
                         </div>
 
                         {% if not punto_venta %}
                         <div class="alert alert-danger border-0 rounded-3 small mb-3">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
                             <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la jornada y la caja.
                         </div>
                         {% endif %}
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">
-                                <i class="bi bi-cash-stack text-success me-1"></i> Fondo Inicial de Sencillo (Caja Individual) <span class="text-muted fw-normal small">(Opcional)</span>
+                            <label for="jornadaMontoApertura" class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-stack text-success me-1" aria-hidden="true"></i> Fondo Inicial de Sencillo (Caja Individual) <span class="text-muted fw-normal small">(Opcional)</span>
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text fw-bold">$</span>
-                                <input type="number" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0" oninput="limpiarCerosInicialesInput(this)">
+                                <input type="number" id="jornadaMontoApertura" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
                                 <span class="input-group-text text-muted">CLP</span>
                             </div>
                             <small class="text-muted">Monto físico inicial en efectivo en gaveta para dar vuelto (opcional, si lo dejas vacío inicia en $0).</small>
                         </div>
 
                         <div class="mb-2">
-                            <label class="form-label small fw-bold text-muted">Observaciones de Apertura</label>
-                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
+                            <label for="jornadaObservaciones" class="form-label small fw-bold text-muted">Observaciones de Apertura</label>
+                            <textarea id="jornadaObservaciones" name="observaciones" rows="2" class="form-control" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3">
@@ -562,52 +566,52 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header text-dark" style="background: linear-gradient(135deg, #facc15 0%, #eab308 100%);">
-                    <h5 class="modal-title fw-bold" id="modalAbrirCajaLabel">
-                        <i class="bi bi-cash-stack text-danger me-2"></i> Apertura de Caja Individual 
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-title fw-bold" id="modalAbrirCajaLabel">
+                        <i class="bi bi-cash-stack text-danger me-2" aria-hidden="true"></i> Apertura de Caja Individual
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'abrir_caja' %}">
                     {% csrf_token %}
                     <div class="modal-body p-4">
                         <div class="alert alert-warning border-0 rounded-3 small mb-3">
-                            <i class="bi bi-info-circle-fill me-1"></i>
+                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>
                             La <strong>Jornada #{{ jornada_activa.id }}</strong> ya está activa. Ingresa tu fondo de apertura para comenzar tu turno con tu propia caja individual.
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-muted">Cajero</label>
-                                <input type="text" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                                <label for="cajaCajeroResp" class="form-label small fw-bold text-muted">Cajero</label>
+                                <input type="text" id="cajaCajeroResp" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold text-muted">Punto de Venta</label>
-                                <input type="text" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
+                                <label for="cajaPuntoVenta" class="form-label small fw-bold text-muted">Punto de Venta</label>
+                                <input type="text" id="cajaPuntoVenta" class="form-control bg-light {% if not punto_venta %}text-danger fw-bold{% endif %}" value="{{ punto_venta.nombre|default:'Sin Punto Asignado' }}" readonly>
                             </div>
                         </div>
 
                         {% if not punto_venta %}
                         <div class="alert alert-danger border-0 rounded-3 small mb-3">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
                             <strong>Puesto de trabajo no asignado:</strong> Tu perfil no tiene un local asignado. Solicita al Administrador que te asigne un puesto de trabajo antes de abrir la caja.
                         </div>
                         {% endif %}
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">
-                                <i class="bi bi-cash-coin text-success me-1"></i> Fondo Inicial de Sencillo (Gaveta) <span class="text-muted fw-normal small">(Opcional)</span>
+                            <label for="cajaMontoApertura" class="form-label small fw-bold text-dark">
+                                <i class="bi bi-cash-coin text-success me-1" aria-hidden="true"></i> Fondo Inicial de Sencillo (Gaveta) <span class="text-muted fw-normal small">(Opcional)</span>
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text fw-bold">$</span>
-                                <input type="number" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0" oninput="limpiarCerosInicialesInput(this)">
+                                <input type="number" id="cajaMontoApertura" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
                                 <span class="input-group-text text-muted">CLP</span>
                             </div>
                             <small class="text-muted">Fondo en efectivo asignado para dar vuelto en esta estación (opcional, si lo dejas vacío inicia en $0).</small>
                         </div>
 
                         <div class="mb-2">
-                            <label class="form-label small fw-bold text-muted">Observaciones</label>
-                            <textarea name="observaciones" rows="2" class="form-control" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
+                            <label for="cajaObservaciones" class="form-label small fw-bold text-muted">Observaciones</label>
+                            <textarea id="cajaObservaciones" name="observaciones" rows="2" class="form-control" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3">
@@ -628,12 +632,12 @@
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header text-white" style="background: linear-gradient(135deg, #a71d1d 0%, #7f1d1d 100%);">
                     <div>
-                        <h5 class="modal-title fw-bold" id="modalCerrarCajaLabel">
-                            <i class="bi bi-safe2-fill text-warning me-2"></i> Cierre de Caja & Proceso de Cuadratura
-                        </h5>
-                        <small class="text-white-50">Subproceso de Arqueo y Cuadratura de Fin de Turno</small>
+                        <h2 class="h5 modal-title fw-bold" id="modalCerrarCajaLabel">
+                            <i class="bi bi-safe2-fill text-lcd-amber me-2" aria-hidden="true"></i> Cierre de Caja & Proceso de Cuadratura
+                        </h2>
+                        <small class="text-on-brand-muted">Subproceso de Arqueo y Cuadratura de Fin de Turno</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form method="POST" action="{% url 'cerrar_caja' %}" id="formCerrarCaja">
                     {% csrf_token %}
@@ -653,7 +657,7 @@
                                 <div class="col-sm-6 text-sm-end">
                                     <div class="small text-muted">Cajero(a) Responsable:</div>
                                     <div class="fw-bold text-dark">
-                                        <i class="bi bi-person-badge text-warning me-1"></i> {{ request.user.get_full_name|default:request.user.username }}
+                                        <i class="bi bi-person-badge text-warning-emphasis me-1" aria-hidden="true"></i> {{ request.user.get_full_name|default:request.user.username }}
                                     </div>
                                 </div>
                             </div>
@@ -696,51 +700,51 @@
                         </div>
 
                         <!-- Grilla de Conteo Físico: Billetes y Monedas -->
-                        <h6 class="fw-bold text-dark mb-2">
-                            <i class="bi bi-cash-stack text-success me-1"></i> Arqueo Físico de Efectivo en Gaveta:
-                        </h6>
+                        <h3 class="h6 fw-bold text-dark mb-2">
+                            <i class="bi bi-cash-stack text-success me-1" aria-hidden="true"></i> Arqueo Físico de Efectivo en Gaveta:
+                        </h3>
 
                         <div class="row g-3">
                             <!-- Columna 1: Billetes -->
                             <div class="col-md-6">
                                 <div class="card border rounded-3 p-3 bg-white h-100">
                                     <div class="fw-bold small text-dark border-bottom pb-2 mb-2 d-flex justify-content-between align-items-center">
-                                        <span><i class="bi bi-cash me-1 text-primary"></i> Billetes</span>
+                                        <span><i class="bi bi-cash me-1 text-primary" aria-hidden="true"></i> Billetes</span>
                                         <span class="badge bg-light text-muted border">Unidades</span>
                                     </div>
 
                                     <!-- Billetes $20.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_20000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$20.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_20000" id="b_20000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="20000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="billetes_20000" id="b_20000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="20000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_20000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $10.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_10000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_10000" id="b_10000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="billetes_10000" id="b_10000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_10000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $5.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_5000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$5.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_5000" id="b_5000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="billetes_5000" id="b_5000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_5000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $2.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_2000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$2.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_2000" id="b_2000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="2000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="billetes_2000" id="b_2000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="2000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_2000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $1.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                                         <label for="b_1000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$1.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_1000" id="b_1000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1000" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="billetes_1000" id="b_1000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_1000" style="min-width: 80px;">$0</span>
                                     </div>
                                 </div>
@@ -750,35 +754,35 @@
                             <div class="col-md-6">
                                 <div class="card border rounded-3 p-3 bg-white h-100">
                                     <div class="fw-bold small text-dark border-bottom pb-2 mb-2 d-flex justify-content-between align-items-center">
-                                        <span><i class="bi bi-coin me-1 text-warning"></i> Monedas</span>
+                                        <span><i class="bi bi-coin me-1 text-warning-emphasis" aria-hidden="true"></i> Monedas</span>
                                         <span class="badge bg-light text-muted border">Unidades</span>
                                     </div>
 
                                     <!-- Monedas $500 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_500" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$500:</label>
-                                        <input type="number" min="0" step="1" name="monedas_500" id="m_500" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="500" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_500" id="m_500" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="500" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_500" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $100 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_100" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$100:</label>
-                                        <input type="number" min="0" step="1" name="monedas_100" id="m_100" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="100" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_100" id="m_100" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="100" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_100" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $50 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_50" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$50:</label>
-                                        <input type="number" min="0" step="1" name="monedas_50" id="m_50" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="50" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_50" id="m_50" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="50" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_50" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $10 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_10" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10:</label>
-                                        <input type="number" min="0" step="1" name="monedas_10" id="m_10" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_10" id="m_10" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_10" style="min-width: 80px;">$0</span>
                                     </div>
 
@@ -787,7 +791,7 @@
                                         <label for="m_5" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
                                             $5 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
-                                        <input type="number" min="0" step="1" name="monedas_5" id="m_5" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_5" id="m_5" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_5" style="min-width: 80px;">$0</span>
                                     </div>
 
@@ -796,7 +800,7 @@
                                         <label for="m_1" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
                                             $1 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
-                                        <input type="number" min="0" step="1" name="monedas_1" id="m_1" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;" oninput="limpiarCerosInicialesInput(this); calcularArqueoCaja()">
+                                        <input type="number" min="0" step="1" name="monedas_1" id="m_1" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_1" style="min-width: 80px;">$0</span>
                                     </div>
                                 </div>
@@ -827,10 +831,10 @@
 
                         <!-- Observaciones de Cierre -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold text-muted">
+                            <label for="cierreObservaciones" class="form-label small fw-bold text-muted">
                                 Observaciones de Cierre / Justificación (Opcional):
                             </label>
-                            <textarea name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Cuadratura conforme. Sin incidencias de gaveta."></textarea>
+                            <textarea id="cierreObservaciones" name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Cuadratura conforme. Sin incidencias de gaveta."></textarea>
                         </div>
                     </div>
 
@@ -838,8 +842,8 @@
                         <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
                             Cancelar
                         </button>
-                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" onclick="confirmarCierreCaja()">
-                            <i class="bi bi-lock-fill me-1"></i> Confirmar Arqueo y Cerrar Caja
+                        <button type="button" id="btnConfirmarCierreCaja" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-lock-fill me-1" aria-hidden="true"></i> Confirmar Arqueo y Cerrar Caja
                         </button>
                     </div>
                 </form>
@@ -847,16 +851,6 @@
         </div>
     </div>
     {% endif %}
-
-    <!-- Pie de página -->
-    <footer class="py-3 text-center mt-auto" style="background-color: var(--safari-cafe-pastel); border-top: 2px solid var(--safari-cafe-medium); font-size: 0.85rem;">
-        <div class="container d-flex align-items-center justify-content-center gap-2">
-            <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
-            <span class="text-muted">
-                <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
-            </span>
-        </div>
-    </footer>
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -871,10 +865,10 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title fw-bold" id="modalAnularVentaLabel">
-                        <i class="bi bi-shield-lock-fill me-2"></i> Anulación de Venta (Anti-Fraude)
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="h5 modal-title fw-bold" id="modalAnularVentaLabel">
+                        <i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i> Anulación de Venta (Anti-Fraude)
+                    </h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formAnularVenta" method="POST" action="" autocomplete="off">
                     {% csrf_token %}
@@ -896,16 +890,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-dark">
+                            <label for="anularMotivo" class="form-label small fw-bold text-dark">
                                 Motivo de la Anulación <span class="text-danger">*</span>
                             </label>
-                            <textarea name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5"></textarea>
+                            <textarea id="anularMotivo" name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5"></textarea>
                             <div class="form-text small">Obligatorio (mínimo 5 caracteres) para registro de auditoría.</div>
                         </div>
 
                         <div class="border-top pt-3 mt-3">
                             <div class="d-flex align-items-center gap-2 mb-2">
-                                <i class="bi bi-key-fill text-danger"></i>
+                                <i class="bi bi-key-fill text-danger" aria-hidden="true"></i>
                                 <span class="small fw-bold text-dark">Autorización de Supervisor Requerida</span>
                             </div>
                             <p class="text-muted small mb-2">
@@ -913,12 +907,12 @@
                             </p>
                             <div class="row g-2">
                                 <div class="col-6">
-                                    <label class="form-label small text-muted">Usuario Administrador</label>
-                                    <input type="text" name="supervisor_username" class="form-control form-control-sm" placeholder="ej: rgomez" required autocomplete="off">
+                                    <label for="anularSupUser" class="form-label small text-muted">Usuario Administrador</label>
+                                    <input type="text" id="anularSupUser" name="supervisor_username" class="form-control form-control-sm" placeholder="ej: rgomez" required autocomplete="off">
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label small text-muted">Contraseña</label>
-                                    <input type="password" name="supervisor_password" class="form-control form-control-sm" placeholder="••••••••" required autocomplete="new-password" data-lpignore="true">
+                                    <label for="anularSupPass" class="form-label small text-muted">Contraseña</label>
+                                    <input type="password" id="anularSupPass" name="supervisor_password" class="form-control form-control-sm" placeholder="••••••••" required autocomplete="new-password" data-lpignore="true">
                                 </div>
                             </div>
                         </div>
@@ -936,12 +930,12 @@
 
 
     <!-- Overlay de Bloqueo Rápido de Caja POS (Ezio Auditore - Terminal Compartido) -->
-    <div id="safariPosLockOverlay" class="safari-pos-lock-overlay d-none">
+    <div id="safariPosLockOverlay" class="safari-pos-lock-overlay d-none" role="dialog" aria-modal="true" aria-labelledby="safariPosLockTitle">
         <div class="safari-pos-lock-card text-center">
             <div class="lock-icon-circle mb-3">
-                <i class="bi bi-shield-lock-fill text-danger"></i>
+                <i class="bi bi-shield-lock-fill text-danger" aria-hidden="true"></i>
             </div>
-            <h5 class="fw-bold text-dark mb-1">Terminal de Caja Protegido</h5>
+            <h2 class="h5 fw-bold text-dark mb-1" id="safariPosLockTitle">Terminal de Caja Protegido</h2>
             <p class="text-muted small mb-1">Ingresa tu PIN de seguridad (4 dígitos) para operar</p>
             <div class="badge bg-secondary-subtle text-dark border px-3 py-1 mb-3">
                 <i class="bi bi-person-badge me-1"></i> Cajero: {{ request.user.get_full_name|default:request.user.username }}
@@ -970,23 +964,44 @@
                 <button type="button" class="btn-key" data-digit="7">7</button>
                 <button type="button" class="btn-key" data-digit="8">8</button>
                 <button type="button" class="btn-key" data-digit="9">9</button>
-                <button type="button" class="btn-key btn-key-action text-danger" id="btnPinClear">C</button>
+                <button type="button" class="btn-key btn-key-action text-danger" id="btnPinClear" aria-label="Limpiar PIN">C</button>
                 <button type="button" class="btn-key" data-digit="0">0</button>
-                <button type="button" class="btn-key btn-key-action text-primary" id="btnPinBackspace"><i class="bi bi-backspace"></i></button>
+                <button type="button" class="btn-key btn-key-action text-primary" id="btnPinBackspace" aria-label="Borrar último dígito"><i class="bi bi-backspace" aria-hidden="true"></i></button>
             </div>
 
-            <div class="mt-3">
-                <small class="text-muted d-block" style="font-size: 0.75rem;">
-                    * PIN por defecto: <strong>1234</strong>{% if pin_hint and pin_hint != '1234' %} o tu PIN de RUT: <strong>{{ pin_hint }}</strong>{% endif %}.
-                </small>
-                <div class="d-flex justify-content-center gap-2 mt-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" id="btnPinAyuda" style="font-size: 0.75rem;">
-                        <i class="bi bi-key-fill text-warning me-1"></i> Pista de PIN
+            <div class="mt-3 pt-2 border-top text-start">
+                <label for="posLockPasswordInput" class="form-label small fw-bold text-dark mb-1">
+                    <i class="bi bi-shield-check text-success me-1"></i> Desbloquear con contraseña de turno:
+                </label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="password" class="form-control" id="posLockPasswordInput" placeholder="Ingresa tu contraseña" autocomplete="current-password">
+                    <button type="button" class="btn btn-success fw-bold" id="btnPosVerificarPassword">
+                        <i class="bi bi-unlock-fill me-1"></i> Desbloquear
                     </button>
-                    <a href="{% url 'logout' %}" class="btn btn-link btn-sm text-danger text-decoration-none" style="font-size: 0.78rem;">
-                        <i class="bi bi-box-arrow-left me-1"></i> Cerrar sesión
-                    </a>
                 </div>
+
+                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary" id="btnToggleConfigPin">
+                    <i class="bi bi-gear me-1"></i> Configurar / cambiar PIN numérico de terminal
+                </button>
+                <div id="panelConfigPinPos" class="d-none mt-2 p-2 rounded-3 bg-light border small">
+                    <div class="mb-2">
+                        <label for="posConfigCurrentPassword" class="form-label mb-1 fw-semibold">Contraseña actual</label>
+                        <input type="password" class="form-control form-control-sm" id="posConfigCurrentPassword" placeholder="Tu contraseña actual" autocomplete="current-password">
+                    </div>
+                    <div class="mb-2">
+                        <label for="posConfigNuevoPin" class="form-label mb-1 fw-semibold">Nuevo PIN numérico (4 dígitos)</label>
+                        <input type="password" inputmode="numeric" maxlength="4" class="form-control form-control-sm" id="posConfigNuevoPin" placeholder="••••" autocomplete="new-password">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" id="btnGuardarPinPos">
+                        <i class="bi bi-key-fill me-1"></i> Guardar PIN cifrado
+                    </button>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                    <i class="bi bi-box-arrow-left me-1"></i> Cerrar sesión
+                </a>
             </div>
         </div>
     </div>
@@ -1000,12 +1015,27 @@
     {
         "urlCambiarEstadoPedido": "{% url 'cambiar_estado_pedido' %}",
         "urlVendedor": "{% url 'vendedor' %}",
+        "urlDesbloquearPin": "{% url 'api_desbloquear_pin_pos' %}",
         "cajaActiva": {% if caja_activa %}true{% else %}false{% endif %},
-        "esperadoEfectivo": {{ resumen_caja.total_efectivo_esperado|default:0|floatformat:"0u" }},
-        "pinsValidos": {{ pins_validos_json|safe|default:'["1234"]' }},
-        "pinHint": "{{ pin_hint|default:'1234' }}"
+        "esperadoEfectivo": {{ resumen_caja.total_efectivo_esperado|default:0|floatformat:"0u" }}
     }
     </script>
     <script src="{% static 'js/cajero/vendedor.js' %}"></script>
+    <footer class="py-3 text-center mt-auto safari-footer-institutional">
+        <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+                <img src="{% static 'img/global/logo_parque_safari.png' %}" alt="Safari Logo" style="height: 24px; width: auto;">
+                <span class="text-muted">
+                    <strong>Safari Pilar</strong> • Sistema de Venta de Alimentos <em>Venta_safari</em> © 2026.
+                </span>
+            </div>
+            <div class="safari-legal-footer-links">
+                <a href="{% url 'politica_privacidad' %}">Política de Privacidad</a>
+                <a href="{% url 'terminos_condiciones' %}">Términos y Condiciones</a>
+                <button type="button" data-open-cookie-prefs="1">Preferencias de Cookies</button>
+            </div>
+        </div>
+    </footer>
+    {% include 'ventas/acceso/include_cookie_banner.html' %}
 </body>
 </html>

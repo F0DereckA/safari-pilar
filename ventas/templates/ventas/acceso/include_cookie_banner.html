@@ -1,0 +1,73 @@
+{% load static %}
+<!-- Banner de Cookies (Telemetría de análisis bloqueada por defecto hasta aceptación explícita) -->
+<aside id="safariCookieBanner" class="safari-cookie-banner" hidden aria-label="Preferencias de cookies y privacidad">
+    <input type="hidden" id="safariCookieCsrfToken" value="{{ csrf_token }}">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-shield-lock-fill text-danger fs-5" aria-hidden="true"></i>
+                <strong class="text-dark">Privacidad y Cookies en Venta Safari (Modo Académico)</strong>
+            </div>
+            <p class="mb-0 small text-muted">
+                Solo usamos cookies esenciales de sesión y protección CSRF para operar el sistema.
+                <strong>Ninguna cookie ni evento de análisis se activa hasta que tú lo aceptes expresamente.</strong>
+                Consulta nuestra <a href="{% url 'politica_privacidad' %}" class="fw-bold text-danger">Política de Privacidad</a>.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
+            <button type="button" id="btnCookiesSoloEsenciales" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">
+                Solo esenciales
+            </button>
+            <button type="button" id="btnCookiesAbrirConfig" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
+                Configurar
+            </button>
+            <button type="button" id="btnCookiesAceptarTodas" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold">
+                Aceptar análisis
+            </button>
+        </div>
+    </div>
+</aside>
+
+<!-- Diálogo Nativo de Preferencias de Cookies (closedby="any") -->
+<dialog id="dialogConfigCookies" class="safari-cookie-dialog" closedby="any" aria-labelledby="dialogCookiesTitulo">
+    <div class="safari-cookie-dialog-head">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-sliders2 text-lcd-amber fs-5" aria-hidden="true"></i>
+            <h2 id="dialogCookiesTitulo" class="h6 m-0 fw-bold">Preferencias de Cookies y Análisis</h2>
+        </div>
+        <button type="button" id="btnCerrarDialogCookies" class="btn-close btn-close-white" aria-label="Cerrar preferencias de cookies"></button>
+    </div>
+    <div class="safari-cookie-dialog-body">
+        <p class="small text-muted mb-3">
+            Este prototipo académico respeta el principio de minimización: el análisis de uso permanece desactivado mientras no marques la casilla de autorización.
+        </p>
+        <div class="p-3 rounded-3 border bg-light mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <strong class="small text-dark">Cookies Técnicas y Sesión Segura</strong>
+                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Siempre activas</span>
+            </div>
+            <div class="safari-hint-xs mt-1">
+                Necesarias para autenticación, protección CSRF, caducidad de sesión en servidor y control de local.
+            </div>
+        </div>
+        <div class="safari-consent-box">
+            <input type="checkbox" id="chkCookiesAnalisisDialog" name="acepto_cookies_analisis_modal" value="1">
+            <label for="chkCookiesAnalisisDialog">
+                <strong class="d-block">Permitir análisis académico de usabilidad (opcional)</strong>
+                <span class="safari-hint-xs d-block">
+                    Si dejas esta casilla sin marcar, no se inicializará ninguna medición ni registro analítico de navegación.
+                </span>
+            </label>
+        </div>
+    </div>
+    <div class="safari-cookie-dialog-footer">
+        <a href="{% url 'politica_privacidad' %}" class="btn btn-sm btn-link text-decoration-none text-dark fw-bold me-auto">
+            Ver Política Completa
+        </a>
+        <button type="button" id="btnGuardarCookiesDialog" class="btn btn-sm btn-danger rounded-pill px-4 fw-bold">
+            Guardar Preferencia
+        </button>
+    </div>
+</dialog>
+
+<script defer src="{% static 'js/global/cookies_consent.js' %}"></script>

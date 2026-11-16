@@ -9,11 +9,20 @@
     background-color: #ffffff;
     color: var(--safari-cafe-dark);
     padding: 6px 14px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     border-radius: 20px;
     font-weight: 600;
     font-size: 0.85rem;
     transition: all 0.2s ease;
     user-select: none;
+}
+
+.filter-pill:focus-visible {
+    outline: 2.5px solid var(--safari-red);
+    outline-offset: 2px;
 }
 
 .filter-pill.active, .filter-pill:hover {
@@ -257,6 +266,21 @@
     display: none !important;
 }
 
+/* Asegurar que modales y alertas SweetAlert2 siempre queden por encima del overlay de bloqueo */
+.swal2-container {
+    z-index: 100005 !important;
+}
+
+@keyframes shakePin {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.lock-pin-display.shake {
+    animation: shakePin 0.4s ease-in-out;
+}
+
 @keyframes fadeInLock {
     from { opacity: 0; transform: scale(0.98); }
     to { opacity: 1; transform: scale(1); }
@@ -330,7 +354,16 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.12s ease;
-    outline: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.btn-key:focus-visible {
+    outline: 3px solid var(--safari-red);
+    outline-offset: 2px;
+    background: #fee2e2;
+    border-color: var(--safari-red);
 }
 
 .btn-key:active, .btn-key:hover {

@@ -95,12 +95,12 @@ body {
 }
 .modalidad-salon {
     background-color: #fee2e2;
-    color: #dc2626;
+    color: #991b1b;
     border: 1px solid #fecaca;
 }
 .modalidad-mostrador {
     background-color: #fef3c7;
-    color: #b45309;
+    color: #92400e;
     border: 1px solid #fde68a;
 }
 .badge-tiempo {
@@ -119,11 +119,13 @@ body {
 }
 .badge-tiempo-urgente {
     background-color: #fee2e2;
-    color: #b91c1c;
-    animation: blinker 1.2s linear infinite;
+    color: #991b1b;
+    border: 1.5px solid #dc2626;
+    animation: blinker 1.2s ease-in-out infinite;
 }
 @keyframes blinker {
-    50% { opacity: 0.4; }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+    50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.55); }
 }
 
 .badge-estado-comanda {
@@ -135,11 +137,11 @@ body {
     text-transform: uppercase;
 }
 .badge-estado-listo {
-    background-color: #16a34a;
+    background-color: #15803d;
     color: #ffffff;
 }
 .badge-estado-preparacion {
-    background-color: #0284c7;
+    background-color: #0369a1;
     color: #ffffff;
 }
 .badge-estado-pendiente {
@@ -156,7 +158,7 @@ body {
     margin-bottom: 2px;
 }
 .barra-mesero-subtitulo {
-    color: #64748b;
+    color: #334155;
     font-size: 0.88rem;
     font-weight: 600;
 }
@@ -205,8 +207,8 @@ body {
     padding: 3px 10px;
     border-radius: 6px;
     background: #ffffff;
-    border: 1.5px solid #0284c7;
-    color: #0284c7;
+    border: 1.5px solid #0369a1;
+    color: #0369a1;
     flex-shrink: 0;
 }
 .nota-especial-barra {
@@ -241,7 +243,7 @@ body {
     margin-top: auto;
 }
 .barra-notificado-aviso {
-    color: #0d9488;
+    color: #0f766e;
     font-weight: 700;
     font-size: 0.95rem;
     text-align: center;
@@ -272,19 +274,19 @@ body {
     transform: scale(0.98);
 }
 .btn-barra-preparar {
-    background-color: #0284c7;
-    color: #ffffff;
-}
-.btn-barra-preparar:hover {
     background-color: #0369a1;
     color: #ffffff;
 }
+.btn-barra-preparar:hover {
+    background-color: #075985;
+    color: #ffffff;
+}
 .btn-barra-listo {
-    background-color: #16a34a;
+    background-color: #15803d;
     color: #ffffff;
 }
 .btn-barra-listo:hover {
-    background-color: #15803d;
+    background-color: #166534;
     color: #ffffff;
 }
 .btn-barra-entregar {
@@ -315,5 +317,88 @@ body {
     }
     .barra-card {
         border-radius: 0.75rem;
+    }
+}
+
+/* ==========================================================================
+   Modo Concentración Táctico KDS Barra (Ergonomía y Cero Distracciones)
+   ========================================================================== */
+body.kds-modo-condensado {
+    background-color: #0b1120 !important;
+}
+
+body.kds-modo-condensado .barra-header {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    border-bottom-color: #1e293b !important;
+}
+
+body.kds-modo-condensado .kds-kpi-strip,
+body.kds-modo-condensado .kds-subtitulo-decorativo,
+body.kds-modo-condensado .barra-mesero-subtitulo,
+body.kds-modo-condensado .badge-destino-barra,
+body.kds-modo-condensado .barra-notificado-aviso,
+body.kds-modo-condensado #historialEntregadosBarra,
+body.kds-modo-condensado footer,
+body.kds-modo-condensado #safariCookieBanner {
+    display: none !important;
+}
+
+body.kds-modo-condensado .barra-grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)) !important;
+    gap: 0.75rem !important;
+}
+
+body.kds-modo-condensado .barra-card {
+    border-radius: 0.65rem !important;
+    min-height: auto !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55) !important;
+}
+
+body.kds-modo-condensado .barra-card-header {
+    padding: 0.5rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .barra-card-body {
+    padding: 0.5rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .barra-item-row {
+    padding: 0.35rem 0 !important;
+    font-size: 0.95rem !important;
+}
+
+/* Mantener notas especiales y preferencias de barra siempre visibles en Modo Concentración */
+body.kds-modo-condensado .nota-especial-barra,
+body.kds-modo-condensado .barra-nota-referencia {
+    display: block !important;
+}
+
+body.kds-modo-condensado .barra-card-footer {
+    padding: 0.45rem 0.75rem !important;
+}
+
+body.kds-modo-condensado .barra-btn-action {
+    padding: 0.45rem 0.65rem !important;
+    font-size: 0.88rem !important;
+}
+
+body.kds-modo-condensado .btn-modo-condensado,
+.btn-modo-condensado.active {
+    background-color: #06b6d4 !important;
+    color: #05131a !important;
+    border-color: #22d3ee !important;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35) !important;
+}
+
+.kds-subtitulo-light {
+    color: #cbd5e1 !important;
+    font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .barra-card.demorado,
+    .badge-tiempo-urgente {
+        animation: none !important;
     }
 }

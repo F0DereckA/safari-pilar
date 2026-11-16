@@ -55,12 +55,15 @@ function inicializarModoSol() {
     const btn = document.getElementById('btnToggleModoSol');
     if (!btn) return;
     const guardado = localStorage.getItem('safari_mesero_modo_sol');
-    if (guardado === 'true') {
+    const activoInicial = guardado === 'true';
+    if (activoInicial) {
         document.body.classList.add('safari-modo-sol');
     }
+    btn.setAttribute('aria-pressed', activoInicial ? 'true' : 'false');
     btn.addEventListener('click', () => {
         document.body.classList.toggle('safari-modo-sol');
         const activo = document.body.classList.contains('safari-modo-sol');
+        btn.setAttribute('aria-pressed', activo ? 'true' : 'false');
         localStorage.setItem('safari_mesero_modo_sol', activo ? 'true' : 'false');
         vibrarTactil([30]);
     });
@@ -110,7 +113,7 @@ function seleccionarMesa(id, identificador, capacidad, estado) {
         estadoSpan.className = 'text-secondary';
     } else {
         estadoSpan.innerText = 'Reservada';
-        estadoSpan.className = 'text-warning';
+        estadoSpan.className = 'text-warning-emphasis';
     }
 
     const comandaMesaEl = document.getElementById('comandaMesaNombre');
@@ -120,8 +123,27 @@ function seleccionarMesa(id, identificador, capacidad, estado) {
     actualizarEstadoCuentaMesa(id);
 }
 
+function puedeAtenderSalonMesero() {
+    return meseroConfig.puedeAtenderSalon !== false;
+}
+
+function alertarBloqueoCajaMesero() {
+    const msg = meseroConfig.motivoBloqueoAtencion || 'No hay una caja abierta en este local. Solicita al cajero abrir caja antes de atender mesas o emitir comandas.';
+    if (typeof swalToast !== 'undefined') {
+        swalToast.fire({ icon: 'warning', title: msg });
+    }
+    const alertaBox = document.getElementById('alertaCajaMeseroBox');
+    if (alertaBox) {
+        alertaBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
 function ejecutarAccionMesaRapida(accion) {
     if (!mesaSeleccionada || !mesaSeleccionada.id) return;
+    if (accion === 'ocupar_mesa' && !puedeAtenderSalonMesero()) {
+        alertarBloqueoCajaMesero();
+        return;
+    }
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = window.location.href;
@@ -160,12 +182,21 @@ async function marcarPedidoServidoMesero(pedidoId) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
-        const data = await resp.json();
-        if (data.ok) {
+        const ct = resp.headers.get('content-type') || '';
+        const data = ct.includes('application/json') ? await resp.json() : {};
+        if (resp.status === 401 || data.sesion_expirada) {
+            if (typeof swalToast !== 'undefined') {
+                swalToast.fire({ icon: 'warning', title: 'Tu sesión expiró. Recarga e inicia sesión para actualizar la entrega.' });
+            }
+            return;
+        }
+        if (resp.ok && (data.ok || data.status === 'ok')) {
             await autoSincronizarMesasMesero(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: `Comanda #COM-${String(pedidoId).padStart(4, '0')} marcada como servida en mesa.` });
             }
+        } else if (typeof swalToast !== 'undefined') {
+            swalToast.fire({ icon: 'error', title: data.mensaje || data.error || 'No se pudo marcar la comanda como entregada.' });
         }
     } catch (e) {
         console.error(e);
@@ -223,7 +254,7 @@ function renderizarComanda() {
     if (items.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4 text-muted" id="comandaVaciaMsg">
-                <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning"></i>
+                <i class="bi bi-bag-plus display-5 d-block mb-2 text-warning-emphasis" aria-hidden="true"></i>
                 Selecciona alimentos o bebidas con los botones <strong>(+)</strong> para armar la comanda de la mesa.
             </div>`;
         btnDespachar.disabled = true;
@@ -242,7 +273,7 @@ function renderizarComanda() {
             html += `
                 <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border bg-white shadow-sm">
                     <div style="max-width: 68%;">
-                        <div class="fw-bold small text-dark">${item.cantidad}x ${item.nombre}</div>
+                        <div class="fw-bold small text-dark">${item.cantidad}x ${escapeHtml(item.nombre)}</div>
                         ${item.nota ? `
                             <div class="comanda-item-nota">
                                 <strong class="text-danger">* NOTA:</strong> ${escapeHtml(item.nota)}
@@ -252,14 +283,15 @@ function renderizarComanda() {
                     </div>
                     <div class="text-end">
                         <span class="fw-bold text-danger d-block">$${subtotal.toLocaleString('es-CL')}</span>
-                        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" onclick="modificarCantidad(${item.id}, '${escapeHtml(item.nombre)}', ${item.precio}, '${item.destino}', -${item.cantidad})" title="Eliminar ítem">
-                            <i class="bi bi-x-circle fs-5"></i>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" data-cart-remove-id="${item.id}" data-cart-remove-nombre="${escapeHtml(item.nombre)}" data-cart-remove-precio="${item.precio}" data-cart-remove-destino="${escapeHtml(item.destino)}" data-cart-remove-delta="-${item.cantidad}" title="Eliminar ítem" aria-label="Eliminar ${escapeHtml(item.nombre)} de la comanda">
+                            <i class="bi bi-x-circle fs-5" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>`;
         });
         container.innerHTML = html;
-        btnDespachar.disabled = false;
+        const puedeAtender = puedeAtenderSalonMesero();
+        btnDespachar.disabled = !puedeAtender;
         if (boxVerTickets) boxVerTickets.style.display = 'block';
 
         const tieneCocina = items.some(it => it.destino === 'COCINA');
@@ -269,10 +301,12 @@ function renderizarComanda() {
         else if (!tieneCocina && tieneBarra) destinoLabel = 'Barra';
 
         const esCuentaAbierta = !!(cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)]);
-        if (esCuentaAbierta) {
-            btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar Ronda a ${destinoLabel}`;
+        if (!puedeAtender) {
+            btnDespachar.innerHTML = '<i class="bi bi-lock-fill me-2 fs-4" aria-hidden="true"></i> Requiere Caja Abierta';
+        } else if (esCuentaAbierta) {
+            btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4" aria-hidden="true"></i> Enviar Ronda a ${destinoLabel}`;
         } else {
-            btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a ${destinoLabel}`;
+            btnDespachar.innerHTML = `<i class="bi bi-send-check-fill me-2 fs-4" aria-hidden="true"></i> Enviar a ${destinoLabel}`;
         }
     }
 
@@ -317,7 +351,7 @@ function vaciarComanda() {
 // Modal de Notas Libres
 function abrirNotaModal(id, nombre) {
     document.getElementById('notaProductoId').value = id;
-    document.getElementById('modalNotaTitulo').innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i>Nota para: ${escapeHtml(nombre)}`;
+    document.getElementById('modalNotaTitulo').innerHTML = `<i class="bi bi-pencil-square text-lcd-amber me-2" aria-hidden="true"></i>Nota para: ${escapeHtml(nombre)}`;
     const notaActual = notasProductos[id] || (carrito[id] ? carrito[id].nota : '');
     document.getElementById('notaTextoInput').value = notaActual;
 
@@ -494,6 +528,10 @@ function abrirModalTickets() {
 
 // Despacho Directo e Instantáneo con Alerta Rápida para Hora Pico
 function enviarComandaDirecta() {
+    if (!puedeAtenderSalonMesero()) {
+        alertarBloqueoCajaMesero();
+        return;
+    }
     const items = Object.values(carrito);
     if (items.length === 0) {
         if (typeof swalToast !== 'undefined') {
@@ -577,8 +615,10 @@ async function sincronizarColaOfflineMesero() {
     console.log(`[Safari Mesero] Sincronizando ${cola.length} comandas guardadas offline...`);
     const csrfToken = obtenerCsrfTokenMesero();
     const fallidas = [];
+    let sesionExpiradaDetectada = false;
 
-    for (const comanda of cola) {
+    for (let idx = 0; idx < cola.length; idx++) {
+        const comanda = cola[idx];
         try {
             const formData = new FormData();
             formData.append('csrfmiddlewaretoken', csrfToken);
@@ -589,10 +629,24 @@ async function sincronizarColaOfflineMesero() {
             const resp = await fetch(window.location.href, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             });
 
-            if (!resp.ok) {
+            const ct = resp.headers.get('content-type') || '';
+            if (resp.status === 401 || !ct.includes('application/json')) {
+                sesionExpiradaDetectada = true;
+                fallidas.push(...cola.slice(idx));
+                break;
+            }
+
+            const data = await resp.json();
+            if (data.sesion_expirada) {
+                sesionExpiradaDetectada = true;
+                fallidas.push(...cola.slice(idx));
+                break;
+            }
+
+            if (!resp.ok || (!data.ok && data.status !== 'ok')) {
                 fallidas.push(comanda);
             }
         } catch (err) {
@@ -602,13 +656,21 @@ async function sincronizarColaOfflineMesero() {
 
     if (fallidas.length === 0) {
         localStorage.removeItem(CLAVE_COLA_OFFLINE);
-        swalToast.fire({
-            icon: 'success',
-            title: `¡Conexión restaurada! Se sincronizaron ${cola.length} comanda(s) guardadas offline.`
-        });
+        if (typeof swalToast !== 'undefined') {
+            swalToast.fire({
+                icon: 'success',
+                title: `¡Conexión restaurada! Se sincronizaron ${cola.length} comanda(s) guardadas offline.`
+            });
+        }
         autoSincronizarMesasMesero(true);
     } else {
         localStorage.setItem(CLAVE_COLA_OFFLINE, JSON.stringify(fallidas));
+        if (sesionExpiradaDetectada && typeof swalToast !== 'undefined') {
+            swalToast.fire({
+                icon: 'warning',
+                title: `Sesión expirada: se resguardaron ${fallidas.length} comanda(s) offline pendientes. Inicia sesión para reintentar.`
+            });
+        }
     }
 }
 
@@ -734,9 +796,18 @@ function actualizarEstadoCuentaMesa(mesaId) {
     const btnOcupar = document.getElementById('btnOcuparMesaRapido');
     const btnLiberar = document.getElementById('btnLiberarMesaRapido');
 
+    const puedeAtender = puedeAtenderSalonMesero();
+
     // Botones rápidos de ocupación / liberación sincronizados con Caja
     if (btnOcupar) {
         btnOcupar.style.display = (mesaSeleccionada && mesaSeleccionada.estado === 'HABILITADA') ? 'inline-block' : 'none';
+        btnOcupar.classList.toggle('opacity-50', !puedeAtender);
+        btnOcupar.setAttribute('aria-disabled', puedeAtender ? 'false' : 'true');
+        if (puedeAtender) {
+            btnOcupar.removeAttribute('aria-describedby');
+        } else {
+            btnOcupar.setAttribute('aria-describedby', 'alertaCajaMeseroBox');
+        }
     }
     if (btnLiberar) {
         btnLiberar.style.display = (mesaSeleccionada && mesaSeleccionada.estado === 'OCUPADA' && !cuenta) ? 'inline-block' : 'none';
@@ -762,7 +833,9 @@ function actualizarEstadoCuentaMesa(mesaId) {
         if (labelTotalComanda) labelTotalComanda.innerText = 'Nueva Ronda:';
 
         if (btnDespachar && Object.keys(carrito).length === 0) {
-            btnDespachar.innerHTML = '<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar Ronda Adicional';
+            btnDespachar.innerHTML = puedeAtender
+                ? '<i class="bi bi-send-check-fill me-2 fs-4" aria-hidden="true"></i> Enviar Ronda Adicional'
+                : '<i class="bi bi-lock-fill me-2 fs-4" aria-hidden="true"></i> Requiere Caja Abierta';
         }
     } else {
         if (banner) banner.style.display = 'none';
@@ -770,7 +843,9 @@ function actualizarEstadoCuentaMesa(mesaId) {
         if (btnCerrarLateral) btnCerrarLateral.style.display = 'none';
         if (labelTotalComanda) labelTotalComanda.innerText = 'Total Comanda:';
         if (btnDespachar && Object.keys(carrito).length === 0) {
-            btnDespachar.innerHTML = '<i class="bi bi-send-check-fill me-2 fs-4"></i> Enviar a Cocina y Barra';
+            btnDespachar.innerHTML = puedeAtender
+                ? '<i class="bi bi-send-check-fill me-2 fs-4" aria-hidden="true"></i> Enviar a Cocina y Barra'
+                : '<i class="bi bi-lock-fill me-2 fs-4" aria-hidden="true"></i> Requiere Caja Abierta';
         }
     }
 
@@ -791,7 +866,7 @@ function actualizarEstadoCuentaMesa(mesaId) {
                 let btnServir = '';
                 if (pa.estado === 'LISTO') {
                     estadoBadge = '<span class="badge bg-success text-white">¡LISTO PARA SERVIR!</span>';
-                    btnServir = `<button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3" onclick="marcarPedidoServidoMesero(${pa.pedido_id})"><i class="bi bi-check2-all me-1"></i>Servir en Mesa</button>`;
+                    btnServir = `<button type="button" class="btn btn-sm btn-success rounded-pill fw-bold px-3" data-servir-pedido-id="${pa.pedido_id}"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>Servir en Mesa</button>`;
                 } else if (pa.estado === 'EN_PREPARACION') {
                     estadoBadge = '<span class="badge bg-primary text-white">En Preparación</span>';
                 } else {
@@ -859,43 +934,91 @@ function pasarDeDetalleACobro() {
     abrirModalCerrarCuenta();
 }
 
+let meseroPctSeleccionado = 10;
+
 function actualizarTotalConRedondeo() {
     if (!mesaSeleccionada) return;
     const cuenta = cuentasAbiertas[mesaSeleccionada.id] || cuentasAbiertas[String(mesaSeleccionada.id)];
     if (!cuenta) return;
 
     const metodo = document.querySelector('input[name="metodo_pago"]:checked')?.value || 'EFECTIVO';
-    const totalOriginal = Math.round(Number(cuenta.total) || 0);
+    const inputMonto = document.getElementById('inputMontoPagoParcial');
+    const totalCuenta = Math.max(0, Math.round(Number(cuenta.total) || 0));
+    const montoBase = Math.max(0, parseFloat(inputMonto?.value) || totalCuenta);
+
+    const neto = Math.round(montoBase / 1.19);
+    const iva = Math.round(montoBase * 19 / 119);
+
+    let propina = 0;
+    let pctEfectivo = 0;
+    if (meseroPctSeleccionado === 'custom') {
+        const customVal = Math.max(0, parseFloat(document.getElementById('meseroCustomTipInput')?.value) || 0);
+        propina = customVal;
+        pctEfectivo = montoBase > 0 ? Math.round((propina / montoBase) * 100) : 0;
+    } else {
+        pctEfectivo = Number(meseroPctSeleccionado) || 0;
+        propina = Math.round(montoBase * (pctEfectivo / 100));
+    }
+
+    const totalSinRedondeo = montoBase + propina;
+    let ajusteRedondeo = 0;
+    if (metodo === 'EFECTIVO') {
+        const resto = totalSinRedondeo % 10;
+        if (resto >= 1 && resto <= 4) {
+            ajusteRedondeo = -resto;
+        } else if (resto >= 5 && resto <= 9) {
+            ajusteRedondeo = 10 - resto;
+        }
+    }
+    const totalRedondeado = totalSinRedondeo + ajusteRedondeo;
+
+    const displayTotal = document.getElementById('modalCerrarTotal');
+    if (displayTotal) displayTotal.innerText = `$${Math.round(totalRedondeado).toLocaleString('es-CL')}`;
+
+    // Actualizar hidden fields del formulario
+    const hidPct = document.getElementById('meseroPorcentajePropina');
+    const hidMonto = document.getElementById('meseroMontoPropina');
+    const hidIncluir = document.getElementById('meseroIncluirPropina');
+    if (hidPct) hidPct.value = pctEfectivo;
+    if (hidMonto) hidMonto.value = Math.round(propina);
+    if (hidIncluir) hidIncluir.value = propina > 0 ? '1' : '0';
+
+    // Actualizar desglose visual
+    const elConsumo = document.getElementById('meseroDesgloseConsumo');
+    const elNeto = document.getElementById('meseroDesgloseNeto');
+    const elIva = document.getElementById('meseroDesgloseIva');
+    const elPctLabel = document.getElementById('meseroDesglosePctLabel');
+    const elPropina = document.getElementById('meseroDesglosePropina');
+    const elFilaRed = document.getElementById('meseroFilaRedondeo');
+    const elRedondeo = document.getElementById('meseroDesgloseRedondeo');
+
+    if (elConsumo) elConsumo.innerText = `$${Math.round(montoBase).toLocaleString('es-CL')}`;
+    if (elNeto) elNeto.innerText = `$${neto.toLocaleString('es-CL')}`;
+    if (elIva) elIva.innerText = `$${iva.toLocaleString('es-CL')}`;
+    if (elPctLabel) elPctLabel.innerText = meseroPctSeleccionado === 'custom' ? 'Manual' : `${pctEfectivo}%`;
+    if (elPropina) elPropina.innerText = `+$${Math.round(propina).toLocaleString('es-CL')}`;
+
     const boxRedondeo = document.getElementById('boxRedondeoLey');
     const txtDetalle = document.getElementById('txtDetalleRedondeo');
     const badgeMonto = document.getElementById('badgeRedondeoMonto');
-    const displayTotal = document.getElementById('modalCerrarTotal');
 
     if (metodo === 'EFECTIVO') {
-        const resto = totalOriginal % 10;
-        let ajuste = 0;
-        if (resto === 0) {
-            ajuste = 0;
-        } else if (resto <= 4) {
-            ajuste = -resto;
-        } else {
-            ajuste = 10 - resto;
-        }
-        const totalRedondeado = totalOriginal + ajuste;
-        displayTotal.innerText = `$${totalRedondeado.toLocaleString('es-CL')}`;
-
+        if (elFilaRed) elFilaRed.classList.remove('d-none');
+        if (elRedondeo) elRedondeo.innerText = `${ajusteRedondeo >= 0 ? '+' : ''}$${ajusteRedondeo} CLP`;
         if (boxRedondeo) boxRedondeo.classList.remove('d-none');
-        if (ajuste !== 0) {
-            txtDetalle.innerText = `Total base $${totalOriginal.toLocaleString('es-CL')} -> Redondeo Ley 20.956: ${ajuste > 0 ? '+' : ''}$${ajuste} CLP`;
-            badgeMonto.innerText = `${ajuste > 0 ? '+' : ''}$${ajuste} CLP`;
-            badgeMonto.className = ajuste > 0 ? 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill fw-bold' : 'badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill fw-bold';
-        } else {
-            txtDetalle.innerText = 'Monto exacto a la decena (sin redondeo).';
-            badgeMonto.innerText = '$0 CLP';
-            badgeMonto.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold';
+        if (txtDetalle && badgeMonto) {
+            if (ajusteRedondeo !== 0) {
+                txtDetalle.innerText = `Total $${totalSinRedondeo.toLocaleString('es-CL')} -> Redondeo Ley 20.956: ${ajusteRedondeo > 0 ? '+' : ''}$${ajusteRedondeo} CLP`;
+                badgeMonto.innerText = `${ajusteRedondeo > 0 ? '+' : ''}$${ajusteRedondeo} CLP`;
+                badgeMonto.className = ajusteRedondeo > 0 ? 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill fw-bold' : 'badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill fw-bold';
+            } else {
+                txtDetalle.innerText = 'Monto exacto a la decena (sin redondeo).';
+                badgeMonto.innerText = '$0 CLP';
+                badgeMonto.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold';
+            }
         }
     } else {
-        displayTotal.innerText = `$${totalOriginal.toLocaleString('es-CL')}`;
+        if (elFilaRed) elFilaRed.classList.add('d-none');
         if (boxRedondeo) boxRedondeo.classList.add('d-none');
     }
 }
@@ -955,6 +1078,36 @@ document.addEventListener('DOMContentLoaded', () => {
         r.addEventListener('change', actualizarTotalConRedondeo);
     });
 
+    const meseroTipButtons = document.querySelectorAll('#meseroTipButtonGroup button');
+    const meseroCustomContainer = document.getElementById('meseroCustomTipBox');
+    const meseroCustomInput = document.getElementById('meseroCustomTipInput');
+
+    meseroTipButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            meseroTipButtons.forEach(b => {
+                b.classList.remove('btn-success', 'fw-bold');
+                b.classList.add('btn-outline-secondary');
+            });
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-success', 'fw-bold');
+
+            const pctVal = btn.getAttribute('data-pct');
+            if (pctVal === 'custom') {
+                meseroPctSeleccionado = 'custom';
+                meseroCustomContainer?.classList.remove('d-none');
+                meseroCustomInput?.focus();
+            } else {
+                meseroPctSeleccionado = Number(pctVal);
+                meseroCustomContainer?.classList.add('d-none');
+            }
+            actualizarTotalConRedondeo();
+        });
+    });
+
+    document.getElementById('inputMontoPagoParcial')?.addEventListener('input', actualizarTotalConRedondeo);
+    meseroCustomInput?.addEventListener('input', actualizarTotalConRedondeo);
+
     if (Array.isArray(meseroConfig.mensajes) && typeof swalToast !== 'undefined') {
         meseroConfig.mensajes.forEach(msg => {
             swalToast.fire({ icon: msg.icon || 'success', title: msg.title || '' });
@@ -975,6 +1128,125 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mesaSeleccionada && mesaSeleccionada.id) {
         seleccionarMesa(mesaSeleccionada.id, mesaSeleccionada.identificador, mesaSeleccionada.capacidad, mesaSeleccionada.estado);
     }
+
+    // Delegación CSP-compliant: mapa de mesas (click y teclado Enter/Space)
+    const contenedorMesas = document.getElementById('contenedorMesas');
+    if (contenedorMesas) {
+        const activarCardMesa = (card) => {
+            if (!card) return;
+            const id = Number(card.getAttribute('data-mesa-id'));
+            const ident = card.getAttribute('data-identificador') || '';
+            const cap = Number(card.getAttribute('data-capacidad') || 0);
+            const est = card.getAttribute('data-estado') || '';
+            seleccionarMesa(id, ident, cap, est);
+        };
+        contenedorMesas.addEventListener('click', (e) => {
+            const card = e.target.closest('.mesa-card[data-mesa-id]');
+            if (card) activarCardMesa(card);
+        });
+        contenedorMesas.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const card = e.target.closest('.mesa-card[data-mesa-id]');
+            if (card) {
+                e.preventDefault();
+                activarCardMesa(card);
+            }
+        });
+    }
+
+    // Delegación CSP-compliant: grilla de productos y comanda
+    const grillaProductos = document.getElementById('grillaProductos');
+    if (grillaProductos) {
+        grillaProductos.addEventListener('click', (e) => {
+            const btnNota = e.target.closest('[data-nota-plato-id]');
+            if (btnNota) {
+                abrirNotaModal(
+                    Number(btnNota.getAttribute('data-nota-plato-id')),
+                    btnNota.getAttribute('data-nota-plato-nombre') || ''
+                );
+                return;
+            }
+            const btnQty = e.target.closest('[data-qty-id]');
+            if (btnQty) {
+                modificarCantidad(
+                    Number(btnQty.getAttribute('data-qty-id')),
+                    btnQty.getAttribute('data-qty-nombre') || '',
+                    Number(btnQty.getAttribute('data-qty-precio') || 0),
+                    btnQty.getAttribute('data-qty-destino') || '',
+                    Number(btnQty.getAttribute('data-qty-delta') || 0)
+                );
+            }
+        });
+    }
+
+    const listaComandaItems = document.getElementById('listaComandaItems');
+    if (listaComandaItems) {
+        listaComandaItems.addEventListener('click', (e) => {
+            const btnDel = e.target.closest('[data-cart-remove-id]');
+            if (btnDel) {
+                modificarCantidad(
+                    Number(btnDel.getAttribute('data-cart-remove-id')),
+                    btnDel.getAttribute('data-cart-remove-nombre') || '',
+                    Number(btnDel.getAttribute('data-cart-remove-precio') || 0),
+                    btnDel.getAttribute('data-cart-remove-destino') || '',
+                    Number(btnDel.getAttribute('data-cart-remove-delta') || 0)
+                );
+            }
+        });
+    }
+
+    const bannerPedidosActivosMesa = document.getElementById('bannerPedidosActivosMesa');
+    if (bannerPedidosActivosMesa) {
+        bannerPedidosActivosMesa.addEventListener('click', (e) => {
+            const btnServir = e.target.closest('[data-servir-pedido-id]');
+            if (btnServir) {
+                marcarPedidoServidoMesero(Number(btnServir.getAttribute('data-servir-pedido-id')));
+            }
+        });
+    }
+
+    // Filtros, buscador, comensales y acciones generales de Mesero
+    document.getElementById('buscadorPlatos')?.addEventListener('input', filtrarTextoPlatos);
+    document.getElementById('buscadorPlatos')?.addEventListener('keyup', filtrarTextoPlatos);
+
+    document.querySelectorAll('[data-mesa-rapida]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            ejecutarAccionMesaRapida(btn.getAttribute('data-mesa-rapida'));
+        });
+    });
+
+    document.querySelectorAll('[data-comensales]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            setComensales(Number(btn.getAttribute('data-comensales')), btn);
+        });
+    });
+
+    document.querySelectorAll('[data-filter-cat]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            filtrarCategoria(btn.getAttribute('data-filter-cat'), btn);
+        });
+    });
+
+    const accionesMesero = {
+        'reasignar-mesa': () => abrirModalReasignarMesa(),
+        'detalle-cuenta': () => abrirModalDetalleCuenta(),
+        'cerrar-cuenta': () => abrirModalCerrarCuenta(),
+        'vaciar-comanda': () => vaciarComanda(),
+        'enviar-comanda': () => enviarComandaDirecta(),
+        'abrir-tickets': () => abrirModalTickets(),
+        'scroll-comanda': () => scrollHaciaComanda(),
+        'quitar-nota': () => quitarNota(),
+        'guardar-nota': () => guardarNota(),
+        'print': () => window.print(),
+        'detalle-a-reasignar': () => pasarDeDetalleAReasignar(),
+        'detalle-a-cobro': () => pasarDeDetalleACobro(),
+    };
+    document.querySelectorAll('[data-mesero-action]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const fn = accionesMesero[btn.getAttribute('data-mesero-action')];
+            if (fn) fn();
+        });
+    });
 });
 
 // Auto-sincronización fluida en tiempo real cada 1 segundo (Cajero <-> Mesero <-> Cocina <-> Barra)
@@ -1026,7 +1298,26 @@ async function autoSincronizarMesasMesero(forzar = false) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(textoHtml, 'text/html');
 
-        // 1. Actualizar datos vivos de cuentas abiertas y comandas activas por mesa
+        // 1. Actualizar datos vivos de cuentas abiertas, comandas activas y estado de apertura de caja
+        const estadoAperturaPrevio = puedeAtenderSalonMesero();
+        const nuevaConfigMesero = leerJsonScriptMesero(doc, 'meseroConfigData');
+        if (typeof nuevaConfigMesero.puedeAtenderSalon === 'boolean') {
+            meseroConfig.puedeAtenderSalon = nuevaConfigMesero.puedeAtenderSalon;
+            meseroConfig.motivoBloqueoAtencion = nuevaConfigMesero.motivoBloqueoAtencion || '';
+        }
+        const nuevoAlertaCaja = doc.getElementById('alertaCajaMeseroBox');
+        const actualAlertaCaja = document.getElementById('alertaCajaMeseroBox');
+        if (nuevoAlertaCaja && actualAlertaCaja && nuevoAlertaCaja.innerHTML.trim() !== actualAlertaCaja.innerHTML.trim()) {
+            actualAlertaCaja.innerHTML = nuevoAlertaCaja.innerHTML;
+        }
+        const nuevoAvisoComanda = doc.getElementById('avisoBloqueoComandaBox');
+        const actualAvisoComanda = document.getElementById('avisoBloqueoComandaBox');
+        if (nuevoAvisoComanda && actualAvisoComanda && nuevoAvisoComanda.innerHTML.trim() !== actualAvisoComanda.innerHTML.trim()) {
+            actualAvisoComanda.innerHTML = nuevoAvisoComanda.innerHTML;
+        }
+        if (estadoAperturaPrevio !== puedeAtenderSalonMesero()) {
+            renderizarComanda();
+        }
         cuentasAbiertas = leerJsonScriptMesero(doc, 'cuentasAbiertasData');
         pedidosMesaActivos = leerJsonScriptMesero(doc, 'pedidosMesaActivosData');
 
@@ -1075,7 +1366,7 @@ async function autoSincronizarMesasMesero(forzar = false) {
                         estadoSpan.className = 'text-secondary';
                     } else {
                         estadoSpan.innerText = 'Reservada';
-                        estadoSpan.className = 'text-warning';
+                        estadoSpan.className = 'text-warning-emphasis';
                     }
                 }
             }
@@ -1111,14 +1402,15 @@ function inicializarMonitorRedSalón() {
 
     function actualizar() {
         if (navigator.onLine) {
-            pildora.className = 'd-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-white text-success small fw-bold';
-            icono.className = 'bi bi-wifi text-success';
-            texto.textContent = 'Online';
-            pildora.title = 'Terminal conectado al servidor central de Safari.';
+            pildora.hidden = true;
+            pildora.className = 'd-none';
+            icono.className = 'bi bi-wifi-off text-white';
+            texto.textContent = 'Sin conexión';
         } else {
+            pildora.hidden = false;
             pildora.className = 'd-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill border shadow-xs bg-danger text-white small fw-bold';
             icono.className = 'bi bi-wifi-off text-white';
-            texto.textContent = 'Offline';
+            texto.textContent = 'Sin conexión';
             pildora.title = 'Sin conexión de red exterior. Las operaciones se sincronizarán al reconectar.';
         }
     }

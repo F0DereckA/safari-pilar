@@ -12,9 +12,9 @@
 </head>
 <body>
 
-    <div class="card-qr">
+    <main class="card-qr">
         <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-            <span class="fs-2">🦁</span>
+            <span class="fs-2" aria-hidden="true">🦁</span>
             <h1 class="brand-title m-0">Parque Safari</h1>
         </div>
         <p class="text-muted small mb-3 fw-semibold">
@@ -26,22 +26,23 @@
         </div>
 
         <div class="mb-3">
-            <a href="http://192.168.1.6:8000/" target="_blank" class="badge-url" title="Clic para abrir directamente">
-                <i class="bi bi-box-arrow-up-right"></i>
-                <span>http://192.168.1.6:8000/</span>
+            <a href="{{ url_acceso }}" target="_blank" rel="noopener noreferrer" class="badge-url" title="Clic para abrir directamente">
+                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                <span>{{ url_acceso }}</span>
             </a>
             <div class="mt-2">
-                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" onclick="copiarUrl()">
-                    <i class="bi bi-clipboard me-1" id="iconCopy"></i> <span id="textCopy">Copiar Enlace</span>
+                <button type="button" id="btnCopiarUrl" data-url="{{ url_acceso }}" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold">
+                    <i class="bi bi-clipboard me-1" id="iconCopy" aria-hidden="true"></i> <span id="textCopy">Copiar Enlace</span>
                 </button>
             </div>
         </div>
 
-        <!-- Perfiles Demo de Evaluación -->
+        {% if demo_mode_activo %}
+        <!-- Perfiles Demo de Evaluación (solo visibles cuando SAFARI_DEMO_MODE está activo) -->
         <div class="mt-3 pt-3 border-top">
             <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-bold text-dark"><i class="bi bi-shield-lock-fill text-warning me-1"></i> Usuarios Operativos Demo</span>
-                <span class="badge bg-success-subtle text-success small">Evaluación</span>
+                <span class="small fw-bold text-dark"><i class="bi bi-shield-lock-fill text-warning-emphasis me-1" aria-hidden="true"></i> Usuarios Operativos Demo</span>
+                <span class="badge bg-success-subtle text-success-emphasis small">Evaluación</span>
             </div>
             <div class="row g-2 small">
                 <div class="col-6">
@@ -52,7 +53,7 @@
                 </div>
                 <div class="col-6">
                     <div class="cred-card">
-                        <div class="fw-bold text-warning">💼 Cajero (POS)</div>
+                        <div class="fw-bold text-warning-emphasis">💼 Cajero (POS)</div>
                         <div class="text-muted"><code>cvalenzuela</code></div>
                     </div>
                 </div>
@@ -70,16 +71,17 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Instrucciones de Conectividad -->
         <div class="alert alert-light border mt-3 py-2 px-3 small text-start mb-0 rounded-3">
             <div class="fw-bold text-dark mb-1"><i class="bi bi-wifi text-success me-1"></i> Conectividad en red:</div>
             <div class="text-muted">
                 • Conecta cualquier dispositivo a la misma red Wi-Fi.<br>
-                • Abre el enlace <a href="http://192.168.1.6:8000/">http://192.168.1.6:8000/</a> o escanea el código QR de arriba.
+                • Abre el enlace <a href="{{ url_acceso }}">{{ url_acceso }}</a> o escanea el código QR de arriba.
             </div>
         </div>
-    </div>
+    </main>
 
     <script src="{% static 'js/acceso/qr_acceso.js' %}"></script>
 </body>

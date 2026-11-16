@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Actualizar contador
         if (contadorResultados) {
-            contadorResultados.innerHTML = `<i class="bi bi-funnel-fill text-warning me-1"></i> Mostrando ${visibles} de ${rows.length} colaboradores`;
+            contadorResultados.innerHTML = `<i class="bi bi-funnel-fill text-warning-emphasis me-1"></i> Mostrando ${visibles} de ${rows.length} colaboradores`;
         }
 
         // Mensaje si no hay resultados
@@ -82,6 +82,13 @@ document.addEventListener('DOMContentLoaded', function () {
         filtrarTrabajadores();
     });
 
+    const btnLimpiarEmpty = document.getElementById('btnLimpiarFiltrosEmpty');
+    if (btnLimpiarEmpty && btnLimpiar) {
+        btnLimpiarEmpty.addEventListener('click', function () {
+            btnLimpiar.click();
+        });
+    }
+
     // Población del Modal Modificar Trabajador
     const modalEditar = document.getElementById('modalEditarTrabajador');
     if (modalEditar) {
@@ -90,9 +97,15 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editPerfilId').value = button.getAttribute('data-perfil-id') || '';
             document.getElementById('editNombre').value = button.getAttribute('data-first-name') || '';
             document.getElementById('editApellido').value = button.getAttribute('data-last-name') || '';
-            document.getElementById('editRut').value = button.getAttribute('data-rut') || '';
+            const rutInput = document.getElementById('editRut');
+            const rutMask = button.getAttribute('data-rut-mask') || '';
+            rutInput.value = '';
+            rutInput.placeholder = rutMask ? `Actual: ${rutMask} (dejar vacío si no cambia)` : 'Ingresa nuevo RUT';
             document.getElementById('editRol').value = button.getAttribute('data-rol') || 'CAJERO';
-            document.getElementById('editTelefono').value = button.getAttribute('data-telefono') || '';
+            const telInput = document.getElementById('editTelefono');
+            const telMask = button.getAttribute('data-telefono-mask') || '';
+            telInput.value = '';
+            telInput.placeholder = telMask ? `Actual: ${telMask} (dejar vacío si no cambia)` : 'Ingresa nuevo teléfono';
             document.getElementById('editLocalId').value = button.getAttribute('data-local-id') || 'none';
         });
     }
@@ -177,8 +190,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
                                     <input type="hidden" name="accion" value="desactivar">
                                     <input type="hidden" name="perfil_id" value="${data.perfil_id}">
-                                    <button type="submit" class="btn btn-outline-warning btn-action-icon" title="Desactivar colaborador">
-                                        <i class="bi bi-pause-fill text-warning" style="font-size: 0.95rem;"></i>
+                                    <button type="submit" class="btn btn-outline-warning btn-action-icon" title="Desactivar colaborador" aria-label="Desactivar a ${escapeHtml(data.nombre)}">
+                                        <i class="bi bi-pause-fill" style="font-size: 0.95rem;" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             `;
@@ -188,8 +201,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
                                     <input type="hidden" name="accion" value="activar">
                                     <input type="hidden" name="perfil_id" value="${data.perfil_id}">
-                                    <button type="submit" class="btn btn-outline-success btn-action-icon" title="Reactivar colaborador">
-                                        <i class="bi bi-play-fill text-success" style="font-size: 0.95rem;"></i>
+                                    <button type="submit" class="btn btn-outline-success btn-action-icon" title="Reactivar colaborador" aria-label="Reactivar a ${escapeHtml(data.nombre)}">
+                                        <i class="bi bi-play-fill" style="font-size: 0.95rem;" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             `;
@@ -251,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (accion === 'desactivar') {
                     swalWarningBootstrap.fire({
                         title: "¿Desactivar colaborador?",
-                        html: `¿Seguro que deseas desactivar a <strong>${nombre}</strong>?<br><span class="text-muted small">El colaborador quedará inhabilitado para iniciar sesión o abrir turnos.</span>`,
+                        html: `¿Seguro que deseas desactivar a <strong>${escapeHtml(nombre)}</strong>?<br><span class="text-muted small">El colaborador quedará inhabilitado para iniciar sesión o abrir turnos.</span>`,
                         icon: "warning",
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-pause-fill me-1"></i> Sí, desactivar',
@@ -265,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (accion === 'activar') {
                     swalWithBootstrapButtons.fire({
                         title: "¿Reactivar colaborador?",
-                        html: `¿Deseas reactivar el acceso al sistema para <strong>${nombre}</strong>?<br><span class="text-muted small">El colaborador volverá a estar habilitado para sus labores.</span>`,
+                        html: `¿Deseas reactivar el acceso al sistema para <strong>${escapeHtml(nombre)}</strong>?<br><span class="text-muted small">El colaborador volverá a estar habilitado para sus labores.</span>`,
                         icon: "question",
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-play-fill me-1"></i> Sí, reactivar',
@@ -288,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 swalDangerBootstrap.fire({
                     title: "¿Eliminar definitivamente?",
-                    html: `¿Estás seguro de eliminar a <strong>${nombre}</strong>?<br><span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Esta acción es irreversible y borrará la cuenta de usuario del sistema.</span>`,
+                    html: `¿Estás seguro de eliminar a <strong>${escapeHtml(nombre)}</strong>?<br><span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Esta acción es irreversible y borrará la cuenta de usuario del sistema.</span>`,
                     icon: "error",
                     showCancelButton: true,
                     confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> Sí, eliminar definitivamente',
