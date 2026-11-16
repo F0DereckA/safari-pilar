@@ -631,6 +631,19 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
         det_mes_lim = DetallePedido.objects.get(pedido_id=resp_mes_lim.json()['pedido_id'], producto=self.prod_cocina)
         self.assertEqual(det_mes_lim.observaciones, "N" * 100)
 
+        # 4. Contención CSS para cadenas largas sin espacios en tarjetas de nota
+        base_static = Path(settings.BASE_DIR) / 'static' / 'css'
+        for rel_css in (
+            'kds/cocina.css',
+            'kds/barra.css',
+            'cajero/vendedor.css',
+            'cajero/crear_ticket.css',
+            'mesero/mesero.css',
+        ):
+            css_text = (base_static / rel_css).read_text(encoding='utf-8')
+            self.assertIn('overflow-wrap: anywhere;', css_text, f"Falta overflow-wrap en {rel_css}")
+            self.assertIn('word-break: break-word;', css_text, f"Falta word-break en {rel_css}")
+
     def test_rf13_maquina_estados_entregas_y_bloqueos_subtest(self):
         _, caja = self.abrir_jornada_y_caja(self.pv_central, self.cajero_user, self.admin_user)
 

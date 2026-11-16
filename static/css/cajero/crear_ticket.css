@@ -159,6 +159,7 @@
 .order-item-row {
     border-bottom: 1px solid var(--safari-cafe-pastel);
     padding: 10px 0;
+    min-width: 0;
 }
 
 .order-item-row:last-child {
@@ -208,6 +209,12 @@
     margin-top: 4px;
     font-size: 0.82rem;
     color: #991b1b;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* Responsive Design POS */

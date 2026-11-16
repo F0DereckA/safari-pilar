@@ -435,7 +435,7 @@ function actualizarResumen() {
 
             row.innerHTML = `
 
-                <div style="max-width: 68%;">
+                <div style="max-width: 68%; min-width: 0;">
 
                     <div class="fw-bold text-dark" style="font-size: 0.9rem;">${escapeHtml(prod.nombre)}</div>
 

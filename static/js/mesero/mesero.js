@@ -259,7 +259,7 @@ function renderizarComanda() {
 
             html += `
                 <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border bg-white shadow-sm">
-                    <div style="max-width: 68%;">
+                    <div style="max-width: 68%; min-width: 0;">
                         <div class="fw-bold small text-dark">${item.cantidad}x ${escapeHtml(item.nombre)}</div>
                         ${item.nota ? `
                             <div class="comanda-item-nota">
@@ -912,7 +912,7 @@ function abrirModalDetalleCuenta() {
     const tbody = document.getElementById('modalDetalleItemsBody');
     let rowsHtml = '';
     cuenta.items.forEach(it => {
-        const notaHtml = it.nota ? `<div class="text-danger small fst-italic mt-1"><i class="bi bi-chat-left-dots me-1"></i>Nota: ${escapeHtml(it.nota)}</div>` : '';
+        const notaHtml = it.nota ? `<div class="text-danger small fst-italic mt-1 text-break"><i class="bi bi-chat-left-dots me-1"></i>Nota: ${escapeHtml(it.nota)}</div>` : '';
         rowsHtml += `
             <tr>
                 <td class="fw-bold text-primary py-3" style="font-size: 1.1rem;">${it.cantidad}x</td>
