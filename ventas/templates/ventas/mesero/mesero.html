@@ -15,8 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- Estilos Externos Modulares -->
-    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/mesero/mesero.css' %}">
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/mesero/mesero.css' %}?v=4.0">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -1060,8 +1060,8 @@
 
     <!-- SweetAlert2 y Safari Alerts para Notificaciones Ágiles en Hora Pico -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{% static 'js/global/safari_alerts.js' %}"></script>
-    <script src="{% static 'js/global/safari_audio_alerts.js' %}"></script>
+    <script src="{% static 'js/global/safari_alerts.js' %}?v=4.0"></script>
+    <script src="{% static 'js/global/safari_audio_alerts.js' %}?v=4.0"></script>
 
     <script id="cuentasAbiertasData" type="application/json">{{ cuentas_abiertas_json|safe }}</script>
     <script id="pedidosMesaActivosData" type="application/json">{{ pedidos_mesa_activos_json|safe }}</script>
@@ -1076,7 +1076,7 @@
         "mensajes": [{% for message in messages %}{"icon": "{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}", "title": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
     }
     </script>
-    <script src="{% static 'js/mesero/mesero.js' %}"></script>
+    <script src="{% static 'js/mesero/mesero.js' %}?v=4.0"></script>
     <!-- Script de Protección contra Doble Envío -->
     <script src="{% static 'js/global/anti_doble_envio.js' %}"></script>
     <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>

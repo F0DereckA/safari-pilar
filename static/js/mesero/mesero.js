@@ -13,7 +13,7 @@ function obtenerCsrfTokenMesero() {
 // ==========================================================================
 // Aloy & Echo - Ergonomía Táctil y Auditiva Unificada para Salón
 // ==========================================================================
-const STORAGE_AUDIO_MESERO = 'safari_mesero_audio';
+const STORAGE_AUDIO_MESERO = 'safari_audio_v2_mesero';
 
 function reproducirChimeMesero(tipo = 'exito') {
     if (window.SafariAudioAlerts) {
@@ -1238,6 +1238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Auto-sincronización fluida secuencial + Alerta Sonora Instantánea de Pedidos Listos
 let sincronizandoMesas = false;
+let syncPendienteMesero = false;
 let ultimaVersionDeltaMesero = null;
 let meseroSyncTimer = null;
 let seenReadyKeysMesero = null;
@@ -1288,7 +1289,10 @@ function programarSyncMesero(delayMs) {
 }
 
 async function autoSincronizarMesasMesero(forzar = false) {
-    if (sincronizandoMesas) return;
+    if (sincronizandoMesas) {
+        syncPendienteMesero = true;
+        return;
+    }
     if (!forzar && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) {
         programarSyncMesero();
         return;
@@ -1308,7 +1312,7 @@ async function autoSincronizarMesasMesero(forzar = false) {
                 const delta = await deltaResp.json();
                 if (delta.ok) {
                     // Disparar campana y notificación visual INMEDIATAMENTE desde el delta JSON
-                    if (!forzar && Array.isArray(delta.listos_detalle)) {
+                    if (Array.isArray(delta.listos_detalle)) {
                         procesarAlertasListosMesero(delta.listos_detalle);
                     }
 
@@ -1414,7 +1418,12 @@ async function autoSincronizarMesasMesero(forzar = false) {
         // Silencioso ante contingencias de red
     } finally {
         sincronizandoMesas = false;
-        programarSyncMesero();
+        if (syncPendienteMesero) {
+            syncPendienteMesero = false;
+            programarSyncMesero(80);
+        } else {
+            programarSyncMesero();
+        }
     }
 }
 

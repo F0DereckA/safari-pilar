@@ -32,9 +32,8 @@
 
     <!-- Estilos Externos Modulares con Cache-Buster -->
 
-    <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=3.1">
-
-    <link rel="stylesheet" href="{% static 'css/cajero/crear_ticket.css' %}?v=3.1">
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/cajero/crear_ticket.css' %}?v=4.0">
 
 </head>
 
@@ -103,6 +102,12 @@
                     {% endif %}
 
                     
+
+                    <!-- Alerta Sonora de Pedidos Listos desde Cocina/Barra -->
+                    <button type="button" class="btn btn-success text-white btn-sm px-3 rounded-pill d-flex align-items-center gap-1 shadow-xs fw-bold" id="btnTogglePosAudio" aria-pressed="true" title="Alerta sonora para pedidos listos de Cocina/Barra. Clic para alternar o activar.">
+                        <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
+                        <span class="d-none d-md-inline small fw-bold">Sonido ON</span>
+                    </button>
 
                     <a href="{% url 'vendedor' %}" class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold bg-white">
                         <i class="bi bi-arrow-left me-1 text-danger"></i> Monitor Tickets
@@ -1259,15 +1264,17 @@
 
 
 
+    <!-- Notificaciones Persistentes de Pedidos Listos (Cocina/Barra) -->
+    <div id="safariReadyToastRegion" class="safari-ready-toast-region" role="region" aria-label="Alertas de pedidos listos"></div>
+    <p class="visually-hidden">Anuncios de cocina y barra</p>
+    <div id="safariReadyAriaLive" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+
     <!-- Bootstrap 5 JS Bundle -->
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
     <!-- SweetAlert2 CDN + Configuración Safari con Botones Bootstrap 5 -->
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script src="{% static 'js/global/safari_alerts.js' %}"></script>
+    <script src="{% static 'js/global/safari_alerts.js' %}?v=4.0"></script>
+    <script src="{% static 'js/global/safari_audio_alerts.js' %}?v=4.0"></script>
 
 
 
@@ -1290,7 +1297,7 @@
 
     </script>
 
-    <script src="{% static 'js/cajero/crear_ticket.js' %}"></script>
+    <script src="{% static 'js/cajero/crear_ticket.js' %}?v=4.0"></script>
     {% include 'ventas/acceso/include_cookie_banner.html' %}
 </body>
 

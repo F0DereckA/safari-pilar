@@ -14,7 +14,7 @@ actualizarReloj();
 // Echo & Aloy: Alerta Sonora de Comandas (Motor Unificado Web Audio API)
 // ==============================================================================
 const KdsAudio = (() => {
-    const STORAGE_KEY = 'safari_kds_audio_barra';
+    const STORAGE_KEY = 'safari_audio_v2_barra';
 
     function emitirCampanaComanda() {
         if (window.SafariAudioAlerts) {
@@ -52,6 +52,7 @@ if (document.readyState === 'loading') {
 
 // Sincronización Delta Liviana y Auto-actualización secuencial sin apilamiento + Bus Instantáneo
 let actualizandoBarra = false;
+let syncPendienteBarra = false;
 let ultimaVersionDeltaBarra = null;
 let prevColaBarra = null;
 let prevActivosIdsBarra = null;
@@ -72,7 +73,10 @@ function programarSyncBarra(delayMs) {
 }
 
 async function autoActualizarBarra(forzar = false) {
-    if (actualizandoBarra) return;
+    if (actualizandoBarra) {
+        syncPendienteBarra = true;
+        return;
+    }
     if (!forzar && document.querySelector('.modal.show')) {
         programarSyncBarra();
         return;
@@ -169,7 +173,12 @@ async function autoActualizarBarra(forzar = false) {
         // Silencioso ante fluctuaciones
     } finally {
         actualizandoBarra = false;
-        programarSyncBarra();
+        if (syncPendienteBarra) {
+            syncPendienteBarra = false;
+            programarSyncBarra(80);
+        } else {
+            programarSyncBarra();
+        }
     }
 }
 

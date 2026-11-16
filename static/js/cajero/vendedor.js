@@ -609,8 +609,9 @@ function limpiarFiltroTicket() {
 }
 
 // Sincronización en tiempo real + Alerta sonora inmediata de pedidos listos (Cocina/Barra -> Cajero)
-const STORAGE_AUDIO_CAJERO = 'safari_pos_audio_cajero';
+const STORAGE_AUDIO_CAJERO = 'safari_audio_v2_cajero';
 let actualizandoVendedor = false;
+let syncPendienteVendedor = false;
 let ultimaVersionDeltaCajero = null;
 let vendedorSyncTimer = null;
 
@@ -657,7 +658,10 @@ function programarSyncVendedor(delayMs) {
 }
 
 async function autoActualizarVendedor(forzar = false) {
-    if (actualizandoVendedor) return;
+    if (actualizandoVendedor) {
+        syncPendienteVendedor = true;
+        return;
+    }
     if (!forzar && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) {
         programarSyncVendedor();
         return;
@@ -675,7 +679,7 @@ async function autoActualizarVendedor(forzar = false) {
                 const delta = await deltaResp.json();
                 if (delta.ok) {
                     // Notificación auditiva/visual INMEDIATA sin esperar recarga de HTML completo
-                    if (!forzar && Array.isArray(delta.listos_detalle)) {
+                    if (Array.isArray(delta.listos_detalle)) {
                         procesarAlertasListosCajero(delta.listos_detalle);
                     }
                     const kpiListosEl = document.getElementById('kpiListos');
@@ -727,7 +731,12 @@ async function autoActualizarVendedor(forzar = false) {
         // Silencioso ante microcortes de red
     } finally {
         actualizandoVendedor = false;
-        programarSyncVendedor();
+        if (syncPendienteVendedor) {
+            syncPendienteVendedor = false;
+            programarSyncVendedor(80);
+        } else {
+            programarSyncVendedor();
+        }
     }
 }
 

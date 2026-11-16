@@ -3,8 +3,8 @@
  * Notificaciones Persistentes (Popover API + ARIA Live) y Bus Inter-Pestañas (BroadcastChannel).
  *
  * Soluciona:
- * - Políticas de Autoplay en Chrome/Edge/Safari manteniendo un único AudioContext desbloqueado.
- * - Alerta sonora instantánea de Cocina/Barra -> Cajero y Mesero al detectar comandas en estado LISTO.
+ * - Políticas de Autoplay sin condición de carrera captura/burbuja y sin bloqueo de audioCtx.resume().
+ * - Alerta sonora instantánea de Cocina/Barra -> Cajero (Monitor y Crear Ticket) y Mesero.
  * - Sincronización en < 5 ms entre pestañas del mismo navegador vía BroadcastChannel.
  */
 (function (global) {
@@ -50,45 +50,90 @@
             boundButtons.forEach((cfg) => refreshButtonUI(cfg));
         }
 
+        function probeInitialState() {
+            if (audioCtx) {
+                unlocked = audioCtx.state === 'running';
+                return unlocked;
+            }
+            const Ctx = getAudioContextClass();
+            if (!Ctx) return false;
+            try {
+                audioCtx = new Ctx();
+                unlocked = audioCtx.state === 'running';
+                if (unlocked) {
+                    removeUnlockListeners();
+                } else if (typeof audioCtx.addEventListener === 'function') {
+                    audioCtx.addEventListener('statechange', () => {
+                        if (audioCtx && audioCtx.state === 'running' && !unlocked) {
+                            unlocked = true;
+                            removeUnlockListeners();
+                            notifyButtonsState();
+                            flushPendingAlert();
+                        }
+                    });
+                }
+            } catch (_err) {
+                unlocked = false;
+            }
+            return unlocked;
+        }
+
         function ensureContextFromGesture() {
             const Ctx = getAudioContextClass();
             if (!Ctx) return null;
             if (!audioCtx) {
-                audioCtx = new Ctx();
+                try {
+                    audioCtx = new Ctx();
+                } catch (_err) {
+                    return null;
+                }
             }
-            if (audioCtx.state === 'suspended') {
+
+            if (audioCtx.state === 'running') {
+                unlocked = true;
+                removeUnlockListeners();
+                notifyButtonsState();
+                flushPendingAlert();
+            } else if (audioCtx.state === 'suspended') {
                 audioCtx.resume().then(() => {
-                    unlocked = audioCtx.state === 'running';
-                    if (unlocked) {
+                    if (audioCtx && audioCtx.state === 'running') {
+                        unlocked = true;
                         removeUnlockListeners();
                         notifyButtonsState();
                         flushPendingAlert();
                     }
                 }).catch(() => {});
-            } else if (audioCtx.state === 'running') {
-                unlocked = true;
-                removeUnlockListeners();
-                notifyButtonsState();
             }
-            // Desbloqueo silencioso para WebKit / iOS Safari dentro del gesto de usuario
+
+            // Pulso silencioso para desbloquear WebKit / Safari iOS dentro del gesto del usuario
             try {
-                if (audioCtx && audioCtx.state === 'running') {
+                if (audioCtx) {
                     const buf = audioCtx.createBuffer(1, 1, 22050);
                     const src = audioCtx.createBufferSource();
                     src.buffer = buf;
                     src.connect(audioCtx.destination);
                     src.start(0);
+                    if (audioCtx.state === 'running') {
+                        unlocked = true;
+                    }
                 }
             } catch (_err) {}
             return audioCtx;
         }
 
-        function handleUserUnlockGesture() {
+        function handleUserUnlockGesture(ev) {
+            // Si el usuario hizo clic en el botón de toggle de sonido, dejamos que su listener maneje
+            // el desbloqueo sin alterar el estado antes de verificar wasLocked (evita silenciarlo por error).
+            if (ev && ev.target && typeof ev.target.closest === 'function') {
+                if (ev.target.closest('[data-safari-audio-toggle="1"]')) {
+                    return;
+                }
+            }
             ensureContextFromGesture();
         }
 
         function bindUnlockListeners() {
-            if (listenersBound) return;
+            if (listenersBound || unlocked) return;
             listenersBound = true;
             ['pointerdown', 'touchstart', 'click', 'keydown'].forEach((evt) => {
                 document.addEventListener(evt, handleUserUnlockGesture, { capture: true, passive: true });
@@ -113,19 +158,28 @@
                     return null;
                 }
             }
-            if (audioCtx.state === 'suspended') {
-                try {
-                    await audioCtx.resume();
-                } catch (_err) {
-                    return null;
-                }
-            }
             if (audioCtx.state === 'running') {
                 unlocked = true;
                 removeUnlockListeners();
                 notifyButtonsState();
                 return audioCtx;
             }
+            if (audioCtx.state === 'suspended') {
+                try {
+                    // Timeout breve de 60ms para no colgar jamás si autoplay está bloqueado
+                    await Promise.race([
+                        audioCtx.resume().catch(() => {}),
+                        new Promise((resolve) => setTimeout(resolve, 60)),
+                    ]);
+                } catch (_err) {}
+            }
+            if (audioCtx && audioCtx.state === 'running') {
+                unlocked = true;
+                removeUnlockListeners();
+                notifyButtonsState();
+                return audioCtx;
+            }
+            unlocked = false;
             return null;
         }
 
@@ -137,18 +191,18 @@
             osc.frequency.setValueAtTime(freq, startTime);
 
             gain.gain.setValueAtTime(0.0001, startTime);
-            gain.gain.exponentialRampToValueAtTime(vol, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(Math.max(0.001, vol), startTime + 0.02);
             gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
             osc.connect(gain);
             gain.connect(ctx.destination);
 
             osc.start(startTime);
-            osc.stop(startTime + duration + 0.05);
+            osc.stop(startTime + duration + 0.06);
         }
 
         function playOnContext(ctx, profile) {
-            const t = ctx.currentTime + 0.01;
+            const t = ctx.currentTime + 0.02;
             if (profile === 'cocina') {
                 // Campana de pase de cocina caliente (E5 -> A5 + armónico)
                 scheduleTone(ctx, 659.25, t, 0.28, 0.34, 'triangle');
@@ -161,19 +215,19 @@
                 scheduleTone(ctx, 2093.00, t + 0.16, 0.30, 0.10, 'sine');
             } else if (profile === 'pedido_listo') {
                 // Timbre triple de servicio listo para Cajero y Mesero (G5 -> B5 -> D6 -> G6)
-                scheduleTone(ctx, 783.99, t, 0.18, 0.32, 'triangle');
-                scheduleTone(ctx, 987.77, t + 0.12, 0.18, 0.34, 'triangle');
-                scheduleTone(ctx, 1174.66, t + 0.24, 0.28, 0.38, 'triangle');
-                scheduleTone(ctx, 1567.98, t + 0.44, 0.55, 0.40, 'sine');
-                scheduleTone(ctx, 783.99, t + 0.44, 0.45, 0.16, 'triangle');
+                scheduleTone(ctx, 783.99, t, 0.18, 0.34, 'triangle');
+                scheduleTone(ctx, 987.77, t + 0.12, 0.18, 0.36, 'triangle');
+                scheduleTone(ctx, 1174.66, t + 0.24, 0.28, 0.40, 'triangle');
+                scheduleTone(ctx, 1567.98, t + 0.44, 0.58, 0.42, 'sine');
+                scheduleTone(ctx, 783.99, t + 0.44, 0.45, 0.18, 'triangle');
             } else if (profile === 'alerta') {
                 scheduleTone(ctx, 880.00, t, 0.14, 0.24, 'triangle');
                 scheduleTone(ctx, 440.00, t + 0.14, 0.24, 0.24, 'triangle');
             } else {
                 // Éxito / Confirmación rápida (C5 -> E5 -> G5)
-                scheduleTone(ctx, 523.25, t, 0.12, 0.20, 'sine');
-                scheduleTone(ctx, 659.25, t + 0.08, 0.14, 0.22, 'sine');
-                scheduleTone(ctx, 783.99, t + 0.16, 0.28, 0.24, 'sine');
+                scheduleTone(ctx, 523.25, t, 0.12, 0.22, 'sine');
+                scheduleTone(ctx, 659.25, t + 0.08, 0.14, 0.24, 'sine');
+                scheduleTone(ctx, 783.99, t + 0.16, 0.28, 0.26, 'sine');
             }
         }
 
@@ -182,7 +236,7 @@
             const age = Date.now() - pendingTimestamp;
             const prof = pendingProfile;
             pendingProfile = null;
-            if (age <= 25000 && audioCtx && audioCtx.state === 'running') {
+            if (age <= 30000 && audioCtx && audioCtx.state === 'running') {
                 playOnContext(audioCtx, prof);
             }
         }
@@ -192,7 +246,6 @@
 
             const ctx = await getRunningContext();
             if (!ctx) {
-                // Autoplay aún pendiente de 1er toque en esta pestaña: encolar y avisar en botón
                 pendingProfile = profile;
                 pendingTimestamp = Date.now();
                 bindUnlockListeners();
@@ -213,7 +266,10 @@
             const enabled = isEnabled(cfg.storageKey);
             const isDark = cfg.variant === 'dark-header';
 
+            btn.setAttribute('data-safari-audio-toggle', '1');
+
             if (!enabled) {
+                btn.setAttribute('data-audio-locked', '0');
                 btn.className = isDark
                     ? 'btn btn-sm btn-outline-light text-on-brand-muted rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm'
                     : 'btn btn-sm btn-outline-secondary bg-white text-muted rounded-pill px-3 d-flex align-items-center gap-1 shadow-xs';
@@ -224,6 +280,7 @@
             }
 
             if (!unlocked) {
+                btn.setAttribute('data-audio-locked', '1');
                 btn.className = 'btn btn-sm btn-warning text-dark rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm fw-bold';
                 btn.innerHTML = '<i class="bi bi-volume-up-fill" aria-hidden="true"></i> <span class="d-none d-md-inline small fw-bold">Activar Sonido</span>';
                 btn.setAttribute('aria-pressed', 'true');
@@ -231,6 +288,7 @@
                 return;
             }
 
+            btn.setAttribute('data-audio-locked', '0');
             btn.className = isDark
                 ? 'btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm'
                 : 'btn btn-sm btn-success text-white rounded-pill px-3 d-flex align-items-center gap-1 shadow-xs fw-bold';
@@ -246,17 +304,27 @@
                 testProfile: options.testProfile || 'pedido_listo',
                 variant: options.variant || 'light-header',
             };
-            boundButtons.push(cfg);
+            if (!boundButtons.some((b) => b.buttonId === cfg.buttonId)) {
+                boundButtons.push(cfg);
+            }
+
+            probeInitialState();
             bindUnlockListeners();
 
             const btn = document.getElementById(cfg.buttonId);
-            if (btn) {
+            if (btn && btn.dataset.safariAudioBound !== '1') {
+                btn.dataset.safariAudioBound = '1';
                 btn.addEventListener('click', async () => {
+                    const wasLocked = btn.getAttribute('data-audio-locked') === '1';
                     const currentlyEnabled = isEnabled(cfg.storageKey);
+
+                    if (currentlyEnabled && wasLocked) {
+                        pendingProfile = null;
+                    }
                     ensureContextFromGesture();
 
-                    // Si estaba habilitado pero el navegador aún bloqueaba autoplay, el 1er clic desbloquea y prueba
-                    if (currentlyEnabled && !unlocked) {
+                    // Si estaba pendiente de primer gesto, este clic desbloquea y prueba el timbre sin apagarlo
+                    if (currentlyEnabled && wasLocked) {
                         const ctx = await getRunningContext();
                         if (ctx) {
                             playOnContext(ctx, cfg.testProfile);
@@ -279,6 +347,13 @@
             refreshButtonUI(cfg);
         }
 
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended' && unlocked) {
+                audioCtx.resume().catch(() => {});
+            }
+        });
+
+        probeInitialState();
         bindUnlockListeners();
 
         return {
@@ -402,7 +477,6 @@
             toastEl.addEventListener('focusin', () => clearTimeout(hideTimer));
             toastEl.addEventListener('focusout', scheduleAutoHide);
 
-            // Posicionar verticalmente si hay múltiples toasts visibles
             const visibleCount = region.querySelectorAll('.safari-ready-toast').length;
             if (visibleCount > 0) {
                 toastEl.style.top = `${1 + visibleCount * 5.2}rem`;
@@ -475,7 +549,90 @@
         return { publish, subscribe };
     })();
 
+    /**
+     * Monitor liviano reutilizable para pantallas POS secundarias (/vendedor/crear-ticket/)
+     * que solo necesitan escuchar alertas sonoras y toasts de pedidos listos sin descargar HTML completo.
+     */
+    const SafariReadyMonitor = (() => {
+        function start(options) {
+            const storageKey = options.storageKey || 'safari_audio_v2_cajero';
+            const visibleMs = options.visibleMs || 2000;
+            const hiddenMs = options.hiddenMs || 5000;
+            let seenKeys = null;
+            let inFlight = false;
+            let pendingRun = false;
+            let timerId = null;
+
+            function schedule(customDelay) {
+                clearTimeout(timerId);
+                const delay = typeof customDelay === 'number'
+                    ? customDelay
+                    : (document.visibilityState === 'visible' ? visibleMs : hiddenMs);
+                timerId = setTimeout(tick, delay);
+            }
+
+            async function tick() {
+                if (inFlight) {
+                    pendingRun = true;
+                    return;
+                }
+                inFlight = true;
+                try {
+                    const resp = await fetch('/api/sincronizacion/estado/', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        priority: 'low',
+                    });
+                    if (resp.ok) {
+                        const delta = await resp.json();
+                        if (delta.ok && Array.isArray(delta.listos_detalle)) {
+                            const actuales = new Set(delta.listos_detalle.map((i) => i.key));
+                            if (seenKeys === null) {
+                                // Primera lectura establece línea base sin sonar pedidos históricos
+                                seenKeys = actuales;
+                            } else {
+                                const nuevos = delta.listos_detalle.filter((i) => i.key && !seenKeys.has(i.key));
+                                seenKeys = actuales;
+                                if (nuevos.length > 0) {
+                                    SafariAudioAlerts.play('pedido_listo', storageKey);
+                                    nuevos.slice(0, 3).forEach((i) => SafariReadyNotifier.notifyReady(i));
+                                }
+                            }
+                        }
+                    }
+                } catch (_err) {
+                } finally {
+                    inFlight = false;
+                    if (pendingRun) {
+                        pendingRun = false;
+                        schedule(80);
+                    } else {
+                        schedule();
+                    }
+                }
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    tick();
+                } else {
+                    schedule(hiddenMs);
+                }
+            });
+
+            SafariSyncBus.subscribe((ev) => {
+                if (ev && ev.type === 'pedido_estado') {
+                    tick();
+                }
+            });
+
+            tick();
+        }
+
+        return { start };
+    })();
+
     global.SafariAudioAlerts = SafariAudioAlerts;
     global.SafariReadyNotifier = SafariReadyNotifier;
     global.SafariSyncBus = SafariSyncBus;
+    global.SafariReadyMonitor = SafariReadyMonitor;
 })(window);

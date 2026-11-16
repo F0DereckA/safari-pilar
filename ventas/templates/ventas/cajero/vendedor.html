@@ -15,8 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- Estilos Externos Modulares -->
-    <link rel="stylesheet" href="{% static 'css/global/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/cajero/vendedor.css' %}">
+    <link rel="stylesheet" href="{% static 'css/global/base.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/cajero/vendedor.css' %}?v=4.0">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -1017,8 +1017,8 @@
     <p class="visually-hidden">Anuncios de cocina y barra</p>
     <div id="safariReadyAriaLive" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
 
-    <script src="{% static 'js/global/seguridad_sesion.js' %}"></script>
-    <script src="{% static 'js/global/safari_audio_alerts.js' %}"></script>
+    <script src="{% static 'js/global/seguridad_sesion.js' %}?v=4.0"></script>
+    <script src="{% static 'js/global/safari_audio_alerts.js' %}?v=4.0"></script>
 
     <input type="hidden" id="csrfTokenVendedorGlobal" value="{{ csrf_token }}">
     <script id="pedidosCajeroData" type="application/json">{{ pedidos_cajero_json|safe }}</script>
@@ -1032,7 +1032,7 @@
         "esperadoEfectivo": {{ resumen_caja.total_efectivo_esperado|default:0|floatformat:"0u" }}
     }
     </script>
-    <script src="{% static 'js/cajero/vendedor.js' %}"></script>
+    <script src="{% static 'js/cajero/vendedor.js' %}?v=4.0"></script>
     <footer class="py-3 text-center mt-auto safari-footer-institutional">
         <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center justify-content-center gap-2">

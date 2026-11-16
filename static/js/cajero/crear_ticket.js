@@ -2010,8 +2010,30 @@ window.confirmarConsumoInterno = confirmarConsumoInterno;
 window.simularTransaccionPos = simularTransaccionPos;
 window.completarCobroPosExitoso = completarCobroPosExitoso;
 
+function initPosAudioYAlertasListos() {
+    if (window.SafariAudioAlerts) {
+        window.SafariAudioAlerts.bindToggleButton({
+            buttonId: 'btnTogglePosAudio',
+            storageKey: 'safari_audio_v2_cajero',
+            testProfile: 'pedido_listo',
+            variant: 'light-header',
+        });
+    }
+    if (window.SafariReadyMonitor) {
+        window.SafariReadyMonitor.start({
+            storageKey: 'safari_audio_v2_cajero',
+            visibleMs: 2000,
+            hiddenMs: 5000,
+        });
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', BalanzaDigital.init);
+    document.addEventListener('DOMContentLoaded', () => {
+        BalanzaDigital.init();
+        initPosAudioYAlertasListos();
+    });
 } else {
     BalanzaDigital.init();
+    initPosAudioYAlertasListos();
 }

@@ -14,7 +14,7 @@ actualizarReloj();
 // Echo & Aloy: Alerta Sonora de Comandas (Motor Unificado Web Audio API)
 // ==============================================================================
 const KdsAudio = (() => {
-    const STORAGE_KEY = 'safari_kds_audio_cocina';
+    const STORAGE_KEY = 'safari_audio_v2_cocina';
 
     function emitirCampanaComanda() {
         if (window.SafariAudioAlerts) {
@@ -52,6 +52,7 @@ if (document.readyState === 'loading') {
 
 // Sincronización Delta Liviana y Auto-actualización secuencial sin apilamiento + Bus Instantáneo
 let actualizandoKds = false;
+let syncPendienteCocina = false;
 let ultimaVersionDeltaCocina = null;
 let prevColaCocina = null;
 let prevActivosIdsCocina = null;
@@ -72,7 +73,10 @@ function programarSyncCocina(delayMs) {
 }
 
 async function autoActualizarCocina(forzar = false) {
-    if (actualizandoKds) return;
+    if (actualizandoKds) {
+        syncPendienteCocina = true;
+        return;
+    }
     if (!forzar && document.querySelector('.modal.show')) {
         programarSyncCocina();
         return;
@@ -170,7 +174,12 @@ async function autoActualizarCocina(forzar = false) {
         // Silencioso ante fluctuaciones de red
     } finally {
         actualizandoKds = false;
-        programarSyncCocina();
+        if (syncPendienteCocina) {
+            syncPendienteCocina = false;
+            programarSyncCocina(80);
+        } else {
+            programarSyncCocina();
+        }
     }
 }
 

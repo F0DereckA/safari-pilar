@@ -426,7 +426,7 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
         self.assertTrue(r_admin_sync.json()['ok'])
         self.assertIn('alertas_no_leidas', r_admin_sync.json())
 
-        # Integración HTML de motor de sonido unificado y toasts accesibles
+        # Integración HTML de motor de sonido unificado y toasts accesibles (Cajero monitor + POS crear_ticket + Mesero)
         self.client.force_login(self.cajero_user)
         resp_vend = self.client.get(reverse('vendedor'))
         self.assertContrastePositivoNegativo(
@@ -434,6 +434,12 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
             debe_estar=('btnTogglePosAudio', 'safariReadyToastRegion', 'safariReadyAriaLive', 'safari_audio_alerts.js'),
             no_debe_estar=('value="0"',),
             contexto="Panel Cajero con audio y alertas accesibles",
+        )
+        resp_ct = self.client.get(reverse('crear_ticket'))
+        self.assertContrastePositivoNegativo(
+            resp_ct,
+            debe_estar=('btnTogglePosAudio', 'safariReadyToastRegion', 'safariReadyAriaLive', 'safari_audio_alerts.js'),
+            contexto="POS Crear Ticket con audio y alertas accesibles",
         )
 
         self.client.force_login(self.mesero_user)
