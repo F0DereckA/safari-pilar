@@ -182,6 +182,7 @@
                                 <option value="CAJERO">Cajero</option>
                                 <option value="MESERO">Mesero</option>
                                 <option value="COCINERO">Cocinero</option>
+                                <option value="BARRA">Puesto de Barra</option>
                             </select>
                         </div>
 
@@ -246,6 +247,8 @@
                                             <span class="badge bg-success text-white">Mesero</span>
                                         {% elif t.perfil.rol == 'COCINERO' %}
                                             <span class="badge bg-info text-dark">Cocinero</span>
+                                        {% elif t.perfil.rol == 'BARRA' %}
+                                            <span class="badge bg-primary text-white">Puesto de Barra</span>
                                         {% else %}
                                             <span class="badge bg-secondary text-white">{{ t.perfil.rol }}</span>
                                         {% endif %}

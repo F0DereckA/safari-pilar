@@ -160,6 +160,8 @@
                         <option value="todos">Todos los Roles</option>
                         <option value="CAJERO">Cajero</option>
                         <option value="MESERO">Mesero</option>
+                        <option value="COCINERO">Cocinero (Cocina KDS)</option>
+                        <option value="BARRA">Puesto de Barra (Barra KDS)</option>
                         <option value="ADMINISTRADOR">Administrador</option>
                     </select>
                 </div>
@@ -274,6 +276,10 @@
                                 <span class="badge bg-danger px-2 py-1 fw-bold">Administrador</span>
                                 {% elif t.rol == 'CAJERO' %}
                                 <span class="badge bg-primary px-2 py-1 fw-bold">Cajero</span>
+                                {% elif t.rol == 'COCINERO' %}
+                                <span class="badge bg-dark text-white px-2 py-1 fw-bold"><i class="bi bi-fire text-lcd-amber me-1" aria-hidden="true"></i>Cocinero</span>
+                                {% elif t.rol == 'BARRA' %}
+                                <span class="badge bg-info text-dark px-2 py-1 fw-bold"><i class="bi bi-cup-straw me-1" aria-hidden="true"></i>Puesto de Barra</span>
                                 {% else %}
                                 <span class="badge bg-warning text-dark px-2 py-1 fw-bold">Mesero</span>
                                 {% endif %}
@@ -496,11 +502,14 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="crearTrabRol" class="form-label small fw-bold">Rol Operativo *</label>
-                                <select id="crearTrabRol" name="rol" class="form-select" required>
+                                <select id="crearTrabRol" name="rol" class="form-select" required aria-describedby="helpCrearRolTrabajador">
                                     <option value="CAJERO" selected>Cajero</option>
                                     <option value="MESERO">Mesero</option>
+                                    <option value="COCINERO">Cocinero (Ventana Cocina KDS)</option>
+                                    <option value="BARRA">Puesto de Barra (Ventana Barra KDS)</option>
                                     <option value="ADMINISTRADOR">Administrador</option>
                                 </select>
+                                <small id="helpCrearRolTrabajador" class="text-muted safari-hint-xs">Define a qué pantalla operativa accede al iniciar sesión.</small>
                             </div>
                             <div class="col-6">
                                 <label for="crearTrabTelefono" class="form-label small fw-bold">Teléfono (Opcional)</label>
@@ -585,11 +594,14 @@
 
                         <div class="mb-3">
                             <label for="editRol" class="form-label small fw-bold">Rol Operativo *</label>
-                            <select name="rol" id="editRol" class="form-select" required>
+                            <select name="rol" id="editRol" class="form-select" required aria-describedby="helpEditRolTrabajador">
                                 <option value="CAJERO">Cajero</option>
                                 <option value="MESERO">Mesero</option>
+                                <option value="COCINERO">Cocinero (Ventana Cocina KDS)</option>
+                                <option value="BARRA">Puesto de Barra (Ventana Barra KDS)</option>
                                 <option value="ADMINISTRADOR">Administrador</option>
                             </select>
+                            <small id="helpEditRolTrabajador" class="text-muted safari-hint-xs">Cocinero accede a Cocina KDS; Puesto de Barra accede a Barra KDS.</small>
                         </div>
 
                         <!-- Cambio de Local con emisión de Alerta -->

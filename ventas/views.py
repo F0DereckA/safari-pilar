@@ -269,10 +269,15 @@ def get_locales_data():
                     hora_login = timezone.localtime(p.usuario.last_login).strftime("%H:%M")
                 else:
                     hora_login = "--:--"
+                roles_estacion = {
+                    'MESERO': f"Salón {loc['nombre'].split()[0]}",
+                    'COCINERO': f"Cocina {loc['nombre'].split()[0]}",
+                    'BARRA': f"Barra {loc['nombre'].split()[0]}",
+                }
                 caja_nombre = (
                     caja_asoc.nombre
                     if caja_asoc
-                    else (f"Salón {loc['nombre'].split()[0]}" if p.rol == 'MESERO' else f"Caja {loc['nombre'].split()[0]} #1")
+                    else roles_estacion.get(p.rol, f"Caja {loc['nombre'].split()[0]} #1")
                 )
                 personal_list.append({
                     "perfil_id": p.id,
@@ -293,7 +298,7 @@ def get_locales_data():
 
 def obtener_rol_usuario(user):
 
-    """Retorna el rol oficial ('ADMINISTRADOR', 'CAJERO', 'MESERO') del usuario autenticado"""
+    """Retorna el rol oficial ('ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO', 'BARRA') del usuario autenticado"""
 
     if not user.is_authenticated:
 
@@ -312,6 +317,15 @@ def obtener_rol_usuario(user):
             return 'ADMINISTRADOR'
 
         return None
+
+
+RUTA_INICIO_POR_ROL = {
+    'ADMINISTRADOR': 'administrador',
+    'CAJERO': 'vendedor',
+    'MESERO': 'mesero',
+    'COCINERO': 'cocina',
+    'BARRA': 'barra',
+}
 
 
 
@@ -435,23 +449,7 @@ def requiere_rol(roles_permitidos):
 
                 messages.error(request, f"Acceso restringido: Tu perfil ({rol or 'Sin Rol'}) no tiene autorización para acceder a esta sección.")
 
-                if rol == 'ADMINISTRADOR':
-
-                    return redirect('administrador')
-
-                elif rol == 'CAJERO':
-
-                    return redirect('vendedor')
-
-                elif rol == 'MESERO':
-
-                    return redirect('mesero')
-
-                elif rol == 'COCINERO':
-
-                    return redirect('cocina')
-
-                return redirect('index')
+                return redirect(RUTA_INICIO_POR_ROL.get(rol, 'index'))
 
 
 
@@ -821,22 +819,11 @@ def login_view(request):
             if respuesta_login is None:
 
                 rol = obtener_rol_usuario(user)
+                ruta_inicio = RUTA_INICIO_POR_ROL.get(rol)
 
-                if rol == 'ADMINISTRADOR':
+                if ruta_inicio:
 
-                    respuesta_login = redirect('administrador')
-
-                elif rol == 'CAJERO':
-
-                    respuesta_login = redirect('vendedor')
-
-                elif rol == 'MESERO':
-
-                    respuesta_login = redirect('mesero')
-
-                elif rol == 'COCINERO':
-
-                    respuesta_login = redirect('cocina')
+                    respuesta_login = redirect(ruta_inicio)
 
                 else:
 
@@ -1127,22 +1114,9 @@ def index(request):
     if request.user.is_authenticated:
 
         rol = obtener_rol_usuario(request.user)
-
-        if rol == 'ADMINISTRADOR':
-
-            return redirect('administrador')
-
-        elif rol == 'CAJERO':
-
-            return redirect('vendedor')
-
-        elif rol == 'MESERO':
-
-            return redirect('mesero')
-
-        elif rol == 'COCINERO':
-
-            return redirect('cocina')
+        ruta_inicio = RUTA_INICIO_POR_ROL.get(rol)
+        if ruta_inicio:
+            return redirect(ruta_inicio)
 
     ack_tokens = _leer_tokens_ack_cookie(request)
     if demo_mode_activo():
@@ -4229,7 +4203,9 @@ def administrador_trabajadores(request):
 
             rol = request.POST.get('rol', 'CAJERO')
 
-            if rol not in {'ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'}:
+            roles_validos = {codigo for codigo, _ in PerfilEmpleado.ROLES}
+
+            if rol not in roles_validos:
 
                 messages.error(request, "Rol operativo inválido.")
 
@@ -4361,6 +4337,14 @@ def administrador_trabajadores(request):
                 perfil.rut = limpiar_texto_seguro(rut_post, max_length=12)
 
             nuevo_rol = request.POST.get('rol', perfil.rol)
+
+            roles_validos = {codigo for codigo, _ in PerfilEmpleado.ROLES}
+
+            if nuevo_rol not in roles_validos:
+
+                messages.error(request, "Rol operativo inválido.")
+
+                return redirect('administrador_trabajadores')
 
 
 
@@ -8512,7 +8496,7 @@ def cocina(request):
 
 
 
-@requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
+@requiere_rol(['COCINERO', 'BARRA', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
 
 
 
@@ -8730,13 +8714,15 @@ def barra(request):
 
         'en_horario': en_horario,
 
+        'puede_ir_cocina': obtener_rol_usuario(request.user) in ('COCINERO', 'ADMINISTRADOR'),
+
     }
 
     return render(request, 'ventas/kds/barra.html', context)
 
 
 
-@requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
+@requiere_rol(['COCINERO', 'BARRA', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
 
 def cambiar_estado_pedido(request):
 
@@ -9660,23 +9646,7 @@ def cambiar_clave_expirada(request):
 
         rol = obtener_rol_usuario(request.user)
 
-        if rol == 'ADMINISTRADOR':
-
-            return redirect('administrador')
-
-        elif rol == 'CAJERO':
-
-            return redirect('vendedor')
-
-        elif rol == 'MESERO':
-
-            return redirect('mesero')
-
-        elif rol == 'COCINERO':
-
-            return redirect('cocina')
-
-        return redirect('index')
+        return redirect(RUTA_INICIO_POR_ROL.get(rol, 'index'))
 
 
 
@@ -10456,7 +10426,7 @@ def administrador_ofertas_temporada(request):
 
 # ==============================================================================
 
-@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'])
+@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO', 'BARRA'])
 
 def reimprimir_ticket_view(request, ticket_id):
 
@@ -10501,7 +10471,7 @@ def reimprimir_ticket_view(request, ticket_id):
 
 
 
-@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'])
+@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO', 'BARRA'])
 
 def ver_imprimir_ticket_digital(request, ticket_id):
 
@@ -10573,7 +10543,7 @@ def ver_imprimir_ticket_digital(request, ticket_id):
 
 
 
-@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO'])
+@requiere_rol(['ADMINISTRADOR', 'CAJERO', 'MESERO', 'COCINERO', 'BARRA'])
 
 def reintentar_impresion_view(request, ticket_id):
 
@@ -11040,7 +11010,7 @@ def administrador_consumos(request):
 
 
 
-@requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
+@requiere_rol(['COCINERO', 'BARRA', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
 def api_sincronizacion_estado(request):
     """
     Endpoint delta de alta eficiencia (~150-350 bytes JSON).
@@ -11257,7 +11227,7 @@ def api_sincronizacion_estado(request):
 
 
 
-@requiere_rol(['COCINERO', 'ADMINISTRADOR'])
+@requiere_rol(['COCINERO', 'BARRA', 'ADMINISTRADOR'])
 
 def api_toggle_stock_producto(request):
 

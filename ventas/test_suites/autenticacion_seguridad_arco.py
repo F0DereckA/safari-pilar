@@ -549,6 +549,98 @@ class AutenticacionAccesoYSeguridadTests(SafariDemoTestCase):
         self.mesero_user.refresh_from_db()
         self.assertTrue(self.mesero_user.check_password("Safari.NuevoPass2026!"))
 
+    def test_asignacion_admin_roles_cocinero_y_barra_y_acceso_kds(self):
+        """Admin puede asignar roles COCINERO y BARRA en trabajadores; cada rol accede directo a su ventana KDS."""
+        self.client.force_login(self.admin_user)
+        url_trab = reverse("administrador_trabajadores")
+
+        resp_admin_html = self.client.get(url_trab)
+        self.assertEqual(resp_admin_html.status_code, 200)
+        self.assertContains(resp_admin_html, 'value="COCINERO"')
+        self.assertContains(resp_admin_html, 'value="BARRA"')
+
+        resp_gestion_html = self.client.get(reverse("administrador_gestion"))
+        self.assertEqual(resp_gestion_html.status_code, 200)
+        self.assertContains(resp_gestion_html, 'value="BARRA"')
+
+        for uname, rol_codigo, ruta_esperada in (
+            ("chef_nuevo", "COCINERO", "cocina"),
+            ("barista_nuevo", "BARRA", "barra"),
+        ):
+            resp_crear = self.client.post(
+                url_trab,
+                {
+                    "accion": "crear",
+                    "nombre": "Personal",
+                    "apellido": rol_codigo.title(),
+                    "username": uname,
+                    "rut": "19.123.456-7" if rol_codigo == "COCINERO" else "19.765.432-1",
+                    "rol": rol_codigo,
+                    "local_id": self.pv_central.id,
+                    "password": "SafariKds!2026",
+                },
+                follow=True,
+            )
+            self.assertContains(resp_crear, "registrado con éxito")
+            u_trab = User.objects.get(username=uname)
+            self.assertEqual(u_trab.perfil.rol, rol_codigo)
+            self.assertTrue(u_trab.password.startswith(("pbkdf2_sha256$", "argon2$")))
+            u_trab.perfil.debe_cambiar_clave = False
+            u_trab.perfil.save(update_fields=["debe_cambiar_clave"])
+
+        # Reasignación de rol en modificación existente (BARRA <-> COCINERO)
+        u_bar = User.objects.get(username="barista_nuevo")
+        self.client.post(
+            url_trab,
+            {
+                "accion": "modificar",
+                "perfil_id": u_bar.perfil.id,
+                "nombre": "Personal",
+                "apellido": "CocinaTemp",
+                "rol": "COCINERO",
+                "local_id": self.pv_central.id,
+            },
+            follow=True,
+        )
+        u_bar.perfil.refresh_from_db()
+        self.assertEqual(u_bar.perfil.rol, "COCINERO")
+
+        self.client.post(
+            url_trab,
+            {
+                "accion": "modificar",
+                "perfil_id": u_bar.perfil.id,
+                "nombre": "Personal",
+                "apellido": "Barra",
+                "rol": "BARRA",
+                "local_id": self.pv_central.id,
+            },
+            follow=True,
+        )
+        u_bar.perfil.refresh_from_db()
+        self.assertEqual(u_bar.perfil.rol, "BARRA")
+
+        # Worker BARRA: al entrar a / redirige directo a /barra/, entra con 200 y queda aislado de cocina/admin/caja/mesero
+        self.client.force_login(u_bar)
+        self.assertRedirects(self.client.get(reverse("index"), follow=False), reverse("barra"))
+        resp_barra = self.client.get(reverse("barra"))
+        self.assertEqual(resp_barra.status_code, 200)
+        self.assertContrastePositivoNegativo(
+            resp_barra,
+            debe_estar=("Barra Activa",),
+            no_debe_estar=("Ir a Cocina",),
+            contexto="Puesto de Barra sin botón de Cocina",
+        )
+        for ruta_prohibida in ("cocina", "administrador", "vendedor", "mesero", "mi_privacidad"):
+            with self.subTest(rol="BARRA", bloqueada=ruta_prohibida):
+                self.assertRedirects(self.client.get(reverse(ruta_prohibida), follow=True), reverse("barra"))
+
+        # Worker COCINERO creado desde Trabajadores: al entrar a / redirige directo a /cocina/
+        u_chef = User.objects.get(username="chef_nuevo")
+        self.client.force_login(u_chef)
+        self.assertRedirects(self.client.get(reverse("index"), follow=False), reverse("cocina"))
+        self.assertEqual(self.client.get(reverse("cocina")).status_code, 200)
+
     def test_desbloqueo_pos_pin_cifrado_sin_filtracion(self):
         self.abrir_jornada_y_caja(self.pv_central, self.cajero_user, admin=self.admin_user)
         self.cajero_user.set_password("ClavePosSeguro#2026")

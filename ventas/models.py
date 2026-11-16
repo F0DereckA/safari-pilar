@@ -8,12 +8,13 @@ from django.contrib.auth.models import User
 # 1. PERFIL DE EMPLEADO Y ROLES (RF01 - Autenticación y Perfiles)
 # ==============================================================================
 class PerfilEmpleado(models.Model):
-    """Extensión de User para roles oficiales del Proyecto Integrado (Cajero, Administrador, Mesero)"""
+    """Extensión de User para roles oficiales del Proyecto Integrado (Administrador, Cajero, Mesero, Cocinero, Barra)"""
     ROLES = [
         ('ADMINISTRADOR', 'Administrador'),
         ('CAJERO', 'Cajero'),
         ('MESERO', 'Mesero'),
         ('COCINERO', 'Cocinero'),
+        ('BARRA', 'Puesto de Barra'),
     ]
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     rol = models.CharField(max_length=20, choices=ROLES, default='CAJERO')
