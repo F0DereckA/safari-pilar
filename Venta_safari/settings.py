@@ -125,8 +125,11 @@ if DB_ENGINE in ('postgresql', 'postgres'):
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'client_encoding': 'UTF8',
+                'connect_timeout': 5,
             },
         }
     }
@@ -139,8 +142,11 @@ elif DB_ENGINE == 'mysql':
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '3306'),
+            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'charset': 'utf8mb4',
+                'connect_timeout': 5,
             },
         }
     }
@@ -225,8 +231,9 @@ SESSION_COOKIE_AGE = 28800
 # Tiempo máximo de inactividad en servidor antes de caducar sesión automáticamente (15 min = 900s)
 SESSION_INACTIVITY_TIMEOUT = int(os.environ.get('SESSION_INACTIVITY_TIMEOUT', '900'))
 
-# Renovación de expiración en cada interacción activa del usuario
-SESSION_SAVE_EVERY_REQUEST = True
+# Evitar escrituras SQL redundantes en django_session en cada petición de polling pasivo;
+# SafariSessionSecurityMiddleware renueva la actividad cada 15s en acciones activas reales.
+SESSION_SAVE_EVERY_REQUEST = False
 
 # Seguridad de cookies en producción HTTPS y cierre CORS estricto
 SESSION_COOKIE_SECURE = (not DEBUG) and (not IS_TEST_RUNNER)

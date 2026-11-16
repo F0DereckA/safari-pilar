@@ -88,6 +88,7 @@ function renderizarTickets() {
             totalEnCurso++;
         } else if (t.estadoBd === 'PENDIENTE' || t.estadoBd === 'EN_PREPARACION') {
             totalEnCurso++;
+            if (t.tieneListoParcial) totalListos++;
             if (t.tieneCocina) totalCocina++;
             if (t.tieneBarra) totalBarra++;
         }
@@ -114,7 +115,7 @@ function renderizarTickets() {
         } else if (estadoFiltroActual === 'barra') {
             cumpleEstado = (ticket.estadoBd === 'PENDIENTE' || ticket.estadoBd === 'EN_PREPARACION') && ticket.tieneBarra;
         } else if (estadoFiltroActual === 'listo') {
-            cumpleEstado = (ticket.estadoBd === 'LISTO');
+            cumpleEstado = (ticket.estadoBd === 'LISTO' || Boolean(ticket.tieneListoParcial));
         } else if (estadoFiltroActual === 'entregado') {
             cumpleEstado = (ticket.estadoBd === 'ENTREGADO');
         }
@@ -151,7 +152,10 @@ function renderizarTickets() {
                     </button>
                 `;
             } else if (ticket.estadoBd === 'EN_PREPARACION') {
-                if (ticket.tieneCocina) {
+                if (ticket.tieneListoParcial) {
+                    const estListoNom = ticket.estadoCocina === 'LISTO' ? 'Cocina Listo' : 'Barra Listo';
+                    statusBadgeHtml = `<span class="badge-status status-listo"><i class="bi bi-bell-fill"></i> ${estListoNom} (Mixto)</span>`;
+                } else if (ticket.tieneCocina) {
                     statusBadgeHtml = `<span class="badge-status status-cocina"><i class="bi bi-fire"></i> Preparando en Cocina</span>`;
                 } else {
                     statusBadgeHtml = `<span class="badge-status status-barra"><i class="bi bi-cup-hot-fill"></i> Preparando en Barra</span>`;
@@ -276,6 +280,13 @@ async function cambiarEstadoTicket(pedidoId, nuevoEstado) {
             return;
         }
         if (resp.ok && (data.ok || data.status === 'ok')) {
+            if (window.SafariSyncBus) {
+                window.SafariSyncBus.publish({
+                    type: 'pedido_estado',
+                    pedido_id: pedidoId,
+                    nuevo_estado: nuevoEstado,
+                });
+            }
             await autoActualizarVendedor(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: `Comanda #COM-${String(pedidoId).padStart(4, '0')} actualizada a ${data.estado_display}.` });
@@ -303,6 +314,7 @@ async function ocuparMesaCajero(mesaId, mesaNombre) {
         });
         const data = await resp.json();
         if (data.ok) {
+            if (window.SafariSyncBus) window.SafariSyncBus.publish({ type: 'mesa_estado', mesa_id: mesaId });
             await autoActualizarVendedor(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: data.mensaje || `${mesaNombre} asignada para atención en salón.` });
@@ -329,6 +341,7 @@ async function liberarMesaCajero(mesaId, mesaNombre) {
         });
         const data = await resp.json();
         if (data.ok) {
+            if (window.SafariSyncBus) window.SafariSyncBus.publish({ type: 'mesa_estado', mesa_id: mesaId });
             await autoActualizarVendedor(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: data.mensaje || `${mesaNombre} liberada.` });
@@ -559,6 +572,7 @@ async function cobrarMesaCajero(mesaId, mesaNombre, totalAbierto) {
         });
         const data = await resp.json();
         if (data.ok) {
+            if (window.SafariSyncBus) window.SafariSyncBus.publish({ type: 'mesa_estado', mesa_id: mesaId });
             await autoActualizarVendedor(true);
             swalSuccessBootstrap.fire({
                 title: '¡Mesa Cobrada y Liberada!',
@@ -594,30 +608,82 @@ function limpiarFiltroTicket() {
     renderizarTickets();
 }
 
-// Sincronización en tiempo real cada 1 segundo contra SQLite (Cajero <-> Mesero <-> Cocina <-> Barra)
+// Sincronización en tiempo real + Alerta sonora inmediata de pedidos listos (Cocina/Barra -> Cajero)
+const STORAGE_AUDIO_CAJERO = 'safari_pos_audio_cajero';
 let actualizandoVendedor = false;
 let ultimaVersionDeltaCajero = null;
+let vendedorSyncTimer = null;
+
+const seenReadyKeysCajero = (() => {
+    const initSet = new Set();
+    (pedidosCajero || []).forEach(t => {
+        if (t.estadoBd === 'ENTREGADO' || t.estadoBd === 'CANCELADO') return;
+        if (t.estadoCocina === 'LISTO') initSet.add(`${t.pedido_id}:COCINA`);
+        if (t.estadoBarra === 'LISTO') initSet.add(`${t.pedido_id}:BARRA`);
+        if (t.estadoBd === 'LISTO' && t.estadoCocina !== 'LISTO' && t.estadoBarra !== 'LISTO') {
+            initSet.add(`${t.pedido_id}:GENERAL`);
+        }
+    });
+    return initSet;
+})();
+
+function procesarAlertasListosCajero(listosDetalle) {
+    if (!Array.isArray(listosDetalle)) return;
+    const actualesKeys = new Set(listosDetalle.map(item => item.key));
+    const nuevos = listosDetalle.filter(item => item.key && !seenReadyKeysCajero.has(item.key));
+
+    // Limpiar de memoria los ya entregados para permitir futuras alertas si reingresan
+    for (const k of Array.from(seenReadyKeysCajero)) {
+        if (!actualesKeys.has(k)) seenReadyKeysCajero.delete(k);
+    }
+    actualesKeys.forEach(k => seenReadyKeysCajero.add(k));
+
+    if (nuevos.length > 0) {
+        if (window.SafariAudioAlerts) {
+            window.SafariAudioAlerts.play('pedido_listo', STORAGE_AUDIO_CAJERO);
+        }
+        if (window.SafariReadyNotifier) {
+            nuevos.slice(0, 3).forEach(item => window.SafariReadyNotifier.notifyReady(item));
+        }
+    }
+}
+
+function programarSyncVendedor(delayMs) {
+    clearTimeout(vendedorSyncTimer);
+    const delay = typeof delayMs === 'number'
+        ? delayMs
+        : (document.visibilityState === 'visible' ? 1500 : 4000);
+    vendedorSyncTimer = setTimeout(() => autoActualizarVendedor(false), delay);
+}
 
 async function autoActualizarVendedor(forzar = false) {
     if (actualizandoVendedor) return;
     if (!forzar && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) {
+        programarSyncVendedor();
         return;
     }
     actualizandoVendedor = true;
     try {
-        // 1. Paso Delta Liviano (~150 bytes)
         const deltaUrl = '/api/sincronizacion/estado/' + window.location.search;
         let debeActualizar = forzar;
 
         try {
-            const deltaResp = await fetch(deltaUrl, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
+            const deltaOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+            if (!forzar) deltaOpts.priority = 'low';
+            const deltaResp = await fetch(deltaUrl, deltaOpts);
             if (deltaResp.ok) {
                 const delta = await deltaResp.json();
                 if (delta.ok) {
+                    // Notificación auditiva/visual INMEDIATA sin esperar recarga de HTML completo
+                    if (!forzar && Array.isArray(delta.listos_detalle)) {
+                        procesarAlertasListosCajero(delta.listos_detalle);
+                    }
+                    const kpiListosEl = document.getElementById('kpiListos');
+                    if (kpiListosEl && typeof delta.listos === 'number') {
+                        kpiListosEl.innerText = String(delta.listos);
+                    }
+
                     if (!forzar && ultimaVersionDeltaCajero && ultimaVersionDeltaCajero === delta.version) {
-                        actualizandoVendedor = false;
                         return; // Zero overhead: el estado no ha cambiado
                     }
                     ultimaVersionDeltaCajero = delta.version;
@@ -629,13 +695,12 @@ async function autoActualizarVendedor(forzar = false) {
         }
 
         if (!debeActualizar) {
-            actualizandoVendedor = false;
             return;
         }
 
-        const resp = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        const domOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+        if (!forzar) domOpts.priority = 'low';
+        const resp = await fetch(window.location.href, domOpts);
         if (!resp.ok) return;
         const html = await resp.text();
         const parser = new DOMParser();
@@ -662,6 +727,7 @@ async function autoActualizarVendedor(forzar = false) {
         // Silencioso ante microcortes de red
     } finally {
         actualizandoVendedor = false;
+        programarSyncVendedor();
     }
 }
 
@@ -787,18 +853,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Sincronización en tiempo real cada 1 segundo con ahorro inteligente de recursos
-    let vendedorInterval = setInterval(() => autoActualizarVendedor(false), 1000);
+    if (window.SafariAudioAlerts) {
+        window.SafariAudioAlerts.bindToggleButton({
+            buttonId: 'btnTogglePosAudio',
+            storageKey: STORAGE_AUDIO_CAJERO,
+            testProfile: 'pedido_listo',
+            variant: 'light-header',
+        });
+    }
+
+    // Sincronización secuencial inteligente + bus instantáneo entre pestañas
+    programarSyncVendedor(1200);
 
     document.addEventListener('visibilitychange', () => {
-        clearInterval(vendedorInterval);
         if (document.visibilityState === 'visible') {
             autoActualizarVendedor(false);
-            vendedorInterval = setInterval(() => autoActualizarVendedor(false), 1000);
         } else {
-            vendedorInterval = setInterval(() => autoActualizarVendedor(false), 5000);
+            programarSyncVendedor(4000);
         }
     });
+
+    if (window.SafariSyncBus) {
+        window.SafariSyncBus.subscribe((ev) => {
+            if (ev && (ev.type === 'pedido_estado' || ev.type === 'nueva_comanda')) {
+                ultimaVersionDeltaCajero = null;
+                autoActualizarVendedor(false);
+            }
+        });
+    }
 });
 
 // =========================================================================

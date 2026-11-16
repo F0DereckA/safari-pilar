@@ -1356,6 +1356,13 @@ async function ejecutarDespachoTicketBackend(datos) {
         }
 
         document.getElementById('modalTicketId').innerText = '#' + data.codigo_comanda;
+        if (typeof BroadcastChannel !== 'undefined') {
+            try {
+                const bc = new BroadcastChannel('safari_pos_sync_v1');
+                bc.postMessage({ type: 'nueva_comanda', ts: Date.now() });
+                bc.close();
+            } catch (_err) {}
+        }
         const elMetodoTxt = document.getElementById('modalMetodoPagoTexto');
         if (elMetodoTxt) {
             elMetodoTxt.innerText = data.modo_cuenta === 'ABIERTA' ? 'Pago al Final en Salón' : metodoCobro;

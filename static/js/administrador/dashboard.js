@@ -290,19 +290,60 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarChart('mes');
     renderizarDonutMediosPago();
 
-// Tarea 1: Auto-sincronización fluida en tiempo real del dashboard analítico sin F5 y con Scroll Lock
+// Sincronización delta-first del dashboard analítico (evita recalcular BI cada 1.5s sin cambios)
 let sincDashboard = false;
+let ultimaVersionDeltaDashboard = null;
+let dashSyncTimer = null;
+
+function programarSyncDashboard(delayMs) {
+    clearTimeout(dashSyncTimer);
+    if (document.visibilityState !== 'visible') return; // Pausar en pestaña oculta
+    const delay = typeof delayMs === 'number' ? delayMs : 4000;
+    dashSyncTimer = setTimeout(autoSincronizarDashboard, delay);
+}
+
 async function autoSincronizarDashboard() {
     if (sincDashboard) return;
-    if (document.querySelector('.modal.show')) return;
+    if (document.visibilityState !== 'visible') return;
+    if (document.querySelector('.modal.show')) {
+        programarSyncDashboard();
+        return;
+    }
     sincDashboard = true;
     const scrollPos = window.scrollY;
 
     try {
+        let debeRecargarDom = false;
+        try {
+            const deltaResp = await fetch('/api/sincronizacion/estado/?zona=ADMIN', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                priority: 'low',
+            });
+            if (deltaResp.ok) {
+                const delta = await deltaResp.json();
+                if (delta.ok) {
+                    if (ultimaVersionDeltaDashboard === null) {
+                        ultimaVersionDeltaDashboard = delta.version;
+                        return; // Primera lectura coincide con render inicial
+                    }
+                    if (ultimaVersionDeltaDashboard === delta.version) {
+                        return; // Cero consultas BI si no hay nuevas ventas/pedidos
+                    }
+                    ultimaVersionDeltaDashboard = delta.version;
+                    debeRecargarDom = true;
+                }
+            }
+        } catch (_err) {
+            debeRecargarDom = true;
+        }
+
+        if (!debeRecargarDom) return;
+
         const resp = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            priority: 'low',
         });
-        if (!resp.ok) { sincDashboard = false; return; }
+        if (!resp.ok) return;
         const html = await resp.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -313,19 +354,19 @@ async function autoSincronizarDashboard() {
             actualKPI.innerHTML = nuevoKPI.innerHTML;
         }
         window.scrollTo(0, scrollPos);
-    } catch(e) {}
-    finally { sincDashboard = false; }
+    } catch (e) {
+    } finally {
+        sincDashboard = false;
+        programarSyncDashboard();
+    }
 }
-// Sincronizar KPIs en vivo cada 1.5 segundos (1500 ms) con gestion inteligente de recursos
-let dashInterval = setInterval(autoSincronizarDashboard, 1500);
+
+programarSyncDashboard(4000);
 
 document.addEventListener('visibilitychange', () => {
-    clearInterval(dashInterval);
+    clearTimeout(dashSyncTimer);
     if (document.visibilityState === 'visible') {
         autoSincronizarDashboard();
-        dashInterval = setInterval(autoSincronizarDashboard, 1500);
-    } else {
-        dashInterval = setInterval(autoSincronizarDashboard, 6000);
     }
 });
 

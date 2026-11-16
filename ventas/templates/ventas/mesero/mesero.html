@@ -75,6 +75,12 @@
                         <span id="textoRedMesero" class="d-none d-sm-inline">Sin conexión</span>
                     </div>
 
+                    <!-- Control de Alerta Sonora para Pedidos Listos en Cocina/Barra -->
+                    <button type="button" class="btn btn-sm btn-success text-white rounded-pill px-3 d-flex align-items-center gap-1 shadow-xs fw-bold" id="btnToggleMeseroAudio" aria-pressed="true" title="Alerta sonora y vibración cuando un pedido está listo en Cocina o Barra">
+                        <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
+                        <span class="d-none d-md-inline small fw-bold">Sonido ON</span>
+                    </button>
+
                     <!-- Centro de Alertas de Cocina: Pedidos Listos para Servir -->
                     <div class="dropdown" id="contenedorCampanaListos">
                         <button class="btn btn-sm position-relative rounded-pill px-3 fw-bold {% if total_pedidos_listos > 0 %}btn-success text-white shadow-sm{% else %}btn-outline-secondary bg-white text-muted{% endif %}" type="button" id="dropdownPedidosListos" data-bs-toggle="dropdown" aria-expanded="false" title="Pedidos listos en cocina para retirar">
@@ -1044,12 +1050,18 @@
         </div>
     </footer>
 
+    <!-- Notificaciones Persistentes de Pedidos Listos (Cocina/Barra) -->
+    <div id="safariReadyToastRegion" class="safari-ready-toast-region" role="region" aria-label="Alertas de pedidos listos"></div>
+    <p class="visually-hidden">Anuncios de cocina y barra</p>
+    <div id="safariReadyAriaLive" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- SweetAlert2 y Safari Alerts para Notificaciones Ágiles en Hora Pico -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{% static 'js/global/safari_alerts.js' %}"></script>
+    <script src="{% static 'js/global/safari_audio_alerts.js' %}"></script>
 
     <script id="cuentasAbiertasData" type="application/json">{{ cuentas_abiertas_json|safe }}</script>
     <script id="pedidosMesaActivosData" type="application/json">{{ pedidos_mesa_activos_json|safe }}</script>

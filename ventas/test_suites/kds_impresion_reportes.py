@@ -344,6 +344,106 @@ class KdsCocinaBarraYComentariosTests(SafariDemoTestCase):
         ped_cancelable.refresh_from_db()
         self.assertEqual(ped_cancelable.estado, 'CANCELADO')
 
+    def test_alertas_listos_delta_admin_y_zero_n1_en_estaciones(self):
+        """
+        Verifica optimización de latencia y señales auditivas Cocina/Barra -> Cajero/Mesero:
+        - listos_detalle en /api/sincronizacion/estado/ emite keys por estación (COCINA / BARRA).
+        - ?zona=ADMIN responde JSON liviano para Admin y bloquea (403) a otros roles.
+        - Pedido.get_estaciones_activas() realiza 0 SQL queries cuando los detalles están prefetched.
+        - Vistas operativas cargan motor unificado safari_audio_alerts.js y regiones accesibles.
+        - SESSION_SAVE_EVERY_REQUEST=False evita escrituras SQL por polling.
+        """
+        self.assertFalse(settings.SESSION_SAVE_EVERY_REQUEST)
+
+        _, caja = self.abrir_jornada_y_caja(self.pv_central, self.cajero_user, self.admin_user)
+        _, ped_mixto = self._crear_comanda(
+            caja,
+            self.mesa_m1,
+            [(self.prod_cocina, 1, None), (self.prod_barra, 1, None)],
+        )
+
+        # Cero consultas extra en get_estaciones_activas() tras prefetch_related
+        peds_pref = list(
+            Pedido.objects.filter(id=ped_mixto.id).prefetch_related('detalles__producto__categoria')
+        )
+        with self.assertNumQueries(0):
+            estaciones = peds_pref[0].get_estaciones_activas()
+        self.assertEqual(estaciones, {'COCINA', 'BARRA'})
+
+        # Cocina marca LISTO -> Cajero y Mesero reciben key COCINA inmediatamente en listos_detalle
+        self.client.force_login(self.cocinero_user)
+        for st in ('EN_PREPARACION', 'LISTO'):
+            self.assertEqual(
+                self.client.post(
+                    reverse('cambiar_estado_pedido'),
+                    {'pedido_id': ped_mixto.id, 'nuevo_estado': st, 'estacion': 'COCINA'},
+                    HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+                ).status_code,
+                200,
+            )
+
+        self.client.force_login(self.mesero_user)
+        r_sync_c = self.client.get(reverse('api_sincronizacion_estado'))
+        self.assertEqual(r_sync_c.status_code, 200)
+        self.assertEqual(r_sync_c.headers.get('Cache-Control'), 'no-store')
+        d_c = r_sync_c.json()
+        keys_c = [item['key'] for item in d_c.get('listos_detalle', [])]
+        self.assertIn(f'{ped_mixto.id}:COCINA', keys_c)
+        self.assertNotIn(f'{ped_mixto.id}:BARRA', keys_c)
+
+        # Barra también marca LISTO -> version cambia y listos_detalle emite BARRA
+        self.client.force_login(self.cocinero_user)
+        for st in ('EN_PREPARACION', 'LISTO'):
+            self.assertEqual(
+                self.client.post(
+                    reverse('cambiar_estado_pedido'),
+                    {'pedido_id': ped_mixto.id, 'nuevo_estado': st, 'estacion': 'BARRA'},
+                    HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+                ).status_code,
+                200,
+            )
+
+        self.client.force_login(self.cajero_user)
+        r_sync_b = self.client.get(reverse('api_sincronizacion_estado'))
+        self.assertEqual(r_sync_b.status_code, 200)
+        d_b = r_sync_b.json()
+        self.assertNotEqual(d_b['version'], d_c['version'])
+        keys_b = [item['key'] for item in d_b.get('listos_detalle', [])]
+        self.assertIn(f'{ped_mixto.id}:COCINA', keys_b)
+        self.assertIn(f'{ped_mixto.id}:BARRA', keys_b)
+
+        # RBAC en zona=ADMIN: solo ADMINISTRADOR autorizado
+        for usr_no in (self.cajero_user, self.mesero_user, self.cocinero_user):
+            with self.subTest(rol_admin_sync=usr_no.username):
+                self.client.force_login(usr_no)
+                self.assertEqual(
+                    self.client.get(reverse('api_sincronizacion_estado'), {'zona': 'ADMIN'}).status_code,
+                    403,
+                )
+        self.client.force_login(self.admin_user)
+        r_admin_sync = self.client.get(reverse('api_sincronizacion_estado'), {'zona': 'ADMIN'})
+        self.assertEqual(r_admin_sync.status_code, 200)
+        self.assertTrue(r_admin_sync.json()['ok'])
+        self.assertIn('alertas_no_leidas', r_admin_sync.json())
+
+        # Integración HTML de motor de sonido unificado y toasts accesibles
+        self.client.force_login(self.cajero_user)
+        resp_vend = self.client.get(reverse('vendedor'))
+        self.assertContrastePositivoNegativo(
+            resp_vend,
+            debe_estar=('btnTogglePosAudio', 'safariReadyToastRegion', 'safariReadyAriaLive', 'safari_audio_alerts.js'),
+            no_debe_estar=('value="0"',),
+            contexto="Panel Cajero con audio y alertas accesibles",
+        )
+
+        self.client.force_login(self.mesero_user)
+        resp_mes = self.client.get(reverse('mesero'))
+        self.assertContrastePositivoNegativo(
+            resp_mes,
+            debe_estar=('btnToggleMeseroAudio', 'safariReadyToastRegion', 'safariReadyAriaLive', 'safari_audio_alerts.js'),
+            contexto="Panel Mesero con audio y alertas accesibles",
+        )
+
     def test_control_stock_kds_toggle_y_rbac(self):
         # Roles de salón/caja no pueden pausar platos en KDS
         for usr_no in (self.mesero_user, self.cajero_user):

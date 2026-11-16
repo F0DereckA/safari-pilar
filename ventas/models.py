@@ -936,11 +936,17 @@ class Pedido(models.Model):
     def get_estaciones_activas(self):
         """Determina qué estaciones (COCINA, BARRA) tienen productos reales asignados en este pedido."""
         estaciones = set()
-        for det in self.detalles.select_related('producto__categoria').all():
+        cache_pref = getattr(self, '_prefetched_objects_cache', None) or {}
+        detalles_qs = (
+            self.detalles.all()
+            if 'detalles' in cache_pref
+            else self.detalles.select_related('producto__categoria').all()
+        )
+        for det in detalles_qs:
             estaciones.add('BARRA' if det.producto.get_destino_operativo() == 'BARRA' else 'COCINA')
         return estaciones or {'COCINA'}
     creado_en = models.DateTimeField(auto_now_add=True, db_index=True)
-    actualizado_en = models.DateTimeField(auto_now=True)
+    actualizado_en = models.DateTimeField(auto_now=True, db_index=True)
     fecha_inicio_preparacion = models.DateTimeField(null=True, blank=True, help_text="Timestamp de inicio de preparación en cocina/barra (RF13/RF16)")
     fecha_listo = models.DateTimeField(null=True, blank=True, help_text="Timestamp de marcado como listo para servir (RF13/RF16)")
 
@@ -1110,7 +1116,10 @@ class Pedido(models.Model):
         ordering = ['-creado_en']
         indexes = [
             models.Index(fields=['estado', 'creado_en']),
+            models.Index(fields=['estado_cocina', 'creado_en']),
+            models.Index(fields=['estado_barra', 'creado_en']),
             models.Index(fields=['venta', 'estado']),
+            models.Index(fields=['venta', 'creado_en']),
         ]
 
 

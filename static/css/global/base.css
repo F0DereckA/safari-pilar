@@ -1012,3 +1012,114 @@ dialog.safari-cookie-dialog::backdrop {
         scroll-behavior: auto !important;
     }
 }
+
+/* ==========================================================================
+   Notificaciones Persistentes de Pedidos Listos (Cocina/Barra -> Cajero/Mesero)
+   Cumple popover="manual", Top Layer stacking y WCAG AA/2.1 Reflow (320px+)
+   ========================================================================== */
+.safari-ready-toast-region {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1095;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-width: min(24rem, calc(100vw - 1.5rem));
+    pointer-events: none;
+}
+
+.safari-ready-toast {
+    position: relative;
+    inset: auto;
+    margin: 0;
+    width: min(24rem, calc(100vw - 1.5rem));
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    color: #14532d;
+    border: 2px solid #16a34a;
+    border-left: 6px solid #15803d;
+    box-shadow: 0 12px 28px rgba(20, 83, 45, 0.22);
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(-0.5rem);
+    transition: opacity 0.2s ease, transform 0.2s ease, display 0.2s ease, overlay 0.2s ease;
+    transition-behavior: allow-discrete;
+}
+
+[popover].safari-ready-toast:is(:popover-open, .\:popover-open),
+.safari-ready-toast.safari-toast-open {
+    display: block;
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    margin: 0;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.safari-ready-toast-region [popover].safari-ready-toast:is(:popover-open, .\:popover-open) + [popover].safari-ready-toast:is(:popover-open, .\:popover-open) {
+    margin-top: 0.5rem;
+}
+
+@starting-style {
+    [popover].safari-ready-toast:is(:popover-open, .\:popover-open) {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
+}
+
+.safari-ready-toast-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.safari-ready-toast-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #14532d;
+    line-height: 1.25;
+}
+
+.safari-ready-toast-meta {
+    font-size: 0.85rem;
+    color: #1f2937;
+    margin-top: 0.25rem;
+    word-break: break-word;
+}
+
+@media (max-width: 575.98px) {
+    .safari-ready-toast-region {
+        top: 0.75rem;
+        right: 0.75rem;
+        left: 0.75rem;
+        max-width: none;
+    }
+
+    .safari-ready-toast,
+    [popover].safari-ready-toast:is(:popover-open, .\:popover-open),
+    .safari-ready-toast.safari-toast-open {
+        width: calc(100vw - 1.5rem);
+        left: 0.75rem;
+        right: 0.75rem;
+    }
+}
+
+.safari-audio-pending-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #f59e0b;
+    margin-left: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .safari-ready-toast,
+    [popover].safari-ready-toast:is(:popover-open, .\:popover-open) {
+        transition: none;
+        transform: none;
+    }
+}

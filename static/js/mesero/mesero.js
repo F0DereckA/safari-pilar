@@ -11,36 +11,16 @@ function obtenerCsrfTokenMesero() {
 }
 
 // ==========================================================================
-// Aloy - Ergonomía Táctil y Auditiva para Salón
+// Aloy & Echo - Ergonomía Táctil y Auditiva Unificada para Salón
 // ==========================================================================
+const STORAGE_AUDIO_MESERO = 'safari_mesero_audio';
+
 function reproducirChimeMesero(tipo = 'exito') {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        const now = ctx.currentTime;
-        if (tipo === 'exito') {
-            osc.frequency.setValueAtTime(523.25, now);
-            osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.08);
-            osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.16);
-            gain.gain.setValueAtTime(0.12, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-            osc.start(now);
-            osc.stop(now + 0.35);
-        } else if (tipo === 'alerta') {
-            osc.frequency.setValueAtTime(880, now);
-            osc.frequency.setValueAtTime(440, now + 0.12);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            osc.start(now);
-            osc.stop(now + 0.3);
-        }
-    } catch (e) {}
+    if (window.SafariAudioAlerts) {
+        const perfil = tipo === 'alerta' ? 'alerta' : (tipo === 'pedido_listo' ? 'pedido_listo' : 'exito');
+        return window.SafariAudioAlerts.play(perfil, STORAGE_AUDIO_MESERO);
+    }
+    return false;
 }
 
 function vibrarTactil(patron = [40, 60, 40]) {
@@ -191,6 +171,13 @@ async function marcarPedidoServidoMesero(pedidoId) {
             return;
         }
         if (resp.ok && (data.ok || data.status === 'ok')) {
+            if (window.SafariSyncBus) {
+                window.SafariSyncBus.publish({
+                    type: 'pedido_estado',
+                    pedido_id: pedidoId,
+                    nuevo_estado: 'ENTREGADO',
+                });
+            }
             await autoSincronizarMesasMesero(true);
             if (typeof swalToast !== 'undefined') {
                 swalToast.fire({ icon: 'success', title: `Comanda #COM-${String(pedidoId).padStart(4, '0')} marcada como servida en mesa.` });
@@ -1249,32 +1236,84 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Auto-sincronización fluida en tiempo real cada 1 segundo (Cajero <-> Mesero <-> Cocina <-> Barra)
+// Auto-sincronización fluida secuencial + Alerta Sonora Instantánea de Pedidos Listos
 let sincronizandoMesas = false;
 let ultimaVersionDeltaMesero = null;
+let meseroSyncTimer = null;
+let seenReadyKeysMesero = null;
+
+function inicializarSeenReadyKeysMesero() {
+    if (seenReadyKeysMesero !== null) return;
+    seenReadyKeysMesero = new Set();
+    document.querySelectorAll('#contenedorCampanaListos input[name="pedido_id"]').forEach(inp => {
+        const pid = Number(inp.value);
+        if (pid) {
+            seenReadyKeysMesero.add(`${pid}:COCINA`);
+            seenReadyKeysMesero.add(`${pid}:BARRA`);
+            seenReadyKeysMesero.add(`${pid}:GENERAL`);
+        }
+    });
+}
+
+function procesarAlertasListosMesero(listosDetalle) {
+    if (!Array.isArray(listosDetalle)) return;
+    if (seenReadyKeysMesero === null) {
+        inicializarSeenReadyKeysMesero();
+    }
+
+    const actualesKeys = new Set(listosDetalle.map(item => item.key));
+    const nuevos = listosDetalle.filter(item => item.key && !seenReadyKeysMesero.has(item.key));
+
+    // Reconciliar pedidos ya servidos/entregados
+    for (const k of Array.from(seenReadyKeysMesero)) {
+        if (!actualesKeys.has(k)) seenReadyKeysMesero.delete(k);
+    }
+    actualesKeys.forEach(k => seenReadyKeysMesero.add(k));
+
+    if (nuevos.length > 0) {
+        reproducirChimeMesero('pedido_listo');
+        vibrarTactil([120, 60, 120]);
+        if (window.SafariReadyNotifier) {
+            nuevos.slice(0, 3).forEach(item => window.SafariReadyNotifier.notifyReady(item));
+        }
+    }
+}
+
+function programarSyncMesero(delayMs) {
+    clearTimeout(meseroSyncTimer);
+    const delay = typeof delayMs === 'number'
+        ? delayMs
+        : (document.visibilityState === 'visible' ? 1500 : 4000);
+    meseroSyncTimer = setTimeout(() => autoSincronizarMesasMesero(false), delay);
+}
 
 async function autoSincronizarMesasMesero(forzar = false) {
     if (sincronizandoMesas) return;
     if (!forzar && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) {
+        programarSyncMesero();
         return;
     }
     sincronizandoMesas = true;
 
     try {
-        // 1. Paso Delta Liviano (~150 bytes): Verificar si cambió el estado general
+        // 1. Paso Delta Liviano: Verificar cambios y detectar al instante pedidos listos
         const deltaUrl = '/api/sincronizacion/estado/' + window.location.search;
         let debeActualizar = forzar;
 
         try {
-            const deltaResp = await fetch(deltaUrl, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
+            const deltaOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+            if (!forzar) deltaOpts.priority = 'low';
+            const deltaResp = await fetch(deltaUrl, deltaOpts);
             if (deltaResp.ok) {
                 const delta = await deltaResp.json();
                 if (delta.ok) {
+                    // Disparar campana y notificación visual INMEDIATAMENTE desde el delta JSON
+                    if (!forzar && Array.isArray(delta.listos_detalle)) {
+                        procesarAlertasListosMesero(delta.listos_detalle);
+                    }
+
                     if (!forzar && ultimaVersionDeltaMesero && ultimaVersionDeltaMesero === delta.version) {
-                        sincronizandoMesas = false;
-                        return; // Estado idéntico, ahorra 100KB de DOM
+                        return; // Estado idéntico, ahorra descarga HTML
                     }
                     ultimaVersionDeltaMesero = delta.version;
                     debeActualizar = true;
@@ -1285,13 +1324,12 @@ async function autoSincronizarMesasMesero(forzar = false) {
         }
 
         if (!debeActualizar) {
-            sincronizandoMesas = false;
             return;
         }
 
-        const resp = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        const domOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+        if (!forzar) domOpts.priority = 'low';
+        const resp = await fetch(window.location.href, domOpts);
         if (!resp.ok) return;
 
         const textoHtml = await resp.text();
@@ -1376,20 +1414,29 @@ async function autoSincronizarMesasMesero(forzar = false) {
         // Silencioso ante contingencias de red
     } finally {
         sincronizandoMesas = false;
+        programarSyncMesero();
     }
 }
-// Sincronización ultra-rápida a 1 segundo (1000 ms)
-let meseroInterval = setInterval(() => autoSincronizarMesasMesero(false), 1000);
+
+inicializarSeenReadyKeysMesero();
+programarSyncMesero(1200);
 
 document.addEventListener('visibilitychange', () => {
-    clearInterval(meseroInterval);
     if (document.visibilityState === 'visible') {
         autoSincronizarMesasMesero(false);
-        meseroInterval = setInterval(() => autoSincronizarMesasMesero(false), 1000);
     } else {
-        meseroInterval = setInterval(() => autoSincronizarMesasMesero(false), 5000);
+        programarSyncMesero(4000);
     }
 });
+
+if (window.SafariSyncBus) {
+    window.SafariSyncBus.subscribe((ev) => {
+        if (ev && (ev.type === 'pedido_estado' || ev.type === 'nueva_comanda' || ev.type === 'mesa_estado')) {
+            ultimaVersionDeltaMesero = null;
+            autoSincronizarMesasMesero(false);
+        }
+    });
+}
 
 // ==============================================================================
 // Aloy & Echo: Monitor de Conectividad en Terreno (Salón Exterior / WiFi Safari)
@@ -1447,13 +1494,34 @@ function inicializarMonitorRedSalón() {
     actualizar();
 }
 
-// Inicialización de Modo Sol y Ergonomía
+// Inicialización de Modo Sol, Botón de Sonido y Ergonomía
+function inicializarAudioYBusMesero() {
+    if (window.SafariAudioAlerts) {
+        window.SafariAudioAlerts.bindToggleButton({
+            buttonId: 'btnToggleMeseroAudio',
+            storageKey: STORAGE_AUDIO_MESERO,
+            testProfile: 'pedido_listo',
+            variant: 'light-header',
+        });
+    }
+    if (window.SafariSyncBus && Array.isArray(meseroConfig.mensajes)) {
+        const envioReciente = meseroConfig.mensajes.some(m =>
+            String(m.title || '').toLowerCase().includes('despachada con éxito')
+        );
+        if (envioReciente) {
+            window.SafariSyncBus.publish({ type: 'nueva_comanda' });
+        }
+    }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         inicializarModoSol();
         inicializarMonitorRedSalón();
+        inicializarAudioYBusMesero();
     });
 } else {
     inicializarModoSol();
     inicializarMonitorRedSalón();
+    inicializarAudioYBusMesero();
 }

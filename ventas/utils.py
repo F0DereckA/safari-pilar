@@ -27,7 +27,7 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
-from django.db.models import Sum
+from django.db.models import Count, Sum
 
 from .models import Producto, PrecioEspecial, DetalleVenta, RegistroPrecioEspecial
 
@@ -133,25 +133,25 @@ def calcular_resumen_caja(caja):
 
     """
 
-    ventas_pagadas = caja.ventas.filter(estado='PAGADA')
+    agrupado = (
+        caja.ventas.filter(estado='PAGADA')
+        .values('metodo_pago')
+        .annotate(total=Sum('total'), cnt=Count('id'))
+    )
+    totales_mp = {}
+    total_transacciones = 0
+    for row in agrupado:
+        mp = (row['metodo_pago'] or '').upper()
+        totales_mp[mp] = totales_mp.get(mp, Decimal('0')) + (row['total'] or Decimal('0'))
+        total_transacciones += int(row['cnt'] or 0)
 
-
-
-    ventas_efectivo = ventas_pagadas.filter(metodo_pago='EFECTIVO').aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-    ventas_debito = ventas_pagadas.filter(metodo_pago='DEBITO').aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-    ventas_credito = ventas_pagadas.filter(metodo_pago='CREDITO').aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-    ventas_transferencia = ventas_pagadas.filter(metodo_pago='TRANSFERENCIA').aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-
+    ventas_efectivo = totales_mp.get('EFECTIVO', Decimal('0'))
+    ventas_debito = totales_mp.get('DEBITO', Decimal('0'))
+    ventas_credito = totales_mp.get('CREDITO', Decimal('0'))
+    ventas_transferencia = totales_mp.get('TRANSFERENCIA', Decimal('0'))
 
     total_ventas = ventas_efectivo + ventas_debito + ventas_credito + ventas_transferencia
-
     total_efectivo_esperado = Decimal(str(caja.monto_apertura)) + ventas_efectivo
-
-    total_transacciones = ventas_pagadas.count()
 
 
 
@@ -2687,7 +2687,7 @@ def calcular_desglose_tributario_ventas(ventas_qs):
     Separa el total cobrado en consumo afecto bruto, neto sin IVA (19%), IVA débito fiscal,
     propinas exentas (Ley 20.918) y ajuste de redondeo (Ley 20.956).
     """
-    from django.db.models import Sum
+    from django.db.models import Count, Sum
 
     agg = ventas_qs.aggregate(
         total_ventas=Sum('total'),
@@ -2760,7 +2760,7 @@ def generar_reporte_estadistico_integral(
 
     from django.db import models
 
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Count, Sum, Count, Q
 
     from django.db.models.functions import TruncMonth, TruncDate, TruncHour
 

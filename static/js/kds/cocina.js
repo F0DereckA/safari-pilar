@@ -11,96 +11,37 @@ setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
 // ==============================================================================
-// Echo & Aloy: Alerta Sonora de Comandas (Web Audio API - Campana Gastronómica)
-// Sonido acústico armónico estilo campana de cocina (E5 -> A5, ~700 ms)
-// Cero dependencias externas ni archivos MP3. Fiabilidad total en hardware KDS.
+// Echo & Aloy: Alerta Sonora de Comandas (Motor Unificado Web Audio API)
 // ==============================================================================
 const KdsAudio = (() => {
-    let audioCtx = null;
-    let habilitado = localStorage.getItem('safari_kds_audio_cocina') !== 'false';
-
-    function initContext() {
-        if (!audioCtx) {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (AudioContextClass) {
-                audioCtx = new AudioContextClass();
-            }
-        }
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-    }
-
-    function reproducirTono(freq, inicio, duracion, vol = 0.25, tipo = 'triangle') {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.type = tipo;
-        osc.frequency.setValueAtTime(freq, inicio);
-
-        // Curva envolvente: ataque suave anti-clipping y decaimiento acústico natural
-        gain.gain.setValueAtTime(0.0001, inicio);
-        gain.gain.exponentialRampToValueAtTime(vol, inicio + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001, inicio + duracion);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start(inicio);
-        osc.stop(inicio + duracion + 0.05);
-    }
+    const STORAGE_KEY = 'safari_kds_audio_cocina';
 
     function emitirCampanaComanda() {
-        if (!habilitado) return;
-        try {
-            initContext();
-            if (!audioCtx) return;
-
-            const t = audioCtx.currentTime;
-            // Doble campana gastronómica de cocina (~700 ms total)
-            // Golpe 1 (E5 / 659.25 Hz, armónico cálido, duración 280 ms)
-            reproducirTono(659.25, t, 0.28, 0.25, 'triangle');
-            // Golpe 2 (A5 / 880.00 Hz, resonancia acampanada abierta, duración 520 ms)
-            reproducirTono(880.00, t + 0.18, 0.52, 0.30, 'triangle');
-        } catch (e) {
-            console.debug('Aviso auditivo omitido:', e);
+        if (window.SafariAudioAlerts) {
+            return window.SafariAudioAlerts.play('cocina', STORAGE_KEY);
         }
+        return false;
     }
 
-    function toggleAudio() {
-        habilitado = !habilitado;
-        localStorage.setItem('safari_kds_audio_cocina', habilitado);
-        actualizarBoton();
-        if (habilitado) emitirCampanaComanda();
-    }
-
-    function actualizarBoton() {
-        const btn = document.getElementById('btnToggleKdsAudio');
-        if (!btn) return;
-        if (habilitado) {
-            btn.className = 'btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
-            btn.innerHTML = '<i class="bi bi-volume-up-fill" aria-hidden="true"></i> <span class="d-none d-md-inline small fw-bold">Sonido ON</span>';
-            btn.setAttribute('aria-pressed', 'true');
-            btn.title = 'Alerta sonora de cocina activa (Campana E5-A5). Clic para silenciar.';
-        } else {
-            btn.className = 'btn btn-sm btn-outline-light text-on-brand-muted rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm';
-            btn.innerHTML = '<i class="bi bi-volume-mute-fill" aria-hidden="true"></i> <span class="d-none d-md-inline small fw-bold">Sonido OFF</span>';
-            btn.setAttribute('aria-pressed', 'false');
-            btn.title = 'Alerta sonora silenciada. Clic para activar.';
+    function isHabilitado() {
+        if (window.SafariAudioAlerts) {
+            return window.SafariAudioAlerts.isEnabled(STORAGE_KEY);
         }
+        return localStorage.getItem(STORAGE_KEY) !== 'false';
     }
 
     function init() {
-        actualizarBoton();
-        const btn = document.getElementById('btnToggleKdsAudio');
-        if (btn) btn.addEventListener('click', toggleAudio);
-        ['click', 'touchstart'].forEach(evt => {
-            document.addEventListener(evt, initContext, { once: true, passive: true });
-        });
+        if (window.SafariAudioAlerts) {
+            window.SafariAudioAlerts.bindToggleButton({
+                buttonId: 'btnToggleKdsAudio',
+                storageKey: STORAGE_KEY,
+                testProfile: 'cocina',
+                variant: 'dark-header',
+            });
+        }
     }
 
-    return { init, emitirCampanaComanda, toggleAudio, isHabilitado: () => habilitado };
+    return { init, emitirCampanaComanda, isHabilitado };
 })();
 
 if (document.readyState === 'loading') {
@@ -109,31 +50,48 @@ if (document.readyState === 'loading') {
     KdsAudio.init();
 }
 
-// Sincronización Delta Liviana (~150 bytes) y Auto-actualización fluida en segundo plano con Scroll Lock
+// Sincronización Delta Liviana y Auto-actualización secuencial sin apilamiento + Bus Instantáneo
 let actualizandoKds = false;
 let ultimaVersionDeltaCocina = null;
 let prevColaCocina = null;
+let prevActivosIdsCocina = null;
+let kdsSyncTimer = null;
+
+function buildDeltaUrlCocina() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('zona', 'COCINA');
+    return '/api/sincronizacion/estado/?' + params.toString();
+}
+
+function programarSyncCocina(delayMs) {
+    clearTimeout(kdsSyncTimer);
+    const delay = typeof delayMs === 'number'
+        ? delayMs
+        : (document.visibilityState === 'visible' ? 1500 : 5000);
+    kdsSyncTimer = setTimeout(() => autoActualizarCocina(false), delay);
+}
 
 async function autoActualizarCocina(forzar = false) {
     if (actualizandoKds) return;
-    if (!forzar && document.querySelector('.modal.show')) return;
+    if (!forzar && document.querySelector('.modal.show')) {
+        programarSyncCocina();
+        return;
+    }
 
     actualizandoKds = true;
     const scrollActual = window.scrollY;
 
     try {
-        // 1. Paso Delta Liviano: consultar versión hash de 150 bytes
-        const deltaUrl = '/api/sincronizacion/estado/' + window.location.search;
+        const deltaUrl = buildDeltaUrlCocina();
         let huboCambios = forzar;
 
         try {
-            const deltaResp = await fetch(deltaUrl, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
+            const fetchOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+            if (!forzar) fetchOpts.priority = 'low';
+            const deltaResp = await fetch(deltaUrl, fetchOpts);
             if (deltaResp.ok) {
                 const delta = await deltaResp.json();
                 if (delta.ok) {
-                    // Refrescar KPIs inmediatamente desde el delta sin renderizar HTML
                     const kpiMap = {
                         'kdsBadgePendientes': delta.pendientes,
                         'kdsBadgePreparacion': delta.preparacion,
@@ -145,14 +103,22 @@ async function autoActualizarCocina(forzar = false) {
                         if (el && el.innerText !== String(val)) el.innerText = String(val);
                     }
 
-                    // Echo & Aloy: Detección sonora ante nuevas comandas entrantes
-                    if (prevColaCocina !== null && delta.cola_total > prevColaCocina) {
-                        KdsAudio.emitirCampanaComanda();
+                    // Detección sonora fiable por IDs entrantes y aumento de cola
+                    const actualesArr = Array.isArray(delta.activos_ids) ? delta.activos_ids : null;
+                    if (prevColaCocina !== null) {
+                        const hayIdNuevo = actualesArr && prevActivosIdsCocina
+                            ? actualesArr.some((id) => !prevActivosIdsCocina.has(id))
+                            : false;
+                        if (hayIdNuevo || delta.cola_total > prevColaCocina) {
+                            KdsAudio.emitirCampanaComanda();
+                        }
+                    }
+                    if (actualesArr) {
+                        prevActivosIdsCocina = new Set(actualesArr);
                     }
                     prevColaCocina = delta.cola_total;
 
                     if (!forzar && ultimaVersionDeltaCocina && ultimaVersionDeltaCocina === delta.version) {
-                        actualizandoKds = false;
                         return; // Zero overhead: el estado no ha cambiado
                     }
                     ultimaVersionDeltaCocina = delta.version;
@@ -160,27 +126,23 @@ async function autoActualizarCocina(forzar = false) {
                 }
             }
         } catch (e) {
-            huboCambios = true; // Si falla el delta, fallback seguro a descarga normal
+            huboCambios = true;
         }
 
         if (!huboCambios) {
-            actualizandoKds = false;
             return;
         }
 
-        // 2. Si la versión cambió, descargar DOM actualizado
-        const resp = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        const domOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+        if (!forzar) domOpts.priority = 'low';
+        const resp = await fetch(window.location.href, domOpts);
         if (!resp.ok) {
-            actualizandoKds = false;
             return;
         }
         const textoHtml = await resp.text();
         const parser = new DOMParser();
         const nuevoDoc = parser.parseFromString(textoHtml, 'text/html');
 
-        // Actualizar tarjetas de comandas
         const nuevoContenedor = nuevoDoc.getElementById('contenedorKdsComandas');
         const actualContenedor = document.getElementById('contenedorKdsComandas');
         if (nuevoContenedor && actualContenedor) {
@@ -195,7 +157,6 @@ async function autoActualizarCocina(forzar = false) {
             actualHist.innerHTML = nuevoHist.innerHTML;
         }
 
-        // Actualizar badges KPI superiores
         ['kdsBadgePendientes', 'kdsBadgePreparacion', 'kdsBadgeListos', 'kdsBadgeCola'].forEach(id => {
             const nuevoEl = nuevoDoc.getElementById(id);
             const actualEl = document.getElementById(id);
@@ -209,6 +170,7 @@ async function autoActualizarCocina(forzar = false) {
         // Silencioso ante fluctuaciones de red
     } finally {
         actualizandoKds = false;
+        programarSyncCocina();
     }
 }
 
@@ -258,18 +220,25 @@ window.toggleStockProducto = async function(productoId, btn) {
     }
 };
 
-// Auto-actualización ultra-rápida a 1 segundo (1000 ms) con ahorro inteligente de recursos
-let kdsInterval = setInterval(autoActualizarCocina, 1000);
+// Sincronización secuencial sin apilamiento + respuesta instantánea por BroadcastChannel
+programarSyncCocina(1200);
 
 document.addEventListener('visibilitychange', () => {
-    clearInterval(kdsInterval);
     if (document.visibilityState === 'visible') {
-        autoActualizarCocina();
-        kdsInterval = setInterval(autoActualizarCocina, 1000);
+        autoActualizarCocina(false);
     } else {
-        kdsInterval = setInterval(autoActualizarCocina, 5000);
+        programarSyncCocina(5000);
     }
 });
+
+if (window.SafariSyncBus) {
+    window.SafariSyncBus.subscribe((ev) => {
+        if (ev && (ev.type === 'nueva_comanda' || ev.type === 'pedido_estado')) {
+            ultimaVersionDeltaCocina = null;
+            autoActualizarCocina(false);
+        }
+    });
+}
 
 // Modo Concentración Táctico KDS (Cocina)
 function inicializarModoCondensado() {
@@ -355,6 +324,14 @@ async function enviarAccionKdsAjax(e, form) {
             return;
         }
         ultimaVersionDeltaCocina = null;
+        if (window.SafariSyncBus) {
+            window.SafariSyncBus.publish({
+                type: 'pedido_estado',
+                pedido_id: data.pedido_id,
+                nuevo_estado: data.nuevo_estado,
+                estacion: data.estacion || 'COCINA',
+            });
+        }
         await autoActualizarCocina(true);
         window.scrollTo(0, scrollPos);
     } catch (err) {

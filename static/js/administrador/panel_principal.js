@@ -119,21 +119,60 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+// Sincronización delta-first del panel principal de Administración (ahorra CPU en producción)
 let actualizandoAdminLive = false;
+let ultimaVersionDeltaAdmin = null;
+let adminSyncTimer = null;
+
+function programarSyncAdmin(delayMs) {
+    clearTimeout(adminSyncTimer);
+    if (document.visibilityState !== 'visible') return; // Pausar en pestaña oculta
+    const delay = typeof delayMs === 'number' ? delayMs : 4000;
+    adminSyncTimer = setTimeout(autoActualizarAdminLive, delay);
+}
+
 async function autoActualizarAdminLive() {
     if (actualizandoAdminLive) return;
-    if (document.querySelector('.modal.show')) return; // No interrumpir si hay un modal abierto
+    if (document.visibilityState !== 'visible') return;
+    if (document.querySelector('.modal.show')) {
+        programarSyncAdmin();
+        return;
+    }
     actualizandoAdminLive = true;
     const scrollPos = window.scrollY;
 
     try {
-        const resp = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!resp.ok) {
-            actualizandoAdminLive = false;
-            return;
+        let debeRecargarDom = false;
+        try {
+            const deltaResp = await fetch('/api/sincronizacion/estado/?zona=ADMIN', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                priority: 'low',
+            });
+            if (deltaResp.ok) {
+                const delta = await deltaResp.json();
+                if (delta.ok) {
+                    if (ultimaVersionDeltaAdmin === null) {
+                        ultimaVersionDeltaAdmin = delta.version;
+                        return;
+                    }
+                    if (ultimaVersionDeltaAdmin === delta.version) {
+                        return; // Sin cambios reales: evitar get_locales_data() y HTML parse
+                    }
+                    ultimaVersionDeltaAdmin = delta.version;
+                    debeRecargarDom = true;
+                }
+            }
+        } catch (_err) {
+            debeRecargarDom = true;
         }
+
+        if (!debeRecargarDom) return;
+
+        const resp = await fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            priority: 'low',
+        });
+        if (!resp.ok) return;
         const html = await resp.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -144,7 +183,6 @@ async function autoActualizarAdminLive() {
             actualCont.innerHTML = nuevoCont.innerHTML;
         }
 
-        // Actualizar contador de alertas
         const nA = doc.getElementById('badgeAlertasCount');
         const aA = document.getElementById('badgeAlertasCount');
         if (nA && aA && nA.innerText !== aA.innerText) {
@@ -152,21 +190,19 @@ async function autoActualizarAdminLive() {
         }
 
         window.scrollTo(0, scrollPos);
-    } catch(e) {
-        // Silencioso ante contingencias de red (Tarea 7)
+    } catch (e) {
+        // Silencioso ante contingencias de red
     } finally {
         actualizandoAdminLive = false;
+        programarSyncAdmin();
     }
 }
-// Sincronizar en vivo cada 1.5 segundos (1500 ms) con gestion inteligente de recursos
-let adminInterval = setInterval(autoActualizarAdminLive, 1500);
+
+programarSyncAdmin(4000);
 
 document.addEventListener('visibilitychange', () => {
-    clearInterval(adminInterval);
+    clearTimeout(adminSyncTimer);
     if (document.visibilityState === 'visible') {
         autoActualizarAdminLive();
-        adminInterval = setInterval(autoActualizarAdminLive, 1500);
-    } else {
-        adminInterval = setInterval(autoActualizarAdminLive, 6000);
     }
 });

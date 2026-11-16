@@ -84,57 +84,48 @@ def get_locales_data():
 
     # Cargar todos los puntos de venta reales registrados en la BD (cero métricas simuladas)
 
-    locales_bd = PuntoVenta.objects.all().order_by('id')
-
+    locales_bd = list(PuntoVenta.objects.all().order_by('id'))
     locales = {}
 
-
-
     hoy = timezone.localdate()
-
     ahora_dt = timezone.localtime()
-
     ahora_hora = ahora_dt.time()
 
-
-
     # Regla Operativa Oficial Parque Safari: Todos los locales abren a las 10:00 y cierran a las 18:00 (10:00 AM a 6:00 PM)
-
     hora_apertura = datetime.time(10, 0)
-
     hora_cierre = datetime.time(18, 0)
-
     en_horario = (hora_apertura <= ahora_hora < hora_cierre)
 
+    # Batch load para evitar consultas N+1 por cada local en la vista administrativa
+    ventas_por_local = {}
+    for rv in (
+        Venta.objects.filter(fecha_hora__date=hoy)
+        .exclude(estado__in=['ANULADA', 'CANCELADA'])
+        .select_related('cajero', 'cajero__perfil', 'mesa')
+        .prefetch_related('detalles__producto__categoria')
+        .order_by('-fecha_hora')
+    ):
+        ventas_por_local.setdefault(rv.punto_venta_id, []).append(rv)
 
+    cajas_por_local_list = {}
+    for c in Caja.objects.filter(jornada__fecha=hoy).select_related('cajero'):
+        cajas_por_local_list.setdefault(c.punto_venta_id, []).append(c)
+
+    perfiles_por_local = {}
+    for p in PerfilEmpleado.objects.filter(punto_venta_actual__isnull=False, activo=True).select_related('usuario'):
+        perfiles_por_local.setdefault(p.punto_venta_actual_id, []).append(p)
 
     cajas_por_local = {}
-
     paleta_cat = ["#ef4444", "#f59e0b", "#0284c7", "#9333ea", "#16a34a"]
-
     iconos_mp = {
-
         "Efectivo": "bi-cash-coin",
-
         "Tarjeta Débito": "bi-credit-card",
-
         "Tarjeta Crédito": "bi-credit-card-2-front",
-
         "Transferencia": "bi-bank",
-
     }
-
     for pv in locales_bd:
-
-        # Regla Parque Safari: Las ventas y cierres corresponden exclusivamente al día actual (hoy).
-        real_ventas_hoy = Venta.objects.filter(
-            punto_venta=pv,
-            fecha_hora__date=hoy
-        ).exclude(
-            estado__in=['ANULADA', 'CANCELADA']
-        ).select_related('cajero', 'cajero__perfil', 'mesa').prefetch_related('detalles__producto__categoria').order_by('-fecha_hora')
-
-        cajas_hoy = list(Caja.objects.filter(punto_venta=pv, jornada__fecha=hoy).select_related('cajero'))
+        real_ventas_hoy = ventas_por_local.get(pv.id, [])
+        cajas_hoy = cajas_por_local_list.get(pv.id, [])
         caja_apertura = sum(int(c.monto_apertura or 0) for c in cajas_hoy)
         cajas_por_local[pv.id] = {c.cajero_id: c for c in cajas_hoy}
 
@@ -266,8 +257,8 @@ def get_locales_data():
 
     # Sincronizar dotación de personal real desde la BD respetando el límite de 1 puesto de trabajo
     for loc_id, loc in locales.items():
-        perfiles = PerfilEmpleado.objects.filter(punto_venta_actual_id=loc_id, activo=True).select_related('usuario')
-        if perfiles.exists():
+        perfiles = perfiles_por_local.get(loc_id, [])
+        if perfiles:
             cajas_local = cajas_por_local.get(loc_id, {})
             personal_list = []
             for p in perfiles:
@@ -1749,96 +1740,64 @@ def vendedor(request):
 
 
 
+            tiene_listo_parcial = (
+                ped.estado not in ('LISTO', 'ENTREGADO')
+                and (
+                    (tiene_cocina and ped.estado_cocina == 'LISTO')
+                    or (tiene_barra and ped.estado_barra == 'LISTO')
+                )
+            )
+
             if ped.estado == 'ENTREGADO':
-
                 estado_ui = 'entregado'
-
             elif ped.estado == 'LISTO':
-
                 estado_ui = 'listo'
-
                 kpi_listos += 1
-
                 kpi_en_desarrollo += 1
-
             else:
-
                 kpi_en_desarrollo += 1
-
+                if tiene_listo_parcial:
+                    kpi_listos += 1
                 if tiene_cocina:
-
                     kpi_cocina += 1
-
                 if tiene_barra:
-
                     kpi_barra += 1
-
                 estado_ui = 'cocina' if tiene_cocina else 'barra'
 
-
-
             if tiene_cocina and tiene_barra:
-
                 destino_txt = 'Cocina & Barra'
-
             elif tiene_cocina:
-
                 destino_txt = 'Cocina Caliente'
-
             else:
-
                 destino_txt = 'Barra & Cafetería'
 
-
-
             if ped.venta.mesa:
-
                 ident = ped.venta.mesa.identificador
-
                 tipo_entrega = ident if 'mesa' in ident.lower() else f"Mesa {ident}"
-
             else:
-
                 tipo_entrega = "Mostrador / Para Llevar"
 
-
-
             pedidos_cajero_data.append({
-
                 'pedido_id': ped.id,
-
                 'id': f"COM-{ped.id:04d}",
-
                 'venta_id': ped.venta_id,
-
                 'hora': timezone.localtime(ped.creado_en).strftime('%H:%M'),
-
                 'tipoEntrega': tipo_entrega,
-
                 'esMesa': bool(ped.venta.mesa),
-
                 'items': items_serializados,
-
                 'total': int(ped.venta.total),
-
                 'ventaEstado': ped.venta.estado,
-
                 'estado': estado_ui,
-
                 'estadoBd': ped.estado,
-
+                'estadoCocina': ped.estado_cocina,
+                'estadoBarra': ped.estado_barra,
+                'tieneListoParcial': tiene_listo_parcial,
                 'estadoDisplay': ped.get_estado_display(),
-
                 'tieneCocina': tiene_cocina,
-
                 'tieneBarra': tiene_barra,
-
                 'destino': destino_txt,
-
                 'cajero': ped.venta.cajero.get_full_name() or ped.venta.cajero.username,
-
                 'observacion': ped.observaciones or '',
-
             })
 
 
@@ -8095,45 +8054,30 @@ def mesero(request):
     cuentas_abiertas_data = {}
 
     for va in ventas_abiertas:
-
-        rondas_count = va.pedidos.count()
-
+        rondas_count = len(va.pedidos.all())
         detalles_list = []
-
         for d in va.detalles.all():
-
             detalles_list.append({
-
                 'nombre': d.producto.nombre,
-
                 'cantidad': d.cantidad,
-
                 'precio': int(d.precio_aplicado),
-
                 'subtotal': int(d.subtotal)
-
             })
-
+        inicio_mesa = va.mesa.fecha_ocupacion or va.fecha_hora
+        duracion_min = 0.0
+        if inicio_mesa:
+            delta_seg = (ahora_dt - timezone.localtime(inicio_mesa)).total_seconds()
+            duracion_min = max(0.0, round(delta_seg / 60.0, 1))
         cuentas_abiertas_data[str(va.mesa.id)] = {
-
             'venta_id': va.id,
-
             'mesa_id': va.mesa.id,
-
             'mesa_identificador': va.mesa.identificador,
-
             'cajero_nombre': va.cajero.get_full_name() or va.cajero.username,
-
             'total': int(va.total),
-
             'rondas': rondas_count,
-
             'hora_apertura': timezone.localtime(va.fecha_hora).strftime('%H:%M'),
-
-            'duracion_minutos': va.mesa.get_duracion_ocupacion_minutos() if va.mesa else 0.0,
-
+            'duracion_minutos': duracion_min,
             'items': detalles_list
-
         }
 
 
@@ -11095,183 +11039,217 @@ def administrador_consumos(request):
 
 
 @requiere_rol(['COCINERO', 'ADMINISTRADOR', 'MESERO', 'CAJERO'])
-
 def api_sincronizacion_estado(request):
-
     """
-
-    Endpoint delta de alta eficiencia (~150 bytes JSON).
-
-    Permite a KDS (Cocina/Barra), Mesero y Cajero verificar si hubo cambios en pedidos o mesas
-
-    antes de solicitar renderizado o descarga completa de HTML (Reduce carga de red y CPU en un 95%).
-
+    Endpoint delta de alta eficiencia (~150-350 bytes JSON).
+    Permite a KDS (Cocina/Barra), Mesero, Cajero y Administrador verificar cambios reales
+    mediante firma MD5 antes de descargar HTML, además de notificar instantáneamente pedidos LISTOS.
     """
-
     hoy = timezone.localdate()
-
     local_id = request.GET.get('local_id')
-
     zona = request.GET.get('zona', 'TODAS').upper()
 
+    if zona == 'ADMIN' and not local_id:
+        perfil = getattr(request.user, 'perfil', None)
+        if not (request.user.is_superuser or (perfil and perfil.rol == 'ADMINISTRADOR')):
+            return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): exclusivo de administración.'}, status=403)
 
+        ult_venta = Venta.objects.order_by('-id').values_list('id', 'estado', 'total').first()
+        venta_sig = f"{ult_venta[0]}:{ult_venta[1]}:{int(ult_venta[2] or 0)}" if ult_venta else "0"
+        ventas_hoy_cnt = Venta.objects.filter(fecha_hora__date=hoy).exclude(estado__in=['ANULADA', 'CANCELADA']).count()
+        ult_ped = Pedido.objects.order_by('-actualizado_en', '-id').values_list(
+            'id', 'estado', 'estado_cocina', 'estado_barra', 'actualizado_en'
+        ).first()
+        ts_ped = int(ult_ped[4].timestamp()) if ult_ped and ult_ped[4] else 0
+        ped_sig = f"{ult_ped[0]}:{ult_ped[1]}:{ult_ped[2]}:{ult_ped[3]}:{ts_ped}" if ult_ped else "0"
+        alertas_no_leidas = AlertaTraslado.objects.filter(leida=False).count()
+        cajas_abiertas_cnt = Caja.objects.filter(estado='ABIERTA').count()
+
+        import hashlib
+        sig_str = f"ADMIN:{ventas_hoy_cnt}:{venta_sig}:{ped_sig}:{alertas_no_leidas}:{cajas_abiertas_cnt}"
+        version_hash = hashlib.md5(sig_str.encode('utf-8')).hexdigest()[:12]
+
+        resp = JsonResponse({
+            'ok': True,
+            'version': version_hash,
+            'alertas_no_leidas': alertas_no_leidas,
+            'cajas_abiertas': cajas_abiertas_cnt,
+            'ventas_hoy': ventas_hoy_cnt,
+            'ts': ts_ped,
+        })
+        resp['Cache-Control'] = 'no-store'
+        return resp
 
     local_actual = None
-
     if local_id:
-
         try:
-
             local_actual = PuntoVenta.objects.filter(id=int(local_id), activo=True).first()
-
         except (ValueError, TypeError):
-
             local_actual = None
-
         if local_actual and not validar_acceso_rls_local(request, local_actual):
-
             return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): no puedes consultar estados de otro local.'}, status=403)
 
     if not local_actual:
-
         perfil = getattr(request.user, 'perfil', None)
-
         if perfil and perfil.punto_venta_actual:
-
             local_actual = perfil.punto_venta_actual
-
         elif request.user.is_superuser or (perfil and perfil.rol == 'ADMINISTRADOR'):
-
             local_actual = PuntoVenta.objects.filter(activo=True).first()
-
         else:
-
             return JsonResponse({'ok': False, 'error': 'Acceso denegado (RLS): trabajador sin punto de venta asignado.'}, status=403)
 
-
-
     ahora_dt = timezone.localtime()
-
     hace_4_horas = ahora_dt - datetime.timedelta(hours=4)
 
-
-
-    pedidos_qs = Pedido.objects.filter(
-
-        venta__punto_venta=local_actual,
-
-        creado_en__date=hoy,
-
-        creado_en__gte=hace_4_horas,
-
-        estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO']
-
-    ).exclude(
-
-        venta__estado__in=['ANULADA', 'CANCELADA']
-
-    ).exclude(
-
-        venta__caja__jornada__estado='CERRADA'
-
+    pedidos_activos = list(
+        Pedido.objects.filter(
+            venta__punto_venta=local_actual,
+            creado_en__date=hoy,
+            creado_en__gte=hace_4_horas,
+            estado__in=['PENDIENTE', 'EN_PREPARACION', 'LISTO'],
+        )
+        .exclude(venta__estado__in=['ANULADA', 'CANCELADA'])
+        .exclude(venta__caja__jornada__estado='CERRADA')
+        .select_related('venta__mesa')
+        .prefetch_related('detalles__producto__categoria')
     )
 
-
+    tot_pendientes = 0
+    tot_preparacion = 0
+    tot_listos = 0
+    activos_ids = []
+    listos_detalle = []
 
     if zona in ('COCINA', 'BARRA'):
-
         campo_zona = 'estado_cocina' if zona == 'COCINA' else 'estado_barra'
-
-        pedidos_lista_zona = []
-
-        for p in pedidos_qs.prefetch_related('detalles__producto__categoria'):
-
+        for p in pedidos_activos:
             est_zona = getattr(p, campo_zona)
-
             if zona in p.get_estaciones_activas() and est_zona in ('PENDIENTE', 'EN_PREPARACION', 'LISTO'):
-
-                pedidos_lista_zona.append(est_zona)
-
-        tot_pendientes = sum(1 for est in pedidos_lista_zona if est == 'PENDIENTE')
-
-        tot_preparacion = sum(1 for est in pedidos_lista_zona if est == 'EN_PREPARACION')
-
-        tot_listos = sum(1 for est in pedidos_lista_zona if est == 'LISTO')
-
+                activos_ids.append(p.id)
+                if est_zona == 'PENDIENTE':
+                    tot_pendientes += 1
+                elif est_zona == 'EN_PREPARACION':
+                    tot_preparacion += 1
+                elif est_zona == 'LISTO':
+                    tot_listos += 1
     else:
+        for p in pedidos_activos:
+            activos_ids.append(p.id)
+            if p.estado == 'PENDIENTE':
+                tot_pendientes += 1
+            elif p.estado == 'EN_PREPARACION':
+                tot_preparacion += 1
+            if p.estado == 'LISTO' or p.estado_cocina == 'LISTO' or p.estado_barra == 'LISTO':
+                tot_listos += 1
 
-        tot_pendientes = pedidos_qs.filter(estado='PENDIENTE').count()
-
-        tot_preparacion = pedidos_qs.filter(estado='EN_PREPARACION').count()
-
-        tot_listos = pedidos_qs.filter(
-
-            Q(estado='LISTO') | Q(estado_cocina='LISTO') | Q(estado_barra='LISTO')
-
-        ).count()
+            estaciones = p.get_estaciones_activas()
+            mesa_lbl = p.venta.mesa.identificador if (p.venta and p.venta.mesa) else 'Mostrador'
+            es_mesa = bool(p.venta and p.venta.mesa_id)
+            codigo_com = f"COM-{p.id:04d}"
+            agregado_est = False
+            if 'COCINA' in estaciones and p.estado_cocina == 'LISTO':
+                listos_detalle.append({
+                    'key': f"{p.id}:COCINA",
+                    'pedido_id': p.id,
+                    'codigo': codigo_com,
+                    'estacion': 'Cocina',
+                    'mesa': mesa_lbl,
+                    'es_mesa': es_mesa,
+                })
+                agregado_est = True
+            if 'BARRA' in estaciones and p.estado_barra == 'LISTO':
+                listos_detalle.append({
+                    'key': f"{p.id}:BARRA",
+                    'pedido_id': p.id,
+                    'codigo': codigo_com,
+                    'estacion': 'Barra',
+                    'mesa': mesa_lbl,
+                    'es_mesa': es_mesa,
+                })
+                agregado_est = True
+            if p.estado == 'LISTO' and not agregado_est:
+                listos_detalle.append({
+                    'key': f"{p.id}:GENERAL",
+                    'pedido_id': p.id,
+                    'codigo': codigo_com,
+                    'estacion': 'Cocina/Barra',
+                    'mesa': mesa_lbl,
+                    'es_mesa': es_mesa,
+                })
 
     tot_cola = tot_pendientes + tot_preparacion + tot_listos
 
+    # Firma reactiva de mesas: refleja cualquier cambio (HABILITADA, OCUPADA, RESERVADA, INACTIVA)
+    mesas_loc = list(Mesa.objects.filter(punto_venta=local_actual).order_by('id').values_list('id', 'estado'))
+    mesas_ocupadas = sum(1 for _, est in mesas_loc if est == 'OCUPADA')
+    mesas_sig = "-".join(f"{mid}:{est}" for mid, est in mesas_loc)
 
+    # Firma reactiva de cuentas abiertas de salón (1 consulta agregada)
+    ventas_agg = Venta.objects.filter(punto_venta=local_actual, estado='ABIERTA').aggregate(
+        cnt=Count('id'),
+        total=models.Sum('total'),
+    )
+    ventas_abiertas_count = int(ventas_agg['cnt'] or 0)
+    ventas_abiertas_sum = int(ventas_agg['total'] or 0)
 
-    # Firma reactiva de mesas: refleja cualquier cambio (LIBRE, OCUPADA, SUCIA, RESERVADA)
-    mesas_loc = list(Mesa.objects.filter(punto_venta=local_actual).order_by('id').values('id', 'estado'))
-    mesas_ocupadas = sum(1 for m in mesas_loc if m['estado'] == 'OCUPADA')
-    mesas_sig = "-".join(f"{m['id']}:{m['estado']}" for m in mesas_loc)
+    # Última venta y último pedido (solo columnas escalares indexadas)
+    ult_venta = (
+        Venta.objects.filter(punto_venta=local_actual, fecha_hora__date=hoy)
+        .order_by('-id')
+        .values_list('id', 'estado', 'total')
+        .first()
+    )
+    venta_sig = f"{ult_venta[0]}:{ult_venta[1]}:{int(ult_venta[2] or 0)}" if ult_venta else "0"
 
-    # Firma reactiva de cuentas abiertas de salón (conteo y suma de deuda)
-    ventas_abiertas = Venta.objects.filter(punto_venta=local_actual, estado='ABIERTA')
-    ventas_abiertas_count = ventas_abiertas.count()
-    ventas_abiertas_sum = int(ventas_abiertas.aggregate(total=models.Sum('total'))['total'] or 0)
-
-    # Última venta (pagada, ronda agregada o modificada)
-    ult_venta = Venta.objects.filter(punto_venta=local_actual, fecha_hora__date=hoy).order_by('-id').first()
-    venta_sig = f"{ult_venta.id}:{ult_venta.estado}:{int(ult_venta.total)}" if ult_venta else "0"
-
-    # Último pedido modificado en general (incluyendo ENTREGADO y estados por estación)
-    ult_ped_general = Pedido.objects.filter(venta__punto_venta=local_actual, creado_en__date=hoy).order_by('-actualizado_en').first()
-    ts_ped = int(ult_ped_general.actualizado_en.timestamp()) if ult_ped_general else 0
-    ped_estado_sig = f"{ult_ped_general.id}:{ult_ped_general.estado}:{ult_ped_general.estado_cocina}:{ult_ped_general.estado_barra}:{ts_ped}" if ult_ped_general else "0"
+    ult_ped_general = (
+        Pedido.objects.filter(venta__punto_venta=local_actual, creado_en__date=hoy)
+        .order_by('-actualizado_en', '-id')
+        .values_list('id', 'estado', 'estado_cocina', 'estado_barra', 'actualizado_en')
+        .first()
+    )
+    ts_ped = int(ult_ped_general[4].timestamp()) if ult_ped_general and ult_ped_general[4] else 0
+    ped_estado_sig = (
+        f"{ult_ped_general[0]}:{ult_ped_general[1]}:{ult_ped_general[2]}:{ult_ped_general[3]}:{ts_ped}"
+        if ult_ped_general else "0"
+    )
 
     stock_count = Producto.objects.filter(activo=True).count()
 
-    jornada_sync, _, _ = _validar_jornada_y_caja_abierta_local(local_actual, lock=False)
+    jornada_sync_id = Jornada.objects.filter(estado='ABIERTA', fecha=hoy).values_list('id', flat=True).first()
     cajas_abiertas_sig = (
         "-".join(
             str(cid) for cid in Caja.objects.filter(
-                punto_venta=local_actual, jornada=jornada_sync, estado='ABIERTA'
+                punto_venta=local_actual, jornada_id=jornada_sync_id, estado='ABIERTA'
             ).order_by('id').values_list('id', flat=True)
         )
-        if jornada_sync else "sin_jornada"
+        if jornada_sync_id else "sin_jornada"
     )
+    listos_keys_sig = ",".join(item['key'] for item in listos_detalle)
+    activos_sig = ",".join(str(pid) for pid in activos_ids)
 
     import hashlib
-    sig_str = f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:{mesas_sig}:{ventas_abiertas_count}:{ventas_abiertas_sum}:{venta_sig}:{ped_estado_sig}:{stock_count}:{jornada_sync.id if jornada_sync else 0}:{cajas_abiertas_sig}"
+    sig_str = (
+        f"{local_actual.id if local_actual else 0}:{tot_cola}:{tot_pendientes}:{tot_preparacion}:{tot_listos}:"
+        f"{mesas_sig}:{ventas_abiertas_count}:{ventas_abiertas_sum}:{venta_sig}:{ped_estado_sig}:"
+        f"{stock_count}:{jornada_sync_id or 0}:{cajas_abiertas_sig}:{listos_keys_sig}:{activos_sig}"
+    )
     version_hash = hashlib.md5(sig_str.encode('utf-8')).hexdigest()[:12]
 
-
-
-    return JsonResponse({
-
+    resp = JsonResponse({
         'ok': True,
-
         'version': version_hash,
-
         'cola_total': tot_cola,
-
         'pendientes': tot_pendientes,
-
         'preparacion': tot_preparacion,
-
         'listos': tot_listos,
-
         'mesas_ocupadas': mesas_ocupadas,
-
         'pedidos_listos': tot_listos,
-
-        'ts': ts_ped
-
+        'activos_ids': activos_ids,
+        'listos_detalle': listos_detalle,
+        'ts': ts_ped,
     })
+    resp['Cache-Control'] = 'no-store'
+    return resp
 
 
 
