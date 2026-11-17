@@ -452,7 +452,7 @@
                             <label for="promoPrecioOferta" class="form-label small fw-bold text-dark" id="labelPrecioOferta">Precio de la 2da Unidad (CLP):</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" name="precio_oferta" id="promoPrecioOferta" class="form-control" value="1" min="0" step="1">
+                                <input type="number" name="precio_oferta" id="promoPrecioOferta" class="form-control" value="1" min="0" max="1000000" step="1">
                                 <span class="input-group-text">CLP</span>
                             </div>
                             <!-- Presets Rápidos -->
@@ -479,7 +479,7 @@
                             <label for="promoCantidadMinima" class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-layers"></i></span>
-                                <input type="number" name="cantidad_minima_oferta" id="promoCantidadMinima" class="form-control" value="2" min="2" step="1">
+                                <input type="number" name="cantidad_minima_oferta" id="promoCantidadMinima" class="form-control" value="2" min="2" max="100" step="1">
                                 <span class="input-group-text">unidades</span>
                             </div>
                             <div class="form-text small">A partir de cuántas unidades se aplica el precio rebajado unitario.</div>
@@ -488,14 +488,14 @@
                         <!-- Límite por Ticket / Mesa -->
                         <div class="mb-3">
                             <label for="promoLimitePorTicket" class="form-label small fw-bold text-dark">Límite de Promociones por Ticket / Comanda:</label>
-                            <input type="number" id="promoLimitePorTicket" name="limite_oferta_por_ticket" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                            <input type="number" id="promoLimitePorTicket" name="limite_oferta_por_ticket" class="form-control" value="0" min="0" max="100" placeholder="0 = Ilimitado">
                             <div class="form-text small">Indica cuántas promociones se pueden aplicar como máximo por comanda (0 para ilimitadas).</div>
                         </div>
 
                         <!-- Etiqueta Comercial Visible -->
                         <div class="mb-3">
                             <label for="promoDescripcionOferta" class="form-label small fw-bold text-dark">Descripción Comercial / Etiqueta Visible:</label>
-                            <input type="text" id="promoDescripcionOferta" name="descripcion_oferta" class="form-control" placeholder="Ej: ¡2da hamburguesa por solo $1 peso con moneda física!">
+                            <input type="text" id="promoDescripcionOferta" name="descripcion_oferta" class="form-control" maxlength="120" placeholder="Ej: ¡2da hamburguesa por solo $1 peso con moneda física!">
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3 border-top">
@@ -546,7 +546,7 @@
                             <label for="edit_promo_precio" class="form-label small fw-bold text-dark">Precio 2da Unidad / Precio Fijo (CLP):</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" name="precio_oferta" id="edit_promo_precio" class="form-control" min="0" step="1">
+                                <input type="number" name="precio_oferta" id="edit_promo_precio" class="form-control" min="0" max="1000000" step="1">
                                 <span class="input-group-text">CLP</span>
                             </div>
                         </div>
@@ -563,20 +563,20 @@
                             <label for="edit_promo_min_cant" class="form-label small fw-bold text-dark">Cantidad Mínima Requerida:</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-layers"></i></span>
-                                <input type="number" name="cantidad_minima_oferta" id="edit_promo_min_cant" class="form-control" value="2" min="2" step="1">
+                                <input type="number" name="cantidad_minima_oferta" id="edit_promo_min_cant" class="form-control" value="2" min="2" max="100" step="1">
                                 <span class="input-group-text">unidades</span>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="edit_promo_limite" class="form-label small fw-bold text-dark">Límite por Ticket / Comanda:</label>
-                            <input type="number" name="limite_oferta_por_ticket" id="edit_promo_limite" class="form-control" min="0">
+                            <input type="number" name="limite_oferta_por_ticket" id="edit_promo_limite" class="form-control" min="0" max="100">
                             <div class="form-text small">0 = Sin límite de uso por comanda.</div>
                         </div>
 
                         <div class="mb-3">
                             <label for="edit_promo_desc" class="form-label small fw-bold text-dark">Descripción Comercial:</label>
-                            <input type="text" name="descripcion_oferta" id="edit_promo_desc" class="form-control">
+                            <input type="text" name="descripcion_oferta" id="edit_promo_desc" class="form-control" maxlength="120">
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3 border-top">
@@ -604,7 +604,7 @@
                             <!-- Nombre -->
                             <div class="col-md-7">
                                 <label for="campanaNombre" class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
-                                <input type="text" id="campanaNombre" name="nombre" class="form-control" required placeholder="Ej: 15% Descuento Tarjeta Santander, Promo Invierno">
+                                <input type="text" id="campanaNombre" name="nombre" class="form-control" maxlength="100" required placeholder="Ej: 15% Descuento Tarjeta Santander, Promo Invierno">
                             </div>
                             <!-- Tipo Campaña -->
                             <div class="col-md-5">
@@ -631,7 +631,7 @@
                             <!-- Banco / Convenio -->
                             <div class="col-md-6" id="grupoBanco">
                                 <label for="campanaBanco" class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
-                                <input type="text" id="campanaBanco" name="banco_convenio" class="form-control" placeholder="Ej: Banco Santander, BancoEstado, Tarjeta Safari, Visa">
+                                <input type="text" id="campanaBanco" name="banco_convenio" class="form-control" maxlength="100" placeholder="Ej: Banco Santander, BancoEstado, Tarjeta Safari, Visa">
                             </div>
 
                             <!-- Porcentaje de Descuento -->
@@ -648,7 +648,7 @@
                                 <label for="campanaMontoMinimo" class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" id="campanaMontoMinimo" name="monto_minimo_compra" class="form-control" value="0" min="0">
+                                    <input type="number" id="campanaMontoMinimo" name="monto_minimo_compra" class="form-control" value="0" min="0" max="10000000">
                                 </div>
                             </div>
 
@@ -657,14 +657,14 @@
                                 <label for="campanaTopeDesc" class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" id="campanaTopeDesc" name="tope_descuento_clp" class="form-control" value="5000" min="0" placeholder="0 = Sin tope">
+                                    <input type="number" id="campanaTopeDesc" name="tope_descuento_clp" class="form-control" value="5000" min="0" max="10000000" placeholder="0 = Sin tope">
                                 </div>
                             </div>
 
                             <!-- Límite de Usos -->
                             <div class="col-md-4">
                                 <label for="campanaLimiteUsos" class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
-                                <input type="number" id="campanaLimiteUsos" name="limite_usos" class="form-control" value="0" min="0" placeholder="0 = Ilimitado">
+                                <input type="number" id="campanaLimiteUsos" name="limite_usos" class="form-control" value="0" min="0" max="100000" placeholder="0 = Ilimitado">
                             </div>
 
                             <!-- Fecha Inicio -->
@@ -702,7 +702,7 @@
                             <!-- Descripción -->
                             <div class="col-12">
                                 <label for="campanaDescripcion" class="form-label small fw-bold text-secondary">Descripción para Cajeros y Clientes:</label>
-                                <textarea id="campanaDescripcion" name="descripcion" class="form-control" rows="2" placeholder="Detalles de aplicación del beneficio comercial..."></textarea>
+                                <textarea id="campanaDescripcion" name="descripcion" class="form-control" rows="2" maxlength="250" placeholder="Detalles de aplicación del beneficio comercial..."></textarea>
                             </div>
                         </div>
 
@@ -736,7 +736,7 @@
                         <div class="row g-3">
                             <div class="col-md-7">
                                 <label for="edit_campana_nombre" class="form-label small fw-bold text-secondary">Nombre de la Campaña:</label>
-                                <input type="text" name="nombre" id="edit_campana_nombre" class="form-control" required>
+                                <input type="text" name="nombre" id="edit_campana_nombre" class="form-control" maxlength="100" required>
                             </div>
                             <div class="col-md-5">
                                 <label for="edit_campana_tipo" class="form-label small fw-bold text-secondary">Tipo de Campaña:</label>
@@ -758,7 +758,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_campana_banco" class="form-label small fw-bold text-secondary">Banco / Tarjeta en Convenio:</label>
-                                <input type="text" name="banco_convenio" id="edit_campana_banco" class="form-control">
+                                <input type="text" name="banco_convenio" id="edit_campana_banco" class="form-control" maxlength="100">
                             </div>
                             <div class="col-md-4">
                                 <label for="edit_campana_pct" class="form-label small fw-bold text-secondary">Descuento (%):</label>
@@ -771,19 +771,19 @@
                                 <label for="edit_campana_minimo" class="form-label small fw-bold text-secondary">Compra Mínima (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" name="monto_minimo_compra" id="edit_campana_minimo" class="form-control" min="0">
+                                    <input type="number" name="monto_minimo_compra" id="edit_campana_minimo" class="form-control" min="0" max="10000000">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="edit_campana_tope" class="form-label small fw-bold text-secondary">Tope Descuento (CLP):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" name="tope_descuento_clp" id="edit_campana_tope" class="form-control" min="0">
+                                    <input type="number" name="tope_descuento_clp" id="edit_campana_tope" class="form-control" min="0" max="10000000">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="edit_campana_limite" class="form-label small fw-bold text-secondary">Límite Máximo de Usos:</label>
-                                <input type="number" name="limite_usos" id="edit_campana_limite" class="form-control" min="0">
+                                <input type="number" name="limite_usos" id="edit_campana_limite" class="form-control" min="0" max="100000">
                             </div>
                             <div class="col-md-4">
                                 <label for="edit_campana_inicio" class="form-label small fw-bold text-secondary">Fecha Inicio:</label>
@@ -813,7 +813,7 @@
                             </div>
                             <div class="col-12">
                                 <label for="edit_campana_descripcion" class="form-label small fw-bold text-secondary">Descripción:</label>
-                                <textarea name="descripcion" id="edit_campana_descripcion" class="form-control" rows="2"></textarea>
+                                <textarea name="descripcion" id="edit_campana_descripcion" class="form-control" rows="2" maxlength="250"></textarea>
                             </div>
                         </div>
                         <div class="form-check form-switch mt-3">

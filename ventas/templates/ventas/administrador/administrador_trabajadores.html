@@ -133,7 +133,7 @@
                     </label>
                     <div class="search-input-group">
                         <i class="bi bi-search" aria-hidden="true"></i>
-                        <input type="text" id="buscarTrabajador" class="form-control search-input-field" placeholder="Buscar por nombre, apellido, usuario o RUT (ej: 15.421...)...">
+                        <input type="text" id="buscarTrabajador" class="form-control search-input-field" maxlength="80" placeholder="Buscar por nombre, apellido, usuario o RUT (ej: 15.421...)...">
                     </div>
                 </div>
 
@@ -478,23 +478,23 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="crearTrabNombre" class="form-label small fw-bold">Nombre *</label>
-                                <input type="text" id="crearTrabNombre" name="nombre" class="form-control" required placeholder="Ej: Marcela">
+                                <input type="text" id="crearTrabNombre" name="nombre" class="form-control" maxlength="100" required placeholder="Ej: Marcela">
                             </div>
                             <div class="col-6">
                                 <label for="crearTrabApellido" class="form-label small fw-bold">Apellido *</label>
-                                <input type="text" id="crearTrabApellido" name="apellido" class="form-control" required placeholder="Ej: Morales">
+                                <input type="text" id="crearTrabApellido" name="apellido" class="form-control" maxlength="100" required placeholder="Ej: Morales">
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="crearTrabUsuario" class="form-label small fw-bold">Usuario (Login)</label>
-                                <input type="text" id="crearTrabUsuario" name="username" class="form-control" placeholder="Ej: mmorales">
-                                <small class="text-muted safari-hint-xs">Opcional (se autogenera si se deja vacío)</small>
+                                <input type="text" id="crearTrabUsuario" name="username" class="form-control" maxlength="50" placeholder="Ej: mmorales">
+                                <small class="text-muted safari-hint-xs">Opcional (máx. 50 caracteres; se autogenera si se deja vacío)</small>
                             </div>
                             <div class="col-6">
                                 <label for="crearTrabRut" class="form-label small fw-bold">RUT *</label>
-                                <input type="text" id="crearTrabRut" name="rut" class="form-control font-monospace" required placeholder="12.345.678-9" aria-describedby="helpRutTrabajador">
+                                <input type="text" id="crearTrabRut" name="rut" class="form-control font-monospace" maxlength="12" required placeholder="12.345.678-9" aria-describedby="helpRutTrabajador">
                                 <small id="helpRutTrabajador" class="text-muted safari-hint-xs">Solo para control único de turno e ingreso seguro.</small>
                             </div>
                         </div>
@@ -513,7 +513,7 @@
                             </div>
                             <div class="col-6">
                                 <label for="crearTrabTelefono" class="form-label small fw-bold">Teléfono (Opcional)</label>
-                                <input type="text" id="crearTrabTelefono" name="telefono" class="form-control" placeholder="+56 9 ..." aria-describedby="helpTelTrabajador">
+                                <input type="text" id="crearTrabTelefono" name="telefono" class="form-control" maxlength="20" placeholder="+56 9 ..." aria-describedby="helpTelTrabajador">
                                 <small id="helpTelTrabajador" class="text-muted safari-hint-xs">Opcional: solo contacto de turno; puedes borrarlo luego en Mi Privacidad.</small>
                             </div>
                         </div>
@@ -522,8 +522,8 @@
                             <label for="crearTrabPassword" class="form-label small fw-bold">
                                 <i class="bi bi-key-fill text-danger me-1"></i> Contraseña de Acceso (Login) *
                             </label>
-                            <input type="password" id="crearTrabPassword" autocomplete="new-password" data-lpignore="true" name="password" class="form-control" required minlength="8" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9, símbolo)">
-                            <small class="text-muted" style="font-size: 0.72rem;">Mínimo 8 caracteres incluyendo mayúscula, minúscula, número y símbolo especial (ISO/IEC 27400).</small>
+                            <input type="password" id="crearTrabPassword" autocomplete="new-password" data-lpignore="true" name="password" class="form-control" required minlength="8" maxlength="30" placeholder="De 8 a 30 caracteres (A-Z, a-z, 0-9, símbolo)">
+                            <small class="text-muted" style="font-size: 0.72rem;">Mínimo 8 caracteres (máximo 30) incluyendo mayúscula, minúscula, número y símbolo especial (ISO/IEC 27400).</small>
                         </div>
 
                         <!-- Límite 1 Puesto Único -->
@@ -573,22 +573,22 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="editNombre" class="form-label small fw-bold">Nombre *</label>
-                                <input type="text" name="nombre" id="editNombre" class="form-control" required>
+                                <input type="text" name="nombre" id="editNombre" class="form-control" maxlength="100" required>
                             </div>
                             <div class="col-6">
                                 <label for="editApellido" class="form-label small fw-bold">Apellido *</label>
-                                <input type="text" name="apellido" id="editApellido" class="form-control" required>
+                                <input type="text" name="apellido" id="editApellido" class="form-control" maxlength="100" required>
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label for="editRut" class="form-label small fw-bold">RUT (Opcional para actualizar)</label>
-                                <input type="text" name="rut" id="editRut" class="form-control font-monospace" placeholder="Dejar vacío para conservar actual">
+                                <input type="text" name="rut" id="editRut" class="form-control font-monospace" maxlength="12" placeholder="Dejar vacío para conservar actual">
                             </div>
                             <div class="col-6">
                                 <label for="editTelefono" class="form-label small fw-bold">Teléfono</label>
-                                <input type="text" name="telefono" id="editTelefono" class="form-control" placeholder="Dejar vacío para conservar actual">
+                                <input type="text" name="telefono" id="editTelefono" class="form-control" maxlength="20" placeholder="Dejar vacío para conservar actual">
                             </div>
                         </div>
 
@@ -620,7 +620,7 @@
                             </select>
 
                             <label for="editMotivoTraslado" class="form-label small fw-bold text-muted mb-1">Motivo del Traslado (si aplica):</label>
-                            <input type="text" id="editMotivoTraslado" name="motivo_traslado" class="form-control form-control-sm" placeholder="Ej: Apoyo horario punta en restaurante">
+                            <input type="text" id="editMotivoTraslado" name="motivo_traslado" class="form-control form-control-sm" maxlength="200" placeholder="Ej: Apoyo horario punta en restaurante">
                         </div>
 
                     </div>
@@ -682,7 +682,7 @@
 
                         <div class="mb-3">
                             <label for="trasladoMotivoInput" class="form-label small fw-bold text-muted">Motivo del Traslado</label>
-                            <input type="text" id="trasladoMotivoInput" name="motivo" class="form-control" placeholder="Ej: Refuerzo de personal por afluencia de público">
+                            <input type="text" id="trasladoMotivoInput" name="motivo" class="form-control" maxlength="200" placeholder="Ej: Refuerzo de personal por afluencia de público">
                         </div>
 
                     </div>

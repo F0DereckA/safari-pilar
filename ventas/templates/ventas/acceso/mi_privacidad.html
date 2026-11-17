@@ -104,11 +104,11 @@
                         <input type="hidden" name="accion" value="rectificar">
                         <div class="col-sm-6">
                             <label for="id_arco_nombre" class="form-label small fw-bold">Nombre *</label>
-                            <input type="text" id="id_arco_nombre" name="first_name" class="form-control" value="{{ request.user.first_name }}" maxlength="60" required>
+                            <input type="text" id="id_arco_nombre" name="first_name" class="form-control" value="{{ request.user.first_name }}" maxlength="100" required>
                         </div>
                         <div class="col-sm-6">
                             <label for="id_arco_apellido" class="form-label small fw-bold">Apellido *</label>
-                            <input type="text" id="id_arco_apellido" name="last_name" class="form-control" value="{{ request.user.last_name }}" maxlength="60" required>
+                            <input type="text" id="id_arco_apellido" name="last_name" class="form-control" value="{{ request.user.last_name }}" maxlength="100" required>
                         </div>
                         <div class="col-sm-6">
                             <label for="id_arco_email" class="form-label small fw-bold">Correo electrónico (opcional)</label>
@@ -231,11 +231,11 @@
                 <input type="hidden" name="accion" value="eliminar_cuenta">
                 <div class="col-md-4">
                     <label for="id_arco_confirmar" class="form-label small fw-bold">Escribe exactamente <code>CONFIRMAR</code></label>
-                    <input type="text" id="id_arco_confirmar" name="confirmacion" class="form-control" placeholder="CONFIRMAR" required>
+                    <input type="text" id="id_arco_confirmar" name="confirmacion" class="form-control" maxlength="20" placeholder="CONFIRMAR" required>
                 </div>
                 <div class="col-md-4">
                     <label for="id_arco_pass" class="form-label small fw-bold">Contraseña actual (verificación)</label>
-                    <input type="password" id="id_arco_pass" name="password_confirmacion" class="form-control" autocomplete="current-password" required>
+                    <input type="password" id="id_arco_pass" name="password_confirmacion" class="form-control" maxlength="30" autocomplete="current-password" required>
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-outline-danger w-100 rounded-pill fw-bold">

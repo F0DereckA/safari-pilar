@@ -362,7 +362,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search" aria-hidden="true"></i></span>
-                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" placeholder="Buscar plato, hamburguesa, bebida, café..." aria-label="Buscar plato, hamburguesa, bebida o café">
+                            <input type="text" id="buscadorPlatos" class="form-control border-start-0" maxlength="80" placeholder="Buscar plato, hamburguesa, bebida, café..." aria-label="Buscar plato, hamburguesa, bebida o café">
                         </div>
                     </div>
 
@@ -866,7 +866,7 @@
                             <div id="meseroCustomTipBox" class="mb-2 d-none">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" id="meseroCustomTipInput" class="form-control font-monospace" placeholder="Monto voluntario personalizado" min="0" aria-label="Monto voluntario de propina personalizado">
+                                    <input type="number" id="meseroCustomTipInput" class="form-control font-monospace" placeholder="Monto voluntario personalizado" min="0" max="10000000" aria-label="Monto voluntario de propina personalizado">
                                 </div>
                             </div>
                             <div class="small text-muted" id="meseroTxtPropinaInfo" style="font-size: 0.72rem;">
@@ -905,7 +905,7 @@
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white fw-bold small">$</span>
-                                <input type="number" class="form-control" name="monto_pago" id="inputMontoPagoParcial" placeholder="Total completo (o ingresa monto para abono parcial)">
+                                <input type="number" class="form-control" name="monto_pago" id="inputMontoPagoParcial" min="0" max="10000000" placeholder="Total completo (o ingresa monto para abono parcial)">
                             </div>
                             <small class="text-muted" style="font-size: 0.75rem;">Si ingresas un monto menor, se registrará el abono y la mesa continuará ocupada con el saldo restante.</small>
                         </div>

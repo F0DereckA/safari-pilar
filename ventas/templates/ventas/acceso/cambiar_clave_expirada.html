@@ -60,7 +60,7 @@
                     </label>
                     <div class="input-group input-group-pass">
                         <span class="input-group-text"><i class="bi bi-key" aria-hidden="true"></i></span>
-                        <input type="password" name="clave_actual" id="claveActual" class="form-control" required placeholder="Ingresa tu contraseña actual" autocomplete="current-password">
+                        <input type="password" name="clave_actual" id="claveActual" class="form-control" required maxlength="30" placeholder="Ingresa tu contraseña actual" autocomplete="current-password">
                         <button type="button" class="btn btn-outline-secondary" data-toggle-pass="claveActual" aria-label="Mostrar u ocultar contraseña actual" aria-pressed="false">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -74,7 +74,7 @@
                     </label>
                     <div class="input-group input-group-pass">
                         <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
-                        <input type="password" name="nueva_clave" id="nuevaClave" class="form-control" required placeholder="Escribe tu nueva clave..." autocomplete="new-password">
+                        <input type="password" name="nueva_clave" id="nuevaClave" class="form-control" required minlength="8" maxlength="30" placeholder="Escribe tu nueva clave (8 a 30 caracteres)..." autocomplete="new-password">
                         <button type="button" class="btn btn-outline-secondary" data-toggle-pass="nuevaClave" aria-label="Mostrar u ocultar nueva contraseña" aria-pressed="false">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -101,7 +101,7 @@
 
                     <div id="ruleLength" class="rule-item invalid">
                         <i class="bi bi-circle"></i>
-                        <span>Mínimo 8 caracteres de longitud</span>
+                        <span>Entre 8 y 30 caracteres de longitud</span>
                     </div>
                     <div id="ruleUpper" class="rule-item invalid">
                         <i class="bi bi-circle"></i>
@@ -128,7 +128,7 @@
                     </label>
                     <div class="input-group input-group-pass">
                         <span class="input-group-text"><i class="bi bi-check-all" aria-hidden="true"></i></span>
-                        <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control" required placeholder="Repite exactamente la nueva clave" autocomplete="new-password">
+                        <input type="password" name="confirmar_clave" id="confirmarClave" class="form-control" required minlength="8" maxlength="30" placeholder="Repite exactamente la nueva clave" autocomplete="new-password">
                         <button type="button" class="btn btn-outline-secondary" data-toggle-pass="confirmarClave" aria-label="Mostrar u ocultar confirmación de contraseña" aria-pressed="false">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -150,6 +150,6 @@
     </div>
 </main>
 
-<script src="{% static 'js/acceso/cambiar_clave.js' %}"></script>
+<script src="{% static 'js/acceso/cambiar_clave.js' %}?v=4.1"></script>
 </body>
 </html>

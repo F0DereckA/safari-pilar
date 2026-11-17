@@ -162,7 +162,7 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
                                     <i class="bi bi-search" aria-hidden="true"></i>
                                 </span>
-                                <input type="text" id="buscarTrabajadorEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar por nombre, usuario, RUT (apreta Z y filtra al tiro)..." aria-label="Buscar colaborador por nombre, usuario o RUT">
+                                <input type="text" id="buscarTrabajadorEnVivo" class="form-control border-start-0 search-field-live" maxlength="80" placeholder="Buscar por nombre, usuario, RUT (apreta Z y filtra al tiro)..." aria-label="Buscar colaborador por nombre, usuario o RUT">
                             </div>
                         </div>
 
@@ -299,7 +299,7 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
                                     <i class="bi bi-search" aria-hidden="true"></i>
                                 </span>
-                                <input type="text" id="buscarMesaEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar por mesa (ej: Mesa 1, Terraza, Z, 4 pers)..." aria-label="Buscar mesa por identificador o capacidad">
+                                <input type="text" id="buscarMesaEnVivo" class="form-control border-start-0 search-field-live" maxlength="80" placeholder="Buscar por mesa (ej: Mesa 1, Terraza, Z, 4 pers)..." aria-label="Buscar mesa por identificador o capacidad">
                             </div>
                         </div>
 
@@ -384,7 +384,7 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
                                     <i class="bi bi-search" aria-hidden="true"></i>
                                 </span>
-                                <input type="text" id="buscarProductoEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar producto (ej: hamburguesa, café, Z, jugo)..." aria-label="Buscar producto por nombre o código">
+                                <input type="text" id="buscarProductoEnVivo" class="form-control border-start-0 search-field-live" maxlength="80" placeholder="Buscar producto (ej: hamburguesa, café, Z, jugo)..." aria-label="Buscar producto por nombre o código">
                             </div>
                         </div>
 
@@ -558,7 +558,7 @@
                                                                 </div>
                                                                 <div class="mb-3">
                                                                     <label for="input_po_g_{{ p.id }}" class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
-                                                                    <input type="number" name="precio_oferta" id="input_po_g_{{ p.id }}" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                                                    <input type="number" name="precio_oferta" id="input_po_g_{{ p.id }}" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" max="1000000" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
                                                                     <div class="form-text small" style="font-size: 0.72rem;">
                                                                         Acepta monedas de $1 o $5 pesos para promociones (ej: "Lleva la segunda hamburguesa a $1").
                                                                     </div>
@@ -612,7 +612,7 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
                                     <i class="bi bi-search" aria-hidden="true"></i>
                                 </span>
-                                <input type="text" id="buscarMenuEnVivo" class="form-control border-start-0 search-field-live" placeholder="Buscar carta o menú (ej: Almuerzos, Barista, Oasis)..." aria-label="Buscar carta o menú">
+                                <input type="text" id="buscarMenuEnVivo" class="form-control border-start-0 search-field-live" maxlength="80" placeholder="Buscar carta o menú (ej: Almuerzos, Barista, Oasis)..." aria-label="Buscar carta o menú">
                             </div>
                         </div>
 
@@ -780,7 +780,7 @@
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-7">
                                             <label for="crearMenuNombre" class="form-label fw-bold small text-muted">Nombre de la Carta:</label>
-                                            <input type="text" id="crearMenuNombre" name="nombre" required class="form-control rounded-3" placeholder="Ej: Carta Minutas y Almuerzos">
+                                            <input type="text" id="crearMenuNombre" name="nombre" required maxlength="100" class="form-control rounded-3" placeholder="Ej: Carta Minutas y Almuerzos">
                                         </div>
                                         <div class="col-md-5">
                                             <label for="crearMenuLocal" class="form-label fw-bold small text-muted">Punto de Venta:</label>

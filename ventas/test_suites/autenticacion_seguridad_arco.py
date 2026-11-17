@@ -372,6 +372,7 @@ class AutenticacionAccesoYSeguridadTests(SafariDemoTestCase):
         # 1. Validador unitario subTest positivo vs negativo
         claves_invalidas = [
             ("Ab1!", "mínimo de 8 caracteres"),
+            ("A" * 10 + "b1!" + "x" * 20, "30 caracteres"),
             ("password123!", "mayúscula"),
             ("PASSWORD123!", "minúscula"),
             ("Password!@#", "dígito numérico"),
@@ -433,6 +434,27 @@ class AutenticacionAccesoYSeguridadTests(SafariDemoTestCase):
         for u in User.objects.all():
             self.assertTrue(u.password.startswith(("pbkdf2_sha256$", "argon2$")))
             self.assertNotEqual(u.password, "safari123")
+
+        # Truncado estricto en backend para usuario (50) y nombre/apellido (100)
+        resp_lim_trab = self.client.post(
+            url_trab,
+            {
+                "accion": "crear",
+                "nombre": "N" * 140,
+                "apellido": "A" * 140,
+                "username": "u" * 80,
+                "rut": "18.888.999-K",
+                "rol": "MESERO",
+                "local_id": self.pv_central.id,
+                "password": "SafariFuerte!2026",
+            },
+            follow=True,
+        )
+        self.assertContains(resp_lim_trab, "registrado con éxito")
+        u_lim = User.objects.get(username="u" * 50)
+        self.assertEqual(len(u_lim.username), 50)
+        self.assertEqual(len(u_lim.first_name), 100)
+        self.assertEqual(len(u_lim.last_name), 100)
 
         # 3. Modificar sin clave ni RUT/teléfono preserva contraseña y PII existentes en BD
         perfil_caj = self.cajero_user.perfil

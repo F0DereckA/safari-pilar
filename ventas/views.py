@@ -718,9 +718,11 @@ def login_view(request):
 
             return redirect('index')
 
-        username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=150)
+        username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=50)
 
-        password = request.POST.get('password', '')
+        password_raw = request.POST.get('password', '')
+        password_excede_limite = len(password_raw) > 30
+        password = password_raw[:30]
 
         demo_rol_eval = limpiar_texto_seguro(request.POST.get('demo_rol_eval', ''), max_length=50).lower()
 
@@ -804,7 +806,9 @@ def login_view(request):
 
 
 
-        if es_demo_autorizado and demo_rol_eval == username.lower():
+        if password_excede_limite:
+            user = None
+        elif es_demo_autorizado and demo_rol_eval == username.lower():
             user = resolver_usuario_demo_eval(demo_rol_eval)
         else:
             user = authenticate(request, username=username, password=password)
@@ -2108,7 +2112,7 @@ def abrir_jornada(request):
 
 
 
-            observaciones = request.POST.get('observaciones', '').strip()
+            observaciones = limpiar_texto_seguro(request.POST.get('observaciones', ''), max_length=200)
 
             monto_apertura_raw = request.POST.get('monto_apertura', '').strip()
 
@@ -2330,7 +2334,7 @@ def abrir_caja(request):
 
             ).exclude(jornada__fecha=hoy).order_by('-fecha_hora_apertura').first()
 
-            obs_post = request.POST.get('observaciones', '').strip()
+            obs_post = limpiar_texto_seguro(request.POST.get('observaciones', ''), max_length=200)
 
             if caja_pend:
 
@@ -2498,7 +2502,7 @@ def cerrar_caja(request):
 
 
 
-            obs_cierre = request.POST.get('observaciones_cierre', '').strip()
+            obs_cierre = limpiar_texto_seguro(request.POST.get('observaciones_cierre', ''), max_length=200)
 
             if obs_cierre:
 
@@ -2690,7 +2694,7 @@ def cerrar_jornada(request):
 
 
 
-        obs = request.POST.get('observaciones_cierre', '').strip()
+        obs = limpiar_texto_seguro(request.POST.get('observaciones_cierre', ''), max_length=200)
 
         if obs:
 
@@ -3774,15 +3778,15 @@ def administrador(request):
 
         elif accion == 'crear_local':
 
-            nombre = request.POST.get('nombre', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
 
-            tipo = request.POST.get('tipo', '').strip()
+            tipo = limpiar_texto_seguro(request.POST.get('tipo', ''), max_length=50)
 
-            descripcion = request.POST.get('descripcion', '').strip()
+            descripcion = limpiar_texto_seguro(request.POST.get('descripcion', ''), max_length=250)
 
-            icono = request.POST.get('icono', '').strip() or 'bi-shop'
+            icono = limpiar_texto_seguro(request.POST.get('icono', ''), max_length=50) or 'bi-shop'
 
-            color = request.POST.get('color', '').strip() or '#c62828'
+            color = limpiar_texto_seguro(request.POST.get('color', ''), max_length=20) or '#c62828'
 
 
 
@@ -3864,15 +3868,15 @@ def administrador(request):
 
 
 
-            nombre = request.POST.get('nombre', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
 
-            tipo = request.POST.get('tipo', '').strip()
+            tipo = limpiar_texto_seguro(request.POST.get('tipo', ''), max_length=50)
 
-            descripcion = request.POST.get('descripcion', '').strip()
+            descripcion = limpiar_texto_seguro(request.POST.get('descripcion', ''), max_length=250)
 
-            icono = request.POST.get('icono', '').strip() or pv.icono or 'bi-shop'
+            icono = limpiar_texto_seguro(request.POST.get('icono', ''), max_length=50) or pv.icono or 'bi-shop'
 
-            color = request.POST.get('color', '').strip() or pv.color or '#c62828'
+            color = limpiar_texto_seguro(request.POST.get('color', ''), max_length=20) or pv.color or '#c62828'
 
             activo_raw = request.POST.get('activo', 'true')
 
@@ -4305,11 +4309,11 @@ def administrador_trabajadores(request):
 
         if accion == 'crear':
 
-            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=60)
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
 
-            apellido = limpiar_texto_seguro(request.POST.get('apellido', ''), max_length=60)
+            apellido = limpiar_texto_seguro(request.POST.get('apellido', ''), max_length=100)
 
-            username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=60).lower()
+            username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=50).lower()
 
             rut = limpiar_texto_seguro(request.POST.get('rut', ''), max_length=12)
 
@@ -4341,11 +4345,12 @@ def administrador_trabajadores(request):
 
                 username = f"{nombre[:1].lower()}{apellido.replace(' ', '').lower()}" if nombre and apellido else f"safari_user_{User.objects.count()+1}"
 
-            
+            username = username[:50]
 
             if User.objects.filter(username=username).exists():
 
-                username = f"{username}_{User.objects.count()+1}"
+                sufijo = f"_{User.objects.count()+1}"
+                username = f"{username[:max(1, 50 - len(sufijo))]}{sufijo}"
 
 
 
@@ -4425,9 +4430,9 @@ def administrador_trabajadores(request):
 
 
 
-            user.first_name = limpiar_texto_seguro(request.POST.get('nombre', user.first_name), max_length=60) or user.first_name
+            user.first_name = limpiar_texto_seguro(request.POST.get('nombre', user.first_name), max_length=100) or user.first_name
 
-            user.last_name = limpiar_texto_seguro(request.POST.get('apellido', user.last_name), max_length=60) or user.last_name
+            user.last_name = limpiar_texto_seguro(request.POST.get('apellido', user.last_name), max_length=100) or user.last_name
 
             nueva_pass = request.POST.get('password', '').strip()
 
@@ -4520,7 +4525,7 @@ def administrador_trabajadores(request):
 
             if nuevo_local != antiguo_local:
 
-                motivo = request.POST.get('motivo_traslado', '').strip() or "Reasignación operativa de personal por administración"
+                motivo = limpiar_texto_seguro(request.POST.get('motivo_traslado', ''), max_length=200) or "Reasignación operativa de personal por administración"
 
                 AlertaTraslado.objects.create(
 
@@ -4570,7 +4575,7 @@ def administrador_trabajadores(request):
 
             antiguo_local = perfil.punto_venta_actual
 
-            motivo = request.POST.get('motivo', '').strip() or "Reasignación inmediata por requerimiento operativo"
+            motivo = limpiar_texto_seguro(request.POST.get('motivo', ''), max_length=200) or "Reasignación inmediata por requerimiento operativo"
 
 
 
@@ -4914,7 +4919,7 @@ def administrador_mesas(request):
 
         if accion == 'crear':
 
-            identificador = request.POST.get('identificador', '').strip()
+            identificador = limpiar_texto_seguro(request.POST.get('identificador', ''), max_length=20)
 
             punto_venta_id = request.POST.get('punto_venta_id')
 
@@ -4988,7 +4993,7 @@ def administrador_mesas(request):
 
 
 
-            nuevo_identificador = request.POST.get('identificador', '').strip()
+            nuevo_identificador = limpiar_texto_seguro(request.POST.get('identificador', ''), max_length=20)
 
             nuevo_local_id = request.POST.get('punto_venta_id')
 
@@ -5246,13 +5251,13 @@ def administrador_productos(request):
 
         if accion == 'crear':
 
-            nombre = request.POST.get('nombre', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
 
             categoria_id = request.POST.get('categoria_id')
 
             precio_base_raw = request.POST.get('precio_base', '0').strip()
 
-            descripcion = request.POST.get('descripcion', '').strip()
+            descripcion = limpiar_texto_seguro(request.POST.get('descripcion', ''), max_length=250)
 
             puntos_venta_ids = request.POST.getlist('puntos_venta')
 
@@ -5274,7 +5279,7 @@ def administrador_productos(request):
 
                     precio_oferta = None
 
-            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
+            descripcion_oferta = limpiar_texto_seguro(request.POST.get('descripcion_oferta', ''), max_length=120)
 
 
 
@@ -5370,13 +5375,13 @@ def administrador_productos(request):
 
 
 
-            nombre = (request.POST.get('nombre') or prod.nombre or '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre') or prod.nombre or '', max_length=100)
 
             categoria_id = request.POST.get('categoria_id')
 
             precio_base_raw = str(request.POST.get('precio_base', prod.precio_base)).strip()
 
-            descripcion = (request.POST.get('descripcion') or prod.descripcion or '').strip()
+            descripcion = limpiar_texto_seguro(request.POST.get('descripcion') or prod.descripcion or '', max_length=250)
 
             puntos_venta_ids = request.POST.getlist('puntos_venta')
 
@@ -5398,7 +5403,7 @@ def administrador_productos(request):
 
                     precio_oferta = None
 
-            descripcion_oferta = (request.POST.get('descripcion_oferta') or prod.descripcion_oferta or '').strip()
+            descripcion_oferta = limpiar_texto_seguro(request.POST.get('descripcion_oferta') or prod.descripcion_oferta or '', max_length=120)
 
 
 
@@ -5528,7 +5533,7 @@ def administrador_productos(request):
 
                     precio_oferta = None
 
-            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
+            descripcion_oferta = limpiar_texto_seguro(request.POST.get('descripcion_oferta', ''), max_length=120)
 
 
 
@@ -5732,7 +5737,7 @@ def administrador_menus(request):
 
         if accion == 'crear':
 
-            nombre = request.POST.get('nombre', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
 
             punto_venta_id = request.POST.get('punto_venta_id')
 
@@ -5782,7 +5787,7 @@ def administrador_menus(request):
 
 
 
-            nombre = request.POST.get('nombre', menu_obj.nombre).strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', menu_obj.nombre), max_length=100)
 
             punto_venta_id = request.POST.get('punto_venta_id')
 
@@ -9273,7 +9278,7 @@ def anular_venta(request, venta_id):
             resp_429['Retry-After'] = str(retry_after)
             return resp_429
 
-        motivo = limpiar_texto_seguro(request.POST.get('motivo_anulacion', ''), max_length=250)
+        motivo = limpiar_texto_seguro(request.POST.get('motivo_anulacion', ''), max_length=200)
 
         if not motivo or len(motivo) < 5:
 
@@ -9295,9 +9300,9 @@ def anular_venta(request, venta_id):
 
         else:
 
-            sup_user = request.POST.get('supervisor_username', '').strip()
+            sup_user = limpiar_texto_seguro(request.POST.get('supervisor_username', ''), max_length=50)
 
-            sup_pass = request.POST.get('supervisor_password', '')
+            sup_pass = (request.POST.get('supervisor_password', '') or '')[:30]
 
             sup_intentos_key = f"anular_sup_intentos_{request.user.id}"
 
@@ -9686,7 +9691,7 @@ def cambiar_clave_expirada(request):
             resp_429['Retry-After'] = str(retry_after)
             return resp_429
 
-        clave_actual = request.POST.get('clave_actual', '')
+        clave_actual = (request.POST.get('clave_actual', '') or '')[:30]
 
         nueva_clave = request.POST.get('nueva_clave', '')
 
@@ -10164,23 +10169,23 @@ def administrador_convenios(request):
 
         if accion == 'crear':
 
-            numero_cabana = request.POST.get('numero_cabana', '').strip()
+            numero_cabana = limpiar_texto_seguro(request.POST.get('numero_cabana', ''), max_length=50)
 
-            nombre_titular = request.POST.get('nombre_titular', '').strip()
+            nombre_titular = limpiar_texto_seguro(request.POST.get('nombre_titular', ''), max_length=100)
 
-            rut_titular = request.POST.get('rut_titular', '').strip()
+            rut_titular = limpiar_texto_seguro(request.POST.get('rut_titular', ''), max_length=15)
 
             tipo_beneficio = request.POST.get('tipo_beneficio', 'DESAYUNO_INCLUIDO')
 
             valor_descuento = request.POST.get('valor_descuento', '100')
 
-            limite_diario = int(request.POST.get('limite_diario', 1))
+            limite_diario = min(10, max(1, int(request.POST.get('limite_diario', 1) or 1)))
 
             fecha_checkin = request.POST.get('fecha_checkin')
 
             fecha_checkout = request.POST.get('fecha_checkout')
 
-            codigo_qr = request.POST.get('codigo_qr', '').strip()
+            codigo_qr = limpiar_texto_seguro(request.POST.get('codigo_qr', ''), max_length=64)
 
 
 
@@ -10294,12 +10299,12 @@ def administrador_ofertas_temporada(request):
 
         # 1. Crear Campaña de Temporada / Medio de Pago
         if accion == 'crear':
-            nombre = request.POST.get('nombre', '').strip()
-            descripcion = request.POST.get('descripcion', '').strip()
+            nombre = limpiar_texto_seguro(request.POST.get('nombre', ''), max_length=100)
+            descripcion = limpiar_texto_seguro(request.POST.get('descripcion', ''), max_length=250)
             tipo_campana = request.POST.get('tipo_campana', 'GENERAL')
             descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', '0') or '0')
             medio_pago_requerido = request.POST.get('medio_pago_requerido', 'TODOS')
-            banco_convenio = request.POST.get('banco_convenio', '').strip()
+            banco_convenio = limpiar_texto_seguro(request.POST.get('banco_convenio', ''), max_length=100)
             monto_minimo_compra = Decimal(request.POST.get('monto_minimo_compra', '0') or '0')
             tope_descuento_clp = Decimal(request.POST.get('tope_descuento_clp', '0') or '0')
             limite_usos = int(request.POST.get('limite_usos', '0') or '0')
@@ -10344,12 +10349,12 @@ def administrador_ofertas_temporada(request):
         elif accion == 'editar_campana':
             oferta_id = request.POST.get('oferta_id')
             o = get_object_or_404(OfertaTemporada, id=oferta_id)
-            o.nombre = request.POST.get('nombre', o.nombre).strip()
-            o.descripcion = request.POST.get('descripcion', '').strip()
+            o.nombre = limpiar_texto_seguro(request.POST.get('nombre', o.nombre), max_length=100) or o.nombre
+            o.descripcion = limpiar_texto_seguro(request.POST.get('descripcion', ''), max_length=250)
             o.tipo_campana = request.POST.get('tipo_campana', o.tipo_campana)
             o.descuento_porcentaje = Decimal(request.POST.get('descuento_porcentaje', str(o.descuento_porcentaje)) or '0')
             o.medio_pago_requerido = request.POST.get('medio_pago_requerido', o.medio_pago_requerido)
-            o.banco_convenio = request.POST.get('banco_convenio', '').strip()
+            o.banco_convenio = limpiar_texto_seguro(request.POST.get('banco_convenio', ''), max_length=100)
             o.monto_minimo_compra = Decimal(request.POST.get('monto_minimo_compra', '0') or '0')
             o.tope_descuento_clp = Decimal(request.POST.get('tope_descuento_clp', '0') or '0')
             o.limite_usos = int(request.POST.get('limite_usos', '0') or '0')
@@ -10395,7 +10400,7 @@ def administrador_ofertas_temporada(request):
             precio_oferta_raw = request.POST.get('precio_oferta')
             descuento_pct_raw = request.POST.get('descuento_pct', '0')
             limite_ticket_raw = request.POST.get('limite_oferta_por_ticket', '0')
-            descripcion_oferta = request.POST.get('descripcion_oferta', '').strip()
+            descripcion_oferta = limpiar_texto_seguro(request.POST.get('descripcion_oferta', ''), max_length=120)
 
             prod.en_oferta = True
             prod.tipo_oferta = tipo_oferta

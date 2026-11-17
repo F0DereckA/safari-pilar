@@ -48,7 +48,7 @@ function validarFormulario() {
     const val = inputNueva.value;
     const conf = inputConfirmar.value;
 
-    const rLength = val.length >= 8;
+    const rLength = val.length >= 8 && val.length <= 30;
     const rUpper = /[A-Z]/.test(val);
     const rLower = /[a-z]/.test(val);
     const rNumber = /[0-9]/.test(val);

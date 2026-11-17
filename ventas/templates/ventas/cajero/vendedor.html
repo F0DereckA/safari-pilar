@@ -368,7 +368,7 @@
                         <span class="input-group-text bg-white border-end-0 text-muted">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" placeholder="Buscar por #Ticket, mesa, producto (ej. hamburguesa, café, jugo)..." aria-label="Buscar ticket por número, mesa o producto">
+                        <input type="text" id="filtroTicketTexto" class="form-control border-start-0" maxlength="80" placeholder="Buscar por #Ticket, mesa, producto (ej. hamburguesa, café, jugo)..." aria-label="Buscar ticket por número, mesa o producto">
                         <button class="btn btn-outline-secondary" type="button" id="btnLimpiarFiltroTicket" aria-label="Limpiar búsqueda de tickets">
                             <i class="bi bi-x" aria-hidden="true"></i>
                         </button>
@@ -545,7 +545,7 @@
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text fw-bold">$</span>
-                                <input type="number" id="jornadaMontoApertura" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
+                                <input type="number" id="jornadaMontoApertura" name="monto_apertura" value="" min="0" max="10000000" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
                                 <span class="input-group-text text-muted">CLP</span>
                             </div>
                             <small class="text-muted">Monto físico inicial en efectivo en gaveta para dar vuelto (opcional, si lo dejas vacío inicia en $0).</small>
@@ -553,7 +553,7 @@
 
                         <div class="mb-2">
                             <label for="jornadaObservaciones" class="form-label small fw-bold text-muted">Observaciones de Apertura</label>
-                            <textarea id="jornadaObservaciones" name="observaciones" rows="2" class="form-control" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
+                            <textarea id="jornadaObservaciones" name="observaciones" rows="2" class="form-control" maxlength="200" placeholder="Ej: Apertura normal de mañana sin novedades en equipamiento POS."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3">
@@ -609,7 +609,7 @@
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text fw-bold">$</span>
-                                <input type="number" id="cajaMontoApertura" name="monto_apertura" value="" min="0" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
+                                <input type="number" id="cajaMontoApertura" name="monto_apertura" value="" min="0" max="10000000" step="1000" class="form-control fw-bold fs-5 text-dark input-monto-limpio" placeholder="0">
                                 <span class="input-group-text text-muted">CLP</span>
                             </div>
                             <small class="text-muted">Fondo en efectivo asignado para dar vuelto en esta estación (opcional, si lo dejas vacío inicia en $0).</small>
@@ -617,7 +617,7 @@
 
                         <div class="mb-2">
                             <label for="cajaObservaciones" class="form-label small fw-bold text-muted">Observaciones</label>
-                            <textarea id="cajaObservaciones" name="observaciones" rows="2" class="form-control" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
+                            <textarea id="cajaObservaciones" name="observaciones" rows="2" class="form-control" maxlength="200" placeholder="Ej: Inicio de turno tarde en mostrador."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer bg-light p-3">
@@ -722,35 +722,35 @@
                                     <!-- Billetes $20.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_20000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$20.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_20000" id="b_20000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="20000" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="billetes_20000" id="b_20000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="20000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_20000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $10.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_10000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_10000" id="b_10000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10000" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="billetes_10000" id="b_10000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_10000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $5.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_5000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$5.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_5000" id="b_5000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5000" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="billetes_5000" id="b_5000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_5000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $2.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="b_2000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$2.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_2000" id="b_2000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="2000" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="billetes_2000" id="b_2000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="2000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_2000" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Billetes $1.000 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                                         <label for="b_1000" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$1.000:</label>
-                                        <input type="number" min="0" step="1" name="billetes_1000" id="b_1000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1000" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="billetes_1000" id="b_1000" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1000" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_b_1000" style="min-width: 80px;">$0</span>
                                     </div>
                                 </div>
@@ -767,28 +767,28 @@
                                     <!-- Monedas $500 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_500" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$500:</label>
-                                        <input type="number" min="0" step="1" name="monedas_500" id="m_500" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="500" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_500" id="m_500" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="500" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_500" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $100 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_100" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$100:</label>
-                                        <input type="number" min="0" step="1" name="monedas_100" id="m_100" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="100" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_100" id="m_100" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="100" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_100" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $50 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_50" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$50:</label>
-                                        <input type="number" min="0" step="1" name="monedas_50" id="m_50" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="50" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_50" id="m_50" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="50" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_50" style="min-width: 80px;">$0</span>
                                     </div>
 
                                     <!-- Monedas $10 -->
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <label for="m_10" class="small fw-semibold text-dark mb-0 text-nowrap" style="min-width: 75px;">$10:</label>
-                                        <input type="number" min="0" step="1" name="monedas_10" id="m_10" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_10" id="m_10" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="10" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_10" style="min-width: 80px;">$0</span>
                                     </div>
 
@@ -797,7 +797,7 @@
                                         <label for="m_5" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
                                             $5 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
-                                        <input type="number" min="0" step="1" name="monedas_5" id="m_5" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_5" id="m_5" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="5" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_5" style="min-width: 80px;">$0</span>
                                     </div>
 
@@ -806,7 +806,7 @@
                                         <label for="m_1" class="small fw-semibold text-muted mb-0 text-nowrap" style="min-width: 75px;">
                                             $1 <span class="badge bg-warning bg-opacity-25 text-dark border px-1" style="font-size: 0.65rem;">Promos</span>:
                                         </label>
-                                        <input type="number" min="0" step="1" name="monedas_1" id="m_1" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;">
+                                        <input type="number" min="0" max="9999" step="1" name="monedas_1" id="m_1" value="" placeholder="0" class="form-control form-control-sm text-end fw-bold input-arqueo" data-denominacion="1" style="max-width: 90px;">
                                         <span class="small text-muted text-end" id="sub_m_1" style="min-width: 80px;">$0</span>
                                     </div>
                                 </div>
@@ -840,7 +840,7 @@
                             <label for="cierreObservaciones" class="form-label small fw-bold text-muted">
                                 Observaciones de Cierre / Justificación (Opcional):
                             </label>
-                            <textarea id="cierreObservaciones" name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Cuadratura conforme. Sin incidencias de gaveta."></textarea>
+                            <textarea id="cierreObservaciones" name="observaciones_cierre" rows="2" class="form-control" maxlength="200" placeholder="Ej: Cuadratura conforme. Sin incidencias de gaveta."></textarea>
                         </div>
                     </div>
 
@@ -899,7 +899,7 @@
                             <label for="anularMotivo" class="form-label small fw-bold text-dark">
                                 Motivo de la Anulación <span class="text-danger">*</span>
                             </label>
-                            <textarea id="anularMotivo" name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5"></textarea>
+                            <textarea id="anularMotivo" name="motivo_anulacion" class="form-control" rows="2" placeholder="Ej: Error de digitación en boleta, cliente canceló orden antes del despacho..." required minlength="5" maxlength="200"></textarea>
                             <div class="form-text small">Obligatorio (mínimo 5 caracteres) para registro de auditoría.</div>
                         </div>
 
@@ -914,11 +914,11 @@
                             <div class="row g-2">
                                 <div class="col-6">
                                     <label for="anularSupUser" class="form-label small text-muted">Usuario Administrador</label>
-                                    <input type="text" id="anularSupUser" name="supervisor_username" class="form-control form-control-sm" placeholder="ej: rgomez" required autocomplete="off">
+                                    <input type="text" id="anularSupUser" name="supervisor_username" class="form-control form-control-sm" maxlength="50" placeholder="ej: rgomez" required autocomplete="off">
                                 </div>
                                 <div class="col-6">
                                     <label for="anularSupPass" class="form-label small text-muted">Contraseña</label>
-                                    <input type="password" id="anularSupPass" name="supervisor_password" class="form-control form-control-sm" placeholder="••••••••" required autocomplete="new-password" data-lpignore="true">
+                                    <input type="password" id="anularSupPass" name="supervisor_password" class="form-control form-control-sm" maxlength="30" placeholder="••••••••" required autocomplete="new-password" data-lpignore="true">
                                 </div>
                             </div>
                         </div>
@@ -980,7 +980,7 @@
                     <i class="bi bi-shield-check text-success me-1"></i> Desbloquear con contraseña de turno:
                 </label>
                 <div class="input-group input-group-sm mb-2">
-                    <input type="password" class="form-control" id="posLockPasswordInput" placeholder="Ingresa tu contraseña" autocomplete="current-password">
+                    <input type="password" class="form-control" id="posLockPasswordInput" maxlength="30" placeholder="Ingresa tu contraseña" autocomplete="current-password">
                     <button type="button" class="btn btn-success fw-bold" id="btnPosVerificarPassword">
                         <i class="bi bi-unlock-fill me-1"></i> Desbloquear
                     </button>
@@ -992,7 +992,7 @@
                 <div id="panelConfigPinPos" class="d-none mt-2 p-2 rounded-3 bg-light border small">
                     <div class="mb-2">
                         <label for="posConfigCurrentPassword" class="form-label mb-1 fw-semibold">Contraseña actual</label>
-                        <input type="password" class="form-control form-control-sm" id="posConfigCurrentPassword" placeholder="Tu contraseña actual" autocomplete="current-password">
+                        <input type="password" class="form-control form-control-sm" id="posConfigCurrentPassword" maxlength="30" placeholder="Tu contraseña actual" autocomplete="current-password">
                     </div>
                     <div class="mb-2">
                         <label for="posConfigNuevoPin" class="form-label mb-1 fw-semibold">Nuevo PIN numérico (4 dígitos)</label>

@@ -266,6 +266,58 @@ class ArquitecturaEstaticosSimpleTests(ContrasteAssertMixin, SimpleTestCase):
             contexto="Cookie banner badge WCAG AA",
         )
 
+    def test_todas_las_entradas_tienen_limite_maximo(self):
+        """Audita 100% de <input> y <textarea> interactivos: todos tienen maxlength (o max en numéricos)."""
+        base = Path(settings.BASE_DIR)
+        sin_limite = []
+        tipos_exentos = {"hidden", "checkbox", "radio", "file", "date", "month", "time", "range"}
+
+        class LimiteParser(HTMLParser):
+            def __init__(self, rel_path):
+                super().__init__(convert_charrefs=False)
+                self.rel_path = rel_path
+                self.elementos = {}
+
+            def handle_starttag(self, tag, attrs):
+                t = tag.lower()
+                if t not in ("input", "textarea"):
+                    return
+                ad = {k.lower(): ("" if v is None else str(v)) for k, v in attrs}
+                if "readonly" in ad or "disabled" in ad:
+                    return
+                tipo = ad.get("type", "text").lower() if t == "input" else "textarea"
+                if tipo in tipos_exentos:
+                    return
+                if ad.get("id"):
+                    self.elementos[ad["id"]] = ad
+                if tipo == "number":
+                    if not ad.get("max"):
+                        sin_limite.append(f"{self.rel_path} <{t} id={ad.get('id', '?')}> sin max")
+                else:
+                    if not ad.get("maxlength"):
+                        sin_limite.append(f"{self.rel_path} <{t} id={ad.get('id', '?')}> sin maxlength")
+
+            def handle_startendtag(self, tag, attrs):
+                self.handle_starttag(tag, attrs)
+
+        por_archivo = {}
+        for hf in (base / "ventas" / "templates").rglob("*.html"):
+            rel = str(hf.relative_to(base))
+            parser = LimiteParser(rel)
+            parser.feed(hf.read_text(encoding="utf-8"))
+            por_archivo[hf.name] = parser.elementos
+
+        self.assertEqual(sin_limite, [], f"Entradas sin límite máximo: {sin_limite}")
+        self.assertEqual(por_archivo["index.html"]["id_username"]["maxlength"], "50")
+        self.assertEqual(por_archivo["index.html"]["id_password"]["maxlength"], "30")
+        self.assertEqual(por_archivo["cambiar_clave_expirada.html"]["claveActual"]["maxlength"], "30")
+        self.assertEqual(por_archivo["cambiar_clave_expirada.html"]["nuevaClave"]["maxlength"], "30")
+        self.assertEqual(por_archivo["cambiar_clave_expirada.html"]["confirmarClave"]["maxlength"], "30")
+        self.assertEqual(por_archivo["administrador_trabajadores.html"]["crearTrabUsuario"]["maxlength"], "50")
+        self.assertEqual(por_archivo["administrador_trabajadores.html"]["crearTrabPassword"]["maxlength"], "30")
+        self.assertEqual(por_archivo["administrador_trabajadores.html"]["crearTrabNombre"]["maxlength"], "100")
+        self.assertEqual(por_archivo["administrador_trabajadores.html"]["crearTrabApellido"]["maxlength"], "100")
+
 
 class ArquitecturaRenderCspYContrastTests(SafariDemoTestCase):
     """Pruebas renderizadas de arquitectura modular, responsive, CSP DOM y contraste UI."""

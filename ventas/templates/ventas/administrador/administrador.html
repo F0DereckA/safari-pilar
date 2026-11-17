@@ -483,7 +483,7 @@
                         <!-- Observaciones de Cierre de Supervisi&oacute;n -->
                         <div class="mb-2">
                             <label for="obsCierreJornadaAdmin" class="form-label small fw-bold text-muted">Observaciones de Supervisi&oacute;n (Opcional):</label>
-                            <textarea id="obsCierreJornadaAdmin" name="observaciones_cierre" rows="2" class="form-control" placeholder="Ej: Jornada dominical cerrada sin novedades operativas en locales."></textarea>
+                            <textarea id="obsCierreJornadaAdmin" name="observaciones_cierre" rows="2" class="form-control" maxlength="200" placeholder="Ej: Jornada dominical cerrada sin novedades operativas en locales."></textarea>
                         </div>
                     </div>
 
@@ -550,7 +550,7 @@
                                 <label for="crearLocalDescripcion" class="form-label fw-bold text-dark small">
                                     Descripción Operativa
                                 </label>
-                                <textarea id="crearLocalDescripcion" name="descripcion" class="form-control rounded-3" rows="2" placeholder="Detalle de productos ofrecidos, ubicación dentro del parque o modalidad de atención..."></textarea>
+                                <textarea id="crearLocalDescripcion" name="descripcion" class="form-control rounded-3" rows="2" maxlength="250" placeholder="Detalle de productos ofrecidos, ubicación dentro del parque o modalidad de atención..."></textarea>
                             </div>
 
                             <div class="row g-2 mb-3">
@@ -630,7 +630,7 @@
                                 <label for="editLocalDesc_{{ local.id }}" class="form-label fw-bold text-dark small">
                                     Descripción Operativa
                                 </label>
-                                <textarea id="editLocalDesc_{{ local.id }}" name="descripcion" class="form-control rounded-3" rows="2">{{ local.descripcion }}</textarea>
+                                <textarea id="editLocalDesc_{{ local.id }}" name="descripcion" class="form-control rounded-3" rows="2" maxlength="250">{{ local.descripcion }}</textarea>
                             </div>
 
                             <div class="row g-2 mb-3">

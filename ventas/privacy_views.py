@@ -197,8 +197,8 @@ def mi_privacidad_view(request):
         accion = request.POST.get('accion', '').strip()
 
         if accion == 'rectificar':
-            nuevo_nombre = limpiar_texto_seguro(request.POST.get('first_name', ''), max_length=60)
-            nuevo_apellido = limpiar_texto_seguro(request.POST.get('last_name', ''), max_length=60)
+            nuevo_nombre = limpiar_texto_seguro(request.POST.get('first_name', ''), max_length=100)
+            nuevo_apellido = limpiar_texto_seguro(request.POST.get('last_name', ''), max_length=100)
             nuevo_email = limpiar_texto_seguro(request.POST.get('email', ''), max_length=120)
             nuevo_telefono = limpiar_texto_seguro(request.POST.get('telefono', ''), max_length=20)
 
@@ -271,8 +271,8 @@ def mi_privacidad_view(request):
             return response
 
         elif accion == 'eliminar_cuenta':
-            confirmacion = request.POST.get('confirmacion', '').strip().upper()
-            password_actual = request.POST.get('password_confirmacion', '')
+            confirmacion = request.POST.get('confirmacion', '').strip().upper()[:20]
+            password_actual = request.POST.get('password_confirmacion', '')[:30]
 
             if confirmacion != 'CONFIRMAR':
                 messages.error(request, "Para eliminar y anonimizar tus datos debes escribir exactamente la palabra CONFIRMAR.")

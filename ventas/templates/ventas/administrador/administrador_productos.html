@@ -159,7 +159,7 @@
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted">
                                 <i class="bi bi-search" aria-hidden="true"></i>
                             </span>
-                            <input type="text" id="buscarProductoEnVivo" name="q" value="{{ busqueda_q }}" placeholder="Buscar por producto (apreta Z y se filtra al tiro)..." aria-label="Buscar por producto" class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
+                            <input type="text" id="buscarProductoEnVivo" name="q" value="{{ busqueda_q }}" maxlength="80" placeholder="Buscar por producto (apreta Z y se filtra al tiro)..." aria-label="Buscar por producto" class="form-control bg-light border-start-0 rounded-end-pill search-field-live" autocomplete="off">
                         </div>
                     </div>
                     <div class="col-md-2 d-flex gap-2">
@@ -347,7 +347,7 @@
                                         </div>
                                         <div class="mb-3">
                                             <label for="of_precio_{{ p.id }}" class="form-label small fw-bold text-dark">Precio Promocional / Segunda Unidad ($ CLP):</label>
-                                            <input type="number" id="of_precio_{{ p.id }}" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
+                                            <input type="number" id="of_precio_{{ p.id }}" name="precio_oferta" value="{{ p.precio_oferta|stringformat:'.0f'|default:'' }}" min="1" max="1000000" step="1" class="form-control rounded-3" placeholder="Ej: 1 para promo $1 peso, o 4990">
                                             <div class="form-text small" style="font-size: 0.72rem;">
                                                 Acepta monedas de $1 o $5 pesos para eventos especiales (ej: "Lleva la segunda hamburguesa a $1").
                                             </div>
@@ -387,7 +387,7 @@
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
                                         <label for="editProdNombre_{{ p.id }}" class="form-label fw-bold small text-muted">Nombre del Producto:</label>
-                                        <input type="text" id="editProdNombre_{{ p.id }}" name="nombre" value="{{ p.nombre }}" required class="form-control rounded-3" maxlength="150">
+                                        <input type="text" id="editProdNombre_{{ p.id }}" name="nombre" value="{{ p.nombre }}" required class="form-control rounded-3" maxlength="100">
                                     </div>
                                     <div class="row g-2 mb-3">
                                         <div class="col-6">
@@ -402,12 +402,12 @@
                                         </div>
                                         <div class="col-6">
                                             <label for="editProdPrecio_{{ p.id }}" class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
-                                            <input type="number" id="editProdPrecio_{{ p.id }}" name="precio_base" value="{{ p.precio_base|stringformat:'.0f' }}" min="0" step="100" required class="form-control rounded-3">
+                                            <input type="number" id="editProdPrecio_{{ p.id }}" name="precio_base" value="{{ p.precio_base|stringformat:'.0f' }}" min="0" max="1000000" step="100" required class="form-control rounded-3">
                                         </div>
                                     </div>
                                     <div class="mb-3">
                                         <label for="editProdDesc_{{ p.id }}" class="form-label fw-bold small text-muted">Descripción:</label>
-                                        <textarea id="editProdDesc_{{ p.id }}" name="descripcion" class="form-control rounded-3" rows="2">{{ p.descripcion|default:'' }}</textarea>
+                                        <textarea id="editProdDesc_{{ p.id }}" name="descripcion" class="form-control rounded-3" rows="2" maxlength="250">{{ p.descripcion|default:'' }}</textarea>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold small text-muted">Puntos de Venta donde se Comercializa:</label>
@@ -501,7 +501,7 @@
                     <div class="modal-body p-4">
                         <div class="mb-3">
                             <label for="crearProdNombre" class="form-label fw-bold small text-muted">Nombre del Producto (ej: Sandwich Mechada Safari):</label>
-                            <input type="text" id="crearProdNombre" name="nombre" placeholder="Nombre del producto..." required class="form-control rounded-3" maxlength="150">
+                            <input type="text" id="crearProdNombre" name="nombre" placeholder="Nombre del producto..." required class="form-control rounded-3" maxlength="100">
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
@@ -515,12 +515,12 @@
                             </div>
                             <div class="col-6">
                                 <label for="crearProdPrecio" class="form-label fw-bold small text-muted">Precio Base ($ CLP):</label>
-                                <input type="number" id="crearProdPrecio" name="precio_base" placeholder="Ej: 8500" min="0" step="100" required class="form-control rounded-3">
+                                <input type="number" id="crearProdPrecio" name="precio_base" placeholder="Ej: 8500" min="0" max="1000000" step="100" required class="form-control rounded-3">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="crearProdDesc" class="form-label fw-bold small text-muted">Descripción:</label>
-                            <textarea id="crearProdDesc" name="descripcion" placeholder="Ingredientes o especificaciones..." class="form-control rounded-3" rows="2"></textarea>
+                            <textarea id="crearProdDesc" name="descripcion" maxlength="250" placeholder="Ingredientes o especificaciones..." class="form-control rounded-3" rows="2"></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted">Locales donde se Comercializa:</label>

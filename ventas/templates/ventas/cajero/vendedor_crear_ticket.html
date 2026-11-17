@@ -205,7 +205,7 @@
 
                                 </span>
 
-                                <input type="text" id="filtroTexto" class="form-control border-start-0" placeholder="Buscar alimento o bebida (ej. jamón queso, hamburguesa, coca cola, café, jugo)..." aria-label="Buscar alimento o bebida">
+                                <input type="text" id="filtroTexto" class="form-control border-start-0" maxlength="80" placeholder="Buscar alimento o bebida (ej. jamón queso, hamburguesa, coca cola, café, jugo)..." aria-label="Buscar alimento o bebida">
 
                                 <button class="btn btn-outline-secondary" type="button" id="btnLimpiarFiltroTexto" aria-label="Limpiar búsqueda de menú">
 
@@ -561,7 +561,7 @@
 
                             <div class="input-group input-group-sm mt-2">
 
-                                <input type="text" id="inputCodigoConvenio" class="form-control font-monospace" placeholder="Escanear QR o código (ej: CAB-12)...">
+                                <input type="text" id="inputCodigoConvenio" class="form-control font-monospace" maxlength="64" placeholder="Escanear QR o código (ej: CAB-12)...">
 
                                 <button class="btn btn-outline-danger fw-bold px-3" type="button" id="btnVerificarQR">Validar</button>
 
@@ -1082,7 +1082,7 @@
 
                             </label>
 
-                            <textarea class="form-control rounded-3" id="consumoObservaciones" rows="2" placeholder="Ej: Almuerzo de turno, colación autorizada..."></textarea>
+                            <textarea class="form-control rounded-3" id="consumoObservaciones" rows="2" maxlength="200" placeholder="Ej: Almuerzo de turno, colación autorizada..."></textarea>
 
                         </div>
 
