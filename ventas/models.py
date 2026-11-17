@@ -67,7 +67,7 @@ class PerfilEmpleado(models.Model):
             return True
         return False
 
-    def registrar_intento_fallido(self, max_intentos=5, minutos_bloqueo=5):
+    def registrar_intento_fallido(self, max_intentos=5, minutos_bloqueo=15):
         """Registra un intento fallido y bloquea la cuenta si supera el umbral"""
         self.intentos_fallidos += 1
         if self.intentos_fallidos >= max_intentos:

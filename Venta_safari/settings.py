@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 import secrets
 import sys
+import tempfile
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
@@ -254,13 +255,22 @@ CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(',') if o.strip() and
 _csrf_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_raw.split(',') if o.strip() and o.strip() != '*']
 
-# Caché en memoria para Rate Limiting y protección contra ataques de fuerza bruta
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'safari-security-cache',
+# Caché para Rate Limiting y protección contra fuerza bruta (FileBasedCache en ejecución real para compartir entre workers WSGI)
+if IS_TEST_RUNNER:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'safari-security-cache',
+        }
     }
-}
+else:
+    _cache_owner = os.environ.get('USER') or os.environ.get('USERNAME') or 'default'
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': str(Path(tempfile.gettempdir()) / f'safari_security_cache_{_cache_owner}'),
+        }
+    }
 
 
 # Internationalization

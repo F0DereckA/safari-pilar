@@ -4,6 +4,8 @@ import json
 
 import logging
 
+import secrets
+
 import time
 
 from functools import wraps
@@ -465,27 +467,43 @@ def requiere_rol(roles_permitidos):
 
 def obtener_ip_cliente(request):
 
-    """H8: Obtiene la dirección IP real del cliente validando formato seguro (OWASP)"""
+    """H8: Obtiene la dirección IP real del cliente validando formato seguro y tomando el último salto confiable."""
 
     import ipaddress
-
-    remote_addr = (request.META.get('REMOTE_ADDR') or '127.0.0.1').strip()
 
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
 
     if x_forwarded_for:
 
-        candidate = x_forwarded_for.split(',')[0].strip()
+        partes = [p.strip() for p in x_forwarded_for.split(',') if p.strip()]
+
+        for candidate in reversed(partes):
+
+            try:
+
+                ipaddress.ip_address(candidate)
+
+                return candidate
+
+            except ValueError:
+
+                continue
+
+    x_real_ip = (request.META.get('HTTP_X_REAL_IP') or '').strip()
+
+    if x_real_ip:
 
         try:
 
-            ipaddress.ip_address(candidate)
+            ipaddress.ip_address(x_real_ip)
 
-            return candidate
+            return x_real_ip
 
         except ValueError:
 
             pass
+
+    remote_addr = (request.META.get('REMOTE_ADDR') or '127.0.0.1').strip()
 
     try:
 
@@ -529,7 +547,82 @@ def obtener_url_redireccion_segura(request, default_url):
 
 MAX_INTENTOS_LOGIN = 5
 
-TIEMPO_BLOQUEO_LOGIN = 300  # 5 minutos en segundos
+MAX_INTENTOS_LOGIN_IP = 5
+
+TIEMPO_BLOQUEO_LOGIN = 900  # 15 minutos en segundos
+
+
+def _segundos_restantes_cache(cache_val, default_segs=TIEMPO_BLOQUEO_LOGIN):
+    if not cache_val:
+        return 0
+    if isinstance(cache_val, bool):
+        return int(default_segs)
+    try:
+        rem = int(cache_val) - int(time.time())
+        return rem if rem > 0 else 0
+    except (TypeError, ValueError):
+        return int(default_segs)
+
+
+def _formatear_mm_ss(segundos):
+    seg = max(0, int(segundos))
+    return f"{seg // 60:02d}:{seg % 60:02d}"
+
+
+def _obtener_guard_login_keys(request, create_session_guard=False):
+    ip_cliente = obtener_ip_cliente(request)
+    guard_id = None
+    if hasattr(request, 'session'):
+        guard_id = request.session.get('safari_login_guard_id')
+        if not guard_id and create_session_guard:
+            guard_id = secrets.token_hex(12)
+            request.session['safari_login_guard_id'] = guard_id
+    return {
+        'ip': ip_cliente,
+        'ip_intentos': f"login_ip_intentos_{ip_cliente}",
+        'ip_bloqueo': f"login_ip_bloqueado_{ip_cliente}",
+        'sid_intentos': f"login_sid_intentos_{guard_id}" if guard_id else None,
+        'sid_bloqueo': f"login_sid_bloqueado_{guard_id}" if guard_id else None,
+    }
+
+
+def _estado_bloqueo_login(request):
+    keys = _obtener_guard_login_keys(request, create_session_guard=False)
+    now_ts = int(time.time())
+    expira_ts = 0
+    seg_ip = _segundos_restantes_cache(cache.get(keys['ip_bloqueo']))
+    if seg_ip > 0:
+        expira_ts = max(expira_ts, now_ts + seg_ip)
+    seg_sid = _segundos_restantes_cache(cache.get(keys['sid_bloqueo'])) if keys['sid_bloqueo'] else 0
+    if seg_sid > 0:
+        expira_ts = max(expira_ts, now_ts + seg_sid)
+    seg_restantes = max(seg_ip, seg_sid)
+
+    if seg_restantes > 0:
+        return {
+            'bloqueado': True,
+            'segundos_restantes': seg_restantes,
+            'expira_ts': expira_ts,
+            'tiempo_fmt': _formatear_mm_ss(seg_restantes),
+            'intentos_usados': MAX_INTENTOS_LOGIN_IP,
+            'intentos_restantes': 0,
+            'max_intentos': MAX_INTENTOS_LOGIN_IP,
+            'minutos_bloqueo': TIEMPO_BLOQUEO_LOGIN // 60,
+        }
+
+    int_ip = int(cache.get(keys['ip_intentos'], 0) or 0)
+    int_sid = int(cache.get(keys['sid_intentos'], 0) or 0) if keys['sid_intentos'] else 0
+    usados = max(int_ip, int_sid)
+    return {
+        'bloqueado': False,
+        'segundos_restantes': 0,
+        'expira_ts': 0,
+        'tiempo_fmt': '00:00',
+        'intentos_usados': min(usados, MAX_INTENTOS_LOGIN_IP),
+        'intentos_restantes': max(0, MAX_INTENTOS_LOGIN_IP - usados),
+        'max_intentos': MAX_INTENTOS_LOGIN_IP,
+        'minutos_bloqueo': TIEMPO_BLOQUEO_LOGIN // 60,
+    }
 
 
 
@@ -595,6 +688,36 @@ def login_view(request):
             resp_429['Retry-After'] = str(retry_after)
             return resp_429
 
+        # Control de Rate Limiting y Protección contra Ataques de Fuerza Bruta por IP y sesión (OWASP)
+
+        keys_guard = _obtener_guard_login_keys(request, create_session_guard=True)
+
+        ip_cliente = keys_guard['ip']
+
+        key_ip_bloqueo = keys_guard['ip_bloqueo']
+
+        key_ip_intentos = keys_guard['ip_intentos']
+
+        estado_bloqueo_actual = _estado_bloqueo_login(request)
+
+        if estado_bloqueo_actual['bloqueado']:
+
+            seg_rest = estado_bloqueo_actual['segundos_restantes']
+
+            min_rest = max(1, (seg_rest + 59) // 60)
+
+            messages.error(
+
+                request,
+
+                "Acceso de red bloqueado temporalmente por acumulación de múltiples intentos fallidos. "
+
+                f"Por motivos de seguridad institucional, espera {min_rest} minuto(s) ({_formatear_mm_ss(seg_rest)}) antes de volver a intentarlo."
+
+            )
+
+            return redirect('index')
+
         username = limpiar_texto_seguro(request.POST.get('username', ''), max_length=150)
 
         password = request.POST.get('password', '')
@@ -621,39 +744,15 @@ def login_view(request):
 
             return redirect('index')
 
-
-
-        # Control de Rate Limiting y Protección contra Ataques de Fuerza Bruta (OWASP)
-
-        ip_cliente = obtener_ip_cliente(request)
-
         key_bloqueo = f"login_bloqueado_{ip_cliente}_{username.lower()}"
 
         key_intentos = f"login_intentos_{ip_cliente}_{username.lower()}"
 
-        key_ip_bloqueo = f"login_ip_bloqueado_{ip_cliente}"
+        seg_user = _segundos_restantes_cache(cache.get(key_bloqueo))
 
-        key_ip_intentos = f"login_ip_intentos_{ip_cliente}"
+        if seg_user > 0:
 
-
-
-        if cache.get(key_ip_bloqueo):
-
-            messages.error(
-
-                request,
-
-                "Acceso de red bloqueado temporalmente por acumulación de múltiples intentos fallidos. "
-
-                "Por motivos de seguridad institucional, espera 15 minutos antes de volver a intentarlo."
-
-            )
-
-            return redirect('index')
-
-
-
-        if cache.get(key_bloqueo):
+            min_u = max(1, (seg_user + 59) // 60)
 
             messages.error(
 
@@ -661,7 +760,7 @@ def login_view(request):
 
                 f"Acceso temporalmente bloqueado por superar el límite de {MAX_INTENTOS_LOGIN} intentos fallidos. "
 
-                "Por motivos de seguridad, espera 5 minutos antes de volver a intentarlo."
+                f"Por motivos de seguridad, espera {min_u} minuto(s) ({_formatear_mm_ss(seg_user)}) antes de volver a intentarlo."
 
             )
 
@@ -744,6 +843,12 @@ def login_view(request):
             cache.delete(key_ip_bloqueo)
 
             cache.delete(key_ip_intentos)
+
+            if keys_guard['sid_bloqueo']:
+                cache.delete(keys_guard['sid_bloqueo'])
+
+            if keys_guard['sid_intentos']:
+                cache.delete(keys_guard['sid_intentos'])
 
             if perfil:
 
@@ -838,11 +943,14 @@ def login_view(request):
 
         else:
 
-            # Registrar intento fallido tanto en BD como en caché (Tarea 1)
+            # Registrar intento fallido tanto en BD como en caché global por IP/sesión (15 min / máx 5 errores totales)
 
             if user_candidate and hasattr(user_candidate, 'perfil'):
 
-                user_candidate.perfil.registrar_intento_fallido(max_intentos=MAX_INTENTOS_LOGIN, minutos_bloqueo=5)
+                user_candidate.perfil.registrar_intento_fallido(
+                    max_intentos=MAX_INTENTOS_LOGIN,
+                    minutos_bloqueo=TIEMPO_BLOQUEO_LOGIN // 60,
+                )
 
 
 
@@ -860,39 +968,37 @@ def login_view(request):
 
 
 
-            intentos_previos = cache.get(key_intentos, 0)
+            intentos_actuales = int(cache.get(key_intentos, 0) or 0) + 1
 
-            intentos_actuales = intentos_previos + 1
+            intentos_ip = int(cache.get(key_ip_intentos, 0) or 0) + 1
 
+            intentos_sid = (int(cache.get(keys_guard['sid_intentos'], 0) or 0) + 1) if keys_guard['sid_intentos'] else 0
 
+            intentos_globales = max(intentos_actuales, intentos_ip, intentos_sid)
 
-            intentos_ip = cache.get(key_ip_intentos, 0) + 1
+            if intentos_globales >= MAX_INTENTOS_LOGIN_IP:
 
-            if intentos_ip >= 10:
+                expira_ts = int(time.time()) + TIEMPO_BLOQUEO_LOGIN
 
-                cache.set(key_ip_bloqueo, True, timeout=900)  # Bloqueo de 15 minutos
+                cache.set(key_ip_bloqueo, expira_ts, timeout=TIEMPO_BLOQUEO_LOGIN)
 
                 cache.delete(key_ip_intentos)
 
-            else:
+                if keys_guard['sid_bloqueo']:
+                    cache.set(keys_guard['sid_bloqueo'], expira_ts, timeout=TIEMPO_BLOQUEO_LOGIN)
+                    cache.delete(keys_guard['sid_intentos'])
 
-                cache.set(key_ip_intentos, intentos_ip, timeout=TIEMPO_BLOQUEO_LOGIN)
-
-
-
-            if intentos_actuales >= MAX_INTENTOS_LOGIN:
-
-                cache.set(key_bloqueo, True, timeout=TIEMPO_BLOQUEO_LOGIN)
-
-                cache.delete(key_intentos)
+                if intentos_actuales >= MAX_INTENTOS_LOGIN:
+                    cache.set(key_bloqueo, expira_ts, timeout=TIEMPO_BLOQUEO_LOGIN)
+                    cache.delete(key_intentos)
 
                 messages.error(
 
                     request,
 
-                    f"Credenciales incorrectas. Has superado el límite de {MAX_INTENTOS_LOGIN} intentos fallidos. "
+                    f"Credenciales incorrectas. Has superado el límite de {MAX_INTENTOS_LOGIN} intentos fallidos desde tu IP "
 
-                    "Tu acceso ha sido bloqueado temporalmente por 5 minutos por razones de seguridad."
+                    f"(aplica aunque cambies de usuario). Tu acceso ha sido bloqueado temporalmente por 15 minutos ({_formatear_mm_ss(TIEMPO_BLOQUEO_LOGIN)})."
 
                 )
 
@@ -900,7 +1006,12 @@ def login_view(request):
 
                 cache.set(key_intentos, intentos_actuales, timeout=TIEMPO_BLOQUEO_LOGIN)
 
-                intentos_restantes = MAX_INTENTOS_LOGIN - intentos_actuales
+                cache.set(key_ip_intentos, intentos_globales, timeout=TIEMPO_BLOQUEO_LOGIN)
+
+                if keys_guard['sid_intentos']:
+                    cache.set(keys_guard['sid_intentos'], intentos_globales, timeout=TIEMPO_BLOQUEO_LOGIN)
+
+                intentos_restantes = MAX_INTENTOS_LOGIN_IP - intentos_globales
 
                 messages.error(
 
@@ -908,7 +1019,7 @@ def login_view(request):
 
                     f"Credenciales incorrectas. Verifica tu nombre de usuario y contraseña. "
 
-                    f"Te quedan {intentos_restantes} intento(s) antes del bloqueo de seguridad."
+                    f"Te quedan {intentos_restantes} intento(s) antes del bloqueo de seguridad por 15 minutos (el conteo continúa aunque cambies de usuario)."
 
                 )
 
@@ -1135,6 +1246,7 @@ def index(request):
     return render(request, 'ventas/acceso/index.html', {
         'demo_mode_activo': demo_mode_activo(),
         'ack_config': ack_config,
+        'lockout_info': _estado_bloqueo_login(request),
     })
 
 

@@ -191,27 +191,42 @@ class AutenticacionAccesoYSeguridadTests(SafariDemoTestCase):
             reverse("login"), {"username": "usuario_bruta_suite", "password": "err_5"}, follow=True
         )
         self.assertContains(r5, "Has superado el límite de 5 intentos fallidos")
+        self.assertContains(r5, "15 minutos")
         target_user.perfil.refresh_from_db()
         self.assertTrue(target_user.perfil.esta_bloqueado())
+        seg_db = (target_user.perfil.bloqueado_hasta - timezone.now()).total_seconds()
+        self.assertGreater(seg_db, 14 * 60)
 
         r6 = self.client.post(
             reverse("login"),
             {"username": "usuario_bruta_suite", "password": "safariPassword2026!"},
             follow=True,
         )
-        self.assertContains(r6, "temporalmente bloqueado")
+        self.assertContains(r6, "bloqueado temporalmente")
+        self.assertContains(r6, 'id="alertaBloqueoIpLogin"')
         self.assertFalse(r6.context["user"].is_authenticated)
 
-        # 7. Rate limit global por IP (10 intentos erróneos -> 11° bloqueado)
+        # 7. Cuenta regresiva compartida entre distintos usuarios por IP: 4 cambios + 5° error -> bloqueo 15 min
         cache.clear()
-        for i in range(10):
-            self.client.post(
-                reverse("login"), {"username": f"atacante_ip_{i}", "password": "clave_incorrecta"}
+        for idx, atacante in enumerate(("intento_a", "intento_b", "intento_c", "intento_d"), start=1):
+            resp_rot_user = self.client.post(
+                reverse("login"), {"username": atacante, "password": "clave_incorrecta"}, follow=True
             )
+            self.assertContains(resp_rot_user, f"Te quedan {5 - idx} intento(s)")
+            self.assertContains(resp_rot_user, f"llevas {idx} de 5 intento(s) fallido(s)")
+
+        resp_5_distinto = self.client.post(
+            reverse("login"), {"username": "intento_e", "password": "clave_incorrecta"}, follow=True
+        )
+        self.assertContains(resp_5_distinto, "bloqueado temporalmente por 15 minutos")
+        self.assertContains(resp_5_distinto, 'id="countdownBloqueoLogin"')
+
+        # Incluso intentando con otro usuario legítimo y contraseña correcta desde la misma IP/sesión sigue bloqueado
         resp_ip = self.client.post(
-            reverse("login"), {"username": "cualquiera", "password": "clave"}, follow=True
+            reverse("login"), {"username": self.mesero_user.username, "password": "safari123"}, follow=True
         )
         self.assertContains(resp_ip, "Acceso de red bloqueado temporalmente")
+        self.assertFalse(resp_ip.context["user"].is_authenticated)
 
     def test_aislamiento_roles_vistas_apis_y_contraste_ui_por_rol(self):
         """Verifica RBAC estricto + JSON 401/403 API + Contraste Positivo/Negativo de UI por rol."""

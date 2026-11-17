@@ -231,7 +231,38 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // 4. Inicializar toasts automáticos en la esquina
+    // 4. Cuenta regresiva en vivo de bloqueo por IP / sesión (15 minutos sin reiniciar)
+    const lockoutConfigEl = document.getElementById('safariLockoutConfig');
+    const alertaBloqueoIp = document.getElementById('alertaBloqueoIpLogin');
+    const countdownBloqueo = document.getElementById('countdownBloqueoLogin');
+    if (lockoutConfigEl && lockoutConfigEl.textContent && alertaBloqueoIp && countdownBloqueo) {
+        try {
+            const lockoutCfg = JSON.parse(lockoutConfigEl.textContent);
+            const segInicial = Number(lockoutCfg && lockoutCfg.segundos_restantes) || 0;
+            if (lockoutCfg && lockoutCfg.bloqueado && segInicial > 0) {
+                const targetEndMs = Date.now() + (segInicial * 1000);
+                let timerBloqueo = null;
+                const actualizarRelojBloqueo = function () {
+                    const restantes = Math.max(0, Math.ceil((targetEndMs - Date.now()) / 1000));
+                    const mins = Math.floor(restantes / 60);
+                    const secs = restantes % 60;
+                    countdownBloqueo.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                    if (restantes <= 0) {
+                        if (timerBloqueo) clearInterval(timerBloqueo);
+                        alertaBloqueoIp.classList.remove('alert-danger', 'border-danger');
+                        alertaBloqueoIp.classList.add('alert-success', 'border-success');
+                        alertaBloqueoIp.textContent = 'Tiempo de bloqueo finalizado. Ya puedes volver a intentar iniciar sesión.';
+                    }
+                };
+                actualizarRelojBloqueo();
+                timerBloqueo = setInterval(actualizarRelojBloqueo, 1000);
+            }
+        } catch (_err) {
+            // Fallback seguro si el JSON de bloqueo no es válido
+        }
+    }
+
+    // 5. Inicializar toasts automáticos en la esquina
     document.querySelectorAll('.toast-container .toast').forEach(function (el) {
         if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
             const toast = new bootstrap.Toast(el, { delay: 4500 });
